@@ -387,7 +387,8 @@ class TestGetConfig(MAASServerTestCase):
 
     def test__has_enlistment_preseed_url_internal_domain(self):
         rack_controller = factory.make_RackController()
-        subnet = factory.make_Subnet()
+        vlan = factory.make_VLAN(dhcp_on=True, primary_rack=rack_controller)
+        subnet = factory.make_Subnet(vlan=vlan)
         subnet.dns_servers = []
         subnet.save()
         local_ip = factory.pick_ip_in_Subnet(subnet)
@@ -475,14 +476,15 @@ class TestGetConfig(MAASServerTestCase):
 
     def test_preseed_url_for_known_node_internal_domain(self):
         rack_url = 'http://%s' % factory.make_name('host')
-        subnet = factory.make_Subnet()
+        rack_controller = factory.make_RackController(url=rack_url)
+        vlan = factory.make_VLAN(dhcp_on=True, primary_rack=rack_controller)
+        subnet = factory.make_Subnet(vlan=vlan)
         subnet.dns_servers = []
         subnet.save()
         local_ip = factory.pick_ip_in_Subnet(subnet)
         remote_ip = factory.make_ip_address()
         self.patch(
             server_address, 'resolve_hostname').return_value = {local_ip}
-        rack_controller = factory.make_RackController(url=rack_url)
         node = self.make_node(primary_rack=rack_controller)
         mac = node.get_boot_interface().mac_address
         observed_config = get_config(

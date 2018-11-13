@@ -39,7 +39,7 @@ import yaml
 RSYSLOG_PORT = 5247
 
 
-def get_apt_proxy(request, rack_controller=None):
+def get_apt_proxy(request, rack_controller=None, node=None):
     """Return the APT proxy for the `rack_controller`."""
     config = Config.objects.get_configs([
         'enable_http_proxy', 'http_proxy', 'use_peer_proxy',
@@ -62,18 +62,26 @@ def get_apt_proxy(request, rack_controller=None):
             remote_ip = get_remote_ip(request)
             if remote_ip is not None:
                 subnet = Subnet.objects.get_best_subnet_for_ip(remote_ip)
-            if (config['use_rack_proxy'] and
-                    subnet is not None and
-                    not subnet.dns_servers):
-                # Client can use the MAAS proxy on the rack controller.
+            use_dns = (
+                subnet is not None and
+                not subnet.dns_servers and
+                subnet.vlan.dhcp_on)
+            if config['use_rack_proxy'] and use_dns:
+                # Client can use the MAAS proxy on the rack controller with
+                # DNS resolution providing better HA.
                 return "http://%s.%s:%d/" % (
                     get_resource_name_for_subnet(subnet),
                     config["maas_internal_domain"], maas_proxy_port)
+            elif (config['use_rack_proxy'] and
+                    node is not None and
+                    node.boot_cluster_ip):
+                # Client can use the MAAS proxy on the rack controller with
+                # IP address, instead of DNS.
+                return "http://%s:%d/" % (
+                    node.boot_cluster_ip, maas_proxy_port)
             else:
-                # Client cannot use the MAAS proxy on the rack controller
-                # because rack proxy is disabled, the subnet the IP belongs to
-                # is unknown or the subnet is using DNS servers that are not
-                # MAAS. Fallback to using the old way pre MAAS 2.5.
+                # Fallback to sending the APT directly to the
+                # region controller.
                 region_ip = get_default_region_ip(request)
                 url = "http://:%d/" % maas_proxy_port
                 return compose_URL(
@@ -113,7 +121,7 @@ def get_archive_config(request, node, preserve_sources=False):
     arch = node.split_arch()[0]
     archive = PackageRepository.objects.get_default_archive(arch)
     repositories = PackageRepository.objects.get_additional_repositories(arch)
-    apt_proxy = get_apt_proxy(request, node.get_boot_rack_controller())
+    apt_proxy = get_apt_proxy(request, node.get_boot_rack_controller(), node)
 
     # Process the default Ubuntu Archives or Mirror.
     archives = {}
@@ -488,7 +496,7 @@ def _compose_cloud_init_preseed(
         # apt_proxy is deprecated in the cloud-init source code in favor of
         # what get_archive_config does.
         apt_proxy = get_apt_proxy(
-            request, node.get_boot_rack_controller())
+            request, node.get_boot_rack_controller(), node)
         if apt_proxy:
             cloud_config['apt_proxy'] = apt_proxy
         # LP: #1743966 - If a custom archive is being used with a custom key,

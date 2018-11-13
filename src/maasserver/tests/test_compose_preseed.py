@@ -57,7 +57,8 @@ class TestAptProxy(MAASServerTestCase):
             enable=True,
             use_peer_proxy=False,
             http_proxy='',
-            use_rack_proxy=False)),
+            use_rack_proxy=False,
+            boot_cluster_ip=None)),
         ("ipv4", dict(
             default_region_ip=None,
             rack='10.0.1.1',
@@ -66,7 +67,8 @@ class TestAptProxy(MAASServerTestCase):
             enable=True,
             use_peer_proxy=False,
             http_proxy='',
-            use_rack_proxy=False)),
+            use_rack_proxy=False,
+            boot_cluster_ip=None)),
         ("builtin", dict(
             default_region_ip=None,
             rack='region.example.com',
@@ -75,7 +77,8 @@ class TestAptProxy(MAASServerTestCase):
             enable=True,
             use_peer_proxy=False,
             http_proxy='',
-            use_rack_proxy=False)),
+            use_rack_proxy=False,
+            boot_cluster_ip=None)),
         ("external", dict(
             default_region_ip=None,
             rack='region.example.com',
@@ -84,7 +87,8 @@ class TestAptProxy(MAASServerTestCase):
             enable=True,
             use_peer_proxy=False,
             http_proxy='http://proxy.example.com:111/',
-            use_rack_proxy=False)),
+            use_rack_proxy=False,
+            boot_cluster_ip=None)),
         ("peer-proxy", dict(
             default_region_ip=None,
             rack='region.example.com',
@@ -93,7 +97,8 @@ class TestAptProxy(MAASServerTestCase):
             enable=True,
             use_peer_proxy=True,
             http_proxy='http://proxy.example.com:111/',
-            use_rack_proxy=False)),
+            use_rack_proxy=False,
+            boot_cluster_ip=None)),
         ("disabled", dict(
             default_region_ip=None,
             rack='example.com',
@@ -102,7 +107,8 @@ class TestAptProxy(MAASServerTestCase):
             enable=False,
             use_peer_proxy=False,
             http_proxy='',
-            use_rack_proxy=False)),
+            use_rack_proxy=False,
+            boot_cluster_ip=None)),
         # If a default IP address for the region is passed in and the rack's
         # URL is empty, the default IP address that was provided should be
         # preferred.
@@ -114,7 +120,8 @@ class TestAptProxy(MAASServerTestCase):
             enable=True,
             use_peer_proxy=False,
             http_proxy='',
-            use_rack_proxy=False)),
+            use_rack_proxy=False,
+            boot_cluster_ip=None)),
         ("ipv4_default", dict(
             default_region_ip='10.0.1.2',
             rack='',
@@ -123,7 +130,8 @@ class TestAptProxy(MAASServerTestCase):
             enable=True,
             use_peer_proxy=False,
             http_proxy='',
-            use_rack_proxy=False)),
+            use_rack_proxy=False,
+            boot_cluster_ip=None)),
         ("builtin_default", dict(
             default_region_ip='region.example.com',
             rack='',
@@ -132,7 +140,8 @@ class TestAptProxy(MAASServerTestCase):
             enable=True,
             use_peer_proxy=False,
             http_proxy='',
-            use_rack_proxy=False)),
+            use_rack_proxy=False,
+            boot_cluster_ip=None)),
         ("external_default", dict(
             default_region_ip='10.0.0.1',
             rack='',
@@ -141,7 +150,8 @@ class TestAptProxy(MAASServerTestCase):
             enable=True,
             use_peer_proxy=False,
             http_proxy='http://proxy.example.com:111/',
-            use_rack_proxy=False)),
+            use_rack_proxy=False,
+            boot_cluster_ip=None)),
         ("peer-proxy_default", dict(
             default_region_ip='region2.example.com',
             rack='',
@@ -150,7 +160,8 @@ class TestAptProxy(MAASServerTestCase):
             enable=True,
             use_peer_proxy=True,
             http_proxy='http://proxy.example.com:111/',
-            use_rack_proxy=False)),
+            use_rack_proxy=False,
+            boot_cluster_ip=None)),
         ("disabled_default", dict(
             default_region_ip='10.0.0.1',
             rack='',
@@ -159,7 +170,8 @@ class TestAptProxy(MAASServerTestCase):
             enable=False,
             use_peer_proxy=False,
             http_proxy='',
-            use_rack_proxy=False)),
+            use_rack_proxy=False,
+            boot_cluster_ip=None)),
         ("changed-maas_proxy_port", dict(
             default_region_ip='region2.example.com',
             rack='',
@@ -168,7 +180,8 @@ class TestAptProxy(MAASServerTestCase):
             enable=True,
             use_peer_proxy=True,
             http_proxy='http://proxy.example.com:111/',
-            use_rack_proxy=False)),
+            use_rack_proxy=False,
+            boot_cluster_ip=None)),
         ("rack-proxy", dict(
             default_region_ip='',
             rack='',
@@ -179,7 +192,9 @@ class TestAptProxy(MAASServerTestCase):
             http_proxy='',
             use_rack_proxy=True,
             cidr='192.168.122.0/24',
-            subnet_dns=None)),
+            subnet_dns=None,
+            dhcp_on=True,
+            boot_cluster_ip=None)),
         ("rack-proxy-no-subnet", dict(
             default_region_ip='region.example.com',
             rack='',
@@ -190,7 +205,9 @@ class TestAptProxy(MAASServerTestCase):
             http_proxy='',
             use_rack_proxy=True,
             cidr=None,
-            subnet_dns=None)),
+            subnet_dns=None,
+            dhcp_on=True,
+            boot_cluster_ip=None)),
         ("rack-proxy-subnet-with-dns", dict(
             default_region_ip='region.example.com',
             rack='',
@@ -201,7 +218,22 @@ class TestAptProxy(MAASServerTestCase):
             http_proxy='',
             use_rack_proxy=True,
             cidr='192.168.122.0/24',
-            subnet_dns='192.168.122.10')),
+            subnet_dns='192.168.122.10',
+            dhcp_on=True,
+            boot_cluster_ip=None)),
+        ("rack-proxy-no-dhcp-through-rack", dict(
+            default_region_ip='region.example.com',
+            rack='',
+            maas_proxy_port=8000,
+            result='http://192.168.122.5:8000/',
+            enable=True,
+            use_peer_proxy=False,
+            http_proxy='',
+            use_rack_proxy=True,
+            cidr='192.168.122.0/24',
+            subnet_dns=None,
+            dhcp_on=False,
+            boot_cluster_ip='192.168.122.5')),
     )
 
     def test__returns_correct_url(self):
@@ -218,6 +250,9 @@ class TestAptProxy(MAASServerTestCase):
         # Now setup the configuration and arguments, and see what we get back.
         node = factory.make_Node(
             interface=True, status=NODE_STATUS.COMMISSIONING)
+        if self.boot_cluster_ip is not None:
+            node.boot_cluster_ip = self.boot_cluster_ip
+            node.save()
         Config.objects.set_config("enable_http_proxy", self.enable)
         Config.objects.set_config("http_proxy", self.http_proxy)
         Config.objects.set_config("use_peer_proxy", self.use_peer_proxy)
@@ -229,7 +264,13 @@ class TestAptProxy(MAASServerTestCase):
         if self.use_rack_proxy:
             subnet = None
             if self.cidr:
-                subnet = factory.make_Subnet(cidr=self.cidr)
+                vlan = factory.make_VLAN()
+                if self.dhcp_on:
+                    rack = factory.make_RackController()
+                    vlan.dhcp_on = True
+                    vlan.primary_rack = rack
+                    vlan.save()
+                subnet = factory.make_Subnet(cidr=self.cidr, vlan=vlan)
                 if self.subnet_dns:
                     subnet.dns_servers = [self.subnet_dns]
                 else:
@@ -238,7 +279,7 @@ class TestAptProxy(MAASServerTestCase):
                 request.META['REMOTE_ADDR'] = factory.pick_ip_in_Subnet(subnet)
             else:
                 request.META['REMOTE_ADDR'] = factory.make_ipv4_address()
-        actual = get_apt_proxy(request, node.get_boot_rack_controller())
+        actual = get_apt_proxy(request, node.get_boot_rack_controller(), node)
         self.assertEqual(self.result, actual)
 
 

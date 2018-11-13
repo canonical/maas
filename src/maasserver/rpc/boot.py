@@ -248,13 +248,14 @@ def get_boot_config_for_machine(machine, configs, purpose):
 def get_base_url_for_local_ip(local_ip, internal_domain):
     """Get the base URL for the preseed using the `local_ip`."""
     subnet = Subnet.objects.get_best_subnet_for_ip(local_ip)
-    if subnet is not None and not subnet.dns_servers:
+    if subnet is not None and not subnet.dns_servers and subnet.vlan.dhcp_on:
         # Use the MAAS internal domain to resolve the IP address of
         # the rack controllers on the subnet.
         return 'http://%s.%s:5248/' % (
             get_resource_name_for_subnet(subnet), internal_domain)
     else:
-        # Either no subnet or the subnet has DNS servers defined. In
+        # Either no subnet, the subnet has DNS servers defined, or the VLAN
+        # that the subnet belongs to doesn't have DHCP enabled. In
         # that case fallback to using IP address only.
         return 'http://%s:5248/' % local_ip
 
