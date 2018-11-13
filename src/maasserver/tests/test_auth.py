@@ -18,8 +18,12 @@ from maasserver.models import (
     MAASAuthorizationBackend,
     Node,
 )
-from maasserver.permissions import NodePermission
+from maasserver.permissions import (
+    NodePermission,
+    ResourcePoolPermission,
+)
 from maasserver.rbac import (
+    ALL_RESOURCES,
     FakeRBACClient,
     rbac,
 )
@@ -1063,3 +1067,95 @@ class TestNodeVisibility(MAASServerTestCase):
         self.assertItemsEqual(
             [own_node, unowned_node],
             Node.objects.get_nodes(own_node.owner, NodePermission.view))
+
+
+class TestMAASAuthorizationBackendResourcePool(
+        MAASServerTestCase, EnableRBACMixin):
+
+    def test_ResourcePool_requires_ResourcePoolPermission(self):
+        backend = MAASAuthorizationBackend()
+        pool = factory.make_ResourcePool()
+        user = factory.make_User()
+        self.assertRaises(
+            TypeError, backend.has_perm, user, NodePermission.view, pool)
+
+    def test_create_requires_admin(self):
+        backend = MAASAuthorizationBackend()
+        user = factory.make_User()
+        admin = factory.make_admin()
+        self.assertFalse(backend.has_perm(user, ResourcePoolPermission.create))
+        self.assertTrue(backend.has_perm(admin, ResourcePoolPermission.create))
+
+    def test_create_requires_rbac_edit_all_resources(self):
+        self.enable_rbac()
+        backend = MAASAuthorizationBackend()
+        pool = factory.make_ResourcePool()
+        self.rbac_store.add_pool(pool)
+        user1 = factory.make_User()
+        self.rbac_store.allow(user1.username, pool, 'edit')
+        user2 = factory.make_User()
+        self.rbac_store.allow(user2.username, ALL_RESOURCES, 'edit')
+        self.assertFalse(
+            backend.has_perm(user1, ResourcePoolPermission.create))
+        self.assertTrue(backend.has_perm(user2, ResourcePoolPermission.create))
+
+    def test_view_requires_obj(self):
+        backend = MAASAuthorizationBackend()
+        user = factory.make_User()
+        self.assertRaises(
+            ValueError, backend.has_perm, user, ResourcePoolPermission.view)
+
+    def test_edit_requires_obj(self):
+        backend = MAASAuthorizationBackend()
+        user = factory.make_User()
+        self.assertRaises(
+            ValueError, backend.has_perm, user, ResourcePoolPermission.edit)
+
+    def test_view_always_viewable(self):
+        backend = MAASAuthorizationBackend()
+        pool = factory.make_ResourcePool()
+        user = factory.make_User()
+        admin = factory.make_admin()
+        self.assertTrue(
+            backend.has_perm(user, ResourcePoolPermission.view, pool))
+        self.assertTrue(
+            backend.has_perm(admin, ResourcePoolPermission.view, pool))
+
+    def test_view_rbac_viewable(self):
+        self.enable_rbac()
+        backend = MAASAuthorizationBackend()
+        pool1 = factory.make_ResourcePool()
+        pool2 = factory.make_ResourcePool()
+        self.rbac_store.add_pool(pool1)
+        self.rbac_store.add_pool(pool2)
+        user = factory.make_User()
+        self.rbac_store.allow(user.username, pool2, 'view')
+        self.assertFalse(
+            backend.has_perm(user, ResourcePoolPermission.view, pool1))
+        self.assertTrue(
+            backend.has_perm(user, ResourcePoolPermission.view, pool2))
+
+    def test_edit_requires_admin(self):
+        backend = MAASAuthorizationBackend()
+        pool = factory.make_ResourcePool()
+        user = factory.make_User()
+        admin = factory.make_admin()
+        self.assertFalse(
+            backend.has_perm(user, ResourcePoolPermission.edit, pool))
+        self.assertTrue(
+            backend.has_perm(admin, ResourcePoolPermission.edit, pool))
+
+    def test_edit_rbac_editable(self):
+        self.enable_rbac()
+        backend = MAASAuthorizationBackend()
+        pool1 = factory.make_ResourcePool()
+        pool2 = factory.make_ResourcePool()
+        self.rbac_store.add_pool(pool1)
+        self.rbac_store.add_pool(pool2)
+        user = factory.make_User()
+        self.rbac_store.allow(user.username, pool1, 'view')
+        self.rbac_store.allow(user.username, pool2, 'edit')
+        self.assertFalse(
+            backend.has_perm(user, ResourcePoolPermission.edit, pool1))
+        self.assertTrue(
+            backend.has_perm(user, ResourcePoolPermission.edit, pool2))

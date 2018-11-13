@@ -17,6 +17,7 @@ from django.db.models import (
 from maasserver.enum import NODE_STATUS
 from maasserver.forms import ResourcePoolForm
 from maasserver.models.resourcepool import ResourcePool
+from maasserver.permissions import ResourcePoolPermission
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
 )
@@ -25,15 +26,7 @@ from maasserver.websockets.handlers.timestampedmodel import (
 class ResourcePoolHandler(TimestampedModelHandler):
 
     class Meta:
-        queryset = (
-            ResourcePool.objects.all().prefetch_related(
-                'node_set').annotate(
-                    machine_total_count=Count('node'),
-                    machine_ready_count=Sum(
-                        Case(
-                            When(node__status=NODE_STATUS.READY, then=1),
-                            default=0, output_field=IntegerField()))))
-
+        queryset = ResourcePool.objects.all()
         pk = 'id'
         form = ResourcePoolForm
         form_requires_request = False
@@ -47,12 +40,19 @@ class ResourcePoolHandler(TimestampedModelHandler):
         listen_channels = [
             "resourcepool",
         ]
+        delete_permission = ResourcePoolPermission.edit
 
-    def delete(self, parameters):
-        """Delete this resource pool."""
-        pool = self.get_object(parameters)
-        assert self.user.is_superuser, "Permission denied."
-        pool.delete()
+    def get_queryset(self, for_list=False):
+        """Return `QuerySet` used by this handler."""
+        queryset = ResourcePool.objects.get_resource_pools(self.user)
+        queryset = queryset.prefetch_related('node_set')
+        queryset = queryset.annotate(
+            machine_total_count=Count('node'),
+            machine_ready_count=Sum(
+                Case(
+                    When(node__status=NODE_STATUS.READY, then=1),
+                    default=0, output_field=IntegerField())))
+        return queryset
 
     def dehydrate(self, obj, data, for_list=False):
         """Add any extra info to the `data` before finalizing the final object.

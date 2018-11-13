@@ -174,7 +174,8 @@ class APITestCaseBase(MAASTestCase, metaclass=APITestType):
         """Promote `self.user` to admin."""
         self.assertFalse(self.user.is_anonymous, (
             "Cannot promote anonymous user to admin."))
-        if Config.objects.get_config('external_auth_url'):
+        if (Config.objects.get_config('external_auth_url') or
+                Config.objects.get_config('rbac_url')):
             # if external auth is enabled, mark the user as remote, otherwise
             # he wouldn't be able to authenticate
             self.user.userprofile.is_local = False

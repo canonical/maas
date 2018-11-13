@@ -92,6 +92,7 @@ class HandlerOptions(object):
     form_requires_request = True
     listen_channels = []
     batch_key = 'id'
+    delete_permission = None
 
     def __new__(cls, meta=None):
         overrides = {}
@@ -388,6 +389,9 @@ class Handler(metaclass=HandlerMetaclass):
                 form = form_class(request=self.request, data=data)
             else:
                 form = form_class(data=data)
+            if hasattr(form, 'use_perms') and form.use_perms():
+                if not form.has_perm(self.user):
+                    raise HandlerPermissionError()
             if form.is_valid():
                 try:
                     obj = form.save()
@@ -419,6 +423,9 @@ class Handler(metaclass=HandlerMetaclass):
         if form_class is not None:
             data = self.preprocess_form("update", params)
             form = form_class(data=data, instance=obj)
+            if hasattr(form, 'use_perms') and form.use_perms():
+                if not form.has_perm(self.user):
+                    raise HandlerPermissionError()
             if form.is_valid():
                 try:
                     obj = form.save()
@@ -436,6 +443,9 @@ class Handler(metaclass=HandlerMetaclass):
     def delete(self, params):
         """Delete the object."""
         obj = self.get_object(params)
+        if self._meta.delete_permission is not None:
+            if not self.user.has_perm(self._meta.delete_permission, obj):
+                raise HandlerPermissionError()
         obj.delete()
 
     def set_active(self, params):

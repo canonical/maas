@@ -8,7 +8,15 @@ import http.client
 import json
 
 from django.conf import settings
-from maasserver.models import ResourcePool
+from maasserver.api import auth
+from maasserver.models import (
+    Config,
+    ResourcePool,
+)
+from maasserver.rbac import (
+    FakeRBACClient,
+    rbac,
+)
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.django_urls import reverse
@@ -122,3 +130,84 @@ class TestResourcePoolAPI(APITestCase.ForUser):
             reverse('resourcepool_handler', args=[pool.id]))
         self.assertEqual(response.status_code, http.client.NO_CONTENT)
         self.assertIsNone(reload_object(pool))
+
+
+class TestResourcePoolAPIWithRBAC(APITestCase.ForUser):
+
+    def setUp(self):
+        super().setUp()
+        self.patch(auth, 'validate_user_external_auth').return_value = True
+        Config.objects.set_config('rbac_url', 'http://rbac.example.com')
+        self.rbac_client = FakeRBACClient()
+        rbac._store.client = self.rbac_client
+        rbac._store.cleared = False  # Prevent re-creation of the client.
+        self.store = self.rbac_client.store
+        self.become_admin()
+
+    def test_GET_returns_pool(self):
+        pool = factory.make_ResourcePool()
+        self.store.add_pool(pool)
+        self.store.allow(self.user.username, pool, 'view')
+        response = self.client.get(
+            reverse('resourcepool_handler', args=[pool.id]), {})
+        self.assertEqual(response.status_code, http.client.OK)
+        result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
+        self.assertEqual(result['name'], pool.name)
+        self.assertEqual(result['description'], pool.description)
+        self.assertEqual(
+            result['resource_uri'],
+            '/MAAS/api/2.0/resourcepool/{}/'.format(pool.id))
+
+    def test_GET_returns_forbidden(self):
+        pool = factory.make_ResourcePool()
+        self.store.add_pool(pool)
+        response = self.client.get(
+            reverse('resourcepool_handler', args=[pool.id]), {})
+        self.assertEqual(response.status_code, http.client.FORBIDDEN)
+
+    def test_PUT_updates_pool(self):
+        self.become_admin()
+        pool = factory.make_ResourcePool()
+        self.store.add_pool(pool)
+        self.store.allow(self.user.username, pool, 'edit')
+        new_name = factory.make_name('name')
+        new_description = factory.make_name('description')
+        response = self.client.put(
+            reverse('resourcepool_handler', args=[pool.id]),
+            {'name': new_name, 'description': new_description})
+        self.assertEqual(response.status_code, http.client.OK)
+        pool = reload_object(pool)
+        self.assertEqual(pool.name, new_name)
+        self.assertEqual(pool.description, new_description)
+
+    def test_PUT_forbidden(self):
+        self.become_admin()
+        pool = factory.make_ResourcePool()
+        self.store.add_pool(pool)
+        self.store.allow(self.user.username, pool, 'view')
+        new_name = factory.make_name('name')
+        new_description = factory.make_name('description')
+        response = self.client.put(
+            reverse('resourcepool_handler', args=[pool.id]),
+            {'name': new_name, 'description': new_description})
+        self.assertEqual(response.status_code, http.client.FORBIDDEN)
+
+    def test_DELETE_removes_pool(self):
+        self.become_admin()
+        pool = factory.make_ResourcePool()
+        self.store.add_pool(pool)
+        self.store.allow(self.user.username, pool, 'edit')
+        response = self.client.delete(
+            reverse('resourcepool_handler', args=[pool.id]), {})
+        self.assertEqual(response.status_code, http.client.NO_CONTENT)
+        self.assertIsNone(reload_object(pool))
+
+    def test_DELETE_forbidden(self):
+        self.become_admin()
+        pool = factory.make_ResourcePool()
+        self.store.add_pool(pool)
+        self.store.allow(self.user.username, pool, 'view')
+        response = self.client.delete(
+            reverse('resourcepool_handler', args=[pool.name]), {})
+        self.assertEqual(response.status_code, http.client.FORBIDDEN)

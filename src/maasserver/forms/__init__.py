@@ -91,6 +91,7 @@ from django.forms import (
     Form,
     MultipleChoiceField,
 )
+from django.forms.models import ModelFormMetaclass
 from django.http import QueryDict
 from django.utils.safestring import mark_safe
 from lxml import etree
@@ -164,6 +165,7 @@ from maasserver.node_action import (
     ACTION_CLASSES,
     ACTIONS_DICT,
 )
+from maasserver.permissions import ResourcePoolPermission
 from maasserver.utils.converters import machine_readable_bytes
 from maasserver.utils.forms import (
     compose_invalid_choice_text,
@@ -400,7 +402,20 @@ class WithPowerTypeMixin:
         return node
 
 
-class MAASModelForm(APIEditMixin, forms.ModelForm):
+class MAASModelFormMetaclass(ModelFormMetaclass):
+
+    def __new__(mcs, name, bases, attrs):
+        new_class = super().__new__(mcs, name, bases, attrs)
+        meta = getattr(new_class, 'Meta', None)
+        new_class._meta.permission_create = getattr(
+            meta, 'permission_create', None)
+        new_class._meta.permission_edit = getattr(
+            meta, 'permission_edit', None)
+        return new_class
+
+
+class MAASModelForm(
+        APIEditMixin, forms.ModelForm, metaclass=MAASModelFormMetaclass):
     """A form for editing models, with MAAS-specific behaviour.
 
     Specifically, it is much like Django's ``ModelForm``, but removes
@@ -445,6 +460,33 @@ class MAASModelForm(APIEditMixin, forms.ModelForm):
         else:
             error_dict = ValidationError({NON_FIELD_ERRORS: errors})
         super(MAASModelForm, self)._update_errors(error_dict)
+
+    def use_perms(self):
+        """Return True if the form should use permissions."""
+        return (
+            self._meta.permission_create is not None or
+            self._meta.permission_edit is not None)
+
+    def has_perm(self, user):
+        """Return True if the `user` has permission to perform this action."""
+        adding = self.instance._state.adding
+        if adding:
+            # This is a create action, verify that the user has the
+            # permission to perform this create action.
+            if self._meta.permission_create is None:
+                raise ValueError(
+                    "`has_perm` cannot be called on a create action without "
+                    "`permission_create` being set on the form's Meta class.")
+            # `obj` is not passed to `has_perm` because the object is being
+            # created and this is not an edit action.
+            return user.has_perm(self._meta.permission_create)
+        # This is an edit action, verify that the user has permission to
+        # perform editing on this instance.
+        if self._meta.permission_edit is None:
+            raise ValueError(
+                "`has_perm` cannot be called on a modify action without "
+                "`permission_edit` being set on the form's Meta class.")
+        return user.has_perm(self._meta.permission_edit, self.instance)
 
 
 def list_all_usable_architectures():
@@ -2018,6 +2060,8 @@ class ResourcePoolForm(MAASModelForm):
             'name',
             'description',
             )
+        permission_create = ResourcePoolPermission.create
+        permission_edit = ResourcePoolPermission.edit
 
 
 class NodeMACAddressChoiceField(forms.ModelMultipleChoiceField):

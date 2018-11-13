@@ -7,12 +7,17 @@ from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
 )
+from maasserver.models.config import Config
 from maasserver.models.resourcepool import (
     DEFAULT_RESOURCEPOOL_DESCRIPTION,
     DEFAULT_RESOURCEPOOL_NAME,
     ResourcePool,
 )
-from maasserver.permissions import NodePermission
+from maasserver.permissions import ResourcePoolPermission
+from maasserver.rbac import (
+    FakeRBACClient,
+    rbac,
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
@@ -77,7 +82,7 @@ class TestResourcePoolManagerGetResourcePoolOr404(MAASServerTestCase):
         self.assertEqual(
             pool,
             ResourcePool.objects.get_resource_pool_or_404(
-                pool.id, user, NodePermission.view))
+                pool.id, user, ResourcePoolPermission.view))
 
     def test__user_edit_raises_PermissionError(self):
         user = factory.make_User()
@@ -85,15 +90,7 @@ class TestResourcePoolManagerGetResourcePoolOr404(MAASServerTestCase):
         self.assertRaises(
             PermissionDenied,
             ResourcePool.objects.get_resource_pool_or_404,
-            pool.id, user, NodePermission.edit)
-
-    def test__user_admin_raises_PermissionError(self):
-        user = factory.make_User()
-        pool = factory.make_ResourcePool()
-        self.assertRaises(
-            PermissionDenied,
-            ResourcePool.objects.get_resource_pool_or_404,
-            pool.id, user, NodePermission.admin)
+            pool.id, user, ResourcePoolPermission.edit)
 
     def test__admin_view_returns_resource_pool(self):
         admin = factory.make_admin()
@@ -101,7 +98,7 @@ class TestResourcePoolManagerGetResourcePoolOr404(MAASServerTestCase):
         self.assertEqual(
             pool,
             ResourcePool.objects.get_resource_pool_or_404(
-                pool.id, admin, NodePermission.view))
+                pool.id, admin, ResourcePoolPermission.view))
 
     def test__admin_edit_returns_resource_pool(self):
         admin = factory.make_admin()
@@ -109,12 +106,32 @@ class TestResourcePoolManagerGetResourcePoolOr404(MAASServerTestCase):
         self.assertEqual(
             pool,
             ResourcePool.objects.get_resource_pool_or_404(
-                pool.id, admin, NodePermission.edit))
+                pool.id, admin, ResourcePoolPermission.edit))
 
-    def test__admin_admin_returns_pool(self):
-        admin = factory.make_admin()
+
+class TestResourcePoolManagerGetResourcePools(MAASServerTestCase):
+
+    def enable_rbac(self):
+        Config.objects.set_config('rbac_url', 'http://rbac.example.com')
+        client = FakeRBACClient()
+        rbac._store.client = client
+        rbac._store.cleared = False  # Prevent re-creation of the client
+        self.rbac_store = client.store
+
+    def test__user_returns_all(self):
+        user = factory.make_User()
+        factory.make_ResourcePool()
+        self.assertItemsEqual(
+            ResourcePool.objects.all(),
+            ResourcePool.objects.get_resource_pools(user))
+
+    def test__user_rbac_returns_viewable(self):
+        self.enable_rbac()
+        user = factory.make_User()
         pool = factory.make_ResourcePool()
-        self.assertEqual(
-            pool,
-            ResourcePool.objects.get_resource_pool_or_404(
-                pool.id, admin, NodePermission.admin))
+        factory.make_ResourcePool()
+        self.rbac_store.add_pool(pool)
+        self.rbac_store.allow(user.username, pool, 'view')
+        self.assertItemsEqual(
+            [pool],
+            ResourcePool.objects.get_resource_pools(user))

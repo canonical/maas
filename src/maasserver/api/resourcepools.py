@@ -16,7 +16,7 @@ from maasserver.api.support import (
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import ResourcePoolForm
 from maasserver.models import ResourcePool
-from maasserver.permissions import NodePermission
+from maasserver.permissions import ResourcePoolPermission
 from piston3.utils import rc
 
 
@@ -42,6 +42,8 @@ class ResourcePoolHandler(ModelOperationsHandler):
     model_form = ResourcePoolForm
     handler_url_name = 'resourcepool_handler'
     api_doc_section_name = 'Resource pool'
+    permission_read = ResourcePoolPermission.view
+    permission_edit = ResourcePoolPermission.edit
 
     def read(self, request, id):
         """@description Returns a resource pool.
@@ -65,7 +67,7 @@ class ResourcePoolHandler(ModelOperationsHandler):
             Not Found
         """
         return ResourcePool.objects.get_resource_pool_or_404(
-            id, request.user, NodePermission.view)
+            id, request.user, self.permission_read)
 
     def update(self, request, id):
         """@description Updates a resource pool's name or description.
@@ -99,7 +101,7 @@ class ResourcePoolHandler(ModelOperationsHandler):
             Not Found
         """
         pool = ResourcePool.objects.get_resource_pool_or_404(
-            id, request.user, NodePermission.edit)
+            id, request.user, self.permission_edit)
         form = ResourcePoolForm(instance=pool, data=request.data)
         if form.is_valid():
             return form.save()
@@ -124,7 +126,7 @@ class ResourcePoolHandler(ModelOperationsHandler):
             <no content>
         """
         pool = ResourcePool.objects.get_resource_pool_or_404(
-            id, request.user, NodePermission.edit)
+            id, request.user, self.permission_edit)
         pool.delete()
         return rc.DELETED
 
@@ -183,4 +185,5 @@ class ResourcePoolsHandler(ModelCollectionOperationsHandler):
                 }
             ]
         """
-        return super().read(request)
+        return self.model_manager.get_resource_pools(
+            request.user).order_by(self.order_field)

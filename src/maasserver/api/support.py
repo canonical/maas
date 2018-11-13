@@ -407,7 +407,12 @@ class ModelOperationsHandler(OperationsHandler,
 
     def read(self, request, **kwargs):
         """GET request.  Return a single model instance."""
-        return self._get_instance_or_404(**kwargs)
+        instance = self._get_instance_or_404(**kwargs)
+        permission_read = getattr(self, 'permission_read', None)
+        if permission_read is not None:
+            if not request.user.has_perm(permission_read, instance):
+                raise PermissionDenied()
+        return instance
 
     @admin_method
     def update(self, request, **kwargs):
@@ -417,6 +422,9 @@ class ModelOperationsHandler(OperationsHandler,
         """
         instance = self._get_instance_or_404(**kwargs)
         form = self.model_form(instance=instance, data=request.data)
+        if hasattr(form, 'use_perms') and form.use_perms():
+            if not form.has_perm(request.user):
+                raise PermissionDenied()
         if not form.is_valid():
             raise MAASAPIValidationError(form.errors)
         return form.save()
@@ -426,6 +434,10 @@ class ModelOperationsHandler(OperationsHandler,
         """DELETE request.  Delete a model instance."""
         filters = {self.id_field: kwargs[self.id_field]}
         instance = get_one(self.model.objects.filter(**filters))
+        permission_delete = getattr(self, 'permission_delete', None)
+        if permission_delete is not None:
+            if not request.user.has_perm(permission_delete, instance):
+                raise PermissionDenied()
         if instance:
             instance.delete()
         return rc.DELETED
@@ -461,6 +473,9 @@ class ModelCollectionOperationsHandler(OperationsHandler,
     def create(self, request):
         """POST request.  Create a new instance of the model."""
         form = self.model_form(request.data)
+        if hasattr(form, 'use_perms') and form.use_perms():
+            if not form.has_perm(request.user):
+                raise PermissionDenied()
         if form.is_valid():
             return form.save()
         else:

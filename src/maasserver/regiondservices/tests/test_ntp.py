@@ -25,7 +25,10 @@ from maastesting.matchers import (
     MockCalledOnceWith,
 )
 from maastesting.testcase import MAASTestCase
-from maastesting.twisted import TwistedLoggerFixture
+from maastesting.twisted import (
+    always_succeed_with,
+    TwistedLoggerFixture,
+)
 from provisioningserver.utils.testing import MAASIDFixture
 from testtools.matchers import (
     AllMatch,
@@ -122,7 +125,10 @@ class TestRegionNetworkTimeProtocolService_Errors(
         broken_method = self.patch_autospec(service, self.method)
         broken_method.side_effect = factory.make_exception()
 
-        # Ensure that we never actually execute against systemd.
+        # Ensure that we never actually execute against systemd or write an
+        # actual configuration file.
+        self.patch_autospec(
+            ntp, "deferToThread").side_effect = always_succeed_with(None)
         self.patch_autospec(service_monitor, "restartService")
 
         with TwistedLoggerFixture() as logger:

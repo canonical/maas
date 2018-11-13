@@ -6,6 +6,7 @@
 
 __all__ = [
     'NodePermission',
+    'ResourcePoolPermission',
     ]
 
 import enum
@@ -18,3 +19,11 @@ class NodePermission(enum.Enum):
     edit = 'edit'
     lock = 'lock'
     admin = 'admin'
+
+
+class ResourcePoolPermission(enum.Enum):
+    """Permissions for `ResourcePool`."""
+
+    view = 'view'
+    edit = 'edit'
+    create = 'create'

@@ -295,6 +295,16 @@ class TestRBACWrapperGetResourcePools(MAASServerTestCase):
             sorted([pool1]),
             sorted(self.rbac.get_resource_pools('user', 'view')))
 
+    def test_can_create_resource_pool_returns_True(self):
+        self.store.allow('user', ALL_RESOURCES, 'edit')
+        self.assertTrue(self.rbac.can_create_resource_pool('user'))
+
+    def test_can_create_resource_pool_returns_False(self):
+        pool = factory.make_ResourcePool()
+        self.store.add_pool(pool)
+        self.store.allow('user', pool, 'edit')
+        self.assertFalse(self.rbac.can_create_resource_pool('user'))
+
 
 class TestRBACWrapperClient(MAASServerTestCase):
 

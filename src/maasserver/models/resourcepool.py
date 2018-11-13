@@ -84,6 +84,23 @@ class ResourcePoolManager(Manager, ResourcePoolQueriesMixin):
         else:
             raise PermissionDenied()
 
+    def get_resource_pools(self, user):
+        """Fetch `ResourcePool`'s on which the User_ has the given permission.
+
+        :param user: The user that should be used in the permission check.
+        :type user: User_
+
+        .. _User: https://
+           docs.djangoproject.com/en/dev/topics/auth/
+           #django.contrib.auth.models.User
+
+        """
+        # Circular imports.
+        from maasserver.rbac import rbac
+        if rbac.is_enabled():
+            return rbac.get_resource_pools(user.username, 'view')
+        return self.all()
+
 
 class ResourcePool(CleanSave, TimestampedModel):
     """A resource pool."""

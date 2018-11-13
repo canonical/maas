@@ -279,6 +279,18 @@ class RBACWrapper:
             pools = pools.filter(id__in=pool_ids)
         return pools
 
+    def can_create_resource_pool(self, user):
+        """Return True if the `user` can create a resource pool.
+
+        A user can create a resource pool if they have edit on all resource
+        pools.
+
+        @param user: The user name of the user.
+        """
+        pool_identifiers = self.client.allowed_for_user(
+            'resource-pool', user, 'edit')
+        return pool_identifiers is ALL_RESOURCES
+
 
 rbac = RBACWrapper()
 

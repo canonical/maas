@@ -195,7 +195,10 @@ from maasserver.models.versionedtextfile import VersionedTextFile
 from maasserver.models.virtualblockdevice import VirtualBlockDevice
 from maasserver.models.vlan import VLAN
 from maasserver.models.zone import Zone
-from maasserver.permissions import NodePermission
+from maasserver.permissions import (
+    NodePermission,
+    ResourcePoolPermission,
+)
 from maasserver.utils.django_urls import (
     get_callable,
     get_resolver,
@@ -352,6 +355,19 @@ class MAASAuthorizationBackend(ModelBackend):
                 user.username, 'admin-machines').values_list(
                     'id', flat=True)
 
+        # Sanity check that a `ResourcePool` is being checked against
+        # `ResourcePoolPermission`.
+        if (obj is not None and isinstance(obj, ResourcePool) and
+                not isinstance(perm, ResourcePoolPermission)):
+            raise TypeError(
+                'obj type of ResourcePool must be checked '
+                'against a `ResourcePoolPermission`.')
+
+        # ResourcePool permissions are handled specifically.
+        if isinstance(perm, ResourcePoolPermission):
+            return self._perm_resource_pool(
+                user, perm, rbac, visible_pools, obj)
+
         if isinstance(obj, (Node, BlockDevice, FilesystemGroup)):
             if isinstance(obj, BlockDevice):
                 obj = obj.node
@@ -467,6 +483,34 @@ class MAASAuthorizationBackend(ModelBackend):
         if rbac_enabled:
             return machine.pool_id in admin_pools
         return user.is_superuser
+
+    def _perm_resource_pool(
+            self, user, perm, rbac, visible_pools, obj=None):
+        # `create` permissions is called without an `obj`.
+        rbac_enabled = rbac.is_enabled()
+        if perm == ResourcePoolPermission.create:
+            if rbac_enabled:
+                return rbac.can_create_resource_pool(user.username)
+            return user.is_superuser
+
+        # From this point forward the `obj` must be a `ResourcePool`.
+        if not isinstance(obj, ResourcePool):
+            raise ValueError(
+                'only `ResourcePoolPermission.create` can be used '
+                'without an `obj`.')
+
+        if perm == ResourcePoolPermission.edit:
+            if rbac_enabled:
+                return obj.id in rbac.get_resource_pools(
+                    user.username, 'edit').values_list('id', flat=True)
+            return user.is_superuser
+        elif perm == ResourcePoolPermission.view:
+            if rbac_enabled:
+                return obj.id in visible_pools
+            return True
+
+        raise ValueError(
+            'unknown ResourcePoolPermission value: %s' % perm)
 
 
 # Ensure that all signals modules are loaded.
