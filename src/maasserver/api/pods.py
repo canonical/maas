@@ -153,11 +153,11 @@ class PodHandler(OperationsHandler):
         :type default_macvlan_mode: unicode
         :param tags: A tag or tags (separated by comma) for the pod.
         :type tags: unicode
-        :param console_log: If True, created VMs for this pod will have
+        :param console_logging: If True, created VMs for this pod will have
             their console output logged.  To do this, a tag with the name
             'pod-console-logging' is created.  If False, it checks to see if
             this tag already exists and deletes it if it does.
-        :type console_log: boolean
+        :type console_logging: boolean
 
         Note: 'type' cannot be updated on a Pod. The Pod must be deleted and
         re-added to change the type.
