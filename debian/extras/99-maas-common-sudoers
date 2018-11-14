@@ -43,3 +43,4 @@ maas ALL= NOPASSWD: /usr/lib/maas/maas-write-file
 
 # Allow active subnet mapping
 maas ALL= NOPASSWD: /usr/lib/maas/maas-common scan-network *
+maas ALL= NOPASSWD: /usr/lib/maas/maas-common scan-network
