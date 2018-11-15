@@ -349,14 +349,14 @@
             </section>
 
             <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
-            <section class="page-header__section row u-no-margin--top ng-hide" data-ng-show="isActionError(tab)">
+            <section class="page-header__section row u-no-margin--top" data-ng-hide="!isActionError(tab) || hasActionsInProgress(tab)">
                 <div class="col-12">
                     <div class="row">
                         <p data-ng-hide="isDeployError(tab) || isSSHKeyError(tab)"
                             class="page-header__message page-header__message--error ng-hide">
                             <i class="p-icon--warning">Warning</i>
                             {$ tabs[tab].actionErrorCount $}
-                            <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'node', 'other': 'nodes'}"></span>
+                            <span data-ng-pluralize count="tabs[tab].actionErrorCount" when="{'1': 'node', 'other': 'nodes'}"></span>
                             cannot be {$ tabs[tab].actionOption.sentence $}. To proceed, <a data-ng-click="unselectImpossibleNodes(tab)">update your selection</a>.
                         </p>
                         <p class="page-header__message page-header__message--error ng-hide" data-ng-show="isDeployError(tab)">
