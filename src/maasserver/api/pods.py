@@ -48,9 +48,10 @@ DISPLAYED_POD_FIELDS = (
 
 
 class PodHandler(OperationsHandler):
-    """Manage an individual pod.
+    """
+    Manage an individual pod.
 
-    The pod is identified by its id.
+    A pod is identified by its id.
     """
     api_doc_section_name = "Pod"
 
@@ -128,42 +129,47 @@ class PodHandler(OperationsHandler):
 
     @admin_method
     def update(self, request, id):
-        """Update a specific Pod.
+        """@description-title Update a specific pod
+        @description Update a specific pod by ID.
 
-        :param name: Name for the pod
-        :type name: unicode
-        :param pool: Name of resource pool this pod belongs and that
-            composed machines get assigned to by default.
-        :type pool: unicode
-        :param cpu_over_commit_ratio: CPU overcommit ratio
-        :type cpu_over_commit_ratio: unicode
-        :param memory_over_commit_ratio: Memory overcommit ratio
-        :type memory_over_commit_ratio: unicode
-        :param default_storage_pool: Default storage pool (used when pod has
-            storage pools).
-        :type default_storage_pool: unicode
-        :param power_address: Address for power control of the pod
-        :type power_address: unicode
-        :param power_pass: Password for power control of the pod
-        :type power_pass: unicode
-        :param zone: Name of the zone for the pod
-        :type zone: unicode
-        :param default_macvlan_mode: Default macvlan mode (bridge, passthru,
-           private, vepa) for the pod.
-        :type default_macvlan_mode: unicode
-        :param tags: A tag or tags (separated by comma) for the pod.
-        :type tags: unicode
-        :param console_logging: If True, created VMs for this pod will have
-            their console output logged.  To do this, a tag with the name
-            'pod-console-logging' is created.  If False, it checks to see if
-            this tag already exists and deletes it if it does.
-        :type console_logging: boolean
-
-        Note: 'type' cannot be updated on a Pod. The Pod must be deleted and
+        Note: A pod's 'type' cannot be updated. The pod must be deleted and
         re-added to change the type.
 
-        Returns 404 if the pod is not found.
-        Returns 403 if the user does not have permission to update the pod.
+        @param (url-string) "{id}" [required=true] The pod's ID.
+        @param (string) "name" [required=false] The pod's name.
+        @param (string) "pool" [required=false] The name of the resource pool
+        associated with this pod -- composed machines will be assigned to this
+        resource pool by default.
+        @param (int) "cpu_over_commit_ratio" [required=false] CPU overcommit
+        ratio (1-10)
+        @param (int) "memory_over_commit_ratio" [required=false] CPU overcommit
+        ratio (1-10)
+        @param (string) "default_storage_pool" [required=false] Default KVM
+        storage pool to use when the pod has storage pools.
+        @param (string) "power_address" [required=false] Address for power
+        control of the pod.
+        @param-example "power_address"
+        ``Virsh: qemu+ssh://172.16.99.2/system``
+        @param (string) "power_pass" [required=false] Password for access to
+        power control of the pod.
+        @param (string) "zone" [required=false] The pod's zone.
+        @param (string) "default_macvlan_mode" [required=false] Default macvlan
+        mode for pods that use it: bridge, passthru, private, vepa.
+        @param (string) "tags" [required=false] Tag or tags (command separated)
+        associated with the pod.
+        @param (boolean) "console_log" [required=false] If 'True', VMs composed
+        in this pod will have console output logged (Note: this will
+        automatically create a tag named 'pod-console-logging' and apply it to
+        the pod). If 'False', MAAS deletes the 'pod-console-logging' tag, if
+        any, which turns off console logging.
+
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON pod object.
+        @success-example "success-json" [exkey=update-pod] placeholder text
+
+        @error (http-status-code) "404" 404 -- The pod's ID was not found.
+        @error (http-status-code) "403" 403 -- The current user does not have
+        permission to update the pod.
         """
         pod = get_object_or_404(Pod, id=id)
         form = PodForm(data=request.data, instance=pod, request=request)
@@ -174,11 +180,23 @@ class PodHandler(OperationsHandler):
 
     @admin_method
     def delete(self, request, id):
-        """Delete a specific Pod.
+        """@description-title Deletes a pod
+        @description Deletes a pod with the given pod ID.
 
-        Returns 404 if the pod is not found.
-        Returns 403 if the user does not have permission to delete the pod.
-        Returns 204 if the pod is successfully deleted.
+        @param (int) "{id}" [required=true] The pod's ID.
+
+        @success (http-status-code) "204" 204
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" No pod with that ID can be found.
+        @error-example "not-found"
+            Not Found
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have the permissions
+        to delete the pod.
+        @error-example (content) "no-perms"
+            This method is reserved for admin users.
         """
         pod = get_object_or_404(Pod, id=id)
         pod.delete_and_wait()
@@ -187,13 +205,25 @@ class PodHandler(OperationsHandler):
     @admin_method
     @operation(idempotent=False)
     def refresh(self, request, id):
-        """Refresh a specific Pod.
+        """@description-title Refresh a pod
+        @description Performs pod discovery and updates all discovered
+        information and discovered machines.
 
-        Performs pod discovery and updates all discovered information and
-        discovered machines.
+        @param (int) "{id}" [required=false] The pod's ID.
 
-        Returns 404 if the pod is not found.
-        Returns 403 if the user does not have permission to refresh the pod.
+        @success (json) "success-json" A pod JSON object.
+        @success-example "success-json" [exkey=refresh-pod] placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" No pod with that ID can be found.
+        @error-example "not-found"
+            Not Found
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have the permissions
+        to delete the pod.
+        @error-example (content) "no-perms"
+            This method is reserved for admin users.
         """
         pod = get_object_or_404(Pod, id=id)
         form = PodForm(data=request.data, instance=pod, request=request)
@@ -203,16 +233,30 @@ class PodHandler(OperationsHandler):
     @admin_method
     @operation(idempotent=True)
     def parameters(self, request, id):
-        """Obtain pod parameters.
+        """@description-title Obtain pod parameters
+        @description This returns a pod's configuration parameters. For some
+        types of pod, this will include private information such as passwords
+        and secret keys.
 
-        This method is reserved for admin users and returns a 403 if the
-        user is not one.
+        Note: This method is reserved for admin users.
 
-        This returns the pod parameters, if any, configured for a
-        pod. For some types of pod this will include private
-        information such as passwords and secret keys.
+        @param (int) "{id}" [required=true] The pod's ID.
 
-        Returns 404 if the pod is not found.
+        @success (http-status-code) "200" 200
+        @success (json) "success_json" A JSON object containing the pod's
+        configuration parameters.
+        @success-example "success_json" [exkey=parameters] placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" No pod with that ID can be found.
+        @error-example "not-found"
+            Not Found
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have the permissions
+        to delete the pod.
+        @error-example (content) "no-perms"
+            This method is reserved for admin users.
         """
         pod = get_object_or_404(Pod, id=id)
         return pod.power_parameters
@@ -220,65 +264,78 @@ class PodHandler(OperationsHandler):
     @admin_method
     @operation(idempotent=False)
     def compose(self, request, id):
-        """Compose a machine from Pod.
+        """@description-title Compose a pod machine
+        @description Compose a new machine from a pod.
 
-        All fields below are optional:
+        @param (int) "cores" [required=false] The minimum number of CPU cores.
+        @param (int) "memory" [required=false] The minimum amount of memory,
+        specified in MiB (e.g. 2 MiB == 2*1024*1024).
+        @param (int) "cores" [required=false] The minimum number of CPU cores.
+        @param (int) "cpu_speed" [required=false] The minimum CPU speed,
+        specified in MHz.
+        @param (string) "architecture" [required=false] The architecture of
+        the new machine (e.g. amd64). This must be an architecture the pod
+        supports.
+        @param (string) "storage" [required=false] A list of storage
+        constraint identifiers in the form ``label:size(tag,tag,...),
+        label:size(tag,tag,...)``. For more information please see the CLI
+        pod management page of the official MAAS documentation.
+        @param (string) "interfaces" [required=false,formatting=true] A
+        labeled constraint map associating constraint labels with desired
+        interface properties. MAAS will assign interfaces that match the
+        given interface properties.
 
-        :param cores: Minimum number of CPU cores.
-        :type cores: unicode
-        :param memory: Minimum amount of memory (MiB).
-        :type memory: unicode
-        :param cpu_speed: Minimum amount of CPU speed (MHz).
-        :type cpu_speed: unicode
-        :param architecture: Architecture for the machine. Must be an
-            architecture that the pod supports.
-        :param architecture: unicode
-        :param storage: A list of storage constraint identifiers, in the form:
-            <label>:<size>(<tag>[,<tag>[,...])][,<label>:...]
-        :type storage: unicode
-        :param interfaces: A labeled constraint map associating constraint
-            labels with interface properties that should be matched. Returned
-            nodes must have one or more interface matching the specified
-            constraints. The labeled constraint map must be in the format:
-            ``<label>:<key>=<value>[,<key2>=<value2>[,...]]``
+        Format: ``label:key=value,key=value,...``
 
-            Each key can be one of the following:
+        Keys:
 
-            - id: Matches an interface with the specific id
-            - fabric: Matches an interface attached to the specified fabric.
-            - fabric_class: Matches an interface attached to a fabric
-              with the specified class.
-            - ip: Matches an interface whose VLAN is on the subnet implied by
-              the given IP address, and allocates the specified IP address for
-              the machine on that interface (if it is available).
-            - mode: Matches an interface with the specified mode. (Currently,
-              the only supported mode is "unconfigured".)
-            - name: Matches an interface with the specified name.
-              (For example, "eth0".)
-            - hostname: Matches an interface attached to the node with
-              the specified hostname.
-            - subnet: Matches an interface attached to the specified subnet.
-            - space: Matches an interface attached to the specified space.
-            - subnet_cidr: Matches an interface attached to the specified
-              subnet CIDR. (For example, "192.168.0.0/24".)
-            - type: Matches an interface of the specified type. (Valid
-              types: "physical", "vlan", "bond", "bridge", or "unknown".)
-            - vlan: Matches an interface on the specified VLAN.
-            - vid: Matches an interface on a VLAN with the specified VID.
-            - tag: Matches an interface tagged with the specified tag.
-        :type interfaces: unicode
-        :param hostname: Hostname for the newly composed machine.
-        :type hostname: unicode
-        :param domain: ID of domain to place the newly composed machine in.
-        :type domain: unicode
-        :param zone: ID of zone place the newly composed machine in.
-        :type zone: unicode
-        :param pool: ID of resource pool to place the newly composed machine
-            in.
-        :type pool: unicode
+        - ``id``: Matches an interface with the specific id
+        - ``fabric``: Matches an interface attached to the specified fabric.
+        - ``fabric_class``: Matches an interface attached to a fabric
+          with the specified class.
+        - ``ip``: Matches an interface whose VLAN is on the subnet implied by
+          the given IP address, and allocates the specified IP address for
+          the machine on that interface (if it is available).
+        - ``mode``: Matches an interface with the specified mode. (Currently,
+          the only supported mode is "unconfigured".)
+        - ``name``: Matches an interface with the specified name.
+          (For example, "eth0".)
+        - ``hostname``: Matches an interface attached to the node with
+          the specified hostname.
+        - ``subnet``: Matches an interface attached to the specified subnet.
+        - ``space``: Matches an interface attached to the specified space.
+        - ``subnet_cidr``: Matches an interface attached to the specified
+          subnet CIDR. (For example, "192.168.0.0/24".)
+        - ``type``: Matches an interface of the specified type. (Valid
+          types: "physical", "vlan", "bond", "bridge", or "unknown".)
+        - ``vlan``: Matches an interface on the specified VLAN.
+        - ``vid``: Matches an interface on a VLAN with the specified VID.
+        - ``tag``: Matches an interface tagged with the specified tag.
+        @param (string) "hostname" [required=false] The hostname of the newly
+        composed machine.
+        @param (int) "domain" [required=false] The ID of the domain in which
+        to put the newly composed machine.
+        @param (int) "zone" [required=false] The ID of the zone in which to
+        put the newly composed machine.
+        @param (int) "pool" [required=false] The ID of the pool in which to
+        put the newly composed machine.
 
-        Returns 404 if the pod is not found.
-        Returns 403 if the user does not have permission to compose machine.
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing the new
+        machine ID and resource URI.
+        @success-example (json) "success-json" [exkey=compose] placeholder
+        text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" No pod with that ID can be found.
+        @error-example "not-found"
+            Not Found
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have the permissions
+        to delete the pod.
+        @error-example (content) "no-perms"
+            This method is reserved for admin users.
         """
         pod = get_object_or_404(Pod, id=id)
         if Capabilities.COMPOSABLE not in pod.capabilities:
@@ -297,13 +354,27 @@ class PodHandler(OperationsHandler):
     @admin_method
     @operation(idempotent=False)
     def add_tag(self, request, id):
-        """Add a tag to Pod.
+        """@description-title Add a tag to a pod
+        @description Adds a tag to a given pod.
 
-        :param tag: The tag being added.
-        :type tag: unicode
+        @param (int) "{id}" [required=true] The pod's ID.
+        @param (string) "tag" [required=true] The tag to add.
 
-        Returns 404 if the Pod is not found.
-        Returns 403 if the user is not allowed to update the Pod.
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object
+        @success-example (json) "success-json" [exkey=add-tag] placeholder
+        text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" No pod with that ID can be found.
+        @error-example "not-found"
+            Not Found
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have the permissions
+        to delete the pod.
+        @error-example (content) "no-perms"
+            This method is reserved for admin users.
         """
         tag = get_mandatory_param(request.data, 'tag', String)
 
@@ -318,13 +389,27 @@ class PodHandler(OperationsHandler):
     @admin_method
     @operation(idempotent=False)
     def remove_tag(self, request, id):
-        """Remove a tag from Pod.
+        """@description-title Remove a tag from a pod
+        @description Removes a given tag from a pod.
 
-        :param tag: The tag being removed.
-        :type tag: unicode
+        @param (int) "{id}" [required=true] The pod's ID.
+        @param (string) "tag" [required=true] The tag to add.
 
-        Returns 404 if the Pod is not found.
-        Returns 403 if the user is not allowed to update the Pod.
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object.
+        @success-example (json) "success-json" [exkey=remove-tag] placeholder
+        text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" No pod with that ID can be found.
+        @error-example "not-found"
+            Not Found
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have the permissions
+        to delete the pod.
+        @error-example (content) "no-perms"
+            This method is reserved for admin users.
         """
         tag = get_mandatory_param(request.data, 'tag', String)
 
@@ -356,39 +441,61 @@ class PodsHandler(OperationsHandler):
         return ('pods_handler', [])
 
     def read(self, request):
-        """List pods.
+        """@description-title List pods
+        @description Get a listing of all pods.
 
-        Get a listing of all the pods.
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing a list of
+        pod objects.
+        @success-example (json) "success-json" [exkey=read-pods]
+        placeholder text
         """
         return Pod.objects.all().order_by('id')
 
     @admin_method
     def create(self, request):
-        """Create a Pod.
+        """@description-title Create a pod
+        @description Create or discover a new pod.
 
-        :param type: Type of pod to create (rsd, virsh) (required).
-        :type name: unicode
-        :param power_address: Address for power control of the pod (required).
-        :type power_address: unicode
-        :param power_user: User for power control of the pod
-            (required for rsd).
-        :type power_user: unicode
-        :param power_pass: Password for power control of the pod
-            (required for rsd).
-        :type power_pass: unicode
-        :param name: Name for the pod (optional).
-        :type name: unicode
-        :param zone: Name of the zone for the pod (optional).
-        :type zone: unicode
-        :param pool: Name of resource pool this pod belongs and that
-            composed machines get assigned to by default (optional).
-        :type pool: unicode
-        :param tags: A tag or tags (separated by comma) for the pod (optional).
-        :type tags: unicode
+        @param (string) "type" [required=true] The type of pod to create:
+        ``rsd`` or ``virsh``.
+        @param (string) "power_address" [required=true] Address that gives
+        MAAS access to the pod's power control. For example:
+        ``qemu+ssh://172.16.99.2/system``.
+        @param (string) "power_user" [required=true] Username to use for
+        power control of the pod. Required for ``rsd`` pods or ``virsh``
+        pods that do not have SSH set up for public-key authentication.
+        @param (string) "power_pass" [required=true] Password to use for
+        power control of the pod. Required for ``rsd`` pods or ``virsh``
+        pods that do not have SSH set up for public-key authentication.
+        @param (string) "name" [required=false] The new pod's name.
+        @param (string) "zone" [required=false] The new pod's zone.
+        @param (string) "pool" [required=false] The name of the resource
+        pool the new pod will belong to. Machines composed from this pod
+        will be assigned to this resource pool by default.
+        @param (string) "tags" [required=false] A tag or list of tags (
+        comma delimited) to assign to the new pod.
 
-        Returns 503 if the pod could not be discovered.
-        Returns 404 if the pod is not found.
-        Returns 403 if the user does not have permission to create a pod.
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing a pod object.
+        @success-example (json) "success-json" [exkey=create] placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" No pod with that ID can be found.
+        @error-example "not-found"
+            Not Found
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have the permissions
+        to delete the pod.
+        @error-example (content) "no-perms"
+            This method is reserved for admin users.
+
+        @error (http-status-code) "503" 503
+        @error (content) "failed-login" MAAS could not find the RSD
+        pod or could not log into the virsh console.
+        @error-example (content) "failed-login"
+            Failed talking to pod: Failed to login to virsh console.
         """
         form = PodForm(data=request.data, request=request)
         if form.is_valid():
