@@ -175,6 +175,11 @@ angular.module('MAAS').controller('DashboardController', [
                 $scope.loaded = true;
                 $scope.networkDiscovery = ConfigsManager.getItemFromList(
                     'network_discovery');
+
+                $scope.discoveredDevices.forEach(function(device) {
+                    var date = new Date(device.last_seen);
+                    device.last_seen_timestamp = date.getTime();
+                });
             });
     }
 ]);
