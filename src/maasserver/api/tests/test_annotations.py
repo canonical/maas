@@ -60,6 +60,8 @@ class TestAPIAnnotations(APITestCase.ForUser):
     @param (float) "param_name6" [required=false] param6 description
     @param-example "param_name6" 1.5
 
+    @param (string) "param_name7" [required=false,formatting=true] formatting
+
     @success (content) "success_name" success description
     @success-example "success_name" success content
 
@@ -343,6 +345,32 @@ class TestAPIAnnotations(APITestCase.ForUser):
             self.do_parse(api_docstring_parser, ds_req))
 
         ds_req = ds_orig.replace("required=true", "required=yes")
+        self.assert_has_api_warning(
+            self.do_parse(api_docstring_parser, ds_req))
+
+    def test_param_formatting_type_has_correct_value(self):
+        """'formatting' option should only allow true and false.
+
+        Take a known good docstring and replace the 'required'
+        option values inline to make sure only true and false
+        are accepted (regardless of capitalization).
+        """
+        ds_orig = self.sample_api_annotated_docstring
+        api_docstring_parser = APIDocstringParser()
+
+        ds_req = ds_orig.replace("formatting=true", "formatting=false")
+        self.assert_has_no_api_warning(
+            self.do_parse(api_docstring_parser, ds_req))
+
+        ds_req = ds_orig.replace("formatting=true", "formatting=True")
+        self.assert_has_no_api_warning(
+            self.do_parse(api_docstring_parser, ds_req))
+
+        ds_req = ds_orig.replace("formatting=true", "formatting=False")
+        self.assert_has_no_api_warning(
+            self.do_parse(api_docstring_parser, ds_req))
+
+        ds_req = ds_orig.replace("formatting=true", "formatting=yes")
         self.assert_has_api_warning(
             self.do_parse(api_docstring_parser, ds_req))
 

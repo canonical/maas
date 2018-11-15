@@ -105,6 +105,13 @@ examples/zones.json contains:
     ...
 }
 
+In addition, param tags support the "formatting" option:
+
+    [formatting=true|false]
+
+This can be used inside a Tempita template to output formatted
+param descriptions.
+
 Notes:
 
 This class is typically used in conjunction with the
@@ -443,6 +450,41 @@ class APIDocstringParser:
         }
         return d
 
+    def _val_is_true_or_false(self, val):
+        """Return False if lowercased val is not true or false"""
+        return val.lower() in ('true', 'false')
+
+    def _check_param_tag(self, tag_dict, tag_name):
+        """Checks param tag dict for syntax problems.
+
+        Check the given param tag's dictionary to make sure there are no
+        problems with the options, such as a missing required option or
+        a bad formatted option.
+
+        Returns an array of warning strings or None if there are no
+        problems.
+        """
+        warns = []
+        options = tag_dict['options']
+
+        # Check required option first
+        if 'required' not in options:
+            warns.append("Option key 'required' not found in %s." % tag_name)
+        else:
+            if not self._val_is_true_or_false(options['required']):
+                warns.append(
+                    "Option key 'required' must be 'true' or 'false' in %s." %
+                    tag_name)
+
+        # Now check for formatting option
+        if 'formatting' in options:
+            if not self._val_is_true_or_false(options['formatting']):
+                warns.append(
+                    "Option key 'formatting' must be 'true' or 'false' in"
+                    "%s." % tag_name)
+
+        return None if len(warns) == 0 else warns
+
     def _process_docstring_tag(self, tag, tname, ttype, opts, desc, docstring):
         """Processes parsed tag information in contextual way.
 
@@ -488,20 +530,10 @@ class APIDocstringParser:
         elif tag == "param":
             tag_dict = self._create_tag_dict(tname, ttype, opts, desc)
 
-            # Here, make sure [required=true|false] is given
-            warn = False
-
-            if tag_dict['options'].get('required') is None:
-                warn = True
-            else:
-                val = tag_dict['options']['required'].lower()
-                if val != 'true' and val != 'false':
-                    warn = True
-
-            if warn:
-                self._warn(
-                    "In param tag '%s', option 'required' "
-                    "is missing or is not 'true' or 'false'" % tname)
+            warns = self._check_param_tag(tag_dict, tname)
+            if warns is not None:
+                for warn_str in warns:
+                    self._warn(warn_str, docstring)
 
             self._warn_on_invalid_type(ttype, tname, 'param')
 
