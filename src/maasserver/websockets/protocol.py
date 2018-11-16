@@ -38,6 +38,7 @@ from provisioningserver.utils.twisted import (
     synchronous,
 )
 from provisioningserver.utils.url import splithost
+from twisted.internet import defer
 from twisted.internet.defer import (
     fail,
     inlineCallbacks,
@@ -62,6 +63,10 @@ class MSG_TYPE:
 
     #: Notify message from server.
     NOTIFY = 2
+
+    #: Connectivity checks
+    PING = 3
+    PING_REPLY = 4
 
 
 class RESPONSE_TYPE:
@@ -95,6 +100,7 @@ class WebSocketProtocol(Protocol):
         self.user = None
         self.request = None
         self.cache = {}
+        self.sequence_number = 0
 
     def connectionMade(self):
         """Connection has been made to client."""
@@ -278,23 +284,30 @@ class WebSocketProtocol(Protocol):
             msg_type = self.getMessageField(message, "type")
             if msg_type is None:
                 return handledMessages
-            if msg_type != MSG_TYPE.REQUEST:
+            if msg_type not in (MSG_TYPE.REQUEST, MSG_TYPE.PING):
                 # Only support request messages from the client.
                 self.loseConnection(
                     STATUSES.PROTOCOL_ERROR, "Invalid message type.")
                 return handledMessages
-            if self.handleRequest(message) is None:
+            if self.handleRequest(message, msg_type) is None:
                 # Handling of request has failed, stop processing the messages
                 # in the queue because the connection will be lost.
                 return handledMessages
         return handledMessages
 
-    def handleRequest(self, message):
+    def handleRequest(self, message, msg_type=MSG_TYPE.REQUEST):
         """Handle the request message."""
         # Get the required request_id.
         request_id = self.getMessageField(message, "request_id")
         if request_id is None:
             return None
+
+        if msg_type == MSG_TYPE.PING:
+            self.sequence_number += 1
+            return defer.succeed(self.sendResult(
+                request_id=request_id,
+                result=self.sequence_number,
+                msg_type=MSG_TYPE.PING_REPLY))
 
         # Decode the method to be called.
         msg_method = self.getMessageField(message, "method")
@@ -332,10 +345,10 @@ class WebSocketProtocol(Protocol):
         else:
             raise TypeError("Could not convert object to JSON: %r" % obj)
 
-    def sendResult(self, request_id, result):
+    def sendResult(self, request_id, result, msg_type=MSG_TYPE.RESPONSE):
         """Send final result to client."""
         result_msg = {
-            "type": MSG_TYPE.RESPONSE,
+            "type": msg_type,
             "request_id": request_id,
             "rtype": RESPONSE_TYPE.SUCCESS,
             "result": result,

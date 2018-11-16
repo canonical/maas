@@ -455,7 +455,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         self.expectThat([message], Equals(protocol.processMessages()))
         self.expectThat(
             mock_handleRequest,
-            MockCalledOnceWith(message))
+            MockCalledOnceWith(message, MSG_TYPE.REQUEST))
 
     def test_handleRequest_calls_loseConnection_if_missing_request_id(self):
         protocol, factory = self.make_protocol()
@@ -695,6 +695,27 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         self.expectThat(sent_obj["request_id"], Equals(1))
         self.expectThat(sent_obj["rtype"], Equals(RESPONSE_TYPE.ERROR))
         self.expectThat(sent_obj["error"], Equals("error"))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_handleRequest_sends_ping_reply_on_ping(self):
+        protocol, factory = self.make_protocol()
+        protocol.user = MagicMock()
+
+        request_id = random.choice([1, 3, 5, 7, 9])
+        seq = random.choice([0, 2, 4, 6, 8])
+        protocol.sequence_number = seq
+
+        message = {
+            "type": MSG_TYPE.PING,
+            "request_id": request_id,
+        }
+
+        yield protocol.handleRequest(message, msg_type=MSG_TYPE.PING)
+        sent_obj = self.get_written_transport_message(protocol)
+        self.expectThat(sent_obj["type"], Equals(MSG_TYPE.PING_REPLY))
+        self.expectThat(sent_obj["request_id"], Equals(request_id))
+        self.expectThat(sent_obj["result"], Equals(seq + 1))
 
     def test_sendNotify_sends_correct_json(self):
         protocol, factory = self.make_protocol()
