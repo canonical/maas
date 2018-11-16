@@ -1,0 +1,919 @@
+{
+    "read-all": [
+        {
+            "node_type_name": "Rack controller",
+            "testing_status_name": "Unknown",
+            "memory": 0,
+            "interface_set": [
+                {
+                    "product": null,
+                    "mac_address": "f9:d6:ff:1b:a9:64",
+                    "system_id": "fcka3t",
+                    "tags": [
+                        "tag-OrWiIM",
+                        "tag-pqdlf2",
+                        "tag-dV5KD9"
+                    ],
+                    "id": 6,
+                    "discovered": null,
+                    "vlan": {
+                        "vid": 0,
+                        "mtu": 1500,
+                        "dhcp_on": false,
+                        "external_dhcp": null,
+                        "relay_vlan": null,
+                        "fabric": "fabric-0",
+                        "primary_rack": null,
+                        "id": 5001,
+                        "fabric_id": 0,
+                        "name": "untagged",
+                        "space": "management",
+                        "secondary_rack": null,
+                        "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+                    },
+                    "parents": [],
+                    "children": [
+                        "bond0"
+                    ],
+                    "firmware_version": null,
+                    "enabled": true,
+                    "name": "eth0",
+                    "effective_mtu": 1500,
+                    "links": [],
+                    "params": "",
+                    "vendor": null,
+                    "type": "physical",
+                    "resource_uri": "/MAAS/api/2.0/nodes/fcka3t/interfaces/6/"
+                },
+                {
+                    "product": null,
+                    "mac_address": "4f:e6:e6:df:61:ec",
+                    "system_id": "fcka3t",
+                    "tags": [
+                        "tag-haHza9",
+                        "tag-eeoWc0",
+                        "tag-QA6OlX"
+                    ],
+                    "id": 7,
+                    "discovered": null,
+                    "vlan": {
+                        "vid": 0,
+                        "mtu": 1500,
+                        "dhcp_on": false,
+                        "external_dhcp": null,
+                        "relay_vlan": null,
+                        "fabric": "fabric-0",
+                        "primary_rack": null,
+                        "id": 5001,
+                        "fabric_id": 0,
+                        "name": "untagged",
+                        "space": "management",
+                        "secondary_rack": null,
+                        "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+                    },
+                    "parents": [],
+                    "children": [
+                        "bond0"
+                    ],
+                    "firmware_version": null,
+                    "enabled": true,
+                    "name": "eth1",
+                    "effective_mtu": 1500,
+                    "links": [],
+                    "params": "",
+                    "vendor": null,
+                    "type": "physical",
+                    "resource_uri": "/MAAS/api/2.0/nodes/fcka3t/interfaces/7/"
+                },
+                {
+                    "product": null,
+                    "mac_address": "ac:8e:44:fc:d0:97",
+                    "system_id": "fcka3t",
+                    "tags": [
+                        "tag-f8dE7r",
+                        "tag-2JAAF4",
+                        "tag-fnPMf8"
+                    ],
+                    "id": 8,
+                    "discovered": null,
+                    "vlan": {
+                        "vid": 0,
+                        "mtu": 1500,
+                        "dhcp_on": false,
+                        "external_dhcp": null,
+                        "relay_vlan": null,
+                        "fabric": "fabric-1",
+                        "primary_rack": null,
+                        "id": 5003,
+                        "fabric_id": 1,
+                        "name": "untagged",
+                        "space": "management",
+                        "secondary_rack": null,
+                        "resource_uri": "/MAAS/api/2.0/vlans/5003/"
+                    },
+                    "parents": [],
+                    "children": [],
+                    "firmware_version": null,
+                    "enabled": true,
+                    "name": "eth2",
+                    "effective_mtu": 1500,
+                    "links": [
+                        {
+                            "id": 5,
+                            "mode": "static",
+                            "ip_address": "172.16.2.3",
+                            "subnet": {
+                                "name": "name-v5djzQ",
+                                "vlan": {
+                                    "vid": 0,
+                                    "mtu": 1500,
+                                    "dhcp_on": false,
+                                    "external_dhcp": null,
+                                    "relay_vlan": null,
+                                    "fabric": "fabric-1",
+                                    "primary_rack": null,
+                                    "id": 5003,
+                                    "fabric_id": 1,
+                                    "name": "untagged",
+                                    "space": "management",
+                                    "secondary_rack": null,
+                                    "resource_uri": "/MAAS/api/2.0/vlans/5003/"
+                                },
+                                "cidr": "172.16.2.0/24",
+                                "rdns_mode": 2,
+                                "gateway_ip": "172.16.2.1",
+                                "dns_servers": [
+                                    "fcb0:c682:8c15:817d:7d80:2713:e225:5624",
+                                    "fd66:86c9:6a50:27cd:de13:3f1c:40d1:8aac",
+                                    "120.129.237.29"
+                                ],
+                                "allow_dns": true,
+                                "allow_proxy": true,
+                                "active_discovery": false,
+                                "managed": true,
+                                "id": 2,
+                                "space": "management",
+                                "resource_uri": "/MAAS/api/2.0/subnets/2/"
+                            }
+                        }
+                    ],
+                    "params": "",
+                    "vendor": null,
+                    "type": "physical",
+                    "resource_uri": "/MAAS/api/2.0/nodes/fcka3t/interfaces/8/"
+                },
+                {
+                    "product": null,
+                    "mac_address": "b6:b4:a9:23:a9:af",
+                    "system_id": "fcka3t",
+                    "tags": [
+                        "tag-G8LyjU",
+                        "tag-RFRUSW",
+                        "tag-pQ5KBJ"
+                    ],
+                    "id": 9,
+                    "discovered": null,
+                    "vlan": {
+                        "vid": 0,
+                        "mtu": 1500,
+                        "dhcp_on": false,
+                        "external_dhcp": null,
+                        "relay_vlan": null,
+                        "fabric": "fabric-0",
+                        "primary_rack": null,
+                        "id": 5001,
+                        "fabric_id": 0,
+                        "name": "untagged",
+                        "space": "management",
+                        "secondary_rack": null,
+                        "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+                    },
+                    "parents": [
+                        "eth0",
+                        "eth1"
+                    ],
+                    "children": [
+                        "vlan10"
+                    ],
+                    "firmware_version": null,
+                    "enabled": true,
+                    "name": "bond0",
+                    "effective_mtu": 1500,
+                    "links": [
+                        {
+                            "id": 4,
+                            "mode": "static",
+                            "ip_address": "172.16.1.3",
+                            "subnet": {
+                                "name": "name-rLI3eq",
+                                "vlan": {
+                                    "vid": 0,
+                                    "mtu": 1500,
+                                    "dhcp_on": false,
+                                    "external_dhcp": null,
+                                    "relay_vlan": null,
+                                    "fabric": "fabric-0",
+                                    "primary_rack": null,
+                                    "id": 5001,
+                                    "fabric_id": 0,
+                                    "name": "untagged",
+                                    "space": "management",
+                                    "secondary_rack": null,
+                                    "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+                                },
+                                "cidr": "172.16.1.0/24",
+                                "rdns_mode": 2,
+                                "gateway_ip": "172.16.1.1",
+                                "dns_servers": [
+                                    "fd89:8724:81f1:5512:557f:99c3:6967:8d63"
+                                ],
+                                "allow_dns": true,
+                                "allow_proxy": true,
+                                "active_discovery": false,
+                                "managed": true,
+                                "id": 1,
+                                "space": "management",
+                                "resource_uri": "/MAAS/api/2.0/subnets/1/"
+                            }
+                        }
+                    ],
+                    "params": "",
+                    "vendor": null,
+                    "type": "bond",
+                    "resource_uri": "/MAAS/api/2.0/nodes/fcka3t/interfaces/9/"
+                },
+                {
+                    "product": null,
+                    "mac_address": "b6:b4:a9:23:a9:af",
+                    "system_id": "fcka3t",
+                    "tags": [
+                        "tag-fWHlGc",
+                        "tag-TCXO7q",
+                        "tag-HvGT57"
+                    ],
+                    "id": 10,
+                    "discovered": null,
+                    "vlan": {
+                        "vid": 10,
+                        "mtu": 1500,
+                        "dhcp_on": false,
+                        "external_dhcp": null,
+                        "relay_vlan": null,
+                        "fabric": "fabric-0",
+                        "primary_rack": null,
+                        "id": 5002,
+                        "fabric_id": 0,
+                        "name": "10",
+                        "space": "internal",
+                        "secondary_rack": null,
+                        "resource_uri": "/MAAS/api/2.0/vlans/5002/"
+                    },
+                    "parents": [
+                        "bond0"
+                    ],
+                    "children": [],
+                    "firmware_version": null,
+                    "enabled": true,
+                    "name": "vlan10",
+                    "effective_mtu": 1500,
+                    "links": [
+                        {
+                            "id": 6,
+                            "mode": "static",
+                            "ip_address": "172.16.3.3",
+                            "subnet": {
+                                "name": "name-zznp45",
+                                "vlan": {
+                                    "vid": 10,
+                                    "mtu": 1500,
+                                    "dhcp_on": false,
+                                    "external_dhcp": null,
+                                    "relay_vlan": null,
+                                    "fabric": "fabric-0",
+                                    "primary_rack": null,
+                                    "id": 5002,
+                                    "fabric_id": 0,
+                                    "name": "10",
+                                    "space": "internal",
+                                    "secondary_rack": null,
+                                    "resource_uri": "/MAAS/api/2.0/vlans/5002/"
+                                },
+                                "cidr": "172.16.3.0/24",
+                                "rdns_mode": 2,
+                                "gateway_ip": "172.16.3.1",
+                                "dns_servers": [
+                                    "fd98:8601:90d0:c8c:dd2e:ba51:fa5a:dcfa",
+                                    "11.209.150.208",
+                                    "fde6:f9ef:3ee9:c5de:2a66:1582:cc83:abaf"
+                                ],
+                                "allow_dns": true,
+                                "allow_proxy": true,
+                                "active_discovery": false,
+                                "managed": true,
+                                "id": 3,
+                                "space": "internal",
+                                "resource_uri": "/MAAS/api/2.0/subnets/3/"
+                            }
+                        }
+                    ],
+                    "params": "",
+                    "vendor": null,
+                    "type": "vlan",
+                    "resource_uri": "/MAAS/api/2.0/nodes/fcka3t/interfaces/10/"
+                }
+            ],
+            "service_set": [
+                {
+                    "name": "ntp_rack",
+                    "status": "dead",
+                    "status_info": ""
+                },
+                {
+                    "name": "tftp",
+                    "status": "dead",
+                    "status_info": ""
+                },
+                {
+                    "name": "dns_rack",
+                    "status": "unknown",
+                    "status_info": ""
+                },
+                {
+                    "name": "proxy_rack",
+                    "status": "unknown",
+                    "status_info": ""
+                },
+                {
+                    "name": "http",
+                    "status": "unknown",
+                    "status_info": ""
+                },
+                {
+                    "name": "rackd",
+                    "status": "dead",
+                    "status_info": ""
+                },
+                {
+                    "name": "dhcpd6",
+                    "status": "dead",
+                    "status_info": ""
+                },
+                {
+                    "name": "syslog_rack",
+                    "status": "unknown",
+                    "status_info": ""
+                },
+                {
+                    "name": "dhcpd",
+                    "status": "dead",
+                    "status_info": ""
+                }
+            ],
+            "status_action": null,
+            "current_testing_result_id": null,
+            "architecture": "i386/generic",
+            "cpu_test_status": -1,
+            "testing_status": -1,
+            "system_id": "fcka3t",
+            "storage_test_status_name": "Unknown",
+            "fqdn": "happy-rack.maas",
+            "current_commissioning_result_id": null,
+            "cpu_speed": 0,
+            "commissioning_status_name": "Unknown",
+            "ip_addresses": [
+                "172.16.2.3",
+                "172.16.1.3",
+                "172.16.3.3"
+            ],
+            "swap_size": null,
+            "storage_test_status": -1,
+            "hardware_info": {
+                "system_vendor": "Unknown",
+                "system_product": "Unknown",
+                "system_version": "Unknown",
+                "system_serial": "Unknown",
+                "cpu_model": "Unknown",
+                "mainboard_vendor": "Unknown",
+                "mainboard_product": "Unknown",
+                "mainboard_firmware_version": "Unknown",
+                "mainboard_firmware_date": "Unknown"
+            },
+            "tag_names": [],
+            "node_type": 2,
+            "power_state": "error",
+            "domain": {
+                "authoritative": true,
+                "ttl": null,
+                "id": 0,
+                "resource_record_count": 0,
+                "is_default": true,
+                "name": "maas",
+                "resource_uri": "/MAAS/api/2.0/domains/0/"
+            },
+            "other_test_status": -1,
+            "cpu_count": 0,
+            "osystem": "",
+            "cpu_test_status_name": "Unknown",
+            "zone": {
+                "name": "zone-LK61Y9",
+                "description": "7h1leWi1Oz",
+                "id": 5,
+                "resource_uri": "/MAAS/api/2.0/zones/zone-LK61Y9/"
+            },
+            "memory_test_status_name": "Unknown",
+            "power_type": "virsh",
+            "hostname": "happy-rack",
+            "other_test_status_name": "Unknown",
+            "commissioning_status": -1,
+            "memory_test_status": -1,
+            "distro_series": "",
+            "current_installation_result_id": null,
+            "version": null,
+            "resource_uri": "/MAAS/api/2.0/rackcontrollers/fcka3t/"
+        }
+    ],
+    "list-boot-images": {
+        "images": [
+            {
+                "name": "ubuntu/bionic",
+                "architecture": "amd64",
+                "subarches": [
+                    "ga-18.04",
+                    "ga-18.04-lowlatency",
+                    "generic"
+                ]
+            },
+            {
+                "name": "bootloader/uefi",
+                "architecture": "amd64",
+                "subarches": [
+                    "generic"
+                ]
+            },
+            {
+                "name": "bootloader/uefi",
+                "architecture": "arm64",
+                "subarches": [
+                    "generic"
+                ]
+            },
+            {
+                "name": "bootloader/open-firmware",
+                "architecture": "ppc64el",
+                "subarches": [
+                    "generic"
+                ]
+            },
+            {
+                "name": "bootloader/pxe",
+                "architecture": "i386",
+                "subarches": [
+                    "generic"
+                ]
+            }
+        ],
+        "connected": true,
+        "status": "synced"
+    },
+    "power-params-multi": {
+        "7xtf67": {
+            "power_pass": "",
+            "power_address": "qemu+ssh://user@192.168.1.5/system"
+        },
+        "fcka3t": {
+            "power_pass": "test123!!",
+            "power_address": "qemu+ssh://user@192.168.1.10/system"
+        }
+     },
+     "update": {
+        "status_action": null,
+        "current_commissioning_result_id": null,
+        "swap_size": null,
+        "memory_test_status_name": "Unknown",
+        "system_id": "fcka3t",
+        "tag_names": [],
+        "cpu_speed": 0,
+        "architecture": "i386/generic",
+        "hostname": "happy-rack",
+        "osystem": "",
+        "power_state": "error",
+        "commissioning_status": -1,
+        "node_type": 2,
+        "storage_test_status_name": "Unknown",
+        "interface_set": [
+            {
+                "name": "eth0",
+                "tags": [
+                    "tag-OrWiIM",
+                    "tag-pqdlf2",
+                    "tag-dV5KD9"
+                ],
+                "links": [],
+                "enabled": true,
+                "vendor": null,
+                "product": null,
+                "discovered": null,
+                "params": "",
+                "parents": [],
+                "id": 6,
+                "type": "physical",
+                "children": [
+                    "bond0"
+                ],
+                "vlan": {
+                    "vid": 0,
+                    "mtu": 1500,
+                    "dhcp_on": false,
+                    "external_dhcp": null,
+                    "relay_vlan": null,
+                    "name": "untagged",
+                    "fabric_id": 0,
+                    "secondary_rack": null,
+                    "id": 5001,
+                    "space": "management",
+                    "fabric": "fabric-0",
+                    "primary_rack": null,
+                    "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+                },
+                "firmware_version": null,
+                "mac_address": "f9:d6:ff:1b:a9:64",
+                "system_id": "fcka3t",
+                "effective_mtu": 1500,
+                "resource_uri": "/MAAS/api/2.0/nodes/fcka3t/interfaces/6/"
+            },
+            {
+                "name": "eth1",
+                "tags": [
+                    "tag-haHza9",
+                    "tag-eeoWc0",
+                    "tag-QA6OlX"
+                ],
+                "links": [],
+                "enabled": true,
+                "vendor": null,
+                "product": null,
+                "discovered": null,
+                "params": "",
+                "parents": [],
+                "id": 7,
+                "type": "physical",
+                "children": [
+                    "bond0"
+                ],
+                "vlan": {
+                    "vid": 0,
+                    "mtu": 1500,
+                    "dhcp_on": false,
+                    "external_dhcp": null,
+                    "relay_vlan": null,
+                    "name": "untagged",
+                    "fabric_id": 0,
+                    "secondary_rack": null,
+                    "id": 5001,
+                    "space": "management",
+                    "fabric": "fabric-0",
+                    "primary_rack": null,
+                    "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+                },
+                "firmware_version": null,
+                "mac_address": "4f:e6:e6:df:61:ec",
+                "system_id": "fcka3t",
+                "effective_mtu": 1500,
+                "resource_uri": "/MAAS/api/2.0/nodes/fcka3t/interfaces/7/"
+            },
+            {
+                "name": "eth2",
+                "tags": [
+                    "tag-f8dE7r",
+                    "tag-2JAAF4",
+                    "tag-fnPMf8"
+                ],
+                "links": [
+                    {
+                        "id": 5,
+                        "mode": "static",
+                        "ip_address": "172.16.2.3",
+                        "subnet": {
+                            "name": "name-v5djzQ",
+                            "vlan": {
+                                "vid": 0,
+                                "mtu": 1500,
+                                "dhcp_on": false,
+                                "external_dhcp": null,
+                                "relay_vlan": null,
+                                "name": "untagged",
+                                "fabric_id": 1,
+                                "secondary_rack": null,
+                                "id": 5003,
+                                "space": "management",
+                                "fabric": "fabric-1",
+                                "primary_rack": null,
+                                "resource_uri": "/MAAS/api/2.0/vlans/5003/"
+                            },
+                            "cidr": "172.16.2.0/24",
+                            "rdns_mode": 2,
+                            "gateway_ip": "172.16.2.1",
+                            "dns_servers": [
+                                "fcb0:c682:8c15:817d:7d80:2713:e225:5624",
+                                "fd66:86c9:6a50:27cd:de13:3f1c:40d1:8aac",
+                                "120.129.237.29"
+                            ],
+                            "allow_dns": true,
+                            "allow_proxy": true,
+                            "active_discovery": false,
+                            "managed": true,
+                            "id": 2,
+                            "space": "management",
+                            "resource_uri": "/MAAS/api/2.0/subnets/2/"
+                        }
+                    }
+                ],
+                "enabled": true,
+                "vendor": null,
+                "product": null,
+                "discovered": null,
+                "params": "",
+                "parents": [],
+                "id": 8,
+                "type": "physical",
+                "children": [],
+                "vlan": {
+                    "vid": 0,
+                    "mtu": 1500,
+                    "dhcp_on": false,
+                    "external_dhcp": null,
+                    "relay_vlan": null,
+                    "name": "untagged",
+                    "fabric_id": 1,
+                    "secondary_rack": null,
+                    "id": 5003,
+                    "space": "management",
+                    "fabric": "fabric-1",
+                    "primary_rack": null,
+                    "resource_uri": "/MAAS/api/2.0/vlans/5003/"
+                },
+                "firmware_version": null,
+                "mac_address": "ac:8e:44:fc:d0:97",
+                "system_id": "fcka3t",
+                "effective_mtu": 1500,
+                "resource_uri": "/MAAS/api/2.0/nodes/fcka3t/interfaces/8/"
+            },
+            {
+                "name": "bond0",
+                "tags": [
+                    "tag-G8LyjU",
+                    "tag-RFRUSW",
+                    "tag-pQ5KBJ"
+                ],
+                "links": [
+                    {
+                        "id": 4,
+                        "mode": "static",
+                        "ip_address": "172.16.1.3",
+                        "subnet": {
+                            "name": "name-rLI3eq",
+                            "vlan": {
+                                "vid": 0,
+                                "mtu": 1500,
+                                "dhcp_on": false,
+                                "external_dhcp": null,
+                                "relay_vlan": null,
+                                "name": "untagged",
+                                "fabric_id": 0,
+                                "secondary_rack": null,
+                                "id": 5001,
+                                "space": "management",
+                                "fabric": "fabric-0",
+                                "primary_rack": null,
+                                "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+                            },
+                            "cidr": "172.16.1.0/24",
+                            "rdns_mode": 2,
+                            "gateway_ip": "172.16.1.1",
+                            "dns_servers": [
+                                "fd89:8724:81f1:5512:557f:99c3:6967:8d63"
+                            ],
+                            "allow_dns": true,
+                            "allow_proxy": true,
+                            "active_discovery": false,
+                            "managed": true,
+                            "id": 1,
+                            "space": "management",
+                            "resource_uri": "/MAAS/api/2.0/subnets/1/"
+                        }
+                    }
+                ],
+                "enabled": true,
+                "vendor": null,
+                "product": null,
+                "discovered": null,
+                "params": "",
+                "parents": [
+                    "eth0",
+                    "eth1"
+                ],
+                "id": 9,
+                "type": "bond",
+                "children": [
+                    "vlan10"
+                ],
+                "vlan": {
+                    "vid": 0,
+                    "mtu": 1500,
+                    "dhcp_on": false,
+                    "external_dhcp": null,
+                    "relay_vlan": null,
+                    "name": "untagged",
+                    "fabric_id": 0,
+                    "secondary_rack": null,
+                    "id": 5001,
+                    "space": "management",
+                    "fabric": "fabric-0",
+                    "primary_rack": null,
+                    "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+                },
+                "firmware_version": null,
+                "mac_address": "b6:b4:a9:23:a9:af",
+                "system_id": "fcka3t",
+                "effective_mtu": 1500,
+                "resource_uri": "/MAAS/api/2.0/nodes/fcka3t/interfaces/9/"
+            },
+            {
+                "name": "vlan10",
+                "tags": [
+                    "tag-fWHlGc",
+                    "tag-TCXO7q",
+                    "tag-HvGT57"
+                ],
+                "links": [
+                    {
+                        "id": 6,
+                        "mode": "static",
+                        "ip_address": "172.16.3.3",
+                        "subnet": {
+                            "name": "name-zznp45",
+                            "vlan": {
+                                "vid": 10,
+                                "mtu": 1500,
+                                "dhcp_on": false,
+                                "external_dhcp": null,
+                                "relay_vlan": null,
+                                "name": "10",
+                                "fabric_id": 0,
+                                "secondary_rack": null,
+                                "id": 5002,
+                                "space": "internal",
+                                "fabric": "fabric-0",
+                                "primary_rack": null,
+                                "resource_uri": "/MAAS/api/2.0/vlans/5002/"
+                            },
+                            "cidr": "172.16.3.0/24",
+                            "rdns_mode": 2,
+                            "gateway_ip": "172.16.3.1",
+                            "dns_servers": [
+                                "fd98:8601:90d0:c8c:dd2e:ba51:fa5a:dcfa",
+                                "11.209.150.208",
+                                "fde6:f9ef:3ee9:c5de:2a66:1582:cc83:abaf"
+                            ],
+                            "allow_dns": true,
+                            "allow_proxy": true,
+                            "active_discovery": false,
+                            "managed": true,
+                            "id": 3,
+                            "space": "internal",
+                            "resource_uri": "/MAAS/api/2.0/subnets/3/"
+                        }
+                    }
+                ],
+                "enabled": true,
+                "vendor": null,
+                "product": null,
+                "discovered": null,
+                "params": "",
+                "parents": [
+                    "bond0"
+                ],
+                "id": 10,
+                "type": "vlan",
+                "children": [],
+                "vlan": {
+                    "vid": 10,
+                    "mtu": 1500,
+                    "dhcp_on": false,
+                    "external_dhcp": null,
+                    "relay_vlan": null,
+                    "name": "10",
+                    "fabric_id": 0,
+                    "secondary_rack": null,
+                    "id": 5002,
+                    "space": "internal",
+                    "fabric": "fabric-0",
+                    "primary_rack": null,
+                    "resource_uri": "/MAAS/api/2.0/vlans/5002/"
+                },
+                "firmware_version": null,
+                "mac_address": "b6:b4:a9:23:a9:af",
+                "system_id": "fcka3t",
+                "effective_mtu": 1500,
+                "resource_uri": "/MAAS/api/2.0/nodes/fcka3t/interfaces/10/"
+            }
+        ],
+        "fqdn": "happy-rack.maas",
+        "testing_status": -1,
+        "cpu_test_status_name": "Unknown",
+        "memory_test_status": -1,
+        "other_test_status_name": "Unknown",
+        "version": null,
+        "memory": 0,
+        "distro_series": "",
+        "storage_test_status": -1,
+        "service_set": [
+            {
+                "name": "http",
+                "status": "unknown",
+                "status_info": ""
+            },
+            {
+                "name": "dhcpd6",
+                "status": "dead",
+                "status_info": ""
+            },
+            {
+                "name": "tftp",
+                "status": "dead",
+                "status_info": ""
+            },
+            {
+                "name": "dns_rack",
+                "status": "unknown",
+                "status_info": ""
+            },
+            {
+                "name": "dhcpd",
+                "status": "dead",
+                "status_info": ""
+            },
+            {
+                "name": "rackd",
+                "status": "dead",
+                "status_info": ""
+            },
+            {
+                "name": "syslog_rack",
+                "status": "unknown",
+                "status_info": ""
+            },
+            {
+                "name": "proxy_rack",
+                "status": "unknown",
+                "status_info": ""
+            },
+            {
+                "name": "ntp_rack",
+                "status": "dead",
+                "status_info": ""
+            }
+        ],
+        "cpu_test_status": -1,
+        "other_test_status": -1,
+        "power_type": "virsh",
+        "current_testing_result_id": null,
+        "current_installation_result_id": null,
+        "ip_addresses": [
+            "172.16.2.3",
+            "172.16.1.3",
+            "172.16.3.3"
+        ],
+        "domain": {
+            "authoritative": true,
+            "ttl": null,
+            "name": "maas",
+            "resource_record_count": 0,
+            "is_default": true,
+            "id": 0,
+            "resource_uri": "/MAAS/api/2.0/domains/0/"
+        },
+        "testing_status_name": "Unknown",
+        "node_type_name": "Rack controller",
+        "zone": {
+            "name": "default",
+            "description": "",
+            "id": 1,
+            "resource_uri": "/MAAS/api/2.0/zones/default/"
+        },
+        "hardware_info": {
+            "system_vendor": "Unknown",
+            "system_product": "Unknown",
+            "system_version": "Unknown",
+            "system_serial": "Unknown",
+            "cpu_model": "Unknown",
+            "mainboard_vendor": "Unknown",
+            "mainboard_product": "Unknown",
+            "mainboard_firmware_version": "Unknown",
+            "mainboard_firmware_date": "Unknown"
+        },
+        "cpu_count": 0,
+        "commissioning_status_name": "Unknown",
+        "resource_uri": "/MAAS/api/2.0/rackcontrollers/fcka3t/"
+    }
+}

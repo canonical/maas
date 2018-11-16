@@ -77,7 +77,8 @@ DISPLAYED_RACK_CONTROLLER_FIELDS = (
 
 
 class RackControllerHandler(NodeHandler, PowerMixin):
-    """Manage an individual rack controller.
+    """
+    Manage an individual rack controller.
 
     The rack controller is identified by its system_id.
     """
@@ -86,27 +87,39 @@ class RackControllerHandler(NodeHandler, PowerMixin):
     fields = DISPLAYED_RACK_CONTROLLER_FIELDS
 
     def delete(self, request, system_id):
-        """Delete a specific rack controller.
-
-        A rack controller cannot be deleted if it is set to `primary_rack` on
-        a `VLAN` and another rack controller cannot be used to provide DHCP for
-        said VLAN. Use `force` to override this behavior.
+        """@description-title Delete a rack controller
+        @description Deletes a rack controller with the given system_id. A
+        rack controller cannot be deleted if it is set to `primary_rack` on
+        a `VLAN` and another rack controller cannot be used to provide DHCP
+        for said VLAN. Use `force` to override this behavior.
 
         Using `force` will also allow deleting a rack controller that is
-        hosting pod virtual machines. (The pod will also be deleted.)
+        hosting pod virtual machines. The pod will also be deleted.
 
         Rack controllers that are also region controllers will be converted
         to a region controller (and hosted pods will not be affected).
 
-        :param force: Always delete the rack controller even if its the
-            `primary_rack` on a `VLAN` and another rack controller cannot
-            provide DHCP on said VLAN. This will disable DHCP on those VLANs.
-        :type force: boolean
+        @param (boolean) "force" [required=false] Always delete the rack
+        controller even if it is the `primary_rack` on a `VLAN` and another
+        rack controller cannot provide DHCP on that VLAN. This will disable
+        DHCP on those VLANs.
 
-        Returns 404 if the node is not found.
-        Returns 403 if the user does not have permission to delete the node.
-        Returns 400 if the node cannot be deleted.
-        Returns 204 if the node is successfully deleted.
+        @success (http-status-code) "204" 204
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested rack controller system_id
+        is not found.
+        @error-example "not-found"
+            Not Found
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permssions to
+        delete the rack controller.
+
+        @error (http-status-code) "400" 400
+        @error (content) "cannot-delete" Unable to delete 'maas-run'; it is
+        currently set as a primary rack controller on VLANs fabric-0.untagged
+        and no other rack controller can provide DHCP.
         """
         node = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.admin)
@@ -116,37 +129,42 @@ class RackControllerHandler(NodeHandler, PowerMixin):
 
     @admin_method
     def update(self, request, system_id):
-        """Update a specific rack controller.
+        """@description-title Update a rack controller
+        @description Updates a rack controller with the given system_id.
 
-        :param power_type: The new power type for this rack controller. If you
-            use the default value, power_parameters will be set to the empty
-            string.
-            Available to admin users.
-            See the `Power types`_ section for a list of the available power
-            types.
-        :type power_type: unicode
+        @param (string) "power_type" [required=false] The new power type for
+        the given rack controller. If you use the default value,
+        power_parameters will be set to an empty string. See the
+        `Power types`_ section for a list of available power types. Note that
+        only admin users can set this parameter.
 
-        :param power_parameters_{param1}: The new value for the 'param1'
-            power parameter.  Note that this is dynamic as the available
-            parameters depend on the selected value of the rack controller's
-            power_type.  Available to admin users. See the `Power types`_
-            section for a list of the available power parameters for each
-            power type.
-        :type power_parameters_{param1}: unicode
+        @param (string) "power_parameters_{param}" [required=true] The new
+        value for the 'param' power parameter. This is a dynamic parameter
+        that depends on the rack controller's power_type. See the
+        `Power types`_ section for a list of available parameters based on
+        power type. Note that only admin users can set these parameters.
 
-        :param power_parameters_skip_check: Whether or not the new power
-            parameters for this rack controller should be checked against the
-            expected power parameters for the rack controller's power type
-            ('true' or 'false'). The default is 'false'.
-        :type power_parameters_skip_check: unicode
+        @param (boolean) "power_parameters_skip_check" [required=false] If
+        true, the new power parameters for the given rack controller will be
+        checked against the expected parameters for the rack controller's power
+        type. Default is false.
 
-        :param zone: Name of a valid physical zone in which to place this
-            rack controller.
-        :type zone: unicode
+        @param (string) "zone" [required=false] The name of a valid zone in
+        which to place the given rack controller.
 
-        Returns 404 if the rack controller is not found.
-        Returns 403 if the user does not have permission to update the rack
-        controller.
+        @success (http-status-code) "200" 200
+        @success (content) "success-json" A JSON object containing the updated
+        rack-controller object.
+        @success-example "success-json" [exkey=update] placeholder
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested rack controller system_id
+        is not found.
+        @error-example "not-found"
+            Not Found
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" This method is reserved for admin users.
         """
         rack = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.edit)
@@ -160,9 +178,22 @@ class RackControllerHandler(NodeHandler, PowerMixin):
     @admin_method
     @operation(idempotent=False)
     def import_boot_images(self, request, system_id):
-        """Import the boot images on this rack controller.
+        """@description-title Import boot images
+        @description Import boot images on a given rack controller or all
+        rack controllers.
 
-        Returns 404 if the rack controller is not found.
+        @param (string) "{system_id}" [required=true] A rack controller
+        system_id.
+
+        @success (http-status-code) "200" 200
+        @success (content) "success-single" Import of boot images started on
+        <rack controller name>
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested rack controller system_id
+        is not found.
+        @error-example "not-found"
+            Not Found
         """
         # Avoid circular import.
         from maasserver.clusterrpc.boot_images import RackControllersImporter
@@ -177,12 +208,19 @@ class RackControllerHandler(NodeHandler, PowerMixin):
     @admin_method
     @operation(idempotent=True)
     def list_boot_images(self, request, system_id):
-        """List all available boot images.
+        """@description-title List available boot images
+        @description Lists all available boot images for a given rack
+        controller system_id and whether they are in sync with the
+        region controller.
 
-        Shows all available boot images and lists whether they are in sync with
-        the region.
+        @param (string) "{system_id}" [required=true] The rack controller
+        system_id for which you want to list boot images.
 
-        Returns 404 if the rack controller is not found.
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested rack controller system_id
+        is not found.
+        @error-example "not-found"
+            Not Found
         """
         rack = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.view)
@@ -204,7 +242,19 @@ class RackControllersHandler(NodesHandler, PowersMixin):
     @admin_method
     @operation(idempotent=False)
     def import_boot_images(self, request):
-        """Import the boot images on all rack controllers."""
+        """@description-title Import boot images on all rack controllers
+        @description Imports boot images on all rack controllers.
+
+        @success (http-status-code) "200" 200
+        @success (content) "success-all" Import of boot images started on
+        all rack controllers
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested rack controller system_id
+        is not found.
+        @error-example "not-found"
+            Not Found
+        """
         # Avoid circular import.
         from maasserver.clusterrpc.boot_images import RackControllersImporter
 
@@ -216,9 +266,13 @@ class RackControllersHandler(NodesHandler, PowersMixin):
     @admin_method
     @operation(idempotent=True)
     def describe_power_types(self, request):
-        """Query all of the rack controllers for power information.
+        """@description-title Get power information from rack controllers
+        @description Queries all rack controllers for power information.
 
-        :return: a list of dicts that describe the power types in this format.
+        @success (http-status-code) "200" 200
+        @success (content) "success-json" A JSON object containing a dictionary
+        with system_ids as keys and power parameters as values.
+        @success-example "success-json" [exkey=power-params-multi] placeholder
         """
         return get_all_power_types()
 
