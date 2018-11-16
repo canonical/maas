@@ -110,7 +110,7 @@ def get_logging_config(verbosity: int):
                 'formatter': 'stdout',
             },
             'syslog': {
-                'class': 'logging.handlers.SysLogHandler',
+                'class': 'provisioningserver.logger.MAASSysLogHandler',
                 'facility': logging.handlers.SysLogHandler.LOG_DAEMON,
                 'address': get_syslog_address_path(),
                 'formatter': 'syslog',

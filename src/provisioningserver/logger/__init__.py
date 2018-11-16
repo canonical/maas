@@ -54,6 +54,7 @@ __all__ = [
     "get_maas_logger",
     "LegacyLogger",
     "LoggingMode",
+    "MAASSysLogHandler",
     "set_verbosity",
     "VerbosityOptions",
 ]
@@ -68,7 +69,10 @@ from provisioningserver.logger._logging import (
     configure_standard_logging,
     set_standard_verbosity,
 )
-from provisioningserver.logger._maaslog import get_maas_logger
+from provisioningserver.logger._maaslog import (
+    get_maas_logger,
+    MAASSysLogHandler,
+)
 from provisioningserver.logger._tftp import configure_tftp_logging
 from provisioningserver.logger._twisted import (
     configure_twisted_logging,
