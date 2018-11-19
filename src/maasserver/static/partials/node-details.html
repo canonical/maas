@@ -109,15 +109,23 @@
                                     <div class="row" data-ng-if="isSuperUser()">
                                         <ul class="p-inline-list--settings u-no-margin--left u-no-padding--left">
                                             <li class="p-inline-list__item">
-                                                <label class="p-form__label">Additional installs:</label>
+                                                <label class="p-form__label">Additional installs</label>
                                             </li>
                                             <li class="p-inline-list__item">
-                                                <input id="installKVM" type="checkbox" data-ng-model="deployOptions.installKVM"></input>
-                                                <label for="installKVM">MAAS-managed KVM</label>
+                                                <input id="installKVM" type="checkbox" data-ng-model="deployOptions.installKVM" ng-disabled="!nodesManager.isModernUbuntu(osSelection)">
+                                                <label for="installKVM">Register as MAAS KVM host</label>
                                             </li>
                                             <li class="p-inline-list__item">
-                                                <span class="p-icon--information"></span>
-                                                About <a href="https://docs.maas.io/2.5/en/manage-kvm-pods-networking">Virsh pods</a>
+                                                <div data-ng-if="!nodesManager.isModernUbuntu(osSelection)" style="display: block">
+                                                    <span class="p-icon--warning">Warning</span>
+                                                    <strong>Warning:</strong> Ubuntu 18.04 is the minimum required. <a target="_blank"
+                                                    class="p-link--external"
+                                                    href="https://docs.maas.io/2.5/en/manage-pods-webui#compose-a-machine">Learn more</a>.
+                                                </div>
+                                                <div data-ng-if="nodesManager.isModernUbuntu(osSelection)" style="display: block">
+                                                    <span class="p-icon--information"></span>
+                                                    About <a target="_blank" class="p-link--external" href="https://docs.maas.io/2.5/en/manage-pods-webui#compose-a-machine">KVM hosts</a>
+                                                </div>
                                             </li>
                                         </ul>
                                     </div>

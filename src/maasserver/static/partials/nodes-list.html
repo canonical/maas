@@ -212,15 +212,24 @@
                                     <div class="row" data-ng-if="isSuperUser()">
                                     <ul class="p-inline-list--settings u-no-margin--left u-no-padding--left">
                                         <li class="p-inline-list__item">
-                                            <label class="p-form__label">Additional install:</label>
+                                            <label class="p-form__label">Additional install</label>
                                         </li>
                                         <li class="p-inline-list__item">
-                                            <input id="{$ tab $}-installKVM" type="checkbox" data-ng-model="tabs[tab].deployOptions.installKVM"></input>
-                                            <label for="{$ tab $}-installKVM">MAAS-managed KVM</label>
+                                            <input id="{$ tab $}-installKVM" type="checkbox" data-ng-model="tabs[tab].deployOptions.installKVM" ng-disabled="!nodesManager.isModernUbuntu(tabs['machines'].osSelection)">
+                                            <label for="{$ tab $}-installKVM">Register as MAAS KVM host</label>
                                         </li>
                                         <li class="p-inline-list__item">
-                                            <span class="p-icon--information"></span>
-                                            <a href="https://docs.maas.io/2.5/en/manage-kvm-pods-networking">Learn more</a>
+                                            <div data-ng-if="!nodesManager.isModernUbuntu(tabs['machines'].osSelection)" style="display: block">
+                                                <span class="p-icon--warning">Warning</span>
+                                                <strong>Warning:</strong> Ubuntu 18.04 is the minimum required. <a class="p-link--external" target="_blank" href="https://docs.maas.io/2.5/en/manage-pods-webui#compose-a-machine">Learn more</a>.
+                                            </div>
+                                            <div data-ng-if="nodesManager.isModernUbuntu(tabs['machines'].osSelection)" style="display: block">
+                                                <span class="p-icon--information"></span>
+                                                <a
+                                                target="_blank"
+                                                class="p-link--external"
+                                                href="https://docs.maas.io/2.5/en/manage-pods-webui#compose-a-machine">Learn more</a>
+                                            </div>
                                         </li>
                                     </ul>
                                     </div>

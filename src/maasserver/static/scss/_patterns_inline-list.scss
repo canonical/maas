@@ -5,6 +5,7 @@
     .p-inline-list__item {
       display: inline-block;
       margin-right: $sp-large;
+      vertical-align: top;
     }
 
     [type='checkbox'] {

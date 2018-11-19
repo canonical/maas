@@ -11,8 +11,10 @@
 
 angular.module('MAAS').service(
     'NodesManager',
-    ['$q', '$rootScope', '$timeout', 'RegionConnection', 'Manager', function(
-            $q, $rootScope, $timeout, RegionConnection, Manager) {
+    ['$q', '$rootScope', '$timeout', 'RegionConnection', 'Manager',
+        'KVMDeployOSBlacklist', function(
+            $q, $rootScope, $timeout, RegionConnection, Manager,
+                KVMDeployOSBlacklist) {
 
         function NodesManager() {
             Manager.call(this);
@@ -349,6 +351,22 @@ angular.module('MAAS').service(
             return RegionConnection.callMethod(
                 this._handler + ".get_summary_yaml",
                 {"system_id": node.system_id});
+        };
+
+        NodesManager.prototype.isModernUbuntu = function(osSelection) {
+            if (!osSelection) {
+                return false;
+            }
+
+            if (osSelection.osystem !== 'ubuntu') {
+                return false;
+            }
+
+            if (KVMDeployOSBlacklist.includes(osSelection.release)) {
+                return false;
+            }
+
+            return true;
         };
 
         return NodesManager;

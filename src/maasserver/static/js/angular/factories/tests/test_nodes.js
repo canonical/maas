@@ -356,6 +356,62 @@ describe("NodesManager", function() {
             });
     });
 
+    describe("isModernUbuntu", function() {
+        it("returns false when not ubuntu", function() {
+            var osSelection = {
+                osystem: 'centos',
+                release: 'CentOS 7'
+            };
+
+            expect(MachinesManager.isModernUbuntu(osSelection)).toBe(false);
+        });
+
+        it("returns false when ubuntu and precise", function() {
+            var osSelection = {
+                osystem: 'ubuntu',
+                release: 'precise'
+            };
+
+            expect(MachinesManager.isModernUbuntu(osSelection)).toBe(false);
+        });
+
+        it("returns false when ubuntu and trusty", function() {
+            var osSelection = {
+                osystem: 'ubuntu',
+                release: 'trusty'
+            };
+
+            expect(MachinesManager.isModernUbuntu(osSelection)).toBe(false);
+        });
+
+        it("returns false when ubuntu and xenial", function() {
+            var osSelection = {
+                osystem: 'ubuntu',
+                release: 'xenial'
+            };
+
+            expect(MachinesManager.isModernUbuntu(osSelection)).toBe(false);
+        });
+
+        it("returns true when ubuntu and bionic", function() {
+            var osSelection = {
+                osystem: 'ubuntu',
+                release: 'bionic'
+            };
+
+            expect(MachinesManager.isModernUbuntu(osSelection)).toBe(true);
+        });
+
+        it("returns true when ubuntu and cosmic", function() {
+            var osSelection = {
+                osystem: 'ubuntu',
+                release: 'cosmic'
+            };
+
+            expect(MachinesManager.isModernUbuntu(osSelection)).toBe(true);
+        });
+    });
+
     describe("linkSubnet", function() {
 
         it("calls machine.link_subnet with system_id and interface_id",

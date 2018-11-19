@@ -161,6 +161,8 @@ angular.module('MAAS').controller('NodesListController', [
             return pool.id === 0;
         };
 
+        $scope.nodesManager = MachinesManager;
+
         // Device tab.
         $scope.tabs.devices = {};
         $scope.tabs.devices.pagetitle = "Devices";

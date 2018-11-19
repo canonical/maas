@@ -16,16 +16,22 @@ angular.module('MAAS').run(['$templateCache', function ($templateCache) {
                 '<select name="os" ',
                     'data-ng-model="ngModel.osystem" ',
                     'data-ng-change="selectedOSChanged()" ',
+                    'data-ng-disabled="maasOsSelect.osystems.length <= 1" ',
                     'data-ng-options="',
-                    'os[0] as os[1] for os in maasOsSelect.osystems">',
+                    'os[0] as os[1] disable when ',
+                    'installKVMSelectedAndNotUbuntu(os) ',
+                    'for os in maasOsSelect.osystems">',
                 '</select>',
             '</li>',
             '<li class="p-inline-list__item"> ',
                 '<select name="release" ',
                     'data-ng-model="ngModel.release" ',
                     'data-ng-change="selectedReleaseChanged()" ',
+                    'data-ng-disabled="maasOsSelect.releases.length <= 1" ',
                     'data-ng-options="',
-                    'release[0] as release[1] for release in releases">',
+                    'release[0] as release[1] disable when osOutdated(release,',
+                    'deployOptions)',
+                    ' for release in releases">',
                 '</select>',
             '</li>',
             '<li class="p-inline-list__item"> ',
@@ -41,7 +47,8 @@ angular.module('MAAS').run(['$templateCache', function ($templateCache) {
     ].join(''));
 }]);
 
-angular.module('MAAS').directive('maasOsSelect', function() {
+angular.module('MAAS').directive('maasOsSelect', ['KVMDeployOSBlacklist',
+    function(KVMDeployOSBlacklist) {
     return {
         restrict: "A",
         require: "ngModel",
@@ -60,6 +67,13 @@ angular.module('MAAS').directive('maasOsSelect', function() {
                     var choice, choices = [];
                     for(i = 0; i < allChoices.length; i++) {
                         choice = allChoices[i];
+
+                        if (choice[1].includes('Ubuntu')) {
+                            choice[1] = choice[1]
+                                .replace(/Ubuntu/gi, '')
+                                .trim();
+                        }
+
                         if(choice[0].indexOf($scope.ngModel.osystem + '/') > -1)
                         {
                             choices.push(choice);
@@ -79,6 +93,7 @@ angular.module('MAAS').directive('maasOsSelect', function() {
                     var os = $scope.ngModel.osystem;
                     var release = $scope.ngModel.release.split('/')[1];
                     var osKernels = $scope.maasOsSelect.kernels[os];
+
                     if(angular.isObject(osKernels)) {
                         return osKernels[release];
                     }
@@ -179,12 +194,19 @@ angular.module('MAAS').directive('maasOsSelect', function() {
             // Updates the default and selectable releases.
             $scope.selectedOSChanged = function() {
                 $scope.releases = getSelectableReleases();
-                $scope.hwe_kernels = getSelectableKernels();
                 $scope.ngModel.release = null;
                 $scope.ngModel.hwe_kernel = null;
                 if($scope.releases.length > 0) {
-                    $scope.ngModel.release = $scope.releases[0][0];
+                    var firstRelease = $scope.releases[0][0];
+                    if (firstRelease.includes('ubuntu') &&
+                        KVMDeployOSBlacklist.includes(firstRelease)) {
+                            setDefault();
+                    } else {
+                        $scope.ngModel.release = firstRelease;
+                    }
                 }
+
+                $scope.hwe_kernels = getSelectableKernels();
             };
 
             // Updates the default and selectable kernels.
@@ -192,6 +214,51 @@ angular.module('MAAS').directive('maasOsSelect', function() {
                 $scope.hwe_kernels = getSelectableKernels();
                 $scope.ngModel.hwe_kernel = null;
             };
+
+            $scope.osOutdated = function(release) {
+                if ($scope.$parent.$parent.deployOptions &&
+                    $scope.$parent.$parent.deployOptions.installKVM) {
+                        if (KVMDeployOSBlacklist.includes(release[0])) {
+                            return true;
+                        }
+
+                        return false;
+                }
+
+                if ($scope.$parent.$parent.tabs &&
+                    $scope.$parent.$parent.tabs['machines'].deployOptions &&
+                    $scope.$parent.$parent.tabs['machines']
+                        .deployOptions.installKVM) {
+                            if (KVMDeployOSBlacklist.includes(release[0])) {
+                                return true;
+                            }
+
+                            return false;
+                    }
+
+                return false;
+            };
+
+            $scope.installKVMSelectedAndNotUbuntu = function(os) {
+                if ($scope.$parent.$parent.deployOptions &&
+                    $scope.$parent.$parent.deployOptions.installKVM) {
+                        if (os[0] !== 'ubuntu') {
+                            return true;
+                        }
+                }
+
+                if ($scope.$parent.$parent.tabs &&
+                    $scope.$parent.$parent.tabs['machines'].deployOptions &&
+                    $scope.$parent.$parent.tabs['machines']
+                        .deployOptions.installKVM) {
+                            if (os[0] !== 'ubuntu') {
+                                return true;
+                            }
+                }
+
+                return false;
+            };
         }
     };
-});
+
+}]);
