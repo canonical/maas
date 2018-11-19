@@ -16,6 +16,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
 from maasserver.websockets.base import dehydrate_datetime
 from maasserver.websockets.handlers.subnet import SubnetHandler
+from maastesting.djangotestcase import count_queries
 from maastesting.matchers import MockCalledOnceWith
 from netaddr import IPNetwork
 from provisioningserver.utils.network import IPRangeStatistics
@@ -77,6 +78,15 @@ class TestSubnetHandler(MAASServerTestCase):
         result = handler.get({"id": subnet.id})
         self.assertThat(result, Equals(expected_data))
 
+    def test_get_uses_consistent_queries(self):
+        user = factory.make_User()
+        handler = SubnetHandler(user, {}, None)
+        subnet = factory.make_Subnet()
+        self.assertIsNone(handler.cache.get("staticroutes"))
+        queries, _ = count_queries(handler.get, {"id": subnet.id})
+        self.assertEquals(6, queries)
+        self.assertIsNotNone(handler.cache["staticroutes"])
+
     def test_list(self):
         user = factory.make_User()
         handler = SubnetHandler(user, {}, None)
@@ -88,6 +98,20 @@ class TestSubnetHandler(MAASServerTestCase):
         self.assertItemsEqual(
             expected_subnets,
             handler.list({}))
+
+    def test_list_uses_consistent_queries(self):
+        user = factory.make_User()
+        handler = SubnetHandler(user, {}, None)
+        for _ in range(20):
+            factory.make_Subnet()
+        self.assertIsNone(handler.cache.get("staticroutes"))
+        queries_one, _ = count_queries(handler.list, {"limit": 1})
+        self.assertIsNotNone(handler.cache["staticroutes"])
+        del handler.cache["staticroutes"]
+        queries_all, _ = count_queries(handler.list, {})
+        self.assertEquals(queries_one, queries_all)
+        self.assertIsNotNone(handler.cache["staticroutes"])
+        self.assertEquals(5, queries_one)
 
 
 class TestSubnetHandlerDelete(MAASServerTestCase):

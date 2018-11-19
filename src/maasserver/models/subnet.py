@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Model for subnets."""
@@ -495,7 +495,8 @@ class Subnet(CleanSave, TimestampedModel):
             ranges_only: bool=False, include_reserved: bool=True,
             with_neighbours: bool=False,
             ignore_discovered_ips: bool=False,
-            exclude_ip_ranges: list=None) -> MAASIPSet:
+            exclude_ip_ranges: list=None,
+            cached_staticroutes: list=None) -> MAASIPSet:
         """Returns a `MAASIPSet` of `MAASIPRange` objects which are currently
         in use on this `Subnet`.
 
@@ -531,23 +532,29 @@ class Subnet(CleanSave, TimestampedModel):
             if network.prefixlen < 127:
                 ranges |= {make_iprange(
                     first, first, purpose="rfc-4291-2.6.1")}
-        ipnetwork = self.get_ipnetwork()
         if not ranges_only:
             if (self.gateway_ip is not None and self.gateway_ip != '' and
-                    self.gateway_ip in ipnetwork):
+                    self.gateway_ip in network):
                 ranges |= {make_iprange(self.gateway_ip, purpose="gateway-ip")}
             if self.dns_servers is not None:
                 ranges |= set(
                     make_iprange(server, purpose="dns-server")
                     for server in self.dns_servers
-                    if server in ipnetwork
+                    if server in network
                 )
-            for static_route in StaticRoute.objects.filter(source=self):
+            if cached_staticroutes is not None:
+                static_routes = [
+                    static_route for static_route in cached_staticroutes
+                    if static_route.source == self
+                ]
+            else:
+                static_routes = StaticRoute.objects.filter(source=self)
+            for static_route in static_routes:
                 ranges |= {
                     make_iprange(
                         static_route.gateway_ip, purpose="gateway-ip")}
             ranges |= self._get_ranges_for_allocated_ips(
-                ipnetwork, ignore_discovered_ips)
+                network, ignore_discovered_ips)
             ranges |= set(
                 make_iprange(address, purpose="excluded")
                 for address in exclude_addresses
@@ -688,14 +695,17 @@ class Subnet(CleanSave, TimestampedModel):
                 return neighbor
         return None
 
-    def get_iprange_usage(self, with_neighbours=False) -> MAASIPSet:
+    def get_iprange_usage(
+            self, with_neighbours=False,
+            cached_staticroutes=None) -> MAASIPSet:
         """Returns both the reserved and unreserved IP ranges in this Subnet.
         (This prevents a potential race condition that could occur if an IP
         address is allocated or deallocated between calls.)
 
         :returns: A tuple indicating the (reserved, unreserved) ranges.
         """
-        reserved_ranges = self.get_ipranges_in_use()
+        reserved_ranges = self.get_ipranges_in_use(
+            cached_staticroutes=cached_staticroutes)
         if with_neighbours is True:
             reserved_ranges |= self.get_maasipset_for_neighbours()
         return reserved_ranges.get_full_range(self.get_ipnetwork())
@@ -825,8 +835,9 @@ class Subnet(CleanSave, TimestampedModel):
             exclude_ip_ranges = []
         reserved_ranges = MAASIPSet(
             iprange.get_MAASIPRange()
-            for iprange in self.get_reserved_ranges()
-            if iprange not in exclude_ip_ranges
+            for iprange in self.iprange_set.all()
+            if iprange.type == IPRANGE_TYPE.RESERVED and
+            iprange not in exclude_ip_ranges
         )
         return reserved_ranges
 
@@ -835,8 +846,9 @@ class Subnet(CleanSave, TimestampedModel):
             exclude_ip_ranges = []
         dynamic_ranges = MAASIPSet(
             iprange.get_MAASIPRange()
-            for iprange in self.get_dynamic_ranges()
-            if iprange not in exclude_ip_ranges
+            for iprange in self.iprange_set.all()
+            if iprange.type == IPRANGE_TYPE.DYNAMIC and
+            iprange not in exclude_ip_ranges
         )
         return dynamic_ranges
 

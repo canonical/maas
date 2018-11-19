@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The subnet handler for the WebSocket connection."""
@@ -11,6 +11,7 @@ from maasserver.forms.subnet import SubnetForm
 from maasserver.models import (
     Discovery,
     RackController,
+    StaticRoute,
     Subnet,
 )
 from maasserver.permissions import NodePermission
@@ -34,9 +35,11 @@ class SubnetHandler(TimestampedModelHandler):
                   .select_related('vlan')
                   .select_related('vlan__space')
                   .prefetch_related('vlan__fabric')
+                  .prefetch_related('staticipaddress_set')
                   .prefetch_related('staticipaddress_set__user')
                   .prefetch_related(
-                      'staticipaddress_set__interface_set__node'))
+                      'staticipaddress_set__interface_set__node')
+                  .prefetch_related('iprange_set'))
         pk = 'id'
         form = SubnetForm
         form_requires_request = False
@@ -59,7 +62,8 @@ class SubnetHandler(TimestampedModelHandler):
         return " ".join(sorted(dns_servers))
 
     def dehydrate(self, subnet, data, for_list=False):
-        full_range = subnet.get_iprange_usage()
+        full_range = subnet.get_iprange_usage(
+            cached_staticroutes=self.cache.get("staticroutes"))
         metadata = IPRangeStatistics(full_range)
         data['statistics'] = metadata.render_json(
             include_ranges=True, include_suggestions=True)
@@ -79,6 +83,11 @@ class SubnetHandler(TimestampedModelHandler):
         if 'space' in parameters:
             del parameters['space']
         return super().update(parameters)
+
+    def _cache_pks(self, objs):
+        super()._cache_pks(objs)
+        self.cache["staticroutes"] = StaticRoute.objects.filter(
+            source__in=objs)
 
     def create(self, parameters):
         assert self.user.has_perm(

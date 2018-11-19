@@ -34,7 +34,7 @@ class VLANHandler(TimestampedModelHandler):
     class Meta:
         queryset = (
             VLAN.objects.all()
-                .select_related('primary_rack', 'secondary_rack')
+                .select_related('primary_rack', 'secondary_rack', 'fabric')
                 .prefetch_related("interface_set")
                 .prefetch_related("interface_set__node")
                 .prefetch_related("subnet_set"))

@@ -17,6 +17,7 @@ from maasserver.websockets.base import (
     HandlerValidationError,
 )
 from maasserver.websockets.handlers.vlan import VLANHandler
+from maastesting.djangotestcase import count_queries
 from testtools import ExpectedException
 from testtools.matchers import (
     Contains,
@@ -78,6 +79,20 @@ class TestVLANHandler(MAASServerTestCase):
             self.dehydrate_vlan(vlan),
             handler.get({"id": vlan.id}))
 
+    def test_get_uses_consistent_queries(self):
+        user = factory.make_User()
+        handler = VLANHandler(user, {}, None)
+        vlan = factory.make_VLAN(space=factory.make_Space())
+        for _ in range(3):
+            factory.make_Subnet(vlan=vlan)
+        for _ in range(3):
+            node = factory.make_Node(interface=True)
+            interface = node.get_boot_interface()
+            interface.vlan = vlan
+            interface.save()
+        queries, _ = count_queries(handler.get, {"id": vlan.id})
+        self.assertEquals(5, queries)
+
     def test_list(self):
         user = factory.make_User()
         handler = VLANHandler(user, {}, None)
@@ -89,6 +104,16 @@ class TestVLANHandler(MAASServerTestCase):
         self.assertItemsEqual(
             expected_vlans,
             handler.list({}))
+
+    def test_list_uses_consistent_queries(self):
+        user = factory.make_User()
+        handler = VLANHandler(user, {}, None)
+        for _ in range(20):
+            factory.make_VLAN()
+        queries_one, _ = count_queries(handler.list, {"limit": 1})
+        queries_all, _ = count_queries(handler.list, {})
+        self.assertEquals(queries_one, queries_all)
+        self.assertEquals(3, queries_one)
 
     def test_create(self):
         admin = factory.make_admin()
