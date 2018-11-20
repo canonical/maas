@@ -91,7 +91,7 @@ class TestRBACClient(MAASServerTestCase):
             MockCalledOnceWith(
                 'GET',
                 'https://rbac.example.com/api/'
-                'service/1.0/resources/resource-pool',
+                'service/v1/resources/resource-pool',
                 auth=mock.ANY, cookies=mock.ANY, json=None))
 
     def test_update_resources(self):
@@ -126,7 +126,7 @@ class TestRBACClient(MAASServerTestCase):
             MockCalledOnceWith(
                 'POST',
                 'https://rbac.example.com/api/'
-                'service/1.0/resources/resource-pool',
+                'service/v1/resources/resource-pool',
                 auth=mock.ANY, cookies=mock.ANY, json=json))
 
     def test_update_resources_no_sync_id(self):
@@ -161,7 +161,7 @@ class TestRBACClient(MAASServerTestCase):
             MockCalledOnceWith(
                 'POST',
                 'https://rbac.example.com/api/'
-                'service/1.0/resources/resource-pool',
+                'service/v1/resources/resource-pool',
                 auth=mock.ANY, cookies=mock.ANY, json=json))
 
     def test_update_resources_sync_conflict(self):
@@ -191,7 +191,7 @@ class TestRBACClient(MAASServerTestCase):
             MockCalledOnceWith(
                 'GET',
                 'https://rbac.example.com/api/'
-                'service/1.0/resources/maas/'
+                'service/v1/resources/maas/'
                 'allowed-for-user?user={}&permission=admin'.format(user),
                 auth=mock.ANY, cookies=mock.ANY, json=None))
 
@@ -208,7 +208,7 @@ class TestRBACClient(MAASServerTestCase):
             MockCalledOnceWith(
                 'GET',
                 'https://rbac.example.com/api/'
-                'service/1.0/resources/maas/'
+                'service/v1/resources/maas/'
                 'allowed-for-user?user={}&permission=admin'.format(user),
                 auth=mock.ANY, cookies=mock.ANY, json=None))
 
@@ -404,13 +404,13 @@ class TestRBACUserClient(MAASServerTestCase):
 
     def test__get_maas_product(self):
         maas = {
-            '$uri': '/api/rbac/1.0/product/2',
+            '$uri': '/api/rbac/v1/product/2',
             'label': 'maas',
             'name': 'MAAS',
         }
         products = [
             {
-                '$uri': '/api/rbac/1.0/product/1',
+                '$uri': '/api/rbac/v1/product/1',
                 'label': 'product-1',
                 'name': 'Product 1',
             },
@@ -423,57 +423,57 @@ class TestRBACUserClient(MAASServerTestCase):
             MockCalledOnceWith(
                 'GET',
                 'https://rbac.example.com/api/'
-                'rbac/1.0/product',
+                'rbac/v1/product',
                 auth=mock.ANY, cookies=mock.ANY, json=None))
 
     def test_get_registerable_services(self):
         products = [
             {
-                '$uri': '/api/rbac/1.0/product/1',
+                '$uri': '/api/rbac/v1/product/1',
                 'label': 'product-1',
                 'name': 'Product 1',
             },
             {
-                '$uri': '/api/rbac/1.0/product/2',
+                '$uri': '/api/rbac/v1/product/2',
                 'label': 'maas',
                 'name': 'MAAS',
             },
         ]
         maas1 = {
-            '$uri': '/api/rbac/1.0/service/3',
+            '$uri': '/api/rbac/v1/service/3',
             'name': 'maas-1',
             'description': 'MAAS 1',
             'pending': True,
             'product': {
-                '$ref': '/api/rbac/1.0/product/2'
+                '$ref': '/api/rbac/v1/product/2'
             },
         }
         maas2 = {
-            '$uri': '/api/rbac/1.0/service/4',
+            '$uri': '/api/rbac/v1/service/4',
             'name': 'maas-2',
             'description': 'MAAS 2',
             'pending': True,
             'product': {
-                '$ref': '/api/rbac/1.0/product/2'
+                '$ref': '/api/rbac/v1/product/2'
             },
         }
         services = [
             {
-                '$uri': '/api/rbac/1.0/service/1',
+                '$uri': '/api/rbac/v1/service/1',
                 'name': 'service-1',
                 'description': 'Service 1',
                 'pending': True,
                 'product': {
-                        '$ref': '/api/rbac/1.0/product/1'
+                        '$ref': '/api/rbac/v1/product/1'
                 },
             },
             {
-                '$uri': '/api/rbac/1.0/service/2',
+                '$uri': '/api/rbac/v1/service/2',
                 'name': 'service-2',
                 'description': 'Service 2',
                 'pending': True,
                 'product': {
-                        '$ref': '/api/rbac/1.0/product/1'
+                        '$ref': '/api/rbac/v1/product/1'
                 },
             },
             maas1,
@@ -487,12 +487,12 @@ class TestRBACUserClient(MAASServerTestCase):
             MockCallsMatch(
                 mock.call(
                     'GET',
-                    'https://rbac.example.com/api/rbac/1.0/product',
+                    'https://rbac.example.com/api/rbac/v1/product',
                     auth=mock.ANY, cookies=mock.ANY, json=None),
                 mock.call(
                     'GET',
                     'https://rbac.example.com/api/'
-                    'rbac/1.0/service/registerable',
+                    'rbac/v1/service/registerable',
                     auth=mock.ANY, cookies=mock.ANY, json=None)))
 
     def test_register_service(self):
@@ -500,7 +500,7 @@ class TestRBACUserClient(MAASServerTestCase):
         self.mock_responses(response)
         self.assertEqual(
             self.client.register_service(
-                '/api/rbac/1.0/service/3', 'dead-beef'),
+                '/api/rbac/v1/service/3', 'dead-beef'),
             response)
         json = {'public-key': 'dead-beef'}
         self.assertThat(
@@ -508,5 +508,5 @@ class TestRBACUserClient(MAASServerTestCase):
             MockCalledOnceWith(
                 'POST',
                 'https://rbac.example.com/api/'
-                'rbac/1.0/service/3/credentials',
+                'rbac/v1/service/3/credentials',
                 auth=mock.ANY, cookies=mock.ANY, json=json))

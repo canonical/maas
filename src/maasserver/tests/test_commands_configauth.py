@@ -304,9 +304,9 @@ class TestConfigAuthCommand(MAASServerTestCase):
     def test_configauth_rbac_with_name(self):
         self.rbac_user_client.services = [
             {'name': 'mymaas',
-             '$uri': '/api/rbac/1.0/service/4',
+             '$uri': '/api/rbac/v1/service/4',
              'pending': True,
-             'product': {'$ref' '/api/rbac/1.0/product/2'}}]
+             'product': {'$ref' '/api/rbac/v1/product/2'}}]
         call_command(
             'configauth', candid_url='http://example.com:1234',
             candid_user='user@admin', candid_key='private-key',
@@ -318,18 +318,18 @@ class TestConfigAuthCommand(MAASServerTestCase):
             Config.objects.get_config('rbac_url'))
         self.assertEqual(
             self.rbac_user_client.registered_services,
-            ['/api/rbac/1.0/service/4'])
+            ['/api/rbac/v1/service/4'])
 
     def test_configauth_rbac_unknown_name(self):
         self.rbac_user_client.services = [
             {'name': 'mymaas1',
-             '$uri': '/api/rbac/1.0/service/4',
+             '$uri': '/api/rbac/v1/service/4',
              'pending': True,
-             'product': {'$ref' '/api/rbac/1.0/product/2'}},
+             'product': {'$ref' '/api/rbac/v1/product/2'}},
             {'name': 'mymaas2',
-             '$uri': '/api/rbac/1.0/service/4',
+             '$uri': '/api/rbac/v1/service/4',
              'pending': True,
-             'product': {'$ref' '/api/rbac/1.0/product/2'}}]
+             'product': {'$ref' '/api/rbac/v1/product/2'}}]
         error = self.assertRaises(
             CommandError, call_command,
             'configauth', candid_url='http://example.com:1234',
@@ -344,13 +344,13 @@ class TestConfigAuthCommand(MAASServerTestCase):
     def test_configauth_rbac_registration_list(self):
         self.rbac_user_client.services = [
             {'name': 'mymaas',
-             '$uri': '/api/rbac/1.0/service/4',
+             '$uri': '/api/rbac/v1/service/4',
              'pending': False,
-             'product': {'$ref' '/api/rbac/1.0/product/2'}},
+             'product': {'$ref' '/api/rbac/v1/product/2'}},
             {'name': 'mymaas2',
-             '$uri': '/api/rbac/1.0/service/12',
+             '$uri': '/api/rbac/v1/service/12',
              'pending': True,
-             'product': {'$ref' '/api/rbac/1.0/product/2'}}]
+             'product': {'$ref' '/api/rbac/v1/product/2'}}]
         # The index of the service to register is prompted
         self.read_input.side_effect = ['2']
         call_command('configauth', rbac_url='http://rbac.example.com')
@@ -375,9 +375,9 @@ class TestConfigAuthCommand(MAASServerTestCase):
     def test_configauth_rbac_registration_invalid_index(self):
         self.rbac_user_client.services = [
             {'name': 'mymaas',
-             '$uri': '/api/rbac/1.0/service/4',
+             '$uri': '/api/rbac/v1/service/4',
              'pending': True,
-             'product': {'$ref' '/api/rbac/1.0/product/2'}}]
+             'product': {'$ref' '/api/rbac/v1/product/2'}}]
         self.read_input.side_effect = ['2']
         error = self.assertRaises(
             CommandError,

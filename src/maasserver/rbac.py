@@ -50,7 +50,7 @@ ALL_RESOURCES = AllResourcesType()
 class RBACClient(MacaroonClient):
     """A client for RBAC API."""
 
-    API_BASE_URL = '/api/service/1.0/resources'
+    API_BASE_URL = '/api/service/v1/resources'
 
     def __init__(self, url: str=None, auth_info: AuthInfo=None):
         if url is None:
@@ -179,7 +179,7 @@ class FakeRBACClient(RBACClient):
     def _request(self, method, url):
         parsed = urlparse(url)
         path_parts = parsed.path.split('/')
-        assert path_parts[:5] == ['', 'api', 'service', '1.0', 'resources']
+        assert path_parts[:5] == ['', 'api', 'service', 'v1', 'resources']
         if method.upper() == 'GET':
             resource_type, action = path_parts[5:7]
             query = parse_qs(parsed.query)
@@ -298,7 +298,7 @@ rbac = RBACWrapper()
 class RBACUserClient(MacaroonClient):
     """A client for the RBAC user API."""
 
-    API_BASE_URL = '/api/rbac/1.0'
+    API_BASE_URL = '/api/rbac/v1'
 
     def __init__(self, url):
         # no auth info is passed as this is meant for interactive use
