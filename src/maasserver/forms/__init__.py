@@ -166,7 +166,10 @@ from maasserver.node_action import (
     ACTION_CLASSES,
     ACTIONS_DICT,
 )
-from maasserver.permissions import ResourcePoolPermission
+from maasserver.permissions import (
+    NodePermission,
+    ResourcePoolPermission,
+)
 from maasserver.utils.converters import machine_readable_bytes
 from maasserver.utils.forms import (
     compose_invalid_choice_text,
@@ -917,7 +920,8 @@ class DeviceForm(NodeForm):
 
     class Meta:
         model = Device
-
+        permission_create = NodePermission.view
+        permission_edit = NodePermission.edit
         fields = NodeForm.Meta.fields + (
             'parent',
             'zone',
@@ -965,7 +969,7 @@ class ControllerForm(MAASModelForm, WithPowerTypeMixin):
 
     class Meta:
         model = Controller
-
+        permission_edit = NodePermission.admin
         fields = ['zone', 'domain']
 
     zone = forms.ModelChoiceField(
@@ -1072,7 +1076,8 @@ class AdminMachineForm(MachineForm, AdminNodeForm, WithPowerTypeMixin):
 
     class Meta:
         model = Machine
-
+        permission_create = NodePermission.admin
+        permission_edit = NodePermission.admin
         # Fields that the form should generate automatically from the
         # model:
         fields = MachineForm.Meta.fields + (
@@ -1928,25 +1933,20 @@ class BulkNodeActionForm(Form):
         :param action_class: A value from `ACTIONS_DICT`.
         """
         node = Node.objects.get(system_id=system_id)
-        if node.status in action_class.actionable_statuses:
-            action_instance = action_class(
-                node=node, user=self.user, request=self.request)
-            if action_instance.inhibit() is not None:
+        action_instance = action_class(
+            node=node, user=self.user, request=self.request)
+        if action_instance.is_actionable():
+            # Do not let execute() raise a redirect exception
+            # because this action is part of a bulk operation.
+            try:
+                action_instance.execute()
+            except NodeActionError:
                 return "not_actionable"
             else:
-                if action_instance.is_permitted():
-                    # Do not let execute() raise a redirect exception
-                    # because this action is part of a bulk operation.
-                    try:
-                        action_instance.execute()
-                    except NodeActionError:
-                        return "not_actionable"
-                    else:
-                        return "done"
-                else:
-                    return "not_permitted"
-        else:
-            return "not_actionable"
+                return "done"
+        if not action_instance.is_permitted():
+            return "not_permitted"
+        return "not_actionable"
 
     @asynchronous(timeout=FOREVER)
     def _perform_action_on_nodes(

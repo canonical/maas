@@ -103,15 +103,10 @@ class FakeNodeAction(NodeAction):
     for_type = [NODE_TYPE.MACHINE]
     action_type = NODE_ACTION_TYPE.MISC
 
-    # For testing: an inhibition for inhibit() to return.
-    fake_inhibition = None
     fake_description = factory.make_name('desc')
 
     def get_node_action_audit_description(self):
         return self.fake_description
-
-    def inhibit(self):
-        return self.fake_inhibition
 
     def _execute(self):
         pass
@@ -147,15 +142,6 @@ class TestNodeAction(MAASServerTestCase):
         actions = compile_node_actions(
             node, factory.make_User(), classes=[MyAction])
         self.assertEqual({}, actions)
-
-    def test_compile_node_actions_includes_inhibited_actions(self):
-
-        class MyAction(FakeNodeAction):
-            fake_inhibition = factory.make_string()
-
-        actions = compile_node_actions(
-            factory.make_Node(), factory.make_admin(), classes=[MyAction])
-        self.assertEqual([MyAction.name], list(actions.keys()))
 
     def test_compile_node_actions_maps_names(self):
 
@@ -221,33 +207,6 @@ class TestNodeAction(MAASServerTestCase):
             node_type=NODE_TYPE.DEVICE)
         self.assertTrue(MyAction(node, factory.make_User()).is_permitted())
 
-    def test_inhibition_wraps_inhibit(self):
-        inhibition = factory.make_string()
-        action = FakeNodeAction(factory.make_Node(), factory.make_User())
-        action.fake_inhibition = inhibition
-        self.assertEqual(inhibition, action.inhibition)
-
-    def test_inhibition_caches_inhibition(self):
-        # The inhibition property will call inhibit() only once.  We can
-        # prove this by changing the string inhibit() returns; it won't
-        # affect the value of the property.
-        inhibition = factory.make_string()
-        action = FakeNodeAction(factory.make_Node(), factory.make_User())
-        action.fake_inhibition = inhibition
-        self.assertEqual(inhibition, action.inhibition)
-        action.fake_inhibition = factory.make_string()
-        self.assertEqual(inhibition, action.inhibition)
-
-    def test_inhibition_caches_None(self):
-        # An inhibition of None is also faithfully cached.  In other
-        # words, it doesn't get mistaken for an uninitialized cache or
-        # anything.
-        action = FakeNodeAction(factory.make_Node(), factory.make_User())
-        action.fake_inhibition = None
-        self.assertIsNone(action.inhibition)
-        action.fake_inhibition = factory.make_string()
-        self.assertIsNone(action.inhibition)
-
     def test_node_only_is_not_actionable_if_node_isnt_node_type(self):
         status = NODE_STATUS.NEW
         owner = factory.make_User()
@@ -279,7 +238,7 @@ class TestNodeAction(MAASServerTestCase):
     def test_is_actionable_checks_permission(self):
 
         class MyAction(FakeNodeAction):
-            node_permission = NodePermission.admin
+            machine_permission = NodePermission.admin
 
         node = factory.make_Node()
         self.assertFalse(MyAction(node, factory.make_User()).is_actionable())
@@ -593,22 +552,6 @@ class TestAcquireNodeAction(MAASServerTestCase):
 
 
 class TestDeployAction(MAASServerTestCase):
-
-    def test_Deploy_inhibit_allows_user_with_SSH_key(self):
-        user_with_key = factory.make_User()
-        request = factory.make_fake_request('/')
-        request.user = user_with_key
-        factory.make_SSHKey(user_with_key)
-        self.assertIsNone(
-            Deploy(factory.make_Node(), user_with_key, request).inhibit())
-
-    def test_Deploy_inhibit_allows_user_without_SSH_key(self):
-        user_without_key = factory.make_User()
-        request = factory.make_fake_request('/')
-        request.user = user_without_key
-        action = Deploy(factory.make_Node(), user_without_key, request)
-        inhibition = action.inhibit()
-        self.assertIsNone(inhibition)
 
     def test_Deploy_is_actionable_if_user_doesnt_have_ssh_keys(self):
         owner = factory.make_User()
@@ -978,7 +921,7 @@ class TestPowerOnAction(MAASServerTestCase):
         self.assertFalse(PowerOn(node, user, request).is_permitted())
 
     def test_PowerOn_is_actionable_if_node_doesnt_have_an_owner(self):
-        owner = factory.make_User()
+        owner = factory.make_admin()
         request = factory.make_fake_request('/')
         request.user = owner
         node = factory.make_Node(

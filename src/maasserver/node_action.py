@@ -119,9 +119,9 @@ class NodeAction(metaclass=ABCMeta):
         user has this given permission on the subject node.
         """)
 
-    # Optional node permission that will be used when the action
-    # is being applied to a node_type which is node
-    node_permission = None
+    # Optional machine permission that will be used when the action
+    # is being applied to a node_type which is a machine.
+    machine_permission = None
 
     # Whether the action is allowed when the node is locked
     allowed_when_locked = False
@@ -147,30 +147,10 @@ class NodeAction(metaclass=ABCMeta):
             return False
         elif self.node.locked and not self.allowed_when_locked:
             return False
-        elif self.node.node_type == NODE_TYPE.MACHINE:
-            admin_perm = (
-                self.node_permission == NodePermission.admin and
-                not self.user.is_superuser)
-            if admin_perm:
-                return False
-            elif self.node.node_type == NODE_TYPE.MACHINE:
-                return self.node.status in self.actionable_statuses
-        elif self.node.node_type == NODE_TYPE.DEVICE:
-            return self.user.is_superuser or self.user == self.node.owner
-
-        return True
-
-    def inhibit(self):
-        """Overridable: is there any reason not to offer this action?
-
-        This property may return a reason to inhibit this action, in which
-        case its button may still be visible in the UI, but disabled.  A
-        tooltip will provide the reason, as returned by this method.
-
-        :return: A human-readable reason to inhibit the action, or None if
-            the action is valid.
-        """
-        return None
+        elif (self.node.node_type == NODE_TYPE.MACHINE and
+                self.node.status not in self.actionable_statuses):
+            return False
+        return self.is_permitted()
 
     @abstractmethod
     def get_node_action_audit_description(self, action):
@@ -197,23 +177,13 @@ class NodeAction(metaclass=ABCMeta):
     def get_permission(self):
         """Return the permission value depending on if the node_type."""
         if(self.node.node_type == NODE_TYPE.MACHINE and
-           self.node_permission is not None):
-            return self.node_permission
+           self.machine_permission is not None):
+            return self.machine_permission
         return self.permission
 
     def is_permitted(self):
         """Does the current user have the permission required?"""
         return self.user.has_perm(self.get_permission(), self.node)
-
-    # Uninitialized inhibititions cache.
-    _cached_inhibition = object()
-
-    @property
-    def inhibition(self):
-        """Caching version of `inhibit`."""
-        if self._cached_inhibition == NodeAction._cached_inhibition:
-            self._cached_inhibition = self.inhibit()
-        return self._cached_inhibition
 
 
 class Delete(NodeAction):
@@ -223,7 +193,7 @@ class Delete(NodeAction):
     display_sentence = "deleted"
     actionable_statuses = ALL_STATUSES
     permission = NodePermission.edit
-    node_permission = NodePermission.admin
+    machine_permission = NodePermission.admin
     for_type = {i for i, _ in enumerate(NODE_TYPE_CHOICES)}
     action_type = NODE_ACTION_TYPE.MISC
     audit_description = "Deleted the '%s' '%s'."
@@ -271,7 +241,7 @@ class SetZone(NodeAction):
     display_sentence = "Zone set"
     actionable_statuses = ALL_STATUSES
     permission = NodePermission.edit
-    node_permission = NodePermission.admin
+    machine_permission = NodePermission.admin
     for_type = {i for i, _ in enumerate(NODE_TYPE_CHOICES)}
     action_type = NODE_ACTION_TYPE.MISC
     audit_description = "Set the zone to '%s' on '%s'."
@@ -294,7 +264,7 @@ class SetPool(NodeAction):
     display_sentence = "Pool set"
     actionable_statuses = ALL_STATUSES
     permission = NodePermission.edit
-    node_permission = NodePermission.admin
+    machine_permission = NodePermission.admin
     for_type = {NODE_TYPE.MACHINE}
     action_type = NODE_ACTION_TYPE.MISC
     audit_description = "Set the resource pool to '%s' on '%s'."
