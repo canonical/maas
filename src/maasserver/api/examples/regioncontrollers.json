@@ -1,0 +1,247 @@
+{
+  "update": {
+    "distro_series": "bionic",
+    "swap_size": null,
+    "commissioning_status_name": "Passed",
+    "cpu_test_status": -1,
+    "status_action": "",
+    "storage_test_status_name": "Unknown",
+    "domain": {
+      "authoritative": true,
+      "ttl": null,
+      "name": "maas",
+      "id": 0,
+      "is_default": true,
+      "resource_record_count": 0,
+      "resource_uri": "/MAAS/api/2.0/domains/0/"
+    },
+    "commissioning_status": 2,
+    "cpu_count": 4,
+    "power_type": "",
+    "current_commissioning_result_id": 1,
+    "node_type_name": "Region and rack controller",
+    "current_testing_result_id": null,
+    "other_test_status_name": "Unknown",
+    "architecture": "amd64/generic",
+    "testing_status": -1,
+    "fqdn": "maas-run.maas",
+    "ip_addresses": [
+      "192.168.122.115",
+      "172.16.99.11"
+    ],
+    "hostname": "maas-run",
+    "tag_names": [
+      "virtual"
+    ],
+    "interface_set": [
+      {
+        "enabled": true,
+        "tags": [],
+        "effective_mtu": 1500,
+        "vendor": "Intel Corp.",
+        "firmware_version": "N/A",
+        "links": [
+          {
+            "id": 1,
+            "mode": "static",
+            "ip_address": "192.168.122.115",
+            "subnet": {
+              "name": "192.168.122.0/24",
+              "vlan": {
+                "vid": 0,
+                "mtu": 1500,
+                "dhcp_on": false,
+                "external_dhcp": null,
+                "relay_vlan": null,
+                "space": "undefined",
+                "fabric": "fabric-0",
+                "name": "untagged",
+                "id": 5001,
+                "primary_rack": null,
+                "secondary_rack": null,
+                "fabric_id": 0,
+                "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+              },
+              "cidr": "192.168.122.0/24",
+              "rdns_mode": 2,
+              "gateway_ip": "192.168.122.1",
+              "dns_servers": [],
+              "allow_dns": true,
+              "allow_proxy": true,
+              "active_discovery": false,
+              "managed": true,
+              "space": "undefined",
+              "id": 1,
+              "resource_uri": "/MAAS/api/2.0/subnets/1/"
+            }
+          }
+        ],
+        "type": "physical",
+        "parents": [],
+        "discovered": null,
+        "product": "Intel(R) Core(TM) i5-6300U CPU @ 2.40GHz",
+        "mac_address": "00:16:3e:b1:d3:42",
+        "name": "eth0",
+        "id": 1,
+        "params": "",
+        "vlan": {
+          "vid": 0,
+          "mtu": 1500,
+          "dhcp_on": false,
+          "external_dhcp": null,
+          "relay_vlan": null,
+          "space": "undefined",
+          "fabric": "fabric-0",
+          "name": "untagged",
+          "id": 5001,
+          "primary_rack": null,
+          "secondary_rack": null,
+          "fabric_id": 0,
+          "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+        },
+        "system_id": "ccfqya",
+        "children": [],
+        "resource_uri": "/MAAS/api/2.0/nodes/ccfqya/interfaces/1/"
+      },
+      {
+        "enabled": true,
+        "tags": [],
+        "effective_mtu": 1500,
+        "vendor": "Intel Corp.",
+        "firmware_version": "N/A",
+        "links": [],
+        "type": "physical",
+        "parents": [],
+        "discovered": null,
+        "product": "Intel(R) Core(TM) i5-6300U CPU @ 2.40GHz",
+        "mac_address": "00:16:3e:ae:15:33",
+        "name": "eth1",
+        "id": 2,
+        "params": "",
+        "vlan": {
+          "vid": 0,
+          "mtu": 1500,
+          "dhcp_on": true,
+          "external_dhcp": null,
+          "relay_vlan": null,
+          "space": "undefined",
+          "fabric": "fabric-1",
+          "name": "untagged",
+          "id": 5002,
+          "primary_rack": "ccfqya",
+          "secondary_rack": null,
+          "fabric_id": 1,
+          "resource_uri": "/MAAS/api/2.0/vlans/5002/"
+        },
+        "system_id": "ccfqya",
+        "children": [
+          "br0"
+        ],
+        "resource_uri": "/MAAS/api/2.0/nodes/ccfqya/interfaces/2/"
+      },
+      {
+        "enabled": true,
+        "tags": [],
+        "effective_mtu": 1500,
+        "vendor": "Intel Corp.",
+        "firmware_version": "N/A",
+        "links": [
+          {
+            "id": 2,
+            "mode": "static",
+            "ip_address": "172.16.99.11",
+            "subnet": {
+              "name": "172.16.99.0/24",
+              "vlan": {
+                "vid": 0,
+                "mtu": 1500,
+                "dhcp_on": true,
+                "external_dhcp": null,
+                "relay_vlan": null,
+                "space": "undefined",
+                "fabric": "fabric-1",
+                "name": "untagged",
+                "id": 5002,
+                "primary_rack": "ccfqya",
+                "secondary_rack": null,
+                "fabric_id": 1,
+                "resource_uri": "/MAAS/api/2.0/vlans/5002/"
+              },
+              "cidr": "172.16.99.0/24",
+              "rdns_mode": 2,
+              "gateway_ip": "172.16.99.1",
+              "dns_servers": [],
+              "allow_dns": true,
+              "allow_proxy": true,
+              "active_discovery": false,
+              "managed": true,
+              "space": "undefined",
+              "id": 2,
+              "resource_uri": "/MAAS/api/2.0/subnets/2/"
+            }
+          }
+        ],
+        "type": "bridge",
+        "parents": [
+          "eth1"
+        ],
+        "discovered": null,
+        "product": "Intel(R) Core(TM) i5-6300U CPU @ 2.40GHz",
+        "mac_address": "06:36:08:d9:69:b5",
+        "name": "br0",
+        "id": 3,
+        "params": "",
+        "vlan": {
+          "vid": 0,
+          "mtu": 1500,
+          "dhcp_on": true,
+          "external_dhcp": null,
+          "relay_vlan": null,
+          "space": "undefined",
+          "fabric": "fabric-1",
+          "name": "untagged",
+          "id": 5002,
+          "primary_rack": "ccfqya",
+          "secondary_rack": null,
+          "fabric_id": 1,
+          "resource_uri": "/MAAS/api/2.0/vlans/5002/"
+        },
+        "system_id": "ccfqya",
+        "children": [],
+        "resource_uri": "/MAAS/api/2.0/nodes/ccfqya/interfaces/3/"
+      }
+    ],
+    "memory_test_status": -1,
+    "cpu_speed": 2400,
+    "hardware_info": {
+      "system_vendor": "Unknown",
+      "system_product": "Unknown",
+      "system_version": "Unknown",
+      "system_serial": "Unknown",
+      "cpu_model": "Intel(R) Core(TM) i5-6300U CPU",
+      "mainboard_vendor": "Unknown",
+      "mainboard_product": "Unknown",
+      "mainboard_firmware_version": "Unknown",
+      "mainboard_firmware_date": "Unknown"
+    },
+    "version": "2.5.0~beta4-7361-g401d6c73d-0ubuntu1~18.04.1",
+    "node_type": 4,
+    "testing_status_name": "Unknown",
+    "power_state": "unknown",
+    "current_installation_result_id": null,
+    "storage_test_status": -1,
+    "osystem": "ubuntu",
+    "memory": 11864,
+    "zone": {
+      "name": "default",
+      "description": "",
+      "id": 1,
+      "resource_uri": "/MAAS/api/2.0/zones/default/"
+    },
+    "memory_test_status_name": "Unknown",
+    "other_test_status": -1,
+    "cpu_test_status_name": "Unknown",
+    "system_id": "ccfqya",
+    "resource_uri": "/MAAS/api/2.0/rackcontrollers/ccfqya/"
+  }
+}

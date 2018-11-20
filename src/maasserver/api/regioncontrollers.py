@@ -63,7 +63,8 @@ DISPLAYED_REGION_CONTROLLER_FIELDS = (
 
 
 class RegionControllerHandler(NodeHandler):
-    """Manage an individual region controller.
+    """
+    Manage an individual region controller.
 
     The region controller is identified by its system_id.
     """
@@ -72,16 +73,35 @@ class RegionControllerHandler(NodeHandler):
     fields = DISPLAYED_REGION_CONTROLLER_FIELDS
 
     def delete(self, request, system_id):
-        """Delete a specific region controller.
+        """@description-title Delete a region controller
+        @description Deletes a region controller with the given system_id.
 
         A region controller cannot be deleted if it hosts pod virtual machines.
         Use `force` to override this behavior. Forcing deletion will also
         remove hosted pods.
 
-        Returns 404 if the node is not found.
-        Returns 403 if the user does not have permission to delete the node.
-        Returns 400 if the node cannot be deleted.
-        Returns 204 if the node is successfully deleted.
+        @param (string) "{system_id}" [required=true] The region controller's
+        system_id.
+
+        @param (boolean) "force" [required=false] Tells MAAS to override
+        disallowing deletion of region controllers that host pod virtual
+        machines.
+
+        @success (http-status-code) "204" 204
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested rack controller system_id
+        is not found.
+        @error-example "not-found"
+            Not Found
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permission to
+        delete the rack controller.
+
+        @error (http-status-code) "400" 400
+        @error (content) "cannot-delete" If MAAS is unable to delete the
+        region controller.
         """
         node = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.admin)
@@ -91,38 +111,48 @@ class RegionControllerHandler(NodeHandler):
 
     @admin_method
     def update(self, request, system_id):
-        """Update a specific Region controller.
+        """@description-title Update a region controller
+        @description Updates a region controller with the given system_id.
 
-        :param power_type: The new power type for this region controller. If
-            you use the default value, power_parameters will be set to the
-            empty string.
-            Available to admin users.
-            See the `Power types`_ section for a list of the available power
-            types.
-        :type power_type: unicode
+        @param (string) "{system_id}" [required=true] The region controller's
+        system_id.
 
-        :param power_parameters_{param1}: The new value for the 'param1'
-            power parameter.  Note that this is dynamic as the available
-            parameters depend on the selected value of the region controller's
-            power_type.  Available to admin users. See the `Power types`_
-            section for a list of the available power parameters for each
-            power type.
-        :type power_parameters_{param1}: unicode
+        @param (string) "power_type" [required=false] The new power type for
+        this region controller. If you use the default value, power_parameters
+        will be set to the empty string.  Available to admin users.  See the
+        `Power types`_ section for a list of the available power types.
 
-        :param power_parameters_skip_check: Whether or not the new power
-            parameters for this region controller should be checked against the
-            expected power parameters for the region controller's power type
-            ('true' or 'false').
-            The default is 'false'.
-        :type power_parameters_skip_check: unicode
+        @param (string) "power_parameters_{param1}" [required=true] The new
+        value for the 'param1' power parameter. Note that this is dynamic as
+        the available parameters depend on the selected value of the region
+        controller's power_type.  Available to admin users. See the `Power
+        types`_ section for a list of the available power parameters for each
+        power type.
 
-        :param zone: Name of a valid physical zone in which to place this
-            region controller.
-        :type zone: unicode
+        @param (boolean) "power_parameters_skip_check" [required=false] Whether
+        or not the new power parameters for this region controller should be
+        checked against the expected power parameters for the region
+        controller's power type ('true' or 'false').  The default is 'false'.
 
-        Returns 404 if the region controller is not found.
-        Returns 403 if the user does not have permission to update the region
-        controller.
+        @param (string) "zone" [required=false] Name of a valid physical zone
+        in which to place this region controller.
+
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing the updated
+        region controller object.
+        @success-example (json) "success-json" [exkey=update] placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested region controller system_id
+        is not found.
+        @error-example "not-found"
+            Not Found
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permission to
+        update the region controller.
+        @error-example "no-perms"
+            This method is reserved for admin users.
         """
         region = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.edit)
