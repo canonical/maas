@@ -134,7 +134,7 @@ class GeneralHandler(Handler):
         for name, action in ACTIONS_DICT.items():
             admin_condition = (
                 node_type == NODE_TYPE.MACHINE and
-                action.node_permission == NodePermission.admin and
+                action.machine_permission == NodePermission.admin and
                 not user.is_superuser)
             if admin_condition:
                 continue
