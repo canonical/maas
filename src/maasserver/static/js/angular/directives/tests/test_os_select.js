@@ -82,7 +82,9 @@ describe("maasOsSelect", function() {
         var directive = compileDirective("osinfo", "selected");
         var select = directive.find('select[name="os"]');
         expect(select.attr("data-ng-options")).toBe(
-                "os[0] as os[1] for os in maasOsSelect.osystems");
+                "os[0] as os[1] disable when " +
+                "installKVMSelectedAndNotUbuntu(os) " +
+                "for os in maasOsSelect.osystems");
     });
 
     it("creates os select with ng-model", function() {
@@ -101,7 +103,8 @@ describe("maasOsSelect", function() {
         var directive = compileDirective("osinfo", "selected");
         var select = directive.find('select[name="release"]');
         expect(select.attr("data-ng-options")).toBe(
-                "release[0] as release[1] for release in releases");
+                 "release[0] as release[1] disable when osOutdated(release," +
+                 "deployOptions) for release in releases");
     });
 
     it("creates release select with ng-model", function() {

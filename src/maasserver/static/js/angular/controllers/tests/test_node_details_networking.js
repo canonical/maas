@@ -3612,6 +3612,10 @@ describe("NodeNetworkingController", function() {
 
         it("returns false if 802.3ad compliant", function() {
             var controller = makeController();
+            $scope.editInterface = {
+                id: 0,
+                link_id: -1
+            };
             $scope.newBondInterface.bond_mode = "802.3ad";
             $scope.newBondInterface.xmitHashPolicy = "layer2+3";
             expect($scope.showLACPRate()).toBe(false);
@@ -4014,7 +4018,7 @@ describe("NodeNetworkingController", function() {
                 MachinesManager.createBridgeInterface).not.toHaveBeenCalled();
         });
 
-        fit("calls createBridgeInterface and removes selection", function() {
+        it("calls createBridgeInterface and removes selection", function() {
             var controller = makeController();
             var vlan = {
                 id: makeInteger(0, 100)
