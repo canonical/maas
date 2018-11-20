@@ -98,7 +98,8 @@ class ResourcePoolManager(Manager, ResourcePoolQueriesMixin):
         # Circular imports.
         from maasserver.rbac import rbac
         if rbac.is_enabled():
-            return rbac.get_resource_pools(user.username, 'view')
+            return self.filter(
+                id__in=rbac.get_resource_pool_ids(user.username, 'view'))
         return self.all()
 
 

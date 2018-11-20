@@ -254,24 +254,24 @@ class TestRBACWrapperGetResourcePools(MAASServerTestCase):
             ResourcePool.objects.get_default_resource_pool())
         self.store.add_pool(self.default_pool)
 
-    def test_get_resource_pools_unknown_user(self):
+    def test_get_resource_pool_ids_unknown_user(self):
         self.store.add_pool(factory.make_ResourcePool())
         self.assertNotIn('user', self.store.allowed)
         self.assertEqual(
             [],
-            list(self.rbac.get_resource_pools('user', 'view')))
+            list(self.rbac.get_resource_pool_ids('user', 'view')))
 
-    def test_get_resource_pools_user_allowed_all(self):
+    def test_get_resource_pools_ids_user_allowed_all(self):
         pool1 = factory.make_ResourcePool()
         pool2 = factory.make_ResourcePool()
         self.store.add_pool(pool1)
         self.store.add_pool(pool2)
         self.store.allow('user', ALL_RESOURCES, 'view')
         self.assertCountEqual(
-            [self.default_pool, pool1, pool2],
-            self.rbac.get_resource_pools('user', 'view'))
+            [self.default_pool.id, pool1.id, pool2.id],
+            self.rbac.get_resource_pool_ids('user', 'view'))
 
-    def test_get_resource_pools_user_allowed_other_permission(self):
+    def test_get_resource_pools_ids_user_allowed_other_permission(self):
         pool1 = factory.make_ResourcePool()
         pool2 = factory.make_ResourcePool()
         self.store.add_pool(pool1)
@@ -279,21 +279,44 @@ class TestRBACWrapperGetResourcePools(MAASServerTestCase):
         self.store.allow('user', pool1, 'view')
         self.store.allow('user', pool2, 'edit')
         self.assertCountEqual(
-            [pool1],
-            self.rbac.get_resource_pools('user', 'view'))
+            [pool1.id],
+            self.rbac.get_resource_pool_ids('user', 'view'))
         self.assertCountEqual(
             [],
-            self.rbac.get_resource_pools('user', 'admin-machines'))
+            self.rbac.get_resource_pool_ids('user', 'admin-machines'))
 
-    def test_get_resource_pools_user_allowed_some(self):
+    def test_get_resource_pool_ids_user_allowed_some(self):
         pool1 = factory.make_ResourcePool()
         pool2 = factory.make_ResourcePool()
         self.store.add_pool(pool1)
         self.store.add_pool(pool2)
         self.store.allow('user', pool1, 'view')
         self.assertEqual(
-            sorted([pool1]),
-            sorted(self.rbac.get_resource_pools('user', 'view')))
+            sorted([pool1.id]),
+            sorted(self.rbac.get_resource_pool_ids('user', 'view')))
+
+    def test_get_resource_pool_ids_one_request_per_clear_cache(self):
+        self.store.allow('user', self.default_pool, 'view')
+        pools_one = self.rbac.get_resource_pool_ids('user', 'view')
+        new_pool = factory.make_ResourcePool()
+        self.store.allow('user', new_pool, 'view')
+        pools_two = self.rbac.get_resource_pool_ids('user', 'view')
+        self.rbac.clear_cache()
+        pools_three = self.rbac.get_resource_pool_ids('user', 'view')
+        self.assertItemsEqual([self.default_pool.id], pools_one)
+        self.assertItemsEqual([self.default_pool.id], pools_two)
+        self.assertItemsEqual([self.default_pool.id, new_pool.id], pools_three)
+
+    def test_get_resource_pool_ids_ALL_RESOURCES_always_returns_all(self):
+        self.store.allow('user', ALL_RESOURCES, 'view')
+        pools_one = self.rbac.get_resource_pool_ids('user', 'view')
+        new_pool = factory.make_ResourcePool()
+        pools_two = self.rbac.get_resource_pool_ids('user', 'view')
+        self.rbac.clear_cache()
+        pools_three = self.rbac.get_resource_pool_ids('user', 'view')
+        self.assertItemsEqual([self.default_pool.id], pools_one)
+        self.assertItemsEqual([self.default_pool.id, new_pool.id], pools_two)
+        self.assertItemsEqual([self.default_pool.id, new_pool.id], pools_three)
 
     def test_can_create_resource_pool_returns_True(self):
         self.store.allow('user', ALL_RESOURCES, 'edit')

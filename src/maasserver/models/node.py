@@ -485,11 +485,11 @@ class BaseNodeManager(Manager, NodeQueriesMixin):
                 "Invalid permission check (invalid permission name: %s)." %
                 perm)
         if rbac.is_enabled():
-            visible_pools = rbac.get_resource_pools(user.username, 'view')
-            admin_pools = rbac.get_resource_pools(
+            visible_pools = rbac.get_resource_pool_ids(user.username, 'view')
+            admin_pools = rbac.get_resource_pool_ids(
                 user.username, 'admin-machines')
-            condition |= Q(pool__in=admin_pools)
-            nodes = nodes.filter(pool__in=visible_pools)
+            condition |= Q(pool_id__in=admin_pools)
+            nodes = nodes.filter(pool_id__in=visible_pools)
 
         return nodes.filter(condition)
 

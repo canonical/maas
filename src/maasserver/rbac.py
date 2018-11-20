@@ -258,26 +258,47 @@ class RBACWrapper:
         This marks a client as cleared that way only a new client is created
         if the `rbac_url` is changed.
         """
+        self.clear_cache()
         self._store.cleared = True
 
     def is_enabled(self):
         """Return whether MAAS has been configured to use RBAC."""
         return self.client is not None
 
-    def get_resource_pools(self, user, permission):
-        """Get the resource pools that given user has the given permission on.
+    def get_cache(self, resource, user, default=dict):
+        """Return the cache for the `resource` and `user`."""
+        cache = getattr(self._store, 'cache', None)
+        if cache is None:
+            cache = {}
+            setattr(self._store, 'cache', cache)
+        key = (resource, user)
+        if key in cache:
+            return cache[key]
+        scoped = default()
+        cache[key] = scoped
+        return scoped
+
+    def clear_cache(self):
+        """Clears the entire cache."""
+        if hasattr(self._store, 'cache'):
+            delattr(self._store, 'cache')
+
+    def get_resource_pool_ids(self, user, permission):
+        """Get the resource pools ids that given user has the given
+        permission on.
 
         @param user: The user name of the user.
         @param permission: A permission that the user should
             have on the resource pool.
         """
-        pool_identifiers = self.client.allowed_for_user(
-            'resource-pool', user, permission)
-        pools = ResourcePool.objects.all()
-        if pool_identifiers is not ALL_RESOURCES:
+        pool_identifiers = self._get_resource_pool_identifiers(
+            user, permission)
+        if pool_identifiers is ALL_RESOURCES:
+            pool_ids = list(
+                ResourcePool.objects.all().values_list('id', flat=True))
+        else:
             pool_ids = [int(identifier) for identifier in pool_identifiers]
-            pools = pools.filter(id__in=pool_ids)
-        return pools
+        return pool_ids
 
     def can_create_resource_pool(self, user):
         """Return True if the `user` can create a resource pool.
@@ -287,9 +308,27 @@ class RBACWrapper:
 
         @param user: The user name of the user.
         """
-        pool_identifiers = self.client.allowed_for_user(
-            'resource-pool', user, 'edit')
+        pool_identifiers = self._get_resource_pool_identifiers(
+            user, 'edit')
         return pool_identifiers is ALL_RESOURCES
+
+    def _get_resource_pool_identifiers(self, user, permission):
+        """Get the resource pool identifiers from RBAC.
+
+        Uses the thread-local cache so only one request is made to RBAC per
+        request to MAAS.
+
+        @param user: The user name of the user.
+        @param permission: A permission that the user should
+            have on the resource pool.
+        """
+        cache = self.get_cache('resource-pool', user)
+        pool_identifiers = cache.get(permission, None)
+        if pool_identifiers is None:
+            pool_identifiers = self.client.allowed_for_user(
+                'resource-pool', user, permission)
+            cache[permission] = pool_identifiers
+        return pool_identifiers
 
 
 rbac = RBACWrapper()

@@ -11,9 +11,13 @@ __all__ = [
 import inspect
 import logging
 
+from django.db import connection
 import fixtures
 from maasserver.models.config import Config
-from maasserver.rbac import rbac
+from maasserver.rbac import (
+    FakeRBACClient,
+    rbac,
+)
 from maasserver.testing.factory import factory
 
 
@@ -100,5 +104,25 @@ class RBACForceOffFixture(fixtures.Fixture):
 
         def cleanup():
             rbac._get_rbac_url = orig_get_url
+
+        self.addCleanup(cleanup)
+
+
+class RBACEnabled(fixtures.Fixture):
+    """Fixture that enables RBAC."""
+
+    def _setUp(self):
+        # Must be called inside a transaction.
+        assert connection.in_atomic_block
+
+        Config.objects.set_config('rbac_url', 'http://rbac.example.com')
+        client = FakeRBACClient()
+        rbac._store.client = client
+        rbac._store.cleared = False
+        self.store = client.store
+
+        def cleanup():
+            rbac._store.client = None
+            rbac.clear()
 
         self.addCleanup(cleanup)
