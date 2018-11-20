@@ -348,12 +348,10 @@ class MAASAuthorizationBackend(ModelBackend):
         rbac_enabled = rbac.is_enabled()
         visible_pools, admin_pools = [], []
         if rbac_enabled:
-            visible_pools = rbac.get_resource_pools(
-                user.username, 'view').values_list(
-                    'id', flat=True)
-            admin_pools = rbac.get_resource_pools(
-                user.username, 'admin-machines').values_list(
-                    'id', flat=True)
+            visible_pools = rbac.get_resource_pool_ids(
+                user.username, 'view')
+            admin_pools = rbac.get_resource_pool_ids(
+                user.username, 'admin-machines')
 
         # Sanity check that a `ResourcePool` is being checked against
         # `ResourcePoolPermission`.
@@ -362,6 +360,22 @@ class MAASAuthorizationBackend(ModelBackend):
             raise TypeError(
                 'obj type of ResourcePool must be checked '
                 'against a `ResourcePoolPermission`.')
+
+        # Handle node permissions without objects.
+        if perm == NodePermission.admin and obj is None:
+            # User wants to admin writes to all nodes (aka. create a node),
+            # must be superuser for those permissions.
+            return user.is_superuser
+        elif perm == NodePermission.view and obj is None:
+            # XXX 2018-11-20 blake_r: View permission without an obj is used
+            # for device create as a standard user. Currently there is no
+            # specific DevicePermission and no way for this code path to know
+            # its for a device. So it is represented using this path.
+            #
+            # View is only used for the create action, modifying a created
+            # device uses the appropriate `NodePermission.edit` scoped to the
+            # device being editted.
+            return True
 
         # ResourcePool permissions are handled specifically.
         if isinstance(perm, ResourcePoolPermission):
@@ -386,7 +400,7 @@ class MAASAuthorizationBackend(ModelBackend):
                     rbac_enabled, user, obj, visible_pools, admin_pools)
                 return obj.pool_id is not None and can_edit
             elif perm == NodePermission.admin:
-                return self._can_admin(
+                return not obj.locked and self._can_admin(
                     rbac_enabled, user, obj, admin_pools)
             else:
                 raise NotImplementedError(
@@ -501,8 +515,8 @@ class MAASAuthorizationBackend(ModelBackend):
 
         if perm == ResourcePoolPermission.edit:
             if rbac_enabled:
-                return obj.id in rbac.get_resource_pools(
-                    user.username, 'edit').values_list('id', flat=True)
+                return obj.id in rbac.get_resource_pool_ids(
+                    user.username, 'edit')
             return user.is_superuser
         elif perm == ResourcePoolPermission.view:
             if rbac_enabled:

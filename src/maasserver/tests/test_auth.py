@@ -234,6 +234,30 @@ class TestMAASAuthorizationBackend(MAASServerTestCase, EnableRBACMixin):
             NodePermission.admin,
             make_allocated_node()))
 
+    def test_admin_cannot_admin_locked_nodes(self):
+        backend = MAASAuthorizationBackend()
+        node = make_allocated_node()
+        node.locked = True
+        node.save()
+        self.assertFalse(backend.has_perm(
+            factory.make_admin(),
+            NodePermission.admin, node))
+
+    def test_user_cannot_admin_all_nodes(self):
+        backend = MAASAuthorizationBackend()
+        self.assertFalse(
+            backend.has_perm(factory.make_User(), NodePermission.admin))
+
+    def test_user_can_admin_all_nodes(self):
+        backend = MAASAuthorizationBackend()
+        self.assertTrue(
+            backend.has_perm(factory.make_admin(), NodePermission.admin))
+
+    def test_user_can_view_all_nodes(self):
+        backend = MAASAuthorizationBackend()
+        self.assertTrue(
+            backend.has_perm(factory.make_User(), NodePermission.view))
+
     def test_user_cannot_view_nodes_owned_by_others(self):
         backend = MAASAuthorizationBackend()
         self.assertFalse(backend.has_perm(
