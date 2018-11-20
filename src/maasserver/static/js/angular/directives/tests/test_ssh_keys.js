@@ -25,6 +25,10 @@ describe("maasSshKeys", function() {
         SSHKeysManager = $injector.get('SSHKeysManager');
         JSONService = $injector.get('JSONService');
         ManagerHelperService = $injector.get('ManagerHelperService');
+        // Mock buildSocket so an actual connection is not made.
+        let RegionConnection = $injector.get("RegionConnection");
+        let webSocket = new MockWebSocket();
+        spyOn(RegionConnection, "buildSocket").and.returnValue(webSocket);
     }));
 
     // Create a new scope before each test.

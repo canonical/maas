@@ -27,6 +27,7 @@ module.exports = {
     plugins: [
         new UglifyJSPlugin({
             parallel: true,
+            cache: true,
             sourceMap: true,
             uglifyOptions: {
                 // Using the 'mangle' option breaks the Angular injector.

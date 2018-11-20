@@ -20,7 +20,7 @@ describe("RegionConnection", function() {
     }));
 
     // Load the RegionConnection factory.
-    var RegionConnection, webSocket;
+    let RegionConnection, webSocket;
     beforeEach(inject(function($injector) {
         RegionConnection = $injector.get("RegionConnection");
 
@@ -186,15 +186,91 @@ describe("RegionConnection", function() {
 
     describe("isConnected", function() {
 
-        it("returns true", function() {
-            RegionConnection.connected = true;
+        it("returns true in STATE.UP", function() {
+            RegionConnection.state = RegionConnection.STATE.UP;
             expect(RegionConnection.isConnected()).toBe(true);
         });
 
-        it("returns false", function() {
-            RegionConnection.connected = false;
+        it("returns false in STATE.DOWN", function() {
+            RegionConnection.state = RegionConnection.STATE.DOWN;
             expect(RegionConnection.isConnected()).toBe(false);
         });
+
+        it("returns false in STATE.RETRY", function() {
+            RegionConnection.state = RegionConnection.STATE.RETRY;
+            expect(RegionConnection.isConnected()).toBe(false);
+        });
+    });
+
+    describe("scheduleEnsureConnection", function() {
+
+        it("schedules ensureConnection to run", function() {
+            spyOn(RegionConnection, "ensureConnection");
+            RegionConnection.scheduleEnsureConnection();
+            $timeout.flush();
+            expect(RegionConnection.ensureConnection).toHaveBeenCalled();
+        });
+
+        it("does not schedule itself multiple times", function() {
+            spyOn(RegionConnection, "ensureConnection");
+            RegionConnection.scheduleEnsureConnection();
+            RegionConnection.scheduleEnsureConnection();
+            RegionConnection.scheduleEnsureConnection();
+            RegionConnection.scheduleEnsureConnection();
+            RegionConnection.scheduleEnsureConnection();
+            $timeout.flush();
+            expect(RegionConnection.ensureConnection).toHaveBeenCalledTimes(1);
+        });
+
+    });
+
+    describe("ensureConnection", function() {
+
+        beforeEach(function() {
+            spyOn(RegionConnection, "scheduleEnsureConnection");
+            spyOn(RegionConnection, "retry");
+            spyOn(RegionConnection, "connect");
+            spyOn(RegionConnection, "ping");
+        });
+
+        it("schedules itself to run again later", function() {
+            RegionConnection.ensureConnection();
+            expect(
+                RegionConnection.scheduleEnsureConnection).toHaveBeenCalled();
+        });
+
+        it("calls retry() if in UP state with missed pings", function() {
+            RegionConnection.state = RegionConnection.STATE.UP;
+            for(let i = 0; i < RegionConnection.maxMissedPings ; i++) {
+                RegionConnection.pingsInFlight.add(i);
+            }
+            RegionConnection.ensureConnection();
+            expect(RegionConnection.retry).toHaveBeenCalled();
+        });
+
+        it("calls retry() if UP with missed requests and pings", function() {
+            RegionConnection.state = RegionConnection.STATE.UP;
+            RegionConnection.pingsInFlight.add(1);
+            for(let i = 0; i < RegionConnection.maxPatience - 1 ; i++) {
+                RegionConnection.requests[i] = {};
+            }
+            RegionConnection.ensureConnection();
+            expect(RegionConnection.retry).toHaveBeenCalled();
+        });
+
+        it("calls ping() if in UP state", function() {
+            RegionConnection.state = RegionConnection.STATE.UP;
+            RegionConnection.ensureConnection();
+            expect(RegionConnection.ping).toHaveBeenCalled();
+        });
+
+        it("calls retry() and connect() if in RETRY state", function() {
+            RegionConnection.state = RegionConnection.STATE.RETRY;
+            RegionConnection.ensureConnection();
+            expect(RegionConnection.retry).toHaveBeenCalled();
+            expect(RegionConnection.connect).toHaveBeenCalled();
+        });
+
     });
 
     describe("connect", function() {
@@ -208,12 +284,6 @@ describe("RegionConnection", function() {
         it("sets url", function() {
             RegionConnection.connect();
             expect(RegionConnection.url).toBe(url);
-        });
-
-        it("sets autoReconnect to true", function() {
-            RegionConnection.autoReconnect = false;
-            RegionConnection.connect();
-            expect(RegionConnection.autoReconnect).toBe(true);
         });
 
         it("calls buildSocket with url", function() {
@@ -231,7 +301,7 @@ describe("RegionConnection", function() {
         it("sets connect to true when onopen called", function() {
             RegionConnection.connect();
             webSocket.onopen({});
-            expect(RegionConnection.connected).toBe(true);
+            expect(RegionConnection.isConnected()).toBe(true);
         });
 
         it("calls error handler when onerror called", function(done) {
@@ -244,39 +314,20 @@ describe("RegionConnection", function() {
             webSocket.onerror(evt_obj);
         });
 
-        it("sets connect to false when onclose called", function() {
-            RegionConnection.autoReconnect = false;
+        it("isConnected() is false when onclose called", function() {
             RegionConnection.connect();
             webSocket.onclose({});
-            expect(RegionConnection.connected).toBe(false);
+            expect(RegionConnection.isConnected()).toBe(false);
         });
 
         it("calls close handler when onclose called", function(done) {
             var evt_obj = {};
-            RegionConnection.autoReconnect = false;
-            RegionConnection.connect();
             RegionConnection.registerHandler("close", function(evt) {
                 expect(evt).toBe(evt_obj);
                 done();
             });
+            RegionConnection.connect();
             webSocket.onclose(evt_obj);
-        });
-
-        it("onclose calls connect when autoReconnect is true", function() {
-            RegionConnection.connect();
-            var new_url = "http://new-url";
-            buildUrlSpy.and.returnValue(new_url);
-            webSocket.onclose({});
-            $timeout.flush();
-            expect(RegionConnection.url).toBe(new_url);
-        });
-
-        it("onclose sets error", function() {
-            RegionConnection.connect();
-            webSocket.onclose();
-            $timeout.flush();
-            expect(RegionConnection.error).toBe(
-                "Unable to connect to: " + url);
         });
 
         it("calls onMessage when onmessage called", function() {
@@ -289,28 +340,37 @@ describe("RegionConnection", function() {
         });
     });
 
-    describe("close", function() {
+    describe("retry", function() {
 
         beforeEach(function() {
             spyOn(webSocket, "close");
         });
 
-        it("sets autoReconnect to false", function() {
+        it("sets state to RETRY", function() {
             RegionConnection.connect("");
-            RegionConnection.close();
-            expect(RegionConnection.autoReconnect).toBe(false);
+            RegionConnection.retry();
+            expect(RegionConnection.state).toBe(RegionConnection.STATE.RETRY);
         });
 
         it("calls close on websocket", function() {
             RegionConnection.connect("");
-            RegionConnection.close();
+            RegionConnection.retry();
             expect(webSocket.close).toHaveBeenCalled();
         });
 
         it("sets websocket to null", function() {
             RegionConnection.connect("");
-            RegionConnection.close();
+            RegionConnection.retry();
             expect(RegionConnection.websocket).toBeNull();
+        });
+
+        it("clears out event handlers", function() {
+            RegionConnection.connect("");
+            let ws = RegionConnection.websocket;
+            RegionConnection.retry();
+            expect(ws.onopen).toBeNull();
+            expect(ws.onerror).toBeNull();
+            expect(ws.onclose).toBeNull();
         });
     });
 
@@ -413,7 +473,7 @@ describe("RegionConnection", function() {
     describe("defaultConnect", function() {
 
         it("resolve defer if already connected", function(done) {
-            RegionConnection.connected = true;
+            RegionConnection.state = RegionConnection.STATE.UP;
             RegionConnection.defaultConnect().then(function() {
                 done();
             });

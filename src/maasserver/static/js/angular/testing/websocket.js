@@ -13,9 +13,13 @@ var READY_STATES = {
     CLOSED: 3
 };
 
-var MSG_TYPE = {
+// Message types (copied from region.js)
+const MSG_TYPE = {
     REQUEST: 0,
-    RESPONSE: 1
+    RESPONSE: 1,
+    NOTIFY: 2,
+    PING: 3,
+    PING_REPLY: 4
 };
 
 function MockWebSocket(url) {
@@ -26,12 +30,16 @@ function MockWebSocket(url) {
     this.onmessage = null;
     this.onopen = null;
 
+    this.replyToPing = true;
+
     this.sentData = [];
     this.returnData = [];
     this.receivedData = [];
 
+    this.sequenceNum = 0;
+
     // Simulate the connection opening.
-    var self = this;
+    let self = this;
     setTimeout(function() {
         self.readyState = READY_STATES.OPEN;
         if(angular.isFunction(self.onopen)) {
@@ -44,7 +52,7 @@ MockWebSocket.prototype.close = function() {
     this.readyState = READY_STATES.CLOSING;
 
     // Simulate the connection closing.
-    var self = this;
+    let self = this;
     setTimeout(function() {
         self.readyState = READY_STATES.CLOSED;
         if(angular.isFunction(self.onclose)) {
@@ -54,6 +62,26 @@ MockWebSocket.prototype.close = function() {
 };
 
 MockWebSocket.prototype.send = function(data) {
+    let sentObject = angular.fromJson(data);
+    let sentType = sentObject.type;
+    let sentId = sentObject.request_id;
+    let self = this;
+
+    // Special case for PING type; just reply and return.
+    if(self.replyToPing && angular.isNumber(sentType) &&
+       sentType === MSG_TYPE.PING) {
+        setTimeout(function() {
+            self.sequenceNum += 1;
+            let pingResultData = angular.toJson({
+                type: MSG_TYPE.PING_REPLY,
+                request_id: sentId,
+                result: self.sequenceNum
+            });
+            self.onmessage({ data: pingResultData });
+        });
+        return;
+    }
+
     this.sentData.push(data);
 
     // Exit early if no fake data to return.
@@ -68,13 +96,9 @@ MockWebSocket.prototype.send = function(data) {
         receivedData = [receivedData];
     }
 
-    var self = this;
 
     // Send the response
     setTimeout(function() {
-        var sentObject = angular.fromJson(data);
-        var sentType = sentObject.type;
-        var sentId = sentObject.request_id;
         if(angular.isNumber(sentType) && angular.isNumber(sentId)) {
             // Patch the request_id so the response is the
             // same as the request.

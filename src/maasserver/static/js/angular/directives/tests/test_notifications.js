@@ -62,9 +62,13 @@ describe("maasNotifications", function() {
     var theNotificationsManager;
     var $scope;
 
-    beforeEach(inject(function($rootScope, NotificationsManager) {
+    beforeEach(inject(function($rootScope, NotificationsManager, $injector) {
         theNotificationsManager = NotificationsManager;
         $scope = $rootScope.$new();
+        // Mock buildSocket so an actual connection is not made.
+        let RegionConnection = $injector.get("RegionConnection");
+        let webSocket = new MockWebSocket();
+        spyOn(RegionConnection, "buildSocket").and.returnValue(webSocket);
     }));
 
     describe("maas-notifications", function() {

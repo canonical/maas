@@ -51,7 +51,7 @@ angular.module('MAAS').service('LogService', [
                 // Add time index to the beginning of the log.
                 Array.prototype.unshift.call(args,
                     "[" + self.formatMilliseconds(self.now()) + "]");
-                destination.apply(self, args);
+                destination.apply(console, args);
             }
         };
 
