@@ -330,6 +330,19 @@ class TestDeleteAction(MAASServerTestCase):
                 NODE_TYPE_CHOICES_DICT[node.node_type].lower(),
                 node.hostname))
 
+    def test_deletes_when_primary_rack_on_vlan(self):
+        # Regression test for LP:1793478.
+        rack = factory.make_RackController()
+        nic = factory.make_Interface(node=rack)
+        nic.vlan.primary_rack = rack
+        nic.vlan.save()
+        admin = factory.make_admin()
+        request = factory.make_fake_request('/')
+        request.user = admin
+        action = Delete(rack, admin, request)
+        action.execute()
+        self.assertIsNone(reload_object(rack))
+
 
 class TestCommissionAction(MAASServerTestCase):
 

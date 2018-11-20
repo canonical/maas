@@ -9,12 +9,12 @@ angular.module('MAAS').controller('NodesListController', [
     'MachinesManager', 'DevicesManager', 'ControllersManager',
     'GeneralManager', 'ManagerHelperService', 'SearchService',
     'ZonesManager', 'UsersManager', 'ServicesManager', 'ScriptsManager',
-    'SwitchesManager', 'ResourcePoolsManager',
+    'SwitchesManager', 'ResourcePoolsManager', 'VLANsManager',
     function($q, $scope, $interval, $rootScope, $routeParams, $location,
         MachinesManager, DevicesManager, ControllersManager, GeneralManager,
         ManagerHelperService, SearchService, ZonesManager, UsersManager,
         ServicesManager, ScriptsManager, SwitchesManager,
-        ResourcePoolsManager) {
+             ResourcePoolsManager, VLANsManager) {
 
         // Mapping of device.ip_assignment to viewable text.
         var DEVICE_IP_ASSIGNMENT = {
@@ -39,6 +39,7 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.currentpage = "machines";
         $scope.osinfo = {};
         $scope.scripts = ScriptsManager.getItems();
+        $scope.vlans = VLANsManager.getItems();
         $scope.loading = true;
 
         $scope.tabs = {};
@@ -74,6 +75,8 @@ angular.module('MAAS').controller('NodesListController', [
             completed: 0,
             errors: {},
             showing_confirmation: false,
+            confirmation_message: '',
+            confirmation_details: [],
             affected_nodes: 0
         };
         $scope.tabs.machines.osSelection = {
@@ -186,6 +189,8 @@ angular.module('MAAS').controller('NodesListController', [
             completed: 0,
             errors: {},
             showing_confirmation: false,
+            confirmation_message: '',
+            confirmation_details: [],
             affected_nodes: 0
         };
         $scope.tabs.devices.zoneSelection = null;
@@ -218,6 +223,8 @@ angular.module('MAAS').controller('NodesListController', [
             completed: 0,
             errors: {},
             showing_confirmation: false,
+            confirmation_message: '',
+            confirmation_details: [],
             affected_nodes: 0
         };
         $scope.tabs.controllers.zoneSelection = null;
@@ -251,6 +258,8 @@ angular.module('MAAS').controller('NodesListController', [
             completed: 0,
             errors: {},
             showing_confirmation: false,
+            confirmation_message: '',
+            confirmation_details: [],
             affected_nodes: 0
         };
         $scope.tabs.switches.osSelection = {
@@ -417,6 +426,8 @@ angular.module('MAAS').controller('NodesListController', [
             progress.completed = progress.total = 0;
             progress.errors = {};
             progress.showing_confirmation = false;
+            progress.confirmation_message = '';
+            progress.confirmation_details = [];
             progress.affected_nodes = 0;
         }
 
@@ -710,7 +721,7 @@ angular.module('MAAS').controller('NodesListController', [
             // promise, no matter if something is to be executed or not.
             var preAction = deferred.promise;
             deferred.resolve();
-            var i;
+            var i, j;
             // Set deploy parameters if a deploy or set zone action.
             if(tab.actionOption.name === "deploy" &&
                angular.isString(tab.osSelection.osystem) &&
@@ -791,11 +802,15 @@ angular.module('MAAS').controller('NodesListController', [
                     for(i=0;i<tab.selectedItems.length;i++) {
                         if(tab.selectedItems[i].status_code === 6)
                         {
-                            progress.showing_confirmation = true;
                             progress.affected_nodes++;
                         }
                     }
-                    if(tab.actionProgress.affected_nodes != 0) {
+                    if(progress.affected_nodes != 0) {
+                        progress.confirmation_message =
+                            progress.affected_nodes + " of "
+                            + tab.selectedItems.length + " " + $scope.page
+                            + " are in a deployed state.";
+                        progress.showing_confirmation = true;
                         return;
                     }
                 }
@@ -815,6 +830,36 @@ angular.module('MAAS').controller('NodesListController', [
                 extra.erase = tab.releaseOptions.erase;
                 extra.secure_erase = tab.releaseOptions.secureErase;
                 extra.quick_erase = tab.releaseOptions.quickErase;
+            } else if(tab.actionOption.name === "delete" &&
+                      tabName === "controllers" &&
+                      !tab.actionProgress.showing_confirmation) {
+                for(i=0;i<tab.selectedItems.length;i++) {
+                    var controller = tab.selectedItems[i];
+                    for(j=0;j<$scope.vlans.length;j++) {
+                        var vlan = $scope.vlans[j];
+                        if(vlan.primary_rack === controller.system_id) {
+                            tab.actionProgress.confirmation_details.push(
+                                controller.fqdn +
+                                " is the primary rack controller for " +
+                                vlan.name);
+                            tab.actionProgress.affected_nodes++;
+                        }
+                        if(vlan.secondary_rack === controller.system_id) {
+                            tab.actionProgress.confirmation_details.push(
+                                controller.fqdn +
+                                " is the secondary rack controller for " +
+                                vlan.name);
+                            tab.actionProgress.affected_nodes++;
+                        }
+                    }
+                }
+                if(tab.actionProgress.affected_nodes != 0) {
+                    tab.actionProgress.confirmation_message =
+                        tab.actionProgress.affected_nodes +
+                        " controllers will be deleted.";
+                    tab.actionProgress.showing_confirmation = true;
+                    return;
+                }
             }
 
             preAction.then(
@@ -912,6 +957,11 @@ angular.module('MAAS').controller('NodesListController', [
         if($scope.currentpage === "machines" ||
            $scope.currentpage === "controllers") {
             page_managers.push(ScriptsManager);
+        }
+        if($scope.currentpage === "controllers") {
+            // VLANsManager is used during controller delete to see if its
+            // managing a VLAN when confirming delete.
+            page_managers.push(VLANsManager);
         }
 
         // Load the required managers for this controller. The ServicesManager

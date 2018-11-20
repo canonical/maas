@@ -88,7 +88,7 @@
                                         <input id="skipStorage" type="checkbox" data-ng-model="commissionOptions.skipStorage">
                                         <label for="skipStorage">Retain storage configuration</label>
                                     </li>
-				    <li class="p-inline-list__item ng-hide" data-ng-show="action.option.name === 'commission'">
+                                    <li class="p-inline-list__item ng-hide" data-ng-show="action.option.name === 'commission'">
                                         <input id="skipBMCConfig" type="checkbox" data-ng-model="commissionOptions.skipBMCConfig">
                                         <label for="skipBMCConfig">Skip configuring supported BMC controllers with a MAAS generated username and password.</label>
                                     </li>
@@ -137,7 +137,7 @@
                         </div>
                         <div class="row">
                             <div class="col-12 u-align--right">
-                                <div class="page-header__controls" data-ng-if="action.option.name !== 'commission' && action.option.name !== 'test'">
+                                <div class="page-header__controls" data-ng-if="action.option.name !== 'commission' && action.option.name !== 'test' && !action.showing_confirmation">
                                     <button class="p-button--base" data-ng-click="actionCancel()">Cancel</button>
                                     <button class="p-button--neutral u-no-margin--top" data-ng-class="action.option.name === 'delete' ? 'p-button--negative' : 'p-button--positive'" data-ng-click="actionGo('nodes')" data-ng-hide="hasActionsFailed('nodes')">
                                         <span data-ng-if="action.option.name === 'acquire'">Acquire {$ type_name $}</span>
@@ -188,7 +188,7 @@
                     </form>
                 </div>
             </div>
-            <div class="u-no-margin--top row ng-hide"  data-ng-hide="isActionError() || isDeployError() || isSSHKeyError() || hasActionPowerError(action.option.name)" data-ng-if="action.option.name === 'commission' || action.option.name === 'test'">
+            <div class="u-no-margin--top row ng-hide"  data-ng-hide="isActionError() || isDeployError() || isSSHKeyError() || hasActionPowerError(action.option.name)" data-ng-if="action.option.name === 'commission' || action.option.name === 'test' && !action.showing_confirmation">
                 <hr />
                 <div class="page-header__section col-12">
                     <form class="p-form">
@@ -202,17 +202,23 @@
                     </form>
                 </div>
             </div>
-            <div class="row u-equal-height ng-hide" data-ng-show="action.showing_confirmation && action.option.name === 'test'">
-                <div class="col-9 u-vertically-center">
-                    <p class="u-remove-max-width">
-                        <i class="p-icon--warning">Warning:</i> Node is currently deployed. Are you sure you want to continue to test hardware?
-                    </p>
-                </div>
-                <div class="col-3">
-                    <div class="u-align--right">
-                        <button class="p-button--base" data-ng-click="actionCancel()">No</button>
-                        <button class="p-button--neutral" data-ng-click="actionGo()">Yes</button>
+            <div class="row ng-hide" data-ng-show="action.showing_confirmation">
+                <hr />
+                <div class="u-equal-height">
+                    <div class="col-9 u-vertically-center">
+                        <p class="u-remove-max-width">
+                            <i class="p-icon--warning" /><b>Confirm:</b> {$ action.confirmation_message $}
+                        </p>
                     </div>
+                    <div class="col-3">
+                        <div class="u-align--right">
+                            <button class="p-button--base" data-ng-click="actionCancel()">No</button>
+                            <button class="p-button--negative" data-ng-click="actionGo()">Yes</button>
+                        </div>
+                    </div>
+                </div>
+                <div data-ng-repeat="confirmation_detail in action.confirmation_details">
+                    <span>{$ confirmation_detail $}</span>
                 </div>
             </div>
             <div class="row u-equal-height ng-hide" data-ng-show="isActionError()">

@@ -42,7 +42,7 @@ describe("NodesListController", function() {
         SwitchesManager, ZonesManager, UsersManager, ServicesManage,
         ResourcePoolsManager;
     var ManagerHelperService, SearchService;
-    var ScriptsManager;
+    var ScriptsManager, VLANsManager;
     beforeEach(inject(function($injector) {
         MachinesManager = $injector.get("MachinesManager");
         DevicesManager = $injector.get("DevicesManager");
@@ -54,6 +54,7 @@ describe("NodesListController", function() {
         ManagerHelperService = $injector.get("ManagerHelperService");
         SearchService = $injector.get("SearchService");
         ScriptsManager = $injector.get("ScriptsManager");
+        VLANsManager = $injector.get("VLANsManager");
         SwitchesManager = $injector.get("SwitchesManager");
         ResourcePoolsManager = $injector.get("ResourcePoolsManager");
     }));
@@ -233,6 +234,9 @@ describe("NodesListController", function() {
                 if($scope.currentpage === "machines" ||
                         $scope.currentpage === "controllers") {
                     page_managers.push(ScriptsManager);
+                }
+                if($scope.currentpage === "controllers") {
+                    page_managers.push(VLANsManager);
                 }
                 expect(
                     ManagerHelperService.loadManagers
@@ -1206,6 +1210,10 @@ describe("NodesListController", function() {
                         [{}];
                     $scope.tabs[tab].actionProgress.showing_confirmation =
                         true;
+                    $scope.tabs[tab].actionProgress.confirmation_message =
+                        makeName("message");
+                    $scope.tabs[tab].actionProgress.confirmation_details =
+                        [makeName("detail"), makeName("detail")];
                     $scope.tabs[tab].actionProgress.affected_nodes =
                         makeInteger(0, 10);
                     $scope.actionCancel(tab);
@@ -1214,6 +1222,10 @@ describe("NodesListController", function() {
                     expect($scope.tabs[tab].actionProgress.errors).toEqual({});
                     expect($scope.tabs[
                         tab].actionProgress.showing_confirmation).toBe(false);
+                    expect($scope.tabs[
+                        tab].actionProgress.confirmation_message).toEqual("");
+                    expect($scope.tabs[
+                        tab].actionProgress.confirmation_details).toEqual([]);
                     expect($scope.tabs[
                         tab].actionProgress.affected_nodes).toBe(0);
                 });
@@ -1728,6 +1740,9 @@ describe("NodesListController", function() {
                         "machines"].actionProgress.showing_confirmation).toBe(
                             true);
                     expect($scope.tabs[
+                        "machines"].actionProgress.confirmation_message
+                          ).not.toBe("");
+                    expect($scope.tabs[
                         "machines"].actionProgress.affected_nodes).toBe(1);
                     expect(spy).not.toHaveBeenCalled();
             });
@@ -1757,6 +1772,37 @@ describe("NodesListController", function() {
                             secure_erase: secureErase,
                             quick_erase: quickErase
                         });
+            });
+
+            it("sets showing_confirmation with deleteOptions",
+                function() {
+                    // Regression test for LP:1793478
+                    var controller = makeController();
+                    var object = makeObject("controllers");
+                    $scope.vlans = [{
+                        'id': 0,
+                        'primary_rack': object.system_id,
+                        'name': 'Default VLAN'
+                    }];
+                    var spy = spyOn(
+                        $scope.tabs.controllers.manager,
+                        "performAction").and.returnValue(
+                            $q.defer().promise);
+                    $scope.tabs.controllers.actionOption = { name: "delete" };
+                    $scope.tabs.controllers.selectedItems = [object];
+                    $scope.actionGo("controllers");
+                    expect($scope.tabs[
+                        "controllers"].actionProgress.showing_confirmation
+                          ).toBe(true);
+                    expect($scope.tabs[
+                        "controllers"].actionProgress.confirmation_message
+                          ).not.toBe("");
+                    expect($scope.tabs[
+                        "controllers"].actionProgress.confirmation_details
+                          ).not.toBe([]);
+                    expect($scope.tabs[
+                        "controllers"].actionProgress.affected_nodes).toBe(1);
+                    expect(spy).not.toHaveBeenCalled();
             });
 
             it("clears commissionOptions when successfully complete",

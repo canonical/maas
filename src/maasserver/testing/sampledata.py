@@ -319,6 +319,12 @@ def populate_main():
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY, ip="172.16.3.2",
             subnet=subnet_3, interface=bond0_10)
+        fabric0_untagged.primary_rack = region_rack
+        fabric0_untagged.save()
+        fabric1_untagged.primary_rack = region_rack
+        fabric1_untagged.save()
+        fabric0_vlan10.primary_rack = region_rack
+        fabric0_vlan10.save()
 
     # Rack controller (happy-rack)
     #   eth0     - fabric 0 - untagged
@@ -353,6 +359,12 @@ def populate_main():
     factory.make_StaticIPAddress(
         alloc_type=IPADDRESS_TYPE.STICKY, ip="172.16.3.3",
         subnet=subnet_3, interface=bond0_10)
+    fabric0_untagged.secondary_rack = rack
+    fabric0_untagged.save()
+    fabric1_untagged.secondary_rack = rack
+    fabric1_untagged.save()
+    fabric0_vlan10.secondary_rack = rack
+    fabric0_vlan10.save()
 
     # Region controller (happy-region)
     #   eth0     - fabric 0 - untagged

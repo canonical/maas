@@ -39,7 +39,7 @@ describe("NodeDetailsController", function() {
     var MachinesManager, ControllersManager, ServicesManager;
     var DevicesManager, GeneralManager, UsersManager, DomainsManager;
     var TagsManager, RegionConnection, ManagerHelperService, ErrorService;
-    var ScriptsManager, ResourcePoolsManager;
+    var ScriptsManager, ResourcePoolsManager, VLANsManager;
     var webSocket;
     beforeEach(inject(function($injector) {
         MachinesManager = $injector.get("MachinesManager");
@@ -56,6 +56,7 @@ describe("NodeDetailsController", function() {
         ServicesManager = $injector.get("ServicesManager");
         ErrorService = $injector.get("ErrorService");
         ScriptsManager = $injector.get("ScriptsManager");
+        VLANsManager = $injector.get("VLANsManager");
 
         // Mock buildSocket so an actual connection is not made.
         webSocket = new MockWebSocket();
@@ -215,6 +216,8 @@ describe("NodeDetailsController", function() {
         expect($scope.action.availableOptions).toEqual([]);
         expect($scope.action.error).toBeNull();
         expect($scope.action.showing_confirmation).toBe(false);
+        expect($scope.action.confirmation_message).toEqual("");
+        expect($scope.action.confirmation_details).toEqual([]);
         expect($scope.osinfo).toBe(GeneralManager.getData("osinfo"));
         expect($scope.power_types).toBe(GeneralManager.getData("power_types"));
         expect($scope.osSelection.osystem).toBeNull();
@@ -316,7 +319,7 @@ describe("NodeDetailsController", function() {
             $scope, [
                 ZonesManager, GeneralManager, UsersManager, TagsManager,
                 DomainsManager, ServicesManager, ResourcePoolsManager,
-                ControllersManager, ScriptsManager]);
+                ControllersManager, ScriptsManager, VLANsManager]);
     });
 
     it("doesnt call setActiveItem if node is loaded", function() {
@@ -1023,8 +1026,13 @@ describe("NodeDetailsController", function() {
         it("resets showing_confirmation", function() {
             var controller = makeController();
             $scope.action.showing_confirmation = true;
+            $scope.action.confirmation_message = makeName("message");
+            $scope.action.confirmation_details = [
+                makeName("detail"), makeName("detail"), makeName("detail")];
             $scope.actionCancel();
             expect($scope.action.showing_confirmation).toBe(false);
+            expect($scope.action.confirmation_message).toEqual("");
+            expect($scope.action.confirmation_details).toEqual([]);
         });
     });
 
@@ -1231,6 +1239,28 @@ describe("NodeDetailsController", function() {
                     secure_erase: secureErase,
                     quick_erase: quickErase
                 });
+        });
+
+        it("sets showing_confirmation with deleteOptions", function() {
+            // Regression test for LP:1793478
+            var controller = makeController();
+            spyOn(ControllersManager, "performAction").and.returnValue(
+                $q.defer().promise);
+            $scope.node = node;
+            $scope.type_name = "controller";
+            $scope.vlans = [{
+                "id": 0,
+                "primary_rack": node.system_id,
+                "name": "Default VLAN"
+            }];
+            $scope.action.option = {
+                name: "delete"
+            };
+            $scope.actionGo();
+            expect($scope.action.showing_confirmation).toBe(true);
+            expect($scope.action.confirmation_message).not.toEqual("");
+            expect($scope.action.confirmation_details).not.toEqual([]);
+            expect(ControllersManager.performAction).not.toHaveBeenCalled();
         });
 
         it("clears actionOption on resolve", function() {

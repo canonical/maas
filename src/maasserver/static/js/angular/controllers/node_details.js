@@ -9,12 +9,13 @@ angular.module('MAAS').controller('NodeDetailsController', [
     'DevicesManager', 'MachinesManager', 'ControllersManager', 'ZonesManager',
     'GeneralManager', 'UsersManager', 'TagsManager', 'DomainsManager',
     'ManagerHelperService', 'ServicesManager', 'ErrorService',
-    'ValidationService', 'ScriptsManager', 'ResourcePoolsManager', function(
+    'ValidationService', 'ScriptsManager', 'ResourcePoolsManager',
+    'VLANsManager', function(
         $scope, $rootScope, $routeParams, $location, $interval, DevicesManager,
         MachinesManager, ControllersManager, ZonesManager, GeneralManager,
         UsersManager, TagsManager, DomainsManager, ManagerHelperService,
         ServicesManager, ErrorService, ValidationService, ScriptsManager,
-        ResourcePoolsManager) {
+        ResourcePoolsManager, VLANsManager) {
 
         // Mapping of device.ip_assignment to viewable text.
         var DEVICE_IP_ASSIGNMENT = {
@@ -35,7 +36,9 @@ angular.module('MAAS').controller('NodeDetailsController', [
           allOptions: null,
           availableOptions: [],
           error: null,
-          showing_confirmation: false
+          showing_confirmation: false,
+          confirmation_message: '',
+          confirmation_details: []
         };
         $scope.power_types = GeneralManager.getData("power_types");
         $scope.osinfo = GeneralManager.getData("osinfo");
@@ -65,6 +68,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
         $scope.checkingPower = false;
         $scope.devices = [];
         $scope.scripts = ScriptsManager.getItems();
+        $scope.vlans = VLANsManager.getItems();
 
         // Node header section.
         $scope.header = {
@@ -561,6 +565,8 @@ angular.module('MAAS').controller('NodeDetailsController', [
             // Clear the action error.
             $scope.action.error = null;
             $scope.action.showing_confirmation = false;
+            $scope.action.confirmation_message = '';
+            $scope.action.confirmation_details = [];
         };
 
         // Cancel the action.
@@ -568,6 +574,8 @@ angular.module('MAAS').controller('NodeDetailsController', [
             $scope.action.option = null;
             $scope.action.error = null;
             $scope.action.showing_confirmation = false;
+            $scope.action.confirmation_message = '';
+            $scope.action.confirmation_details = [];
         };
 
         // Perform the action.
@@ -633,6 +641,9 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 if($scope.node.status_code === 6 &&
                         !$scope.action.showing_confirmation) {
                     $scope.action.showing_confirmation = true;
+                    $scope.action.confirmation_message =
+                        $scope.type_name_title + " is currently deployed. " +
+                        "Are you sure you want to continue to test hardware?";
                     return;
                 }
                 // Set the test options.
@@ -650,6 +661,30 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 extra.erase = $scope.releaseOptions.erase;
                 extra.secure_erase = $scope.releaseOptions.secureErase;
                 extra.quick_erase = $scope.releaseOptions.quickErase;
+            } else if ($scope.action.option.name === "delete" &&
+                       $scope.type_name === "controller" &&
+                       !$scope.action.showing_confirmation) {
+                for(i=0;i<$scope.vlans.length;i++) {
+                    var vlan = $scope.vlans[i];
+                    if(vlan.primary_rack === $scope.node.system_id) {
+                        $scope.action.confirmation_details.push(
+                            $scope.node.fqdn +
+                            " is the primary rack controller for " +
+                            vlan.name);
+                    }
+                    if(vlan.secondary_rack === $scope.node.system_id) {
+                        $scope.action.confirmation_details.push(
+                            $scope.node.fqdn +
+                            " is the secondary rack controller for " +
+                            vlan.name);
+                    }
+                }
+                if($scope.action.confirmation_details.length > 0) {
+                    $scope.action.confirmation_message +=
+                        "Are you sure you want delete this controller?";
+                    $scope.action.showing_confirmation = true;
+                    return;
+                }
             }
 
             $scope.nodesManager.performAction(
@@ -661,6 +696,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
                     $scope.action.option = null;
                     $scope.action.error = null;
                     $scope.action.showing_confirmation = false;
+                    $scope.action.confirmation_message = '';
                     $scope.osSelection.$reset();
                     $scope.commissionOptions.enableSSH = false;
                     $scope.commissionOptions.skipBMCConfig = false;
@@ -1114,7 +1150,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
         var page_managers;
         if($location.path().indexOf('/controller') !== -1) {
             $scope.nodesManager = ControllersManager;
-            page_managers = [ControllersManager, ScriptsManager];
+            page_managers = [ControllersManager, ScriptsManager, VLANsManager];
             $scope.isController = true;
             $scope.isDevice = false;
             $scope.type_name = 'controller';

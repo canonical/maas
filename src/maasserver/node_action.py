@@ -258,7 +258,10 @@ class Delete(NodeAction):
         All that the action really does is get you to its are-you-sure
         page.
         """
-        self.node.delete()
+        if self.node.is_controller:
+            self.node.as_self().delete(force=True)
+        else:
+            self.node.delete()
 
 
 class SetZone(NodeAction):
