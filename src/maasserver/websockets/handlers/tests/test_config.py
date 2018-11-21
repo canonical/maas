@@ -19,6 +19,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.websockets.base import (
     HandlerDoesNotExistError,
+    HandlerPermissionError,
     HandlerPKError,
     HandlerValidationError,
 )
@@ -110,7 +111,7 @@ class TestConfigHandler(MAASServerTestCase):
     def test_update_as_non_admin_asserts(self):
         user = factory.make_User()
         handler = ConfigHandler(user, {}, None)
-        with ExpectedException(AssertionError, "Permission denied."):
+        with ExpectedException(HandlerPermissionError):
             handler.update({})
 
     def test_update_requires_name(self):

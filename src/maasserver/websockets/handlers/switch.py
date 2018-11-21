@@ -11,7 +11,6 @@ from maasserver.exceptions import NodeActionError
 from maasserver.models.node import Node
 from maasserver.node_action import compile_node_actions
 from maasserver.permissions import NodePermission
-from maasserver.utils.orm import reload_object
 from maasserver.websockets.base import HandlerDoesNotExistError
 from maasserver.websockets.handlers.machine import MachineHandler
 from maasserver.websockets.handlers.node import (
@@ -57,7 +56,7 @@ class SwitchHandler(NodeHandler):
     def get_object(self, params):
         """Get object by using the `pk` in `params`."""
         obj = super(SwitchHandler, self).get_object(params)
-        if reload_object(self.user).is_superuser or obj.owner == self.user:
+        if self.user.is_superuser or obj.owner == self.user:
             return obj
         raise HandlerDoesNotExistError(params[self._meta.pk])
 

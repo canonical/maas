@@ -9,7 +9,6 @@ from itertools import product
 import random
 from unittest.mock import sentinel
 
-from maasserver.models import User
 from maasserver.models.notification import NotificationDismissal
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -193,25 +192,6 @@ class TestNotificationHandlerListening(MAASServerTestCase):
         self.assertThat(handler.on_listen(
             "notification", "update", notification.id), Is(None))
         self.assertThat(super_on_listen, MockNotCalled())
-
-    def test_listen_reloads_user(self):
-        admin = factory.make_admin()
-        handler = NotificationHandler(admin, {}, None)
-        notification = factory.make_Notification(admins=True)
-
-        # The notification is currently relevant to `admin`.
-        self.assertThat(handler.listen(
-            "notification", "create", notification.id), Equals(notification))
-
-        # Change `admin` to a regular user in the database.
-        admin_alt = User.objects.get(id=admin.id)
-        admin_alt.is_superuser = False
-        admin_alt.save()
-
-        # The change is noticed because `handler.listen` reloads the user,
-        # meaning the notification is no longer relevant.
-        self.assertThat(handler.listen(
-            "notification", "create", notification.id), Is(None))
 
 
 class TestNotificationHandlerListeningScenarios(MAASServerTestCase):

@@ -24,15 +24,20 @@ from maasserver.models.node import (
 )
 from maasserver.models.vlan import VLAN
 from maasserver.models.zone import Zone
+from maasserver.permissions import NodePermission
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.testing.testcase import (
+    MAASServerTestCase,
+    MAASTransactionServerTestCase,
+)
 from maasserver.utils.orm import reload_object
 from maasserver.websockets import base
 from maasserver.websockets.base import (
     Handler,
     HandlerDoesNotExistError,
     HandlerNoSuchMethodError,
+    HandlerPermissionError,
     HandlerValidationError,
 )
 from maastesting.matchers import (
@@ -121,7 +126,7 @@ class TestHandlerMeta(MAASTestCase):
         self.assertEqual(list_exclude, handler._meta.list_exclude)
 
 
-class TestHandler(MAASServerTestCase):
+class FakeNodesHandlerMixin:
 
     def make_nodes_handler(self, **kwargs):
         meta_args = {
@@ -141,6 +146,9 @@ class TestHandler(MAASServerTestCase):
     def make_mock_node_with_fields(self, **kwargs):
         return object.__new__(
             type("MockNode", (object,), kwargs))
+
+
+class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
 
     def test_full_dehydrate_only_includes_allowed_fields(self):
         handler = self.make_nodes_handler(fields=["hostname", "cpu_count"])
@@ -370,7 +378,7 @@ class TestHandler(MAASServerTestCase):
         with ExpectedException(HandlerNoSuchMethodError):
             handler.execute("extra_method", {}).wait(30)
 
-    def test_execute_calls_method_with_params(self):
+    def test_execute_calls_in_database_thread_with_params(self):
         # Methods are assumed by default to be synchronous and are called in a
         # thread that originates from a specific threadpool.
         handler = self.make_nodes_handler()
@@ -379,17 +387,6 @@ class TestHandler(MAASServerTestCase):
         result = handler.execute("get", params).wait(30)
         self.assertThat(result, Is(sentinel.thing))
         self.assertThat(base.deferToDatabase, MockCalledOnceWith(ANY, params))
-        [func, _] = base.deferToDatabase.call_args[0]
-        self.assertThat(func.func, Equals(handler.get))
-
-    def test_execute_calls_asynchronous_method_with_params(self):
-        # An asynchronous method -- decorated with @asynchronous -- is called
-        # directly, not in a thread.
-        handler = self.make_nodes_handler()
-        handler.get = asynchronous(lambda params: sentinel.thing)
-        params = {"system_id": factory.make_name("system_id")}
-        result = handler.execute("get", params).wait(30)
-        self.assertThat(result, Is(sentinel.thing))
 
     def test_list(self):
         output = [
@@ -455,6 +452,14 @@ class TestHandler(MAASServerTestCase):
             {"hostname": node.hostname},
             handler.get({"system_id": node.system_id}))
 
+    def test_get_raises_permission_error(self):
+        node = factory.make_Node()
+        # Set the permission to admin to force the error.
+        handler = self.make_nodes_handler(
+            fields=['hostname'], view_permission=NodePermission.admin)
+        self.assertRaises(
+            HandlerPermissionError, handler.get, {"system_id": node.system_id})
+
     def test_create_without_form(self):
         # Use a zone as its simple and easy to create without a form, unlike
         # Node which requires a form.
@@ -491,6 +496,7 @@ class TestHandler(MAASServerTestCase):
         handler = self.make_nodes_handler(
             fields=['hostname', 'architecture'],
             form=AdminMachineWithMACAddressesForm)
+        handler.user = factory.make_admin()
         json_obj = handler.create({
             "hostname": hostname,
             "architecture": arch,
@@ -506,6 +512,7 @@ class TestHandler(MAASServerTestCase):
         arch = make_usable_architecture(self)
         handler = self.make_nodes_handler(
             fields=['hostname', 'architecture'])
+        handler.user = factory.make_admin()
         self.patch(
             handler,
             "get_form_class").return_value = AdminMachineWithMACAddressesForm
@@ -518,6 +525,20 @@ class TestHandler(MAASServerTestCase):
             "hostname": hostname,
             "architecture": arch,
             }, Equals(json_obj))
+
+    def test_create_raised_permission_error(self):
+        hostname = factory.make_name("hostname")
+        arch = make_usable_architecture(self)
+        handler = self.make_nodes_handler(
+            fields=['hostname', 'architecture'])
+        self.patch(
+            handler,
+            "get_form_class").return_value = AdminMachineWithMACAddressesForm
+        self.assertRaises(HandlerPermissionError, handler.create, {
+            "hostname": hostname,
+            "architecture": arch,
+            "mac_addresses": [factory.make_mac_address()],
+        })
 
     def test_create_with_form_passes_request_with_user_set(self):
         hostname = factory.make_name("hostname")
@@ -540,6 +561,7 @@ class TestHandler(MAASServerTestCase):
         handler = self.make_nodes_handler(
             fields=['hostname', 'architecture'],
             form=AdminMachineWithMACAddressesForm)
+        handler.user = factory.make_admin()
         self.assertRaises(
             HandlerValidationError, handler.create, {
                 "hostname": hostname,
@@ -566,6 +588,7 @@ class TestHandler(MAASServerTestCase):
         hostname = factory.make_name("hostname")
         handler = self.make_nodes_handler(
             fields=['hostname'], form=AdminMachineForm)
+        handler.user = factory.make_admin()
         json_obj = handler.update({
             "system_id": node.system_id,
             "hostname": hostname,
@@ -581,6 +604,7 @@ class TestHandler(MAASServerTestCase):
         node = factory.make_Node(architecture=arch, power_type='manual')
         hostname = factory.make_name("hostname")
         handler = self.make_nodes_handler(fields=['hostname'])
+        handler.user = factory.make_admin()
         self.patch(
             handler,
             "get_form_class").return_value = AdminMachineForm
@@ -594,11 +618,32 @@ class TestHandler(MAASServerTestCase):
         self.expectThat(
             reload_object(node).hostname, Equals(hostname))
 
+    def test_update_with_form_raises_permission_error(self):
+        arch = make_usable_architecture(self)
+        node = factory.make_Node(architecture=arch, power_type='manual')
+        hostname = factory.make_name("hostname")
+        handler = self.make_nodes_handler(fields=['hostname'])
+        self.patch(
+            handler,
+            "get_form_class").return_value = AdminMachineForm
+        self.assertRaises(HandlerPermissionError, handler.update, {
+            "system_id": node.system_id,
+            "hostname": hostname,
+        })
+
     def test_delete_deletes_object(self):
         node = factory.make_Node()
         handler = self.make_nodes_handler()
         handler.delete({"system_id": node.system_id})
         self.assertIsNone(reload_object(node))
+
+    def test_delete_raises_permission_error(self):
+        node = factory.make_Node()
+        handler = self.make_nodes_handler(
+            delete_permission=NodePermission.admin)
+        self.assertRaises(
+            HandlerPermissionError,
+            handler.delete, {"system_id": node.system_id})
 
     def test_set_active_does_nothing_if_no_active_obj_and_missing_pk(self):
         handler = self.make_nodes_handler()
@@ -768,3 +813,16 @@ class TestHandler(MAASServerTestCase):
         self.expectThat(
             mock_get_object,
             MockCalledOnceWith({handler._meta.pk: sentinel.pk}))
+
+
+class TestHandlerTransaction(
+        MAASTransactionServerTestCase, FakeNodesHandlerMixin):
+
+    def test_execute_calls_asynchronous_method_with_params(self):
+        # An asynchronous method -- decorated with @asynchronous -- is called
+        # directly, not in a thread.
+        handler = self.make_nodes_handler()
+        handler.get = asynchronous(lambda params: sentinel.thing)
+        params = {"system_id": factory.make_name("system_id")}
+        result = handler.execute("get", params).wait(30)
+        self.assertThat(result, Is(sentinel.thing))

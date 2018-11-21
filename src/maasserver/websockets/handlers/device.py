@@ -32,9 +32,7 @@ from maasserver.node_action import compile_node_actions
 from maasserver.permissions import NodePermission
 from maasserver.utils.orm import reload_object
 from maasserver.websockets.base import (
-    HandlerDoesNotExistError,
     HandlerError,
-    HandlerPermissionError,
     HandlerValidationError,
 )
 from maasserver.websockets.handlers.node import NodeHandler
@@ -146,6 +144,9 @@ class DeviceHandler(NodeHandler):
         listen_channels = [
             "device",
             ]
+        view_permission = NodePermission.view
+        edit_permission = NodePermission.edit
+        delete_permission = NodePermission.edit
 
     def _cache_pks(self, objs):
         """Cache all loaded object pks."""
@@ -156,8 +157,8 @@ class DeviceHandler(NodeHandler):
     def get_queryset(self, for_list=False):
         """Return `QuerySet` for devices only viewable by `user`."""
         return Device.objects.get_nodes(
-            self.user, NodePermission.view, from_nodes=super().get_queryset(
-                for_list=for_list))
+            self.user, self._meta.view_permission,
+            from_nodes=super().get_queryset(for_list=for_list))
 
     def dehydrate_parent(self, parent):
         if parent is None:
@@ -219,13 +220,6 @@ class DeviceHandler(NodeHandler):
             else:
                 return DEVICE_IP_ASSIGNMENT_TYPE.STATIC
         return DEVICE_IP_ASSIGNMENT_TYPE.DYNAMIC
-
-    def get_object(self, params):
-        """Get object by using the `pk` in `params`."""
-        obj = super(DeviceHandler, self).get_object(params)
-        if reload_object(self.user).is_superuser or obj.owner == self.user:
-            return obj
-        raise HandlerDoesNotExistError(params[self._meta.pk])
 
     def get_form_class(self, action):
         """Return the form class used for `action`."""
@@ -314,7 +308,7 @@ class DeviceHandler(NodeHandler):
 
     def create_interface(self, params):
         """Create an interface on a device."""
-        device = self.get_object(params)
+        device = self.get_object(params, permission=self._meta.edit_permission)
         form = PhysicalInterfaceForm(node=device, data=params)
         if form.is_valid():
             interface = form.save()
@@ -329,7 +323,7 @@ class DeviceHandler(NodeHandler):
 
     def update_interface(self, params):
         """Update the interface."""
-        device = self.get_object(params)
+        device = self.get_object(params, permission=self._meta.edit_permission)
         interface = Interface.objects.get(
             node=device, id=params["interface_id"])
         interface_form = InterfaceForm.get_interface_form(interface.type)
@@ -342,18 +336,14 @@ class DeviceHandler(NodeHandler):
             raise ValidationError(form.errors)
 
     def delete_interface(self, params):
-        """Delete t he interface."""
-        node = self.get_object(params)
+        """Delete the interface."""
+        node = self.get_object(params, permission=self._meta.edit_permission)
         interface = Interface.objects.get(node=node, id=params["interface_id"])
         interface.delete()
 
     def link_subnet(self, params):
         """Create or update the link."""
-        # Only admin users can perform update.
-        if not reload_object(self.user).is_superuser:
-            raise HandlerPermissionError()
-
-        node = self.get_object(params)
+        node = self.get_object(params, permission=self._meta.edit_permission)
         interface = Interface.objects.get(node=node, id=params["interface_id"])
         if params['ip_assignment'] == DEVICE_IP_ASSIGNMENT_TYPE.STATIC:
             mode = INTERFACE_LINK_TYPE.STATIC
@@ -380,17 +370,13 @@ class DeviceHandler(NodeHandler):
 
     def unlink_subnet(self, params):
         """Delete the link."""
-        # Only admin users can perform unlink.
-        if not reload_object(self.user).is_superuser:
-            raise HandlerPermissionError()
-
-        node = self.get_object(params)
+        node = self.get_object(params, permission=self._meta.edit_permission)
         interface = Interface.objects.get(node=node, id=params["interface_id"])
         interface.unlink_subnet_by_id(params["link_id"])
 
     def action(self, params):
         """Perform the action on the object."""
-        obj = self.get_object(params)
+        obj = self.get_object(params, permission=self._meta.edit_permission)
         action_name = params.get("action")
         actions = compile_node_actions(obj, self.user, request=self.request)
         action = actions.get(action_name)

@@ -90,7 +90,7 @@ class PodHandler(TimestampedModelHandler):
 
     def dehydrate(self, obj, data, for_list=False):
         """Add extra fields to `data`."""
-        if reload_object(self.user).is_superuser:
+        if self.user.is_superuser:
             data.update(obj.power_parameters)
         data["type"] = obj.power_type
         data["total"] = self.dehydrate_total(obj)

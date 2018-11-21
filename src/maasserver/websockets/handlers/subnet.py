@@ -1,4 +1,4 @@
-# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The subnet handler for the WebSocket connection."""
@@ -15,7 +15,6 @@ from maasserver.models import (
     Subnet,
 )
 from maasserver.permissions import NodePermission
-from maasserver.utils.orm import reload_object
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
 )
@@ -117,7 +116,6 @@ class SubnetHandler(TimestampedModelHandler):
             user_friendly_scan_results,
         )
         subnet = self.get_object(parameters)
-        self.user = reload_object(self.user)
         assert self.user.has_perm(
             NodePermission.admin, Discovery), "Permission denied."
         cidr = subnet.get_ipnetwork()

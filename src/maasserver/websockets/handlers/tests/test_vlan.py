@@ -14,10 +14,10 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
 from maasserver.websockets.base import (
     dehydrate_datetime,
+    HandlerPermissionError,
     HandlerValidationError,
 )
 from maasserver.websockets.handlers.vlan import VLANHandler
-from maastesting.djangotestcase import count_queries
 from testtools import ExpectedException
 from testtools.matchers import (
     Contains,
@@ -79,20 +79,6 @@ class TestVLANHandler(MAASServerTestCase):
             self.dehydrate_vlan(vlan),
             handler.get({"id": vlan.id}))
 
-    def test_get_uses_consistent_queries(self):
-        user = factory.make_User()
-        handler = VLANHandler(user, {}, None)
-        vlan = factory.make_VLAN(space=factory.make_Space())
-        for _ in range(3):
-            factory.make_Subnet(vlan=vlan)
-        for _ in range(3):
-            node = factory.make_Node(interface=True)
-            interface = node.get_boot_interface()
-            interface.vlan = vlan
-            interface.save()
-        queries, _ = count_queries(handler.get, {"id": vlan.id})
-        self.assertEquals(5, queries)
-
     def test_list(self):
         user = factory.make_User()
         handler = VLANHandler(user, {}, None)
@@ -104,16 +90,6 @@ class TestVLANHandler(MAASServerTestCase):
         self.assertItemsEqual(
             expected_vlans,
             handler.list({}))
-
-    def test_list_uses_consistent_queries(self):
-        user = factory.make_User()
-        handler = VLANHandler(user, {}, None)
-        for _ in range(20):
-            factory.make_VLAN()
-        queries_one, _ = count_queries(handler.list, {"limit": 1})
-        queries_all, _ = count_queries(handler.list, {})
-        self.assertEquals(queries_one, queries_all)
-        self.assertEquals(3, queries_one)
 
     def test_create(self):
         admin = factory.make_admin()
@@ -149,18 +125,7 @@ class TestVLANHandlerDelete(MAASServerTestCase):
         user = factory.make_User()
         handler = VLANHandler(user, {}, None)
         vlan = factory.make_VLAN()
-        with ExpectedException(AssertionError, "Permission denied."):
-            handler.delete({
-                "id": vlan.id,
-            })
-
-    def test__reloads_user(self):
-        user = factory.make_admin()
-        handler = VLANHandler(user, {}, None)
-        vlan = factory.make_VLAN()
-        user.is_superuser = False
-        user.save()
-        with ExpectedException(AssertionError, "Permission denied."):
+        with ExpectedException(HandlerPermissionError):
             handler.delete({
                 "id": vlan.id,
             })
@@ -257,25 +222,7 @@ class TestVLANHandlerConfigureDHCP(MAASServerTestCase):
         vlan.primary_rack = rack
         vlan.save()
         factory.make_ipv4_Subnet_with_IPRanges(vlan=vlan)
-        with ExpectedException(AssertionError, "Permission denied."):
-            handler.configure_dhcp({
-                "id": vlan.id,
-                "controllers": []
-            })
-
-    def test__non_superuser_reloads_user(self):
-        user = factory.make_admin()
-        handler = VLANHandler(user, {}, None)
-        user.is_superuser = False
-        user.save()
-        rack = factory.make_RackController()
-        vlan = factory.make_VLAN()
-        factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
-        vlan.dhcp_on = True
-        vlan.primary_rack = rack
-        vlan.save()
-        factory.make_ipv4_Subnet_with_IPRanges(vlan=vlan)
-        with ExpectedException(AssertionError, "Permission denied."):
+        with ExpectedException(HandlerPermissionError):
             handler.configure_dhcp({
                 "id": vlan.id,
                 "controllers": []
