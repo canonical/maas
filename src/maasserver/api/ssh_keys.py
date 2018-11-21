@@ -55,14 +55,35 @@ class SSHKeysHandler(OperationsHandler):
     update = delete = None
 
     def read(self, request):
-        """List all keys belonging to the requesting user."""
+        """@description-title List SSH keys
+        @description List all keys belonging to the requesting user.
+
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing a list of
+        available SSH keys.
+        @success-example "success-json" [exkey=ssh-keys-list] placeholder text
+        """
         return SSHKey.objects.filter(user=request.user)
 
     def create(self, request):
-        """Add a new SSH key to the requesting or supplied user's account.
+        """@description-title Add a new SSH key
+        @description Add a new SSH key to the requesting or supplied user's
+        account.
 
-        The request payload should contain the public SSH key data in form
-        data whose name is "key".
+        @param (string) "key" [required=true,formatting=true] A public SSH key
+        should be provided in the request payload as form data with the name
+        'key':
+
+            key: "key-type public-key-data"
+
+        - ``key-type``: ecdsa-sha2-nistp256, ecdsa-sha2-nistp384,
+          ecdsa-sha2-nistp521, ssh-dss, ssh-ed25519, ssh-rsa
+        - ``public key data``: Base64-encoded key data.
+
+        @success (http-status-code) "201" 201
+        @success (json) "success-json" A JSON object containing the new key.
+        @success-example "success-json" [exkey=ssh-keys-create] placeholder
+        text
         """
         user = request.user
         username = get_optional_param(request.POST, 'user')
@@ -94,10 +115,26 @@ class SSHKeysHandler(OperationsHandler):
 
     @operation(idempotent=False, exported_as='import')
     def import_ssh_keys(self, request):
-        """Import the requesting user's SSH keys.
+        """@description-title Import SSH keys
+        @description Import the requesting user's SSH keys for a given protocol
+        and authorization ID in protocol:auth_id format.
 
-        Import SSH keys for a given protocol and authorization ID in
-        protocol:auth_id format.
+        @param (string) "keysource" [required=true,formatting=true] The source
+        of the keys to import should be provided in the request payload as form
+        data:
+
+        E.g.
+
+            source:user
+
+        - ``source``: lp (Launchpad), gh (GitHub)
+        - ``user``: User login
+
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing a list of
+        imported keys.
+        @success-example "success-json" [exkey=ssh-keys-import] placeholder
+        text
         """
         keysource = request.data.get('keysource', None)
         if keysource is not None:
@@ -126,7 +163,8 @@ class SSHKeysHandler(OperationsHandler):
 
 
 class SSHKeyHandler(OperationsHandler):
-    """Manage an SSH key.
+    """
+    Manage an SSH key.
 
     SSH keys can be retrieved or deleted.
     """
@@ -137,18 +175,34 @@ class SSHKeyHandler(OperationsHandler):
     create = update = None
 
     def read(self, request, id):
-        """GET an SSH key.
+        """@description-title Retrieve an SSH key
+        @description Retrieves an SSH key with the given ID.
 
-        Returns 404 if the key does not exist.
+        @param (int) "id" [required=true] An SSH key ID.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested SSH key is not found.
+        @error-example "not-found"
+            Not Found
         """
         key = get_object_or_404(SSHKey, id=id)
         return key
 
     def delete(self, request, id):
-        """DELETE an SSH key.
+        """@description-title Delete an SSH key
+        @description Deletes the SSH key with the given ID.
 
-        Returns 404 if the key does not exist.
-        Returns 401 if the key does not belong to the calling user.
+        @param (int) "id" [required=true] An SSH key ID.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested SSH key is not found.
+        @error-example "not-found"
+            Not Found
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The requesting user does not own the key.
+        @error-example "no-perms"
+            Can't delete a key you don't own.
         """
         key = get_object_or_404(SSHKey, id=id)
         if key.user != request.user:

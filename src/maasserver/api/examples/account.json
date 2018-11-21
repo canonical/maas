@@ -1,0 +1,41 @@
+{
+  "ssh-keys-list": [
+    {
+      "key": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC/L1pGwyIs9mxP1MkuPVrEMfcl+qEg9wChnN/n4fGwFIJ9vXFBV8pu8rvcsigx/Ar2wZRHGIO/cwHeC+rR+jG5zw4ZyD5d+ISfVoyKsOviAQzXJTCjdx4aLItVA6LYZiv8Z3fondqpzFuVph+D/hc1sBNxlPJcFF3RJcCTf92xYyQfUlZo/RYPHzgWDYWYScoZXOxLms2ZKtyuqQFyKmlcTzlTWoYGeTtqEq5OCWG/PSlTopGqRtoZXSATAOfCDH1kyOqAtehtn6ehZ013u4Kb8d8nD66SeLOBG5xQUbm7U1LkfVLGMrXlJOhrJ58JsNTx9sq8ouNO9VknbhvWD5aH user@mymachine",
+      "id": 5,
+      "keysource": "lp:user",
+      "resource_uri": "/MAAS/api/2.0/account/prefs/sshkeys/5/"
+    },
+    {
+      "key": "ssh-rsa AAAAB3NzaC1tc2EAAAADAQABAAABAQC5zQ1NvtYWGYKpLgW0QWBiGyt225JRAO9Wa9mlNG5Otq7PJ6PkIMZKrmfZnpYFoMe8gzY/FT5wqfzzKBxvHPFkSS24MIiRN6VDlE0rZJnugd2ijpmYKXwVMHFHWIbBLqES3ssO3VePF67Y4Agt7JRqDlF2C9ttQXXbu23fvccpDIzt6tPtPDJzNo3M1JexxRNMuyb0moNeHISGTTFCL8LSuVn8MvpqXLqBqR5Q0nchgym+f6nWQMknpLNA0531W/2ZOMa2h5vtWDoVPisGmOzlV41dpDOWG4wr120Yn6Q8thTh2tQbS0/UjThPnjrUjs9nJxg5X0MPkzEuoXo3KWEh user2@myothermachine",
+      "id": 6,
+      "keysource": "lp:user2",
+      "resource_uri": "/MAAS/api/2.0/account/prefs/sshkeys/6/"
+    }
+  ],
+  "ssh-keys-create": {
+    "key": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDRShb/bGd0DSYljfCwFI4D12wDk/qW9cSb3T++mytvfmXsisf8+ql5qEr+a0hsn6hkOMTcwdC5q/fVEo/P4KXj1DI9XEJ+j2sRj3Lw/bn+mpFmSsEUmv+PLzpQSX0JXOu2N8VjfgINJSXRrAmk6cmuc4Ro119dkYu/i7VIHiWSan0FY+P6ipaqien/m7mc1M1JhDyfO6ubQAfsP49+vqP+RmXPLhjmtf4yBVMnQavITtRctFBXf7PyvPgSrSCNS+M6+FZIjS79ctEpi8HUZDOCCZ7xS5vuJNtPcp3vwBOUNzVStBi/GzNYdbhubQnlHGzLJRBp64OWVasn/pkBfXUB",
+    "keysource": null,
+    "id": 12
+  },
+  "ssh-keys-import": [
+    {
+      "key": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC/L1pGwyIs9mxP1MkuPVrEMfcl+qEg9wChnN/n4fGwFIJ9vXFBV8pu8rvcsigx/Ar2wZRHGIO/cwHeC+rR+jG5zw4ZyD5d+ISfVoyKsOviAQzXJTCjdx4aLItVA6LYZiv8Z3fondqpzFuVph+D/hc1sBNxlPJcFF3RJcCTf92xYyQfUlZo/RYPHzgWDYWYScoZXOxLms2ZKtyuqQFyKmlcTzlTWoYGeTtqEq5OCWG/PSlTopGqRtoZXSATAOfCDH1kyOqAtehtn6ehZ013u4Kb8d8nD66SeLOBG5xQUbm7U1LkfVLGMrXlJOhrJ58JsNTx9sq8ouNO9VknbhvWD5aH user@mymachine",
+      "id": 5,
+      "keysource": "lp:user",
+      "resource_uri": "/MAAS/api/2.0/account/prefs/sshkeys/5/"
+    },
+    {
+      "key": "ssh-rsa AAAAB3NzaC1tc2EAAAADAQABAAABAQC5zQ1NvtYWGYKpLgW0QWBiGyt225JRAO9Wa9mlNG5Otq7PJ6PkIMZKrmfZnpYFoMe8gzY/FT5wqfzzKBxvHPFkSS24MIiRN6VDlE0rZJnugd2ijpmYKXwVMHFHWIbBLqES3ssO3VePF67Y4Agt7JRqDlF2C9ttQXXbu23fvccpDIzt6tPtPDJzNo3M1JexxRNMuyb0moNeHISGTTFCL8LSuVn8MvpqXLqBqR5Q0nchgym+f6nWQMknpLNA0531W/2ZOMa2h5vtWDoVPisGmOzlV41dpDOWG4wr120Yn6Q8thTh2tQbS0/UjThPnjrUjs9nJxg5X0MPkzEuoXo3KWEh user2@myothermachine",
+      "id": 6,
+      "keysource": "lp:user2",
+      "resource_uri": "/MAAS/api/2.0/account/prefs/sshkeys/6/"
+    }
+  ],
+  "ssh-keys-get": {
+    "key": "ssh-rsa AAAAB7NzaC1yc2EAAAADAQABAAABAQDhaFwhxa50r2InCHaSSCOB+PP572+Hra6CzFexUQBABJDHfcbbvFeAkjWIUIH9bAVolkHulDegc/6JbMy6p9E8TMqi4dQ1FV4VX/cFtbfJPlLVOrysTKuarRGnh0/1nKnYedfwpjF4HubuI55bgU/Strx/UYCr/WiFHSS7ExpnJJcuIwKeN1tZtVdVKy4j//EPt7GipBcAjpIB0hpFxBdxlm7GswDU+WZNEbSaNN6mkupVwkQdBdoaywlUl6iStzI7moAiIE37uSzi8xcovLBpHsfVKQyY1pSqC7E3L+qdu4MlioKiyYlsvaIk8BVj0QLGmGqvWZGUKcZF4OJxA15B jsseidel@linmbpro",
+    "id": 11,
+    "keysource": "lp:user",
+    "resource_uri": "/MAAS/api/2.0/account/prefs/sshkeys/11/"
+  }
+}
