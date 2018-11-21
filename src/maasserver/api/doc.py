@@ -229,12 +229,14 @@ def describe_actions(handler):
                 # to stdout that matches the style used for
                 # non-annotated docstrings in the CLI.
                 ap.parse(doc)
-                d = ap.get_dict()
-                if d['description_title'] != "":
-                    doc = d['description_title'] + "\n\n"
-                    doc += d['description'] + "\n\n"
+                ap_dict = ap.get_dict()
+                description = ap_dict['description'].rstrip()
+                description_title = ap_dict['description_title'].rstrip()
+                if description_title != "":
+                    doc = description_title + "\n\n"
+                    doc += description + "\n\n"
                 else:
-                    doc = d['description'] + "\n\n"
+                    doc = description + "\n\n"
 
                 # Here, we add the params, but we skip params
                 # surrounded by curly brackets (e.g. {foo})
@@ -242,15 +244,18 @@ def describe_actions(handler):
                 # the URI (e.g. /zone/{name}/). I.e. positional
                 # arguments. These already appear in the CLI
                 # help command output so we don't want duplicates.
-                for p in d['params']:
-                    if p['name'].find("{") == -1 and p['name'].find("}") == -1:
+                for param in ap_dict['params']:
+                    pname = param['name']
+                    if pname.find("{") == -1 and pname.find("}") == -1:
                         required = "Required. "
-                        if p['options']['required'] == "false":
+                        if param['options']['required'] == "false":
                             required = "Optional. "
 
-                        doc += (":param %s: %s%s" %
-                                (p['name'], required, p['description']))
-                        doc += (":type %s: %s\n " % (p['name'], p['type']))
+                        param_description = param['description'].rstrip()
+
+                        doc += (":param %s: %s%s\n" %
+                                (pname, required, param_description))
+                        doc += (":type %s: %s\n\n " % (pname, param['type']))
 
         yield dict(
             method=http_method, name=name, doc=doc,
