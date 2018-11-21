@@ -50,32 +50,56 @@ class UsersHandler(OperationsHandler):
         return ('users_handler', [])
 
     def read(self, request):
-        """List users."""
+        """@description-title List users
+        @description List users
+
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing a list of
+        users.
+        @success-example "success-json" [exkey=list] placeholder text
+        """
         return User.objects.all().order_by('username')
 
     @operation(idempotent=True)
     def whoami(self, request):
-        """Returns the currently logged in user."""
+        """@description-title Retrieve logged-in user
+        @description Returns the currently logged-in user.
+
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing information
+        about the currently logged-in user.
+        @success-example "success-json" [exkey=whoami] placeholder text
+        """
         return request.user
 
     @admin_method
     def create(self, request):
-        """Create a MAAS user account.
+        """@description-title Create a MAAS user account
+        @description Creates a MAAS user account.
 
         This is not safe: the password is sent in plaintext.  Avoid it for
         production, unless you are confident that you can prevent eavesdroppers
         from observing the request.
 
-        :param username: Identifier-style username for the new user.
-        :type username: unicode
-        :param email: Email address for the new user.
-        :type email: unicode
-        :param password: Password for the new user.
-        :type password: unicode
-        :param is_superuser: Whether the new user is to be an administrator.
-        :type is_superuser: bool ('0' for False, '1' for True)
+        @param (string) "username" [required=true] Identifier-style username
+        for the new user.
 
-        Returns 400 if any mandatory parameters are missing.
+        @param (string) "email" [required=true] Email address for the new user.
+
+        @param (string) "password" [required=true] Password for the new user.
+
+        @param (boolean) "is_superuser" [required=true] Whether the new user is
+        to be an administrator. ('0' == False, '1' == True)
+
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing information
+        about the new user.
+        @success-example "success-json" [exkey=create] placeholder text
+
+        @error (http-status-code) "400" 400
+        @error (content) "error-content" Mandatory parameters are missing.
+        @error-example "error-content"
+            No provided username!
         """
         username = get_mandatory_param(request.data, 'username')
         email = get_mandatory_param(request.data, 'email')
@@ -117,12 +141,32 @@ class UserHandler(OperationsHandler):
         )
 
     def read(self, request, username):
-        """Return user details."""
+        """@description-title Retrieve user details
+        @description Retrieve a user's details.
+
+        @param (string) "{username}" [required=true] A username.
+
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing user
+        information.
+        @success-example "success-json" [exkey=read] placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The given user was not found.
+        @error-example "not-found"
+            Not Found
+        """
         return get_object_or_404(User, username=username)
 
     @admin_method
     def delete(self, request, username):
-        """Deletes a user"""
+        """@description-title Delete a user
+        @description Deletes a given username.
+
+        @param (string) "{username}" [required=true] The username to delete.
+
+        @success (http-status-code) "204" 204
+        """
         if request.user.username == username:
             raise ValidationError("An administrator cannot self-delete.")
 

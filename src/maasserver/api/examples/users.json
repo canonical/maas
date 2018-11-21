@@ -1,0 +1,39 @@
+{
+  "create": {
+    "is_superuser": false,
+    "username": "foobar",
+    "email": "foo@foobar.com",
+    "is_local": true,
+    "resource_uri": "/MAAS/api/2.0/users/foobar/"
+  },
+  "read": {
+    "is_superuser": false,
+    "username": "foobar",
+    "email": "foo@foobar.com",
+    "is_local": true,
+    "resource_uri": "/MAAS/api/2.0/users/foobar/"
+  },
+  "whoami": {
+    "is_superuser": true,
+    "username": "admin",
+    "email": "NN7ER2rH6x@example.com",
+    "is_local": true,
+    "resource_uri": "/MAAS/api/2.0/users/admin/"
+  },
+  "list": [
+    {
+      "is_superuser": false,
+      "username": "ZZaqFHnASE",
+      "email": "th851JAwIa@example.com",
+      "is_local": true,
+      "resource_uri": "/MAAS/api/2.0/users/ZZaqFHnASE/"
+    },
+    {
+      "is_superuser": false,
+      "username": "zZrMZtK.kq",
+      "email": "lmcdDnyn5H@example.com",
+      "is_local": true,
+      "resource_uri": "/MAAS/api/2.0/users/zZrMZtK.kq/"
+    }
+  ]
+}
