@@ -67,7 +67,10 @@ from maasserver.rbac import (
 )
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
-from maasserver.testing.fixtures import RBACForceOffFixture
+from maasserver.testing.fixtures import (
+    RBACEnabled,
+    RBACForceOffFixture,
+)
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import (
     MAASServerTestCase,
@@ -494,6 +497,49 @@ class TestMachineHandler(MAASServerTestCase):
         owner = factory.make_User()
         for _ in range(10):
             node = factory.make_Node(owner=owner)
+            commissioning_script_set = factory.make_ScriptSet(
+                node=node, result_type=RESULT_TYPE.COMMISSIONING)
+            testing_script_set = factory.make_ScriptSet(
+                node=node, result_type=RESULT_TYPE.TESTING)
+            node.current_commissioning_script_set = commissioning_script_set
+            node.current_testing_script_set = testing_script_set
+            node.save()
+            for __ in range(10):
+                factory.make_ScriptResult(
+                    status=SCRIPT_STATUS.PASSED,
+                    script_set=commissioning_script_set)
+                factory.make_ScriptResult(
+                    status=SCRIPT_STATUS.PASSED,
+                    script_set=testing_script_set)
+
+        handler = MachineHandler(owner, {}, None)
+        queries_one, _ = count_queries(handler.list, {'limit': 1})
+        queries_total, _ = count_queries(handler.list, {})
+        # This check is to notify the developer that a change was made that
+        # affects the number of queries performed when doing a node listing.
+        # It is important to keep this number as low as possible. A larger
+        # number means regiond has to do more work slowing down its process
+        # and slowing down the client waiting for the response.
+        self.assertEqual(
+            queries_one, 11,
+            "Number of queries has changed; make sure this is expected.")
+        self.assertEqual(
+            queries_total, 11,
+            "Number of queries has changed; make sure this is expected.")
+
+    def test_list_num_queries_is_the_expected_number_with_rbac(self):
+        # Prevent RBAC from making a query.
+        rbac = RBACEnabled()
+        self.useFixture(rbac)
+
+        owner = factory.make_User()
+        pool = factory.make_ResourcePool()
+        rbac.store.add_pool(pool)
+        rbac.store.allow(owner.username, pool, 'view')
+        rbac.store.allow(owner.username, pool, 'admin-machines')
+
+        for _ in range(10):
+            node = factory.make_Node(owner=owner, pool=pool)
             commissioning_script_set = factory.make_ScriptSet(
                 node=node, result_type=RESULT_TYPE.COMMISSIONING)
             testing_script_set = factory.make_ScriptSet(
@@ -3583,27 +3629,6 @@ class TestMachineHandlerMountSpecialScenarios(MAASServerTestCase):
         self.assertCanMountFilesystem(user, factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=user))
 
-    def test__user_forbidden_to_mount_on_non_allocated_machine(self):
-        user = factory.make_User()
-        handler = MachineHandler(user, {}, None)
-        statuses = {name for name, _ in NODE_STATUS_CHOICES}
-        statuses -= {NODE_STATUS.ALLOCATED}
-        raises_node_state_violation = Raises(
-            MatchesException(NodeStateViolation, re.escape(
-                "Cannot mount the filesystem because "
-                "the machine is not Allocated.")))
-        for status in statuses:
-            machine = factory.make_Node(status=status)
-            params = {
-                'system_id': machine.system_id, 'fstype': self.fstype,
-                'mount_point': factory.make_absolute_path(),
-                'mount_options': factory.make_name("options"),
-            }
-            self.expectThat(
-                partial(handler.mount_special, params),
-                raises_node_state_violation,
-                "using status %d on %s" % (status, self.fstype))
-
     def test__admin_mounts_non_storage_filesystem_on_allocated_machine(self):
         admin = factory.make_admin()
         self.assertCanMountFilesystem(admin, factory.make_Node(
@@ -3695,29 +3720,6 @@ class TestMachineHandlerUnmountSpecialScenarios(MAASServerTestCase):
         user = factory.make_User()
         self.assertCanUnmountFilesystem(user, factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=user))
-
-    def test__user_forbidden_to_unmount_on_non_allocated_machine(self):
-        user = factory.make_User()
-        handler = MachineHandler(user, {}, None)
-        statuses = {name for name, _ in NODE_STATUS_CHOICES}
-        statuses -= {NODE_STATUS.ALLOCATED}
-        raises_node_state_violation = Raises(
-            MatchesException(NodeStateViolation, re.escape(
-                "Cannot unmount the filesystem because "
-                "the machine is not Allocated.")))
-        for status in statuses:
-            machine = factory.make_Node(status=status)
-            filesystem = factory.make_Filesystem(
-                node=machine, fstype=self.fstype,
-                mount_point=factory.make_absolute_path())
-            params = {
-                'system_id': machine.system_id,
-                'mount_point': filesystem.mount_point,
-            }
-            self.expectThat(
-                partial(handler.unmount_special, params),
-                raises_node_state_violation,
-                "using status %d on %s" % (status, self.fstype))
 
     def test__admin_unmounts_non_storage_filesystem_on_allocated_machine(self):
         admin = factory.make_admin()

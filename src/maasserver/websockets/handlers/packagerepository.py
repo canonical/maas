@@ -12,7 +12,6 @@ from django.http import HttpRequest
 from maasserver.enum import ENDPOINT
 from maasserver.forms.packagerepository import PackageRepositoryForm
 from maasserver.models import PackageRepository
-from maasserver.utils.orm import reload_object
 from maasserver.websockets.base import (
     HandlerPermissionError,
     HandlerValidationError,
@@ -39,7 +38,7 @@ class PackageRepositoryHandler(TimestampedModelHandler):
 
     def create(self, params):
         """Create the object from params iff admin."""
-        if not reload_object(self.user).is_superuser:
+        if not self.user.is_superuser:
             raise HandlerPermissionError()
 
         request = HttpRequest()
@@ -66,7 +65,7 @@ class PackageRepositoryHandler(TimestampedModelHandler):
 
     def update(self, params):
         """Update the object from params iff admin."""
-        if not reload_object(self.user).is_superuser:
+        if not self.user.is_superuser:
             raise HandlerPermissionError()
 
         obj = self.get_object(params)
@@ -91,6 +90,6 @@ class PackageRepositoryHandler(TimestampedModelHandler):
 
     def delete(self, params):
         """Delete the object from params iff admin."""
-        if not reload_object(self.user).is_superuser:
+        if not self.user.is_superuser:
             raise HandlerPermissionError()
         return super().delete(params)

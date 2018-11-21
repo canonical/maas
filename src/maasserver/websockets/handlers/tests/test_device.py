@@ -266,7 +266,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
         self.assertEqual(
-            queries, 20,
+            queries, 19,
             "Number of queries has changed; make sure this is expected.")
 
     @transactional

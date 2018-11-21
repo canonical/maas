@@ -18,6 +18,7 @@ from django.db.models import Model
 from django.utils.encoding import is_protected_type
 from maasserver import concurrency
 from maasserver.permissions import NodePermission
+from maasserver.rbac import rbac
 from maasserver.utils.forms import get_QueryDict
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
@@ -92,6 +93,9 @@ class HandlerOptions(object):
     form_requires_request = True
     listen_channels = []
     batch_key = 'id'
+    create_permission = None
+    view_permission = None
+    edit_permission = None
     delete_permission = None
 
     def __new__(cls, meta=None):
@@ -275,7 +279,7 @@ class Handler(metaclass=HandlerMetaclass):
         """
         return obj
 
-    def get_object(self, params):
+    def get_object(self, params, permission=None):
         """Get object by using the `pk` in `params`."""
         if self._meta.pk not in params:
             raise HandlerValidationError({
@@ -288,6 +292,11 @@ class Handler(metaclass=HandlerMetaclass):
                 })
         except self._meta.object_class.DoesNotExist:
             raise HandlerDoesNotExistError(pk)
+        if permission is not None or self._meta.view_permission is not None:
+            if permission is None:
+                permission = self._meta.view_permission
+            if not self.user.has_perm(permission, obj):
+                raise HandlerPermissionError()
         return obj
 
     def get_queryset(self, for_list=False):
@@ -331,13 +340,32 @@ class Handler(metaclass=HandlerMetaclass):
                 # blocking/synchronous. Genuinely non-blocking/asynchronous
                 # methods must out themselves explicitly.
                 if IAsynchronous.providedBy(method):
-                    # The @asynchronous decorator will DTRT.
-                    return method(params)
+                    # Running in the io thread so clear RBAC now.
+                    rbac.clear()
+
+                    # Reload the user from the database.
+                    d = concurrency.webapp.run(
+                        deferToDatabase,
+                        transactional(self.user.refresh_from_db))
+                    d.addCallback(lambda _: method(params))
+                    return d
                 else:
+
+                    @transactional
+                    def prep_user_execute(params):
+                        # Clear RBAC and reload the user to ensure that
+                        # its up to date. `rbac.clear` must be done inside
+                        # the thread because it uses thread locals internally.
+                        rbac.clear()
+                        self.user.refresh_from_db()
+
+                        # Perform the work in the database.
+                        return method(params)
+
                     # This is going to block and hold a database connection so
                     # we limit its concurrency.
                     return concurrency.webapp.run(
-                        deferToDatabase, transactional(method), params)
+                        deferToDatabase, prep_user_execute, params)
         else:
             raise HandlerNoSuchMethodError(method_name)
 
@@ -381,7 +409,8 @@ class Handler(metaclass=HandlerMetaclass):
 
     def create(self, params):
         """Create the object from data."""
-        # Create by using form
+        # Create by using form. `create_permission` is not used with form,
+        # permission checks should be done in the form.
         form_class = self.get_form_class("create")
         if form_class is not None:
             data = self.preprocess_form("create", params)
@@ -392,6 +421,10 @@ class Handler(metaclass=HandlerMetaclass):
             if hasattr(form, 'use_perms') and form.use_perms():
                 if not form.has_perm(self.user):
                     raise HandlerPermissionError()
+            elif self._meta.create_permission is not None:
+                raise ValueError(
+                    "`create_permission` defined on the handler, but the form "
+                    "is not using permission checks.")
             if form.is_valid():
                 try:
                     obj = form.save()
@@ -408,6 +441,11 @@ class Handler(metaclass=HandlerMetaclass):
             else:
                 raise HandlerValidationError(form.errors)
 
+        # Verify the user can create an object.
+        if self._meta.create_permission is not None:
+            if not self.user.has_perm(self._meta.create_permission):
+                raise HandlerPermissionError()
+
         # Create by updating the fields on the object.
         obj = self._meta.object_class()
         obj = self.full_hydrate(obj, params)
@@ -418,7 +456,8 @@ class Handler(metaclass=HandlerMetaclass):
         """Update the object."""
         obj = self.get_object(params)
 
-        # Update by using form.
+        # Update by using form. `edit_permission` is not used when form
+        # is used to update. The form should define the permissions.
         form_class = self.get_form_class("update")
         if form_class is not None:
             data = self.preprocess_form("update", params)
@@ -426,6 +465,10 @@ class Handler(metaclass=HandlerMetaclass):
             if hasattr(form, 'use_perms') and form.use_perms():
                 if not form.has_perm(self.user):
                     raise HandlerPermissionError()
+            elif self._meta.edit_permission is not None:
+                raise ValueError(
+                    "`edit_permission` defined on the handler, but the form "
+                    "is not using permission checks.")
             if form.is_valid():
                 try:
                     obj = form.save()
@@ -435,6 +478,11 @@ class Handler(metaclass=HandlerMetaclass):
             else:
                 raise HandlerValidationError(form.errors)
 
+        # Verify the user can edit this object.
+        if self._meta.edit_permission is not None:
+            if not self.user.has_perm(self._meta.edit_permission, obj):
+                raise HandlerPermissionError()
+
         # Update by updating the fields on the object.
         obj = self.full_hydrate(obj, params)
         obj.save()
@@ -442,10 +490,7 @@ class Handler(metaclass=HandlerMetaclass):
 
     def delete(self, params):
         """Delete the object."""
-        obj = self.get_object(params)
-        if self._meta.delete_permission is not None:
-            if not self.user.has_perm(self._meta.delete_permission, obj):
-                raise HandlerPermissionError()
+        obj = self.get_object(params, permission=self._meta.delete_permission)
         obj.delete()
 
     def set_active(self, params):
@@ -478,6 +523,7 @@ class Handler(metaclass=HandlerMetaclass):
             else:
                 return None
 
+        self.user.refresh_from_db()
         try:
             obj = self.listen(channel, action, pk)
         except HandlerDoesNotExistError:

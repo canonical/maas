@@ -40,6 +40,9 @@ class ResourcePoolHandler(TimestampedModelHandler):
         listen_channels = [
             "resourcepool",
         ]
+        create_permission = ResourcePoolPermission.create
+        view_permission = ResourcePoolPermission.view
+        edit_permission = ResourcePoolPermission.edit
         delete_permission = ResourcePoolPermission.edit
 
     def get_queryset(self, for_list=False):

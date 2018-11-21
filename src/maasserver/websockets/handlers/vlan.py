@@ -17,8 +17,10 @@ from maasserver.models import (
     VLAN,
 )
 from maasserver.permissions import NodePermission
-from maasserver.utils.orm import reload_object
-from maasserver.websockets.base import HandlerValidationError
+from maasserver.websockets.base import (
+    HandlerPermissionError,
+    HandlerValidationError,
+)
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
 )
@@ -34,7 +36,7 @@ class VLANHandler(TimestampedModelHandler):
     class Meta:
         queryset = (
             VLAN.objects.all()
-                .select_related('primary_rack', 'secondary_rack', 'fabric')
+                .select_related('primary_rack', 'secondary_rack')
                 .prefetch_related("interface_set")
                 .prefetch_related("interface_set__node")
                 .prefetch_related("subnet_set"))
@@ -97,9 +99,8 @@ class VLANHandler(TimestampedModelHandler):
     def delete(self, parameters):
         """Delete this VLAN."""
         vlan = self.get_object(parameters)
-        self.user = reload_object(self.user)
-        assert self.user.has_perm(
-            NodePermission.admin, vlan), "Permission denied."
+        if not self.user.has_perm(NodePermission.admin, vlan):
+            raise HandlerPermissionError()
         vlan.delete()
 
     def update(self, parameters):
@@ -166,9 +167,8 @@ class VLANHandler(TimestampedModelHandler):
         If no controllers are specified, disables DHCP on the VLAN.
         """
         vlan = self.get_object(parameters)
-        self.user = reload_object(self.user)
-        assert self.user.has_perm(
-            NodePermission.admin, vlan), "Permission denied."
+        if not self.user.has_perm(NodePermission.admin, vlan):
+            raise HandlerPermissionError()
         # Make sure the dictionary both exists, and has the expected number
         # of parameters, to prevent spurious log statements.
         if 'extra' in parameters:

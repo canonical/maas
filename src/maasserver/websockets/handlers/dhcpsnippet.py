@@ -15,7 +15,6 @@ from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT
 from maasserver.forms.dhcpsnippet import DHCPSnippetForm
 from maasserver.models import DHCPSnippet
-from maasserver.utils.orm import reload_object
 from maasserver.websockets.base import (
     HandlerPermissionError,
     HandlerValidationError,
@@ -67,7 +66,7 @@ class DHCPSnippetHandler(TimestampedModelHandler):
 
     def create(self, params):
         """Create the object from params iff admin."""
-        if not reload_object(self.user).is_superuser:
+        if not self.user.is_superuser:
             raise HandlerPermissionError()
 
         request = HttpRequest()
@@ -94,7 +93,7 @@ class DHCPSnippetHandler(TimestampedModelHandler):
 
     def update(self, params):
         """Update the object from params iff admin."""
-        if not reload_object(self.user).is_superuser:
+        if not self.user.is_superuser:
             raise HandlerPermissionError()
 
         obj = self.get_object(params)
@@ -118,13 +117,13 @@ class DHCPSnippetHandler(TimestampedModelHandler):
 
     def delete(self, params):
         """Delete the object from params iff admin."""
-        if not reload_object(self.user).is_superuser:
+        if not self.user.is_superuser:
             raise HandlerPermissionError()
         return super().delete(params)
 
     def revert(self, params):
         """Revert a value to a previous state."""
-        if not reload_object(self.user).is_superuser:
+        if not self.user.is_superuser:
             raise HandlerPermissionError()
 
         dhcp_snippet = self.get_object(params)

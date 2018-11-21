@@ -8,7 +8,6 @@ __all__ = [
 ]
 
 from maasserver.models.notification import Notification
-from maasserver.utils.orm import reload_object
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
 )
@@ -70,8 +69,7 @@ class NotificationHandler(TimestampedModelHandler):
     def listen(self, channel, action, pk):
         """Only deal with notifications that are relevant to the user."""
         notification = super().listen(channel, action, pk)
-        user = reload_object(self.user)  # Check for up-to-date privs.
-        if notification.is_relevant_to(user):
+        if notification.is_relevant_to(self.user):
             return notification
         else:
             return None

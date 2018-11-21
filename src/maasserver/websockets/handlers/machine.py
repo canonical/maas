@@ -64,10 +64,7 @@ from maasserver.models.partition import Partition
 from maasserver.models.subnet import Subnet
 from maasserver.node_action import compile_node_actions
 from maasserver.permissions import NodePermission
-from maasserver.utils.orm import (
-    reload_object,
-    transactional,
-)
+from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from maasserver.websockets.base import (
     HandlerError,
@@ -197,6 +194,10 @@ class MachineHandler(NodeHandler):
         listen_channels = [
             "machine",
         ]
+        create_permission = NodePermission.admin
+        view_permission = NodePermission.view
+        edit_permission = NodePermission.admin
+        delete_permission = NodePermission.admin
 
     def get_queryset(self, for_list=False):
         """Return `QuerySet` for devices only viewable by `user`."""
@@ -353,10 +354,6 @@ class MachineHandler(NodeHandler):
 
     def create(self, params):
         """Create the object from params."""
-        # Only admin users can perform create.
-        if not reload_object(self.user).is_superuser:
-            raise HandlerPermissionError()
-
         data = super(NodeHandler, self).create(params)
         node_obj = Node.objects.get(system_id=data['system_id'])
 
@@ -371,8 +368,6 @@ class MachineHandler(NodeHandler):
 
     def update(self, params):
         """Update the object from params."""
-        # check that the operation is allowed
-        self._get_node_or_permission_error(params)
         data = super(NodeHandler, self).update(params)
         node_obj = Node.objects.get(system_id=data['system_id'])
 
@@ -393,7 +388,8 @@ class MachineHandler(NodeHandler):
         :attention: This is more or less a copy of `mount_special` from
             `m.api.machines`.
         """
-        machine = self.get_object(params)
+        machine = self._get_node_or_permission_error(
+            params, permission=NodePermission.edit)
         if machine.locked:
             raise HandlerPermissionError()
         self._preflight_special_filesystem_modifications("mount", machine)
@@ -411,7 +407,8 @@ class MachineHandler(NodeHandler):
         :attention: This is more or less a copy of `unmount_special` from
             `m.api.machines`.
         """
-        machine = self.get_object(params)
+        machine = self._get_node_or_permission_error(
+            params, permission=NodePermission.edit)
         if machine.locked:
             raise HandlerPermissionError()
         self._preflight_special_filesystem_modifications("unmount", machine)
@@ -423,7 +420,7 @@ class MachineHandler(NodeHandler):
 
     def _preflight_special_filesystem_modifications(self, op, machine):
         """Check that `machine` is okay for special fs modifications."""
-        if reload_object(self.user).is_superuser:
+        if self.user.has_perm(NodePermission.admin, machine):
             statuses_permitted = {NODE_STATUS.READY, NODE_STATUS.ALLOCATED}
         else:
             statuses_permitted = {NODE_STATUS.ALLOCATED}
@@ -436,7 +433,8 @@ class MachineHandler(NodeHandler):
                 % (op, " or ".join(status_names)))
 
     def update_filesystem(self, params):
-        node = self.get_object(params)
+        node = self._get_node_or_permission_error(
+            params, permission=NodePermission.edit)
         if node.locked:
             raise HandlerPermissionError()
         block_id = params.get('block_id')
@@ -448,10 +446,6 @@ class MachineHandler(NodeHandler):
         if node.status not in [NODE_STATUS.ALLOCATED, NODE_STATUS.READY]:
             raise HandlerError(
                 "Node must be allocated or ready to edit storage")
-        if (
-                not reload_object(self.user).is_superuser and
-                node.owner_id != self.user.id):
-            raise HandlerPermissionError()
 
         # If this is on a block device, check if the tags need to be updated.
         # (The client sends them in from the same form.)
@@ -548,7 +542,8 @@ class MachineHandler(NodeHandler):
 
     def update_disk(self, params):
         """Update disk information."""
-        node = self._get_node_or_permission_error(params)
+        node = self._get_node_or_permission_error(
+            params, permission=self._meta.edit_permission)
         device = BlockDevice.objects.get(
             id=params['block_id'], node=node).actual_instance
         if device.type == 'physical':
@@ -572,14 +567,16 @@ class MachineHandler(NodeHandler):
                     params.get('mount_options', ''))
 
     def delete_disk(self, params):
-        node = self._get_node_or_permission_error(params)
+        node = self._get_node_or_permission_error(
+            params, permission=self._meta.edit_permission)
         block_id = params.get('block_id')
         if block_id is not None:
             block_device = BlockDevice.objects.get(id=block_id, node=node)
             block_device.delete()
 
     def delete_partition(self, params):
-        node = self._get_node_or_permission_error(params)
+        node = self._get_node_or_permission_error(
+            params, permission=self._meta.edit_permission)
         partition_id = params.get('partition_id')
         if partition_id is not None:
             partition = Partition.objects.get(
@@ -587,7 +584,8 @@ class MachineHandler(NodeHandler):
             partition.delete()
 
     def delete_volume_group(self, params):
-        node = self._get_node_or_permission_error(params)
+        node = self._get_node_or_permission_error(
+            params, permission=self._meta.edit_permission)
         volume_group_id = params.get('volume_group_id')
         if volume_group_id is not None:
             volume_group = VolumeGroup.objects.get(id=volume_group_id)
@@ -596,7 +594,8 @@ class MachineHandler(NodeHandler):
             volume_group.delete()
 
     def delete_cache_set(self, params):
-        node = self._get_node_or_permission_error(params)
+        node = self._get_node_or_permission_error(
+            params, permission=self._meta.edit_permission)
         cache_set_id = params.get('cache_set_id')
         if cache_set_id is not None:
             cache_set = CacheSet.objects.get(id=cache_set_id)
@@ -605,7 +604,8 @@ class MachineHandler(NodeHandler):
             cache_set.delete()
 
     def delete_filesystem(self, params):
-        node = self._get_node_or_permission_error(params)
+        node = self._get_node_or_permission_error(
+            params, permission=self._meta.edit_permission)
         blockdevice_id = params.get('blockdevice_id')
         partition_id = params.get('partition_id')
         filesystem_id = params.get('filesystem_id')
@@ -620,7 +620,8 @@ class MachineHandler(NodeHandler):
 
     def create_partition(self, params):
         """Create a partition."""
-        node = self._get_node_or_permission_error(params)
+        node = self._get_node_or_permission_error(
+            params, permission=self._meta.edit_permission)
         disk_obj = BlockDevice.objects.get(id=params['block_id'], node=node)
         form = AddPartitionForm(
             disk_obj, {
@@ -639,7 +640,8 @@ class MachineHandler(NodeHandler):
 
     def create_cache_set(self, params):
         """Create a cache set."""
-        node = self._get_node_or_permission_error(params)
+        node = self._get_node_or_permission_error(
+            params, permission=self._meta.edit_permission)
         block_id = params.get('block_id')
         partition_id = params.get('partition_id')
 
@@ -660,7 +662,8 @@ class MachineHandler(NodeHandler):
 
     def create_bcache(self, params):
         """Create a bcache."""
-        node = self._get_node_or_permission_error(params)
+        node = self._get_node_or_permission_error(
+            params, permission=self._meta.edit_permission)
         block_id = params.get('block_id')
         partition_id = params.get('partition_id')
 
@@ -692,7 +695,8 @@ class MachineHandler(NodeHandler):
 
     def create_raid(self, params):
         """Create a RAID."""
-        node = self._get_node_or_permission_error(params)
+        node = self._get_node_or_permission_error(
+            params, permission=self._meta.edit_permission)
         form = CreateRaidForm(node=node, data=params)
         if not form.is_valid():
             raise HandlerError(form.errors)
@@ -707,7 +711,8 @@ class MachineHandler(NodeHandler):
 
     def create_volume_group(self, params):
         """Create a volume group."""
-        node = self._get_node_or_permission_error(params)
+        node = self._get_node_or_permission_error(
+            params, permission=self._meta.edit_permission)
         form = CreateVolumeGroupForm(node=node, data=params)
         if not form.is_valid():
             raise HandlerError(form.errors)
@@ -716,7 +721,8 @@ class MachineHandler(NodeHandler):
 
     def create_logical_volume(self, params):
         """Create a logical volume."""
-        node = self._get_node_or_permission_error(params)
+        node = self._get_node_or_permission_error(
+            params, permission=self._meta.edit_permission)
         volume_group = VolumeGroup.objects.get(id=params['volume_group_id'])
         if volume_group.get_node() != node:
             raise VolumeGroup.DoesNotExist()
@@ -738,7 +744,8 @@ class MachineHandler(NodeHandler):
 
     def set_boot_disk(self, params):
         """Set the disk as the boot disk."""
-        node = self._get_node_or_permission_error(params)
+        node = self._get_node_or_permission_error(
+            params, permission=self._meta.edit_permission)
         device = BlockDevice.objects.get(
             id=params['block_id'], node=node).actual_instance
         if device.type != 'physical':
@@ -749,6 +756,8 @@ class MachineHandler(NodeHandler):
 
     def action(self, params):
         """Perform the action on the object."""
+        # `compile_node_actions` handles the permission checking internally
+        # the default view permission check is enough at this level.
         obj = self.get_object(params)
         action_name = params.get("action")
         actions = compile_node_actions(obj, self.user, request=self.request)
@@ -778,7 +787,8 @@ class MachineHandler(NodeHandler):
 
     def create_physical(self, params):
         """Create physical interface."""
-        node = self._get_node_or_permission_error(params)
+        node = self._get_node_or_permission_error(
+            params, permission=self._meta.edit_permission)
         form = PhysicalInterfaceForm(node=node, data=params)
         if form.is_valid():
             interface = form.save()
@@ -789,7 +799,8 @@ class MachineHandler(NodeHandler):
 
     def create_vlan(self, params):
         """Create VLAN interface."""
-        node = self._get_node_or_permission_error(params)
+        node = self._get_node_or_permission_error(
+            params, permission=self._meta.edit_permission)
         params['parents'] = [params.pop('parent')]
         form = VLANInterfaceForm(node=node, data=params)
         if form.is_valid():
@@ -801,7 +812,8 @@ class MachineHandler(NodeHandler):
 
     def create_bond(self, params):
         """Create bond interface."""
-        node = self._get_node_or_permission_error(params)
+        node = self._get_node_or_permission_error(
+            params, permission=self._meta.edit_permission)
         form = BondInterfaceForm(node=node, data=params)
         if form.is_valid():
             interface = form.save()
@@ -812,7 +824,8 @@ class MachineHandler(NodeHandler):
 
     def create_bridge(self, params):
         """Create bridge interface."""
-        node = self._get_node_or_permission_error(params)
+        node = self._get_node_or_permission_error(
+            params, permission=self._meta.edit_permission)
         if node.status == NODE_STATUS.ALLOCATED:
             form = AcquiredBridgeInterfaceForm(node=node, data=params)
         else:
@@ -826,7 +839,8 @@ class MachineHandler(NodeHandler):
 
     def update_interface(self, params):
         """Update the interface."""
-        node = self._get_node_or_permission_error(params)
+        node = self._get_node_or_permission_error(
+            params, permission=self._meta.edit_permission)
         interface = Interface.objects.get(node=node, id=params["interface_id"])
         if node.status == NODE_STATUS.DEPLOYED:
             interface_form = DeployedInterfaceForm
@@ -844,13 +858,15 @@ class MachineHandler(NodeHandler):
 
     def delete_interface(self, params):
         """Delete the interface."""
-        node = self._get_node_or_permission_error(params)
+        node = self._get_node_or_permission_error(
+            params, permission=self._meta.edit_permission)
         interface = Interface.objects.get(node=node, id=params["interface_id"])
         interface.delete()
 
     def link_subnet(self, params):
         """Create or update the link."""
-        node = self._get_node_or_permission_error(params)
+        node = self._get_node_or_permission_error(
+            params, permission=self._meta.edit_permission)
         interface = Interface.objects.get(node=node, id=params["interface_id"])
         subnet = None
         if "subnet" in params:
@@ -870,7 +886,8 @@ class MachineHandler(NodeHandler):
 
     def unlink_subnet(self, params):
         """Delete the link."""
-        node = self._get_node_or_permission_error(params)
+        node = self._get_node_or_permission_error(
+            params, permission=self._meta.edit_permission)
         interface = Interface.objects.get(node=node, id=params["interface_id"])
         interface.unlink_subnet_by_id(params["link_id"])
 
@@ -902,8 +919,8 @@ class MachineHandler(NodeHandler):
         d.addCallback(partial(deferToDatabase, update_state))
         return d
 
-    def _get_node_or_permission_error(self, params):
-        node = self.get_object(params)
-        if not reload_object(self.user).is_superuser or node.locked:
+    def _get_node_or_permission_error(self, params, permission=None):
+        node = self.get_object(params, permission=permission)
+        if node.locked:
             raise HandlerPermissionError()
         return node
