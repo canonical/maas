@@ -45,30 +45,55 @@ class VlansHandler(OperationsHandler):
         return ('vlans_handler', ["fabric_id"])
 
     def read(self, request, fabric_id):
-        """List all VLANs belonging to fabric.
+        """@description-title List VLANs
+        @description List all VLANs belonging to given fabric.
 
-        Returns 404 if the fabric is not found.
+        @param (int) "{fabric_id}" [required=true] The fabric for which to list
+        the VLANs.
+
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing a list of VLANs
+        in the given fabric.
+        @success-example "success-json" [exkey=vlan-list] placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested fabric_id is not found.
+        @error-example "not-found"
+            Not Found
         """
         fabric = Fabric.objects.get_fabric_or_404(
             fabric_id, request.user, NodePermission.view)
         return fabric.vlan_set.all()
 
     def create(self, request, fabric_id):
-        """Create a VLAN.
+        """@description-title Create a VLAN
+        @description Creates a new VLAN.
 
-        :param name: Name of the VLAN.
-        :type name: unicode
-        :param description: Description of the VLAN.
-        :type description: unicode
-        :param vid: VLAN ID of the VLAN.
-        :type vid: integer
-        :param mtu: The MTU to use on the VLAN.
-        :type mtu: integer
-        :param space: The space this VLAN should be placed in. Passing in an
-            empty string (or the string 'undefined') will cause the VLAN to be
-            placed in the 'undefined' space.
-        :type space: unicode
+        @param (int) "{fabric_id}" [required=true] The fabric_id on which to
+        add the new VLAN.
 
+        @param (string) "name" [required=false] Name of the VLAN.
+
+        @param (string) "description" [required=false] Description of the new
+        VLAN.
+
+        @param (int) "vid" [required=true] VLAN ID of the new VLAN.
+
+        @param (int) "mtu" [required=false] The MTU to use on the VLAN.
+
+        @param (string) "space" [required=false] The space this VLAN should be
+        placed in. Passing in an empty string (or the string 'undefined') will
+        cause the VLAN to be placed in the 'undefined' space.
+
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing information
+        about the new VLAN.
+        @success-example "success-json" [exkey=vlan-create] placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested fabric_id is not found.
+        @error-example "not-found"
+            Not Found
         """
         fabric = Fabric.objects.get_fabric_or_404(
             fabric_id, request.user, NodePermission.admin)
@@ -80,7 +105,7 @@ class VlansHandler(OperationsHandler):
 
 
 class VlanHandler(OperationsHandler):
-    """Manage VLAN on a fabric."""
+    """Manage a VLAN on a fabric."""
     api_doc_section_name = "VLAN"
     create = update = None
     model = VLAN
@@ -154,42 +179,73 @@ class VlanHandler(OperationsHandler):
         return vlan
 
     def read(self, request, **kwargs):
-        """Read VLAN on fabric.
+        """@description-title Retrieve VLAN
+        @description Retrieves a VLAN on a given fabric_id.
 
-        Returns 404 if the fabric or VLAN is not found.
+        @param (int) "{fabric_id}" [required=true] The fabric_id containing the
+        VLAN.
+
+        @param (int) "{vid}" [required=true] The VLAN ID.
+
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing information
+        about the requested VLAN.
+        @success-example "success-json" [exkey=vlan-read] placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested fabric_id or vid is not
+        found.
+        @error-example "not-found"
+            Not Found
         """
         vlan = self._get_vlan(request.user, NodePermission.view, **kwargs)
         return vlan
 
     def update(self, request, **kwargs):
-        """Update VLAN.
+        """@description-title Update VLAN
+        @description Updates a given VLAN.
 
-        :param name: Name of the VLAN.
-        :type name: unicode
-        :param description: Description of the VLAN.
-        :type description: unicode
-        :param vid: VLAN ID of the VLAN.
-        :type vid: integer
-        :param mtu: The MTU to use on the VLAN.
-        :type mtu: integer
-        :param dhcp_on: Whether or not DHCP should be managed on the VLAN.
-        :type dhcp_on: boolean
-        :param primary_rack: The primary rack controller managing the VLAN.
-        :type primary_rack: system_id
-        :param secondary_rack: The secondary rack controller manging the VLAN.
-        :type secondary_rack: system_id
-        :param relay_vlan: Only set when this VLAN will be using a DHCP relay
-            to forward DHCP requests to another VLAN that MAAS is or will run
-            the DHCP server. MAAS will not run the DHCP relay itself, it must
-            be configured to proxy reqests to the primary and/or secondary
-            rack controller interfaces for the VLAN specified in this field.
-        :type relay_vlan: ID of VLAN
-        :param space: The space this VLAN should be placed in. Passing in an
-            empty string (or the string 'undefined') will cause the VLAN to be
-            placed in the 'undefined' space.
-        :type space: unicode
+        @param (int) "{fabric_id}" [required=true] Fabric ID containing the
+        VLAN.
 
-        Returns 404 if the fabric or VLAN is not found.
+        @param (int) "{vid}" [required=true] VLAN ID of the VLAN.
+
+        @param (string) "name" [required=false] Name of the VLAN.
+
+        @param (string) "description" [required=false] Description of the VLAN.
+
+        @param (int) "mtu" [required=false] The MTU to use on the VLAN.
+
+        @param (boolean) "dhcp_on" [required=false] Whether or not DHCP should
+        be managed on the VLAN.
+
+        @param (string) "primary_rack" [required=false] The primary rack
+        controller managing the VLAN (system_id).
+
+        @param (string) "secondary_rack" [required=false] The secondary rack
+        controller managing the VLAN (system_id).
+
+        @param (int) "relay_vlan" [required=false] Relay VLAN ID. Only set when
+        this VLAN will be using a DHCP relay to forward DHCP requests to
+        another VLAN that MAAS is managing. MAAS will not run the DHCP relay
+        itself, it must be configured to proxy reqests to the primary and/or
+        secondary rack controller interfaces for the VLAN specified in this
+        field.
+
+        @param (string) "space" [required=false] The space this VLAN should be
+        placed in. Passing in an empty string (or the string 'undefined') will
+        cause the VLAN to be placed in the 'undefined' space.
+
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing information
+        about the updated VLAN.
+        @success-example "success-json" [exkey=vlan-update] placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested fabric_id or vid is not
+        found.
+        @error-example "not-found"
+            Not Found
         """
         vlan = self._get_vlan(request.user, NodePermission.admin, **kwargs)
         data = {}
@@ -207,9 +263,21 @@ class VlanHandler(OperationsHandler):
             raise MAASAPIValidationError(form.errors)
 
     def delete(self, request, **kwargs):
-        """Delete VLAN on fabric.
+        """@description-title Delete a VLAN
+        @description Delete VLAN on a given fabric.
 
-        Returns 404 if the fabric or VLAN is not found.
+        @param (int) "{fabric_id}" [required=true] Fabric ID containing the
+        VLAN to delete.
+
+        @param (int) "{vid}" [required=true] VLAN ID of the VLAN to delete.
+
+        @success (http-status-code) "204" 204
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested fabric_id or vid is not
+        found.
+        @error-example "not-found"
+            Not Found
         """
         vlan = self._get_vlan(request.user, NodePermission.admin, **kwargs)
         vlan.delete()

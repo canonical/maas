@@ -1,0 +1,64 @@
+{
+  "vlan-list": [
+    {
+      "vid": 0,
+      "mtu": 1500,
+      "dhcp_on": false,
+      "external_dhcp": null,
+      "relay_vlan": null,
+      "space": "undefined",
+      "fabric_id": 10,
+      "secondary_rack": null,
+      "fabric": "fabric-10",
+      "id": 5014,
+      "primary_rack": null,
+      "name": "untagged",
+      "resource_uri": "/MAAS/api/2.0/vlans/5014/"
+    }
+  ],
+  "vlan-create": {
+    "vid": 4000,
+    "mtu": 1500,
+    "dhcp_on": false,
+    "external_dhcp": null,
+    "relay_vlan": null,
+    "name": "4000",
+    "primary_rack": null,
+    "secondary_rack": null,
+    "fabric_id": 0,
+    "id": 5017,
+    "fabric": "fabric-0",
+    "space": "undefined",
+    "resource_uri": "/MAAS/api/2.0/vlans/5017/"
+  },
+  "vlan-read": {
+    "vid": 10,
+    "mtu": 1500,
+    "dhcp_on": false,
+    "external_dhcp": null,
+    "relay_vlan": null,
+    "fabric_id": 0,
+    "name": "10",
+    "primary_rack": "7xtf67",
+    "space": "internal",
+    "secondary_rack": "76y7pg",
+    "id": 5002,
+    "fabric": "fabric-0",
+    "resource_uri": "/MAAS/api/2.0/vlans/5002/"
+  },
+  "vlan-update": {
+    "vid": 0,
+    "mtu": 1500,
+    "dhcp_on": false,
+    "external_dhcp": null,
+    "relay_vlan": null,
+    "id": 5001,
+    "primary_rack": "7xtf67",
+    "fabric_id": 0,
+    "space": "management",
+    "secondary_rack": "76y7pg",
+    "name": "untagged",
+    "fabric": "fabric-0",
+    "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+  }
+}
