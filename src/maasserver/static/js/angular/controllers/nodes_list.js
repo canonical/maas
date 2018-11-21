@@ -854,9 +854,14 @@ angular.module('MAAS').controller('NodesListController', [
                     }
                 }
                 if(tab.actionProgress.affected_nodes != 0) {
-                    tab.actionProgress.confirmation_message =
-                        tab.actionProgress.affected_nodes +
-                        " controllers will be deleted.";
+                    if(tab.actionProgress.affected_nodes === 1) {
+                        tab.actionProgress.confirmation_message =
+                            "1 controller will be deleted.";
+                    } else {
+                        tab.actionProgress.confirmation_message =
+                            tab.actionProgress.affected_nodes +
+                            " controllers will be deleted.";
+                    }
                     tab.actionProgress.showing_confirmation = true;
                     return;
                 }

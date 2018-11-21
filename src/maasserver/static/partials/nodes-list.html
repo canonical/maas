@@ -384,18 +384,16 @@
                 </div>
             </section>
             <section class="page-header__section row u-no-margin--top ng-hide" data-ng-show="tabs[tab].actionProgress.showing_confirmation">
-                <hr />
                 <div class="col-12">
                     <p>
-                        <i class="p-icon--warning">Confirm:</i> {$ tabs[tab].actionProgress.confirmation_message $}
+                        <i class="p-icon--warning" /><b>Confirm:</b> {$ tabs[tab].actionProgress.confirmation_message $}
                     </p>
                     <div data-ng-repeat="confirmation_detail in tabs[tab].actionProgress.confirmation_details">
                         <span>{$ confirmation_detail $}</span>
                     </div>
-                    <hr />
                     <div>
                         <div class="u-align--left">
-                            <b>Confirm:</b> Are you sure you want to {$ tabs[tab].actionOption.name $} these machines?
+                            Are you sure you want to {$ tabs[tab].actionOption.name $} <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'this machine', 'other': 'these machines'}"></span>?
                         </div>
                         <div class="u-align--right">
                             <button class="p-button--base" data-ng-click="actionCancel(tab)">No</button>
@@ -669,21 +667,19 @@
         </div>
 
         <section class="page-header__section row u-no-margin--top ng-hide" data-ng-show="tabs.controllers.actionProgress.showing_confirmation">
-            <hr />
             <div class="row">
                 <div class="col-12">
                     <p>
-                        <i class="p-icon--warning">Confirm:</i> {$ tabs.controllers.actionProgress.confirmation_message $}
+                        <i class="p-icon--warning" /><b>Confirm:</b> {$ tabs.controllers.actionProgress.confirmation_message $}
                     </p>
                     <div data-ng-repeat="confirmation_detail in tabs.controllers.actionProgress.confirmation_details">
                         <span>{$ confirmation_detail $}</span>
                     </div>
                 </div>
             </div>
-            <hr />
             <div class="row">
                 <div class="col-8">
-                    <b>Confirm:</b> Are you sure you want to {$ tabs.controllers.actionOption.name $} these controllers?
+                    Are you sure you want to {$ tabs.controllers.actionOption.name $} <span data-ng-pluralize count="tabs.controllers.selectedItems.length" when="{'one': 'this controller', 'other': 'these controllers'}"></span>?
                 </div>
                 <div class="col-4 u-align--right">
                     <button class="p-button--base" data-ng-click="actionCancel('controllers')">No</button>

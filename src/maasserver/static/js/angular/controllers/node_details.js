@@ -642,8 +642,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
                         !$scope.action.showing_confirmation) {
                     $scope.action.showing_confirmation = true;
                     $scope.action.confirmation_message =
-                        $scope.type_name_title + " is currently deployed. " +
-                        "Are you sure you want to continue to test hardware?";
+                        $scope.type_name_title + " is in a deployed state.";
                     return;
                 }
                 // Set the test options.
@@ -681,7 +680,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 }
                 if($scope.action.confirmation_details.length > 0) {
                     $scope.action.confirmation_message +=
-                        "Are you sure you want delete this controller?";
+                        $scope.type_name_title + " will be deleted."
                     $scope.action.showing_confirmation = true;
                     return;
                 }

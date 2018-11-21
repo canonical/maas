@@ -203,22 +203,26 @@
                 </div>
             </div>
             <div class="row ng-hide" data-ng-show="action.showing_confirmation">
-                <hr />
-                <div class="u-equal-height">
-                    <div class="col-9 u-vertically-center">
-                        <p class="u-remove-max-width">
-                            <i class="p-icon--warning" /><b>Confirm:</b> {$ action.confirmation_message $}
-                        </p>
+                <div class="col-12">
+                    <p>
+                        <i class="p-icon--warning" /><b>Confirm:</b> {$ action.confirmation_message $}
+                    </p>
+                    <div data-ng-repeat="confirmation_detail in action.confirmation_details">
+                        <span>{$ confirmation_detail $}</span>
                     </div>
-                    <div class="col-3">
-                        <div class="u-align--right">
-                            <button class="p-button--base" data-ng-click="actionCancel()">No</button>
-                            <button class="p-button--negative" data-ng-click="actionGo()">Yes</button>
-                        </div>
+		    <div class="u-equal-height">
+			<div class="col-9 u-vertically-center">
+			    <p class="u-remove-max-width">
+				Are you sure you want to {$ action.actionOption.name $} this {$ type_name $}?
+			    </p>
+			</div>
+			<div class="col-3">
+			    <div class="u-align--right">
+				<button class="p-button--base" data-ng-click="actionCancel()">No</button>
+				<button class="p-button--negative" data-ng-click="actionGo()">Yes</button>
+			    </div>
+			</div>
                     </div>
-                </div>
-                <div data-ng-repeat="confirmation_detail in action.confirmation_details">
-                    <span>{$ confirmation_detail $}</span>
                 </div>
             </div>
             <div class="row u-equal-height ng-hide" data-ng-show="isActionError()">
