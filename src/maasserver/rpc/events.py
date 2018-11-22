@@ -107,10 +107,9 @@ def send_event_ip_address(ip_address, type_name, description, timestamp):
     except EventType.DoesNotExist:
         raise NoSuchEventType.from_name(type_name)
 
-    try:
-        node = Node.objects.get(
-            interface__ip_addresses__ip=ip_address)
-    except Node.DoesNotExist:
+    node = Node.objects.filter(
+        interface__ip_addresses__ip=ip_address).first()
+    if node is None:
         # The node doesn't exist, but we don't raise an exception - it's
         # entirely possible the cluster has started sending events for a node
         # that we don't know about yet. This is most likely to happen when a

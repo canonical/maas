@@ -9,6 +9,7 @@ __all__ = []
 import datetime
 import logging
 
+from maasserver.enum import INTERFACE_TYPE
 from maasserver.models.event import Event
 from maasserver.models.eventtype import EventType
 from maasserver.rpc import events
@@ -118,6 +119,27 @@ class TestSendEventIPAddress(MAASServerTestCase):
         description = factory.make_name('description')
         timestamp = datetime.datetime.utcnow()
         ip = factory.make_StaticIPAddress(interface=node.interface_set.first())
+        events.send_event_ip_address(
+            ip.ip, event_type.name,
+            description, timestamp)
+        # Doesn't raise a DoesNotExist error.
+        Event.objects.get(
+            node=node, type=event_type, description=description,
+            created=timestamp)
+
+    def test__creates_event_for_node_with_bridge_interface(self):
+        event_type = factory.make_EventType()
+        node = factory.make_Node(interface=True)
+        eth0 = node.get_boot_interface()
+        # Create a bridge with the same MAC as the boot interface.
+        factory.make_Interface(
+            INTERFACE_TYPE.BRIDGE, node=node, mac_address=eth0.mac_address,
+            parents=[node.get_boot_interface()])
+        description = factory.make_name('description')
+        timestamp = datetime.datetime.utcnow()
+        ip = factory.make_StaticIPAddress()
+        for interface in node.interface_set.all():
+            ip.interface_set.add(interface)
         events.send_event_ip_address(
             ip.ip, event_type.name,
             description, timestamp)
