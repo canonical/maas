@@ -38,14 +38,32 @@ class SSLKeysHandler(OperationsHandler):
     update = delete = None
 
     def read(self, request):
-        """List all keys belonging to the requesting user."""
+        """@description-title List keys
+        @description List all keys belonging to the requesting user.
+
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing a list of SSL
+        keys.
+        @success-example "success-json" [exkey=ssl-keys-list] placeholder text
+        """
         return SSLKey.objects.filter(user=request.user).order_by('id')
 
     def create(self, request):
-        """Add a new SSL key to the requesting user's account.
+        """@description-title Add a new SSL key
+        @description Add a new SSL key to the requesting user's account.
 
-        The request payload should contain the SSL key data in form
-        data whose name is "key".
+        @param (string) "key" [required=true,formatting=true] An SSL key
+        should be provided in the request payload as form data with the name
+        'key':
+
+            key: "key data"
+
+        - ``key data``: The contents of a pem file.
+
+        @success (http-status-code) "201" 201
+        @success (json) "success-json" A JSON object containing the new key.
+        @success-example "success-json" [exkey=ssl-keys-create] placeholder
+        text
         """
         form = SSLKeyForm(user=request.user, data=request.data)
         if form.is_valid():
@@ -65,7 +83,8 @@ class SSLKeysHandler(OperationsHandler):
 
 
 class SSLKeyHandler(OperationsHandler):
-    """Manage an SSL key.
+    """
+    Manage an SSL key.
 
     SSL keys can be retrieved or deleted.
     """
@@ -76,10 +95,26 @@ class SSLKeyHandler(OperationsHandler):
     create = update = None
 
     def read(self, request, id):
-        """GET an SSL key.
+        """@description-title Retrieve an SSL key
+        @description Retrieves an SSL key with the given ID.
 
-        Returns 404 if the key with `id` is not found.
-        Returns 401 if the key does not belong to the requesting user.
+        @param (int) "id" [required=true] An SSL key ID.
+
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing a list of
+        imported keys.
+        @success-example "success-json" [exkey=ssl-keys-get] placeholder
+        text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested SSH key is not found.
+        @error-example "not-found"
+            Not Found
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The requesting user does not own the key.
+        @error-example "no-perms"
+            Can't get a key you don't own.
         """
         key = get_object_or_404(SSLKey, id=id)
         if key.user != request.user:
@@ -88,10 +123,22 @@ class SSLKeyHandler(OperationsHandler):
         return key
 
     def delete(self, request, id):
-        """DELETE an SSL key.
+        """@description-title Delete an SSL key
+        @description Deletes the SSL key with the given ID.
 
-        Returns 401 if the key does not belong to the requesting user.
-        Returns 204 if the key is successfully deleted.
+        @param (int) "id" [required=true] An SSH key ID.
+
+        @success (http-status-code) "204" 204
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested SSH key is not found.
+        @error-example "not-found"
+            Not Found
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The requesting user does not own the key.
+        @error-example "no-perms"
+            Can't delete a key you don't own.
         """
         key = get_object_or_404(SSLKey, id=id)
         if key.user != request.user:

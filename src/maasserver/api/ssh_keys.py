@@ -180,6 +180,12 @@ class SSHKeyHandler(OperationsHandler):
 
         @param (int) "id" [required=true] An SSH key ID.
 
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing a list of
+        imported keys.
+        @success-example "success-json" [exkey=ssh-keys-get] placeholder
+        text
+
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested SSH key is not found.
         @error-example "not-found"
@@ -193,6 +199,8 @@ class SSHKeyHandler(OperationsHandler):
         @description Deletes the SSH key with the given ID.
 
         @param (int) "id" [required=true] An SSH key ID.
+
+        @success (http-status-code) "204" 204
 
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested SSH key is not found.
