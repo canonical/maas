@@ -5681,6 +5681,28 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
         ]
         self.assertItemsEqual(interfaces, observed_interfaces)
 
+    def test_claim_auto_ips_calls_claim_auto_ips_on_new_added_interface(self):
+        node = factory.make_Node()
+        interfaces = [
+            factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+            for _ in range(2)
+        ]
+        mock_claim_auto_ips = self.patch_autospec(Interface, "claim_auto_ips")
+        node = Node.objects.filter(
+            id=node.id).prefetch_related('interface_set').first()
+        # Add in the third interface after we create the node with the cached
+        # interface_set.
+        new_iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        interfaces.append(new_iface)
+        node.claim_auto_ips()
+        # Since the interfaces are not ordered, which they dont need to be
+        # we extract the passed interface to each call.
+        observed_interfaces = [
+            call[0][0]
+            for call in mock_claim_auto_ips.call_args_list
+        ]
+        self.assertItemsEqual(interfaces, observed_interfaces)
+
     def test_release_interface_config_calls_release_auto_ips_on_all(self):
         node = factory.make_Node()
         interfaces = [

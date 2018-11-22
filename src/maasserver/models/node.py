@@ -3275,7 +3275,10 @@ class Node(CleanSave, TimestampedModel):
     def claim_auto_ips(self):
         """Assign IP addresses to all interface links set to AUTO."""
         exclude_addresses = set()
-        for interface in self.interface_set.all():
+        # Query for the interfaces again here; if we use the cached
+        # interface_set, we could skip a newly-created bridge if it was created
+        # at deployment time.
+        for interface in Interface.objects.filter(node=self):
             claimed_ips = interface.claim_auto_ips(
                 exclude_addresses=exclude_addresses)
             for ip in claimed_ips:
