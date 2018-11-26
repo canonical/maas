@@ -627,8 +627,30 @@ class APIDocstringParser:
 
         return ""
 
+    def _load_nodes_examples_dict(self):
+        """Returns a dictionary containing 'nodes' examples data.
+
+        Since many API objects inherit from nodes (e.g. machines, devices) we
+        always load nodes examples to prevent duplicating data.
+
+        If examples/nodes.json cannot be found, we warn, which will prevent
+        the unit tests from completing normally, but we return an empty
+        dictionary so the code can continue.
+        """
+        nodes_examples = {}
+
+        json_file = ("%s/examples/nodes.json" % os.path.dirname(__file__))
+
+        if not os.path.isfile(json_file):
+            self._warn("examples/nodes.json not found.")
+        else:
+            with open(json_file, "r") as ex_db_file:
+                nodes_examples = json.load(ex_db_file)
+
+        return nodes_examples
+
     def _get_examples_dict(self, uri):
-        """Returns a dictionary containing examples data or None
+        """Returns a dictionary containing examples data
 
         Given an operation string like "zone" or "zones", this function tries
         to open and slurp in the JSON of a matching file in the api/examples
@@ -638,15 +660,13 @@ class APIDocstringParser:
                 ... any JSON object ...
             }
 
-        If no database is associated with the operation, the function
-        returns None.
+        This function will always return at least nodes examples data.
         """
-        examples = {}
+        examples = self._load_nodes_examples_dict()
 
         operation = self._get_operation_from_uri(uri)
-
-        if operation == "":
-            return None
+        if operation == "" or operation == "nodes" or operation == "node":
+            return examples
 
         # First, try the operation string as is:
         json_file = ("%s/examples/%s.json" %
@@ -658,11 +678,12 @@ class APIDocstringParser:
                          (os.path.dirname(__file__), operation))
 
             if not os.path.isfile(json_file):
-                # Give up
-                return None
+                # No examples found so return base set
+                return examples
 
         with open(json_file, "r") as ex_db_file:
-            examples = json.load(ex_db_file)
+            operation_examples = json.load(ex_db_file)
+            examples.update(operation_examples)
 
         return examples
 

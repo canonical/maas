@@ -66,7 +66,10 @@ class TestAPIAnnotations(APITestCase.ForUser):
     @success-example "success_name" success content
 
     @success (content) "success_with_exdb" success description
-    @success-example "success_with_exdb" [exkey=key1] ignored content
+    @success-example "success_with_exdb" [exkey=key1] placeholder text
+
+    @success (content) "success_inherit_node" success description
+    @success-example "success_inherit_node" [exkey=read-node] placeholder text
 
     @error (http-status-code) "error_name" error description
     @error-example "error_name" error content
@@ -606,3 +609,25 @@ class TestAPIAnnotations(APITestCase.ForUser):
         d = api_docstring_parser.get_dict()
 
         self.assert_has_api_warning(d)
+
+    def test_load_nodes_examples_by_default(self):
+        """Nodes examples should be loading by default.
+
+        Some API objects like machines and devices inherit operations from
+        nodes, so when we load the examples database, we always start with
+        nodes and add on object-specific examples.
+        """
+        ds = self.sample_api_annotated_docstring
+
+        api_docstring_parser = APIDocstringParser()
+        api_docstring_parser.parse(ds, uri=self.test_uri_plural)
+        d = api_docstring_parser.get_dict()
+
+        # index=2 contains the example with inherited examples from
+        # example/nodes.json
+        s = d['successes'][2]
+
+        # The presence of the 'resource-uri' string is a good indicator
+        # that the 'read-node' key has picked up the JSON object and
+        # converted it to a string for output in API docs.
+        self.assertTrue(s['example'].find("resource_uri") != -1)

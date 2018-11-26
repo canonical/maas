@@ -1,0 +1,2605 @@
+{
+  "read-node": {
+    "boot_interface": {
+      "system_id": "g8xyqs",
+      "name": "eth-jJ5ZwN",
+      "vlan": {
+        "vid": 0,
+        "mtu": 1500,
+        "dhcp_on": false,
+        "external_dhcp": null,
+        "relay_vlan": null,
+        "name": "untagged",
+        "fabric_id": 2,
+        "id": 5005,
+        "secondary_rack": null,
+        "space": "undefined",
+        "primary_rack": null,
+        "fabric": "fabric-2",
+        "resource_uri": "/MAAS/api/2.0/vlans/5005/"
+      },
+      "vendor": null,
+      "enabled": true,
+      "children": [
+        "bond-VpkNvO"
+      ],
+      "discovered": null,
+      "id": 112,
+      "params": "",
+      "type": "physical",
+      "firmware_version": null,
+      "mac_address": "3d:fd:40:ef:70:e8",
+      "parents": [],
+      "tags": [
+        "tag-M21kgB",
+        "tag-CpnGzQ",
+        "tag-Wgd7Eu"
+      ],
+      "links": [],
+      "effective_mtu": 1500,
+      "product": null,
+      "resource_uri": "/MAAS/api/2.0/nodes/g8xyqs/interfaces/112/"
+    },
+    "memory": 8192,
+    "tag_names": [],
+    "current_installation_result_id": null,
+    "fqdn": "causal-quagga.maas",
+    "disable_ipv4": false,
+    "distro_series": "",
+    "ip_addresses": [],
+    "pool": {
+      "name": "default",
+      "description": "Default pool",
+      "id": 0,
+      "resource_uri": "/MAAS/api/2.0/resourcepool/0/"
+    },
+    "node_type": 0,
+    "min_hwe_kernel": null,
+    "commissioning_status_name": "Passed",
+    "domain": {
+      "authoritative": true,
+      "ttl": null,
+      "name": "maas",
+      "resource_record_count": 0,
+      "id": 0,
+      "is_default": true,
+      "resource_uri": "/MAAS/api/2.0/domains/0/"
+    },
+    "boot_disk": {
+      "firmware_version": "firmware_version-tnhqNO",
+      "partitions": [],
+      "system_id": "g8xyqs",
+      "name": "name-rcEM1G",
+      "id_path": null,
+      "block_size": 512,
+      "model": "model-RAViIE",
+      "available_size": 2250362368,
+      "id": 75,
+      "filesystem": null,
+      "size": 2250362368,
+      "type": "physical",
+      "used_size": 0,
+      "partition_table_type": null,
+      "serial": "serial-qlOilQ",
+      "path": "/dev/disk/by-dname/name-rcEM1G",
+      "tags": [
+        "tag-OKbSzN",
+        "tag-IExJAF",
+        "tag-p2t26t"
+      ],
+      "storage_pool": "pool_id-ry2OnY",
+      "uuid": null,
+      "used_for": "Unused",
+      "resource_uri": "/MAAS/api/2.0/nodes/g8xyqs/blockdevices/75/"
+    },
+    "system_id": "g8xyqs",
+    "zone": {
+      "name": "zone-north",
+      "description": "xsMaq90fRE",
+      "id": 2,
+      "resource_uri": "/MAAS/api/2.0/zones/zone-north/"
+    },
+    "blockdevice_set": [
+      {
+        "id_path": null,
+        "size": 2250362368,
+        "block_size": 512,
+        "tags": [
+          "tag-OKbSzN",
+          "tag-IExJAF",
+          "tag-p2t26t"
+        ],
+        "partitions": [],
+        "system_id": "g8xyqs",
+        "name": "name-rcEM1G",
+        "model": "model-RAViIE",
+        "available_size": 2250362368,
+        "id": 75,
+        "filesystem": null,
+        "type": "physical",
+        "used_size": 0,
+        "partition_table_type": null,
+        "serial": "serial-qlOilQ",
+        "path": "/dev/disk/by-dname/name-rcEM1G",
+        "storage_pool": "pool_id-ry2OnY",
+        "uuid": null,
+        "used_for": "Unused",
+        "resource_uri": "/MAAS/api/2.0/nodes/g8xyqs/blockdevices/75/"
+      },
+      {
+        "id_path": null,
+        "size": 1443074048,
+        "block_size": 4096,
+        "tags": [
+          "tag-sgRDAF",
+          "tag-kytOd1",
+          "tag-acWXTG"
+        ],
+        "partitions": [],
+        "system_id": "g8xyqs",
+        "name": "name-a5uEVy",
+        "model": "model-0mBTZN",
+        "available_size": 1443074048,
+        "id": 76,
+        "filesystem": null,
+        "type": "physical",
+        "used_size": 0,
+        "partition_table_type": null,
+        "serial": "serial-fbDnkc",
+        "path": "/dev/disk/by-dname/name-a5uEVy",
+        "storage_pool": "pool_id-aMRZUu",
+        "uuid": null,
+        "used_for": "Unused",
+        "resource_uri": "/MAAS/api/2.0/nodes/g8xyqs/blockdevices/76/"
+      }
+    ],
+    "current_commissioning_result_id": 198,
+    "cpu_test_status": 2,
+    "address_ttl": null,
+    "cache_sets": [],
+    "storage": 3693.436416,
+    "node_type_name": "Machine",
+    "hardware_info": {
+      "system_vendor": "Unknown",
+      "system_product": "Unknown",
+      "system_version": "Unknown",
+      "system_serial": "Unknown",
+      "cpu_model": "Unknown",
+      "mainboard_vendor": "Unknown",
+      "mainboard_product": "Unknown",
+      "mainboard_firmware_version": "Unknown",
+      "mainboard_firmware_date": "Unknown"
+    },
+    "cpu_count": 7,
+    "storage_test_status_name": "Passed",
+    "owner": "user2",
+    "status": 20,
+    "volume_groups": [],
+    "hwe_kernel": null,
+    "netboot": true,
+    "current_testing_result_id": 199,
+    "commissioning_status": 2,
+    "testing_status_name": "Passed",
+    "architecture": "i386/generic",
+    "locked": false,
+    "power_state": "error",
+    "memory_test_status_name": "Passed",
+    "power_type": "virsh",
+    "interface_set": [
+      {
+        "system_id": "g8xyqs",
+        "name": "eth-jJ5ZwN",
+        "vlan": {
+          "vid": 0,
+          "mtu": 1500,
+          "dhcp_on": false,
+          "external_dhcp": null,
+          "relay_vlan": null,
+          "name": "untagged",
+          "fabric_id": 2,
+          "id": 5005,
+          "secondary_rack": null,
+          "space": "undefined",
+          "primary_rack": null,
+          "fabric": "fabric-2",
+          "resource_uri": "/MAAS/api/2.0/vlans/5005/"
+        },
+        "vendor": null,
+        "enabled": true,
+        "children": [
+          "bond-VpkNvO"
+        ],
+        "discovered": null,
+        "id": 112,
+        "params": "",
+        "type": "physical",
+        "firmware_version": null,
+        "mac_address": "3d:fd:40:ef:70:e8",
+        "parents": [],
+        "tags": [
+          "tag-M21kgB",
+          "tag-CpnGzQ",
+          "tag-Wgd7Eu"
+        ],
+        "links": [],
+        "effective_mtu": 1500,
+        "product": null,
+        "resource_uri": "/MAAS/api/2.0/nodes/g8xyqs/interfaces/112/"
+      },
+      {
+        "system_id": "g8xyqs",
+        "name": "eth-ex07mq",
+        "vlan": {
+          "vid": 0,
+          "mtu": 1500,
+          "dhcp_on": false,
+          "external_dhcp": null,
+          "relay_vlan": null,
+          "name": "untagged",
+          "fabric_id": 2,
+          "id": 5005,
+          "secondary_rack": null,
+          "space": "undefined",
+          "primary_rack": null,
+          "fabric": "fabric-2",
+          "resource_uri": "/MAAS/api/2.0/vlans/5005/"
+        },
+        "vendor": null,
+        "enabled": true,
+        "children": [
+          "bond-VpkNvO"
+        ],
+        "discovered": null,
+        "id": 113,
+        "params": "",
+        "type": "physical",
+        "firmware_version": null,
+        "mac_address": "8f:75:69:58:26:47",
+        "parents": [],
+        "tags": [
+          "tag-ymen6c",
+          "tag-oKQ7iK",
+          "tag-yQLBgJ"
+        ],
+        "links": [],
+        "effective_mtu": 1500,
+        "product": null,
+        "resource_uri": "/MAAS/api/2.0/nodes/g8xyqs/interfaces/113/"
+      },
+      {
+        "system_id": "g8xyqs",
+        "name": "eth-CE1j2X",
+        "vlan": {
+          "vid": 0,
+          "mtu": 1500,
+          "dhcp_on": false,
+          "external_dhcp": null,
+          "relay_vlan": null,
+          "name": "untagged",
+          "fabric_id": 2,
+          "id": 5005,
+          "secondary_rack": null,
+          "space": "undefined",
+          "primary_rack": null,
+          "fabric": "fabric-2",
+          "resource_uri": "/MAAS/api/2.0/vlans/5005/"
+        },
+        "vendor": null,
+        "enabled": true,
+        "children": [
+          "bond-VpkNvO"
+        ],
+        "discovered": null,
+        "id": 114,
+        "params": "",
+        "type": "physical",
+        "firmware_version": null,
+        "mac_address": "b0:5e:ed:8d:d8:36",
+        "parents": [],
+        "tags": [
+          "tag-LJPUwT",
+          "tag-U5zGn3",
+          "tag-dHGEeD"
+        ],
+        "links": [],
+        "effective_mtu": 1500,
+        "product": null,
+        "resource_uri": "/MAAS/api/2.0/nodes/g8xyqs/interfaces/114/"
+      },
+      {
+        "system_id": "g8xyqs",
+        "name": "bond-VpkNvO",
+        "vlan": {
+          "vid": 0,
+          "mtu": 1500,
+          "dhcp_on": false,
+          "external_dhcp": null,
+          "relay_vlan": null,
+          "name": "untagged",
+          "fabric_id": 2,
+          "id": 5005,
+          "secondary_rack": null,
+          "space": "undefined",
+          "primary_rack": null,
+          "fabric": "fabric-2",
+          "resource_uri": "/MAAS/api/2.0/vlans/5005/"
+        },
+        "vendor": null,
+        "enabled": true,
+        "children": [],
+        "discovered": null,
+        "id": 115,
+        "params": "",
+        "type": "bond",
+        "firmware_version": null,
+        "mac_address": "0a:87:3f:94:0e:68",
+        "parents": [
+          "eth-CE1j2X",
+          "eth-ex07mq",
+          "eth-jJ5ZwN"
+        ],
+        "tags": [
+          "tag-HwhC7n",
+          "tag-WHGBJc",
+          "tag-yY8Ap5"
+        ],
+        "links": [],
+        "effective_mtu": 1500,
+        "product": null,
+        "resource_uri": "/MAAS/api/2.0/nodes/g8xyqs/interfaces/115/"
+      }
+    ],
+    "owner_data": {},
+    "bcaches": [],
+    "hostname": "causal-quagga",
+    "raids": [],
+    "other_test_status": 2,
+    "status_action": "action-BqENyW",
+    "special_filesystems": [],
+    "physicalblockdevice_set": [
+      {
+        "firmware_version": "firmware_version-tnhqNO",
+        "partitions": [],
+        "system_id": "g8xyqs",
+        "name": "name-rcEM1G",
+        "id_path": null,
+        "block_size": 512,
+        "model": "model-RAViIE",
+        "available_size": 2250362368,
+        "id": 75,
+        "filesystem": null,
+        "size": 2250362368,
+        "type": "physical",
+        "used_size": 0,
+        "partition_table_type": null,
+        "serial": "serial-qlOilQ",
+        "path": "/dev/disk/by-dname/name-rcEM1G",
+        "tags": [
+          "tag-OKbSzN",
+          "tag-IExJAF",
+          "tag-p2t26t"
+        ],
+        "storage_pool": "pool_id-ry2OnY",
+        "uuid": null,
+        "used_for": "Unused",
+        "resource_uri": "/MAAS/api/2.0/nodes/g8xyqs/blockdevices/75/"
+      },
+      {
+        "firmware_version": "firmware_version-UW8ucD",
+        "partitions": [],
+        "system_id": "g8xyqs",
+        "name": "name-a5uEVy",
+        "id_path": null,
+        "block_size": 4096,
+        "model": "model-0mBTZN",
+        "available_size": 1443074048,
+        "id": 76,
+        "filesystem": null,
+        "size": 1443074048,
+        "type": "physical",
+        "used_size": 0,
+        "partition_table_type": null,
+        "serial": "serial-fbDnkc",
+        "path": "/dev/disk/by-dname/name-a5uEVy",
+        "tags": [
+          "tag-sgRDAF",
+          "tag-kytOd1",
+          "tag-acWXTG"
+        ],
+        "storage_pool": "pool_id-aMRZUu",
+        "uuid": null,
+        "used_for": "Unused",
+        "resource_uri": "/MAAS/api/2.0/nodes/g8xyqs/blockdevices/76/"
+      }
+    ],
+    "iscsiblockdevice_set": [],
+    "testing_status": 2,
+    "default_gateways": {
+      "ipv4": {
+        "gateway_ip": null,
+        "link_id": null
+      },
+      "ipv6": {
+        "gateway_ip": null,
+        "link_id": null
+      }
+    },
+    "storage_test_status": 2,
+    "pod": {
+      "id": 5,
+      "name": "sacred-hen",
+      "resource_uri": "/MAAS/api/2.0/pods/5/"
+    },
+    "swap_size": null,
+    "status_message": "desc-eqGqfo",
+    "status_name": "Failed to exit rescue mode",
+    "osystem": "",
+    "cpu_test_status_name": "Passed",
+    "memory_test_status": 2,
+    "other_test_status_name": "Passed",
+    "virtualblockdevice_set": [],
+    "cpu_speed": 0,
+    "resource_uri": "/MAAS/api/2.0/machines/g8xyqs/"
+  },
+  "details": {
+    "lldp": {
+      "$binary": "cjBZSWw2S1ZkRA==",
+      "$type": "00"
+    },
+    "lshw": {
+      "$binary": "Nkd5MzRLYjBkTQ==",
+      "$type": "00"
+    }
+  },
+  "read-visible-nodes": [
+    {
+      "commissioning_status": 2,
+      "version": "2.5.0~beta3-7325-g1425f6d4c-0ubuntu1~18.04.1",
+      "node_type_name": "Region and rack controller",
+      "ip_addresses": [
+        "10.55.32.135",
+        "192.168.122.1"
+      ],
+      "storage_test_status": -1,
+      "cpu_count": 4,
+      "hostname": "mymaas",
+      "domain": {
+        "authoritative": true,
+        "ttl": null,
+        "id": 0,
+        "name": "maas",
+        "resource_record_count": 23,
+        "is_default": true,
+        "resource_uri": "/MAAS/api/2.0/domains/0/"
+      },
+      "swap_size": null,
+      "power_type": "",
+      "memory": 8192,
+      "current_testing_result_id": null,
+      "osystem": "ubuntu",
+      "node_type": 4,
+      "service_set": [
+        {
+          "name": "proxy",
+          "status": "running",
+          "status_info": ""
+        },
+        {
+          "name": "bind9",
+          "status": "running",
+          "status_info": ""
+        },
+        {
+          "name": "ntp_region",
+          "status": "running",
+          "status_info": ""
+        },
+        {
+          "name": "regiond",
+          "status": "running",
+          "status_info": ""
+        },
+        {
+          "name": "syslog_region",
+          "status": "running",
+          "status_info": ""
+        },
+        {
+          "name": "ntp_rack",
+          "status": "unknown",
+          "status_info": "managed by the region"
+        },
+        {
+          "name": "dhcpd",
+          "status": "running",
+          "status_info": ""
+        },
+        {
+          "name": "tftp",
+          "status": "running",
+          "status_info": ""
+        },
+        {
+          "name": "dns_rack",
+          "status": "unknown",
+          "status_info": "managed by the region"
+        },
+        {
+          "name": "http",
+          "status": "running",
+          "status_info": ""
+        },
+        {
+          "name": "proxy_rack",
+          "status": "unknown",
+          "status_info": "managed by the region"
+        },
+        {
+          "name": "syslog_rack",
+          "status": "unknown",
+          "status_info": "managed by the region"
+        },
+        {
+          "name": "dhcpd6",
+          "status": "off",
+          "status_info": ""
+        },
+        {
+          "name": "rackd",
+          "status": "running",
+          "status_info": ""
+        }
+      ],
+      "other_test_status": -1,
+      "testing_status": -1,
+      "zone": {
+        "name": "default",
+        "description": "",
+        "id": 1,
+        "resource_uri": "/MAAS/api/2.0/zones/default/"
+      },
+      "status_action": "",
+      "commissioning_status_name": "Passed",
+      "interface_set": [
+        {
+          "vlan": {
+            "vid": 0,
+            "mtu": 1500,
+            "dhcp_on": true,
+            "external_dhcp": null,
+            "relay_vlan": null,
+            "id": 5001,
+            "name": "untagged",
+            "fabric_id": 0,
+            "secondary_rack": null,
+            "space": "undefined",
+            "fabric": "fabric-0",
+            "primary_rack": "6gsym8",
+            "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+          },
+          "mac_address": "fa:16:3e:b8:af:ff",
+          "tags": [],
+          "params": "",
+          "id": 1,
+          "discovered": null,
+          "product": "OpenStack Nova",
+          "parents": [],
+          "type": "physical",
+          "name": "ens3",
+          "enabled": true,
+          "effective_mtu": 1500,
+          "vendor": "OpenStack Foundation",
+          "system_id": "6gsym8",
+          "children": [],
+          "firmware_version": null,
+          "links": [
+            {
+              "id": 1,
+              "mode": "static",
+              "ip_address": "10.55.32.135",
+              "subnet": {
+                "name": "10.55.32.0/20",
+                "vlan": {
+                  "vid": 0,
+                  "mtu": 1500,
+                  "dhcp_on": true,
+                  "external_dhcp": null,
+                  "relay_vlan": null,
+                  "id": 5001,
+                  "name": "untagged",
+                  "fabric_id": 0,
+                  "secondary_rack": null,
+                  "space": "undefined",
+                  "fabric": "fabric-0",
+                  "primary_rack": "6gsym8",
+                  "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+                },
+                "cidr": "10.55.32.0/20",
+                "rdns_mode": 2,
+                "gateway_ip": "10.55.32.1",
+                "dns_servers": [],
+                "allow_dns": true,
+                "allow_proxy": true,
+                "active_discovery": false,
+                "managed": true,
+                "id": 1,
+                "space": "undefined",
+                "resource_uri": "/MAAS/api/2.0/subnets/1/"
+              }
+            }
+          ],
+          "resource_uri": "/MAAS/api/2.0/nodes/6gsym8/interfaces/1/"
+        },
+        {
+          "vlan": {
+            "vid": 0,
+            "mtu": 1500,
+            "dhcp_on": false,
+            "external_dhcp": null,
+            "relay_vlan": null,
+            "id": 5002,
+            "name": "untagged",
+            "fabric_id": 1,
+            "secondary_rack": null,
+            "space": "undefined",
+            "fabric": "fabric-1",
+            "primary_rack": null,
+            "resource_uri": "/MAAS/api/2.0/vlans/5002/"
+          },
+          "mac_address": "52:54:00:09:88:41",
+          "tags": [],
+          "params": "",
+          "id": 17,
+          "discovered": null,
+          "product": null,
+          "parents": [],
+          "type": "bridge",
+          "name": "virbr0",
+          "enabled": true,
+          "effective_mtu": 1500,
+          "vendor": null,
+          "system_id": "6gsym8",
+          "children": [],
+          "firmware_version": null,
+          "links": [
+            {
+              "id": 17,
+              "mode": "static",
+              "ip_address": "192.168.122.1",
+              "subnet": {
+                "name": "192.168.122.0/24",
+                "vlan": {
+                  "vid": 0,
+                  "mtu": 1500,
+                  "dhcp_on": false,
+                  "external_dhcp": null,
+                  "relay_vlan": null,
+                  "id": 5002,
+                  "name": "untagged",
+                  "fabric_id": 1,
+                  "secondary_rack": null,
+                  "space": "undefined",
+                  "fabric": "fabric-1",
+                  "primary_rack": null,
+                  "resource_uri": "/MAAS/api/2.0/vlans/5002/"
+                },
+                "cidr": "192.168.122.0/24",
+                "rdns_mode": 2,
+                "gateway_ip": null,
+                "dns_servers": [],
+                "allow_dns": true,
+                "allow_proxy": true,
+                "active_discovery": false,
+                "managed": true,
+                "id": 2,
+                "space": "undefined",
+                "resource_uri": "/MAAS/api/2.0/subnets/2/"
+              }
+            }
+          ],
+          "resource_uri": "/MAAS/api/2.0/nodes/6gsym8/interfaces/17/"
+        }
+      ],
+      "cpu_speed": 2400,
+      "testing_status_name": "Unknown",
+      "tag_names": [
+        "virtual"
+      ],
+      "current_commissioning_result_id": 1,
+      "system_id": "6gsym8",
+      "distro_series": "bionic",
+      "cpu_test_status": -1,
+      "memory_test_status_name": "Unknown",
+      "hardware_info": {
+        "system_vendor": "OpenStack Foundation",
+        "system_product": "OpenStack Nova",
+        "system_version": "2013.2.3",
+        "system_serial": "33313934-3432-5a43-4339-343532355a35",
+        "cpu_model": "Intel Core i7 9xx (Nehalem Class Core i7)",
+        "mainboard_vendor": "Unknown",
+        "mainboard_product": "Unknown",
+        "mainboard_firmware_version": "Bochs",
+        "mainboard_firmware_date": "01/01/2011"
+      },
+      "other_test_status_name": "Unknown",
+      "fqdn": "mymaas.maas",
+      "power_state": "unknown",
+      "memory_test_status": -1,
+      "current_installation_result_id": null,
+      "storage_test_status_name": "Unknown",
+      "architecture": "amd64/generic",
+      "cpu_test_status_name": "Unknown",
+      "resource_uri": "/MAAS/api/2.0/rackcontrollers/6gsym8/"
+    }
+  ],
+  "set-owner-data": {
+    "owner_data": {
+      "somekey": "somevalue"
+    },
+    "cpu_speed": 0,
+    "boot_interface": {
+      "system_id": "q46awd",
+      "effective_mtu": 1500,
+      "product": null,
+      "type": "physical",
+      "mac_address": "fc:5f:a6:d0:30:97",
+      "enabled": true,
+      "params": "",
+      "vlan": {
+        "vid": 0,
+        "mtu": 1500,
+        "dhcp_on": false,
+        "external_dhcp": null,
+        "relay_vlan": null,
+        "secondary_rack": null,
+        "primary_rack": null,
+        "name": "untagged",
+        "fabric_id": 0,
+        "space": "management",
+        "id": 5001,
+        "fabric": "fabric-0",
+        "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+      },
+      "children": [],
+      "name": "eth-tlHn9H",
+      "vendor": null,
+      "firmware_version": null,
+      "parents": [],
+      "id": 100,
+      "tags": [
+        "tag-Krwbm6",
+        "tag-6Ov2DQ",
+        "tag-ZIbKlm"
+      ],
+      "links": [
+        {
+          "id": 45,
+          "mode": "auto",
+          "subnet": {
+            "name": "name-rLI3eq",
+            "vlan": {
+              "vid": 0,
+              "mtu": 1500,
+              "dhcp_on": false,
+              "external_dhcp": null,
+              "relay_vlan": null,
+              "secondary_rack": null,
+              "primary_rack": null,
+              "name": "untagged",
+              "fabric_id": 0,
+              "space": "management",
+              "id": 5001,
+              "fabric": "fabric-0",
+              "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+            },
+            "cidr": "172.16.1.0/24",
+            "rdns_mode": 2,
+            "gateway_ip": "172.16.1.1",
+            "dns_servers": [
+              "fd89:8724:81f1:5512:557f:99c3:6967:8d63"
+            ],
+            "allow_dns": true,
+            "allow_proxy": true,
+            "active_discovery": false,
+            "managed": true,
+            "space": "management",
+            "id": 1,
+            "resource_uri": "/MAAS/api/2.0/subnets/1/"
+          }
+        }
+      ],
+      "discovered": null,
+      "resource_uri": "/MAAS/api/2.0/nodes/q46awd/interfaces/100/"
+    },
+    "swap_size": null,
+    "status": 17,
+    "zone": {
+      "name": "zone-Llc45k",
+      "description": "LirDm9tBHA",
+      "id": 6,
+      "resource_uri": "/MAAS/api/2.0/zones/zone-Llc45k/"
+    },
+    "other_test_status": 3,
+    "virtualblockdevice_set": [],
+    "disable_ipv4": false,
+    "power_type": "manual",
+    "pool": {
+      "name": "default",
+      "description": "Default pool",
+      "id": 0,
+      "resource_uri": "/MAAS/api/2.0/resourcepool/0/"
+    },
+    "locked": false,
+    "system_id": "q46awd",
+    "boot_disk": {
+      "firmware_version": "firmware_version-8leXpL",
+      "system_id": "q46awd",
+      "type": "physical",
+      "used_size": 0,
+      "used_for": "Unused",
+      "partitions": [],
+      "uuid": null,
+      "name": "name-w1MxuB",
+      "id_path": null,
+      "tags": [
+        "tag-iF4AD7",
+        "tag-BtgV26",
+        "tag-wZF5A6"
+      ],
+      "partition_table_type": null,
+      "size": 3770708992,
+      "storage_pool": null,
+      "path": "/dev/disk/by-dname/name-w1MxuB",
+      "serial": "serial-u1CbU0",
+      "block_size": 1024,
+      "filesystem": null,
+      "id": 66,
+      "model": "model-A6yydP",
+      "available_size": 3770708992,
+      "resource_uri": "/MAAS/api/2.0/nodes/q46awd/blockdevices/66/"
+    },
+    "special_filesystems": [],
+    "current_testing_result_id": 171,
+    "cache_sets": [],
+    "memory_test_status_name": "Failed",
+    "storage_test_status_name": "Failed",
+    "node_type_name": "Machine",
+    "architecture": "i386/generic",
+    "commissioning_status_name": "Passed",
+    "distro_series": "",
+    "interface_set": [
+      {
+        "system_id": "q46awd",
+        "effective_mtu": 1500,
+        "product": null,
+        "type": "physical",
+        "mac_address": "fc:5f:a6:d0:30:97",
+        "enabled": true,
+        "params": "",
+        "vlan": {
+          "vid": 0,
+          "mtu": 1500,
+          "dhcp_on": false,
+          "external_dhcp": null,
+          "relay_vlan": null,
+          "secondary_rack": null,
+          "primary_rack": null,
+          "name": "untagged",
+          "fabric_id": 0,
+          "space": "management",
+          "id": 5001,
+          "fabric": "fabric-0",
+          "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+        },
+        "children": [],
+        "name": "eth-tlHn9H",
+        "vendor": null,
+        "firmware_version": null,
+        "parents": [],
+        "id": 100,
+        "tags": [
+          "tag-Krwbm6",
+          "tag-6Ov2DQ",
+          "tag-ZIbKlm"
+        ],
+        "links": [
+          {
+            "id": 45,
+            "mode": "auto",
+            "subnet": {
+              "name": "name-rLI3eq",
+              "vlan": {
+                "vid": 0,
+                "mtu": 1500,
+                "dhcp_on": false,
+                "external_dhcp": null,
+                "relay_vlan": null,
+                "secondary_rack": null,
+                "primary_rack": null,
+                "name": "untagged",
+                "fabric_id": 0,
+                "space": "management",
+                "id": 5001,
+                "fabric": "fabric-0",
+                "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+              },
+              "cidr": "172.16.1.0/24",
+              "rdns_mode": 2,
+              "gateway_ip": "172.16.1.1",
+              "dns_servers": [
+                "fd89:8724:81f1:5512:557f:99c3:6967:8d63"
+              ],
+              "allow_dns": true,
+              "allow_proxy": true,
+              "active_discovery": false,
+              "managed": true,
+              "space": "management",
+              "id": 1,
+              "resource_uri": "/MAAS/api/2.0/subnets/1/"
+            }
+          }
+        ],
+        "discovered": null,
+        "resource_uri": "/MAAS/api/2.0/nodes/q46awd/interfaces/100/"
+      },
+      {
+        "system_id": "q46awd",
+        "effective_mtu": 1500,
+        "product": null,
+        "type": "physical",
+        "mac_address": "37:96:81:86:7d:26",
+        "enabled": true,
+        "params": "",
+        "vlan": {
+          "vid": 0,
+          "mtu": 1500,
+          "dhcp_on": false,
+          "external_dhcp": null,
+          "relay_vlan": null,
+          "secondary_rack": null,
+          "primary_rack": null,
+          "name": "untagged",
+          "fabric_id": 0,
+          "space": "management",
+          "id": 5001,
+          "fabric": "fabric-0",
+          "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+        },
+        "children": [],
+        "name": "eth-uHmeXv",
+        "vendor": null,
+        "firmware_version": null,
+        "parents": [],
+        "id": 101,
+        "tags": [
+          "tag-GBBGJm",
+          "tag-PorMko",
+          "tag-6ZtyQZ"
+        ],
+        "links": [
+          {
+            "id": 46,
+            "mode": "auto",
+            "subnet": {
+              "name": "name-rLI3eq",
+              "vlan": {
+                "vid": 0,
+                "mtu": 1500,
+                "dhcp_on": false,
+                "external_dhcp": null,
+                "relay_vlan": null,
+                "secondary_rack": null,
+                "primary_rack": null,
+                "name": "untagged",
+                "fabric_id": 0,
+                "space": "management",
+                "id": 5001,
+                "fabric": "fabric-0",
+                "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+              },
+              "cidr": "172.16.1.0/24",
+              "rdns_mode": 2,
+              "gateway_ip": "172.16.1.1",
+              "dns_servers": [
+                "fd89:8724:81f1:5512:557f:99c3:6967:8d63"
+              ],
+              "allow_dns": true,
+              "allow_proxy": true,
+              "active_discovery": false,
+              "managed": true,
+              "space": "management",
+              "id": 1,
+              "resource_uri": "/MAAS/api/2.0/subnets/1/"
+            }
+          }
+        ],
+        "discovered": null,
+        "resource_uri": "/MAAS/api/2.0/nodes/q46awd/interfaces/101/"
+      },
+      {
+        "system_id": "q46awd",
+        "effective_mtu": 1500,
+        "product": null,
+        "type": "physical",
+        "mac_address": "ec:03:50:cc:92:e7",
+        "enabled": true,
+        "params": "",
+        "vlan": {
+          "vid": 0,
+          "mtu": 1500,
+          "dhcp_on": false,
+          "external_dhcp": null,
+          "relay_vlan": null,
+          "secondary_rack": null,
+          "primary_rack": null,
+          "name": "untagged",
+          "fabric_id": 0,
+          "space": "management",
+          "id": 5001,
+          "fabric": "fabric-0",
+          "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+        },
+        "children": [],
+        "name": "eth-LCuSY9",
+        "vendor": null,
+        "firmware_version": null,
+        "parents": [],
+        "id": 102,
+        "tags": [
+          "tag-OB7Urg",
+          "tag-KI8wUy",
+          "tag-2ggdxa"
+        ],
+        "links": [
+          {
+            "id": 47,
+            "mode": "static",
+            "ip_address": "172.16.1.252",
+            "subnet": {
+              "name": "name-rLI3eq",
+              "vlan": {
+                "vid": 0,
+                "mtu": 1500,
+                "dhcp_on": false,
+                "external_dhcp": null,
+                "relay_vlan": null,
+                "secondary_rack": null,
+                "primary_rack": null,
+                "name": "untagged",
+                "fabric_id": 0,
+                "space": "management",
+                "id": 5001,
+                "fabric": "fabric-0",
+                "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+              },
+              "cidr": "172.16.1.0/24",
+              "rdns_mode": 2,
+              "gateway_ip": "172.16.1.1",
+              "dns_servers": [
+                "fd89:8724:81f1:5512:557f:99c3:6967:8d63"
+              ],
+              "allow_dns": true,
+              "allow_proxy": true,
+              "active_discovery": false,
+              "managed": true,
+              "space": "management",
+              "id": 1,
+              "resource_uri": "/MAAS/api/2.0/subnets/1/"
+            }
+          }
+        ],
+        "discovered": null,
+        "resource_uri": "/MAAS/api/2.0/nodes/q46awd/interfaces/102/"
+      }
+    ],
+    "storage_test_status": 3,
+    "testing_status_name": "Failed",
+    "osystem": "",
+    "default_gateways": {
+      "ipv4": {
+        "gateway_ip": "172.16.1.1",
+        "link_id": null
+      },
+      "ipv6": {
+        "gateway_ip": null,
+        "link_id": null
+      }
+    },
+    "physicalblockdevice_set": [
+      {
+        "firmware_version": "firmware_version-8leXpL",
+        "system_id": "q46awd",
+        "type": "physical",
+        "used_size": 0,
+        "used_for": "Unused",
+        "partitions": [],
+        "uuid": null,
+        "name": "name-w1MxuB",
+        "id_path": null,
+        "tags": [
+          "tag-iF4AD7",
+          "tag-BtgV26",
+          "tag-wZF5A6"
+        ],
+        "partition_table_type": null,
+        "size": 3770708992,
+        "storage_pool": null,
+        "path": "/dev/disk/by-dname/name-w1MxuB",
+        "serial": "serial-u1CbU0",
+        "block_size": 1024,
+        "filesystem": null,
+        "id": 66,
+        "model": "model-A6yydP",
+        "available_size": 3770708992,
+        "resource_uri": "/MAAS/api/2.0/nodes/q46awd/blockdevices/66/"
+      },
+      {
+        "firmware_version": "firmware_version-fE2JVD",
+        "system_id": "q46awd",
+        "type": "physical",
+        "used_size": 0,
+        "used_for": "Unused",
+        "partitions": [],
+        "uuid": null,
+        "name": "name-8Ows7O",
+        "id_path": null,
+        "tags": [
+          "tag-ItoUN0",
+          "tag-MM2fGY",
+          "tag-oe8y1B"
+        ],
+        "partition_table_type": null,
+        "size": 3681153024,
+        "storage_pool": null,
+        "path": "/dev/disk/by-dname/name-8Ows7O",
+        "serial": "serial-KEhV9v",
+        "block_size": 1024,
+        "filesystem": null,
+        "id": 67,
+        "model": "model-XNLSfS",
+        "available_size": 3681153024,
+        "resource_uri": "/MAAS/api/2.0/nodes/q46awd/blockdevices/67/"
+      },
+      {
+        "firmware_version": "firmware_version-MD0sRK",
+        "system_id": "q46awd",
+        "type": "physical",
+        "used_size": 0,
+        "used_for": "Unused",
+        "partitions": [],
+        "uuid": null,
+        "name": "name-5UnjsY",
+        "id_path": null,
+        "tags": [
+          "tag-TR2qBE",
+          "tag-JJIvWV",
+          "tag-pYoDjB"
+        ],
+        "partition_table_type": null,
+        "size": 2411704320,
+        "storage_pool": null,
+        "path": "/dev/disk/by-dname/name-5UnjsY",
+        "serial": "serial-h0LybM",
+        "block_size": 1024,
+        "filesystem": null,
+        "id": 68,
+        "model": "model-UEouuL",
+        "available_size": 2411704320,
+        "resource_uri": "/MAAS/api/2.0/nodes/q46awd/blockdevices/68/"
+      },
+      {
+        "firmware_version": "firmware_version-4TDPi8",
+        "system_id": "q46awd",
+        "type": "physical",
+        "used_size": 0,
+        "used_for": "Unused",
+        "partitions": [],
+        "uuid": null,
+        "name": "name-xZSseq",
+        "id_path": null,
+        "tags": [
+          "tag-p53o0X",
+          "tag-8NIex3",
+          "tag-bSwNmr"
+        ],
+        "partition_table_type": null,
+        "size": 3030908928,
+        "storage_pool": null,
+        "path": "/dev/disk/by-dname/name-xZSseq",
+        "serial": "serial-wANhJs",
+        "block_size": 4096,
+        "filesystem": null,
+        "id": 69,
+        "model": "model-kIe7Vc",
+        "available_size": 3030908928,
+        "resource_uri": "/MAAS/api/2.0/nodes/q46awd/blockdevices/69/"
+      },
+      {
+        "firmware_version": "firmware_version-IU8B1C",
+        "system_id": "q46awd",
+        "type": "physical",
+        "used_size": 0,
+        "used_for": "Unused",
+        "partitions": [],
+        "uuid": null,
+        "name": "name-SmOpsN",
+        "id_path": null,
+        "tags": [
+          "tag-Ois1Gc",
+          "tag-DwHmIC",
+          "tag-jOzK03"
+        ],
+        "partition_table_type": null,
+        "size": 806171648,
+        "storage_pool": null,
+        "path": "/dev/disk/by-dname/name-SmOpsN",
+        "serial": "serial-c5xGdX",
+        "block_size": 1024,
+        "filesystem": null,
+        "id": 70,
+        "model": "model-7ZvrZr",
+        "available_size": 806171648,
+        "resource_uri": "/MAAS/api/2.0/nodes/q46awd/blockdevices/70/"
+      }
+    ],
+    "bcaches": [],
+    "iscsiblockdevice_set": [],
+    "cpu_test_status": 2,
+    "other_test_status_name": "Failed",
+    "memory": 1024,
+    "current_commissioning_result_id": 170,
+    "cpu_test_status_name": "Passed",
+    "hwe_kernel": null,
+    "current_installation_result_id": null,
+    "tag_names": [],
+    "netboot": true,
+    "hardware_info": {
+      "system_vendor": "Unknown",
+      "system_product": "Unknown",
+      "system_version": "Unknown",
+      "system_serial": "Unknown",
+      "cpu_model": "Unknown",
+      "mainboard_vendor": "Unknown",
+      "mainboard_product": "Unknown",
+      "mainboard_firmware_version": "Unknown",
+      "mainboard_firmware_date": "Unknown"
+    },
+    "cpu_count": 6,
+    "blockdevice_set": [
+      {
+        "id_path": null,
+        "size": 3770708992,
+        "block_size": 1024,
+        "tags": [
+          "tag-iF4AD7",
+          "tag-BtgV26",
+          "tag-wZF5A6"
+        ],
+        "system_id": "q46awd",
+        "type": "physical",
+        "used_size": 0,
+        "used_for": "Unused",
+        "partitions": [],
+        "uuid": null,
+        "name": "name-w1MxuB",
+        "partition_table_type": null,
+        "storage_pool": null,
+        "path": "/dev/disk/by-dname/name-w1MxuB",
+        "serial": "serial-u1CbU0",
+        "filesystem": null,
+        "id": 66,
+        "model": "model-A6yydP",
+        "available_size": 3770708992,
+        "resource_uri": "/MAAS/api/2.0/nodes/q46awd/blockdevices/66/"
+      },
+      {
+        "id_path": null,
+        "size": 3681153024,
+        "block_size": 1024,
+        "tags": [
+          "tag-ItoUN0",
+          "tag-MM2fGY",
+          "tag-oe8y1B"
+        ],
+        "system_id": "q46awd",
+        "type": "physical",
+        "used_size": 0,
+        "used_for": "Unused",
+        "partitions": [],
+        "uuid": null,
+        "name": "name-8Ows7O",
+        "partition_table_type": null,
+        "storage_pool": null,
+        "path": "/dev/disk/by-dname/name-8Ows7O",
+        "serial": "serial-KEhV9v",
+        "filesystem": null,
+        "id": 67,
+        "model": "model-XNLSfS",
+        "available_size": 3681153024,
+        "resource_uri": "/MAAS/api/2.0/nodes/q46awd/blockdevices/67/"
+      },
+      {
+        "id_path": null,
+        "size": 2411704320,
+        "block_size": 1024,
+        "tags": [
+          "tag-TR2qBE",
+          "tag-JJIvWV",
+          "tag-pYoDjB"
+        ],
+        "system_id": "q46awd",
+        "type": "physical",
+        "used_size": 0,
+        "used_for": "Unused",
+        "partitions": [],
+        "uuid": null,
+        "name": "name-5UnjsY",
+        "partition_table_type": null,
+        "storage_pool": null,
+        "path": "/dev/disk/by-dname/name-5UnjsY",
+        "serial": "serial-h0LybM",
+        "filesystem": null,
+        "id": 68,
+        "model": "model-UEouuL",
+        "available_size": 2411704320,
+        "resource_uri": "/MAAS/api/2.0/nodes/q46awd/blockdevices/68/"
+      },
+      {
+        "id_path": null,
+        "size": 3030908928,
+        "block_size": 4096,
+        "tags": [
+          "tag-p53o0X",
+          "tag-8NIex3",
+          "tag-bSwNmr"
+        ],
+        "system_id": "q46awd",
+        "type": "physical",
+        "used_size": 0,
+        "used_for": "Unused",
+        "partitions": [],
+        "uuid": null,
+        "name": "name-xZSseq",
+        "partition_table_type": null,
+        "storage_pool": null,
+        "path": "/dev/disk/by-dname/name-xZSseq",
+        "serial": "serial-wANhJs",
+        "filesystem": null,
+        "id": 69,
+        "model": "model-kIe7Vc",
+        "available_size": 3030908928,
+        "resource_uri": "/MAAS/api/2.0/nodes/q46awd/blockdevices/69/"
+      },
+      {
+        "id_path": null,
+        "size": 806171648,
+        "block_size": 1024,
+        "tags": [
+          "tag-Ois1Gc",
+          "tag-DwHmIC",
+          "tag-jOzK03"
+        ],
+        "system_id": "q46awd",
+        "type": "physical",
+        "used_size": 0,
+        "used_for": "Unused",
+        "partitions": [],
+        "uuid": null,
+        "name": "name-SmOpsN",
+        "partition_table_type": null,
+        "storage_pool": null,
+        "path": "/dev/disk/by-dname/name-SmOpsN",
+        "serial": "serial-c5xGdX",
+        "filesystem": null,
+        "id": 70,
+        "model": "model-7ZvrZr",
+        "available_size": 806171648,
+        "resource_uri": "/MAAS/api/2.0/nodes/q46awd/blockdevices/70/"
+      }
+    ],
+    "domain": {
+      "authoritative": true,
+      "ttl": null,
+      "is_default": true,
+      "name": "maas",
+      "id": 0,
+      "resource_record_count": 0,
+      "resource_uri": "/MAAS/api/2.0/domains/0/"
+    },
+    "memory_test_status": 3,
+    "status_message": "desc-jWUG7Z",
+    "owner": "user2",
+    "address_ttl": null,
+    "node_type": 0,
+    "volume_groups": [],
+    "pod": null,
+    "storage": 13700.646912,
+    "raids": [],
+    "status_action": "action-3rkEpa",
+    "min_hwe_kernel": null,
+    "status_name": "Entering rescue mode",
+    "commissioning_status": 2,
+    "testing_status": 3,
+    "fqdn": "clever-thrush.maas",
+    "power_state": "unknown",
+    "hostname": "clever-thrush",
+    "ip_addresses": [
+      "172.16.1.252"
+    ],
+    "resource_uri": "/MAAS/api/2.0/machines/q46awd/"
+  },
+  "query-power-state": {
+    "state": "on"
+  },
+  "power-on": {
+    "cpu_count": 1,
+    "fqdn": "node2.maas",
+    "hostname": "node2",
+    "power_state": "on",
+    "cpu_test_status": -1,
+    "storage": 8000,
+    "osystem": "ubuntu",
+    "cpu_test_status_name": "Unknown",
+    "testing_status": 2,
+    "iscsiblockdevice_set": [],
+    "boot_interface": {
+      "vlan": {
+        "vid": 0,
+        "mtu": 1500,
+        "dhcp_on": true,
+        "external_dhcp": null,
+        "relay_vlan": null,
+        "fabric": "fabric-1",
+        "fabric_id": 1,
+        "primary_rack": "mhce3f",
+        "secondary_rack": null,
+        "space": "FooSpace",
+        "name": "untagged",
+        "id": 5002,
+        "resource_uri": "/MAAS/api/2.0/vlans/5002/"
+      },
+      "links": [
+        {
+          "id": 13,
+          "mode": "auto",
+          "ip_address": "172.16.99.5",
+          "subnet": {
+            "name": "172.16.99.0/24",
+            "vlan": {
+              "vid": 0,
+              "mtu": 1500,
+              "dhcp_on": true,
+              "external_dhcp": null,
+              "relay_vlan": null,
+              "fabric": "fabric-1",
+              "fabric_id": 1,
+              "primary_rack": "mhce3f",
+              "secondary_rack": null,
+              "space": "FooSpace",
+              "name": "untagged",
+              "id": 5002,
+              "resource_uri": "/MAAS/api/2.0/vlans/5002/"
+            },
+            "cidr": "172.16.99.0/24",
+            "rdns_mode": 2,
+            "gateway_ip": "172.16.99.1",
+            "dns_servers": [],
+            "allow_dns": true,
+            "allow_proxy": true,
+            "active_discovery": false,
+            "managed": true,
+            "space": "FooSpace",
+            "id": 2,
+            "resource_uri": "/MAAS/api/2.0/subnets/2/"
+          }
+        }
+      ],
+      "vendor": "QEMU",
+      "enabled": true,
+      "children": [],
+      "name": "ens4",
+      "id": 5,
+      "discovered": [],
+      "parents": [],
+      "effective_mtu": 1500,
+      "product": "Standard PC (i440FX + PIIX, 1996)",
+      "firmware_version": null,
+      "system_id": "e8xa8m",
+      "mac_address": "52:54:00:52:a5:9e",
+      "tags": [],
+      "type": "physical",
+      "params": "",
+      "resource_uri": "/MAAS/api/2.0/nodes/e8xa8m/interfaces/5/"
+    },
+    "boot_disk": {
+      "firmware_version": null,
+      "model": "",
+      "path": "/dev/disk/by-dname/vda",
+      "serial": "",
+      "block_size": 4096,
+      "partitions": [
+        {
+          "uuid": "b4922056-6481-4d40-87cd-5bac47dca519",
+          "size": 7994343424,
+          "bootable": false,
+          "tags": [],
+          "type": "partition",
+          "path": "/dev/disk/by-dname/vda-part1",
+          "device_id": 2,
+          "used_for": "ext4 formatted filesystem mounted at /",
+          "system_id": "e8xa8m",
+          "filesystem": {
+            "fstype": "ext4",
+            "label": "root",
+            "uuid": "bc478524-ad85-419f-8795-aa7b89590f6f",
+            "mount_point": "/",
+            "mount_options": null
+          },
+          "id": 2,
+          "resource_uri": "/MAAS/api/2.0/nodes/e8xa8m/blockdevices/2/partition/2"
+        }
+      ],
+      "available_size": 0,
+      "used_size": 7999586304,
+      "id_path": "/dev/vda",
+      "name": "vda",
+      "id": 2,
+      "used_for": "MBR partitioned with 1 partition",
+      "partition_table_type": "MBR",
+      "system_id": "e8xa8m",
+      "size": 8000000000,
+      "tags": [
+        "rotary"
+      ],
+      "filesystem": null,
+      "uuid": null,
+      "storage_pool": "30c2ef09-cfca-4a17-b2b0-2b69bf4d62d8",
+      "type": "physical",
+      "resource_uri": "/MAAS/api/2.0/nodes/e8xa8m/blockdevices/2/"
+    },
+    "bcaches": [],
+    "cpu_speed": 2500,
+    "ip_addresses": [
+      "172.16.99.5"
+    ],
+    "virtualblockdevice_set": [],
+    "special_filesystems": [],
+    "owner_data": {},
+    "physicalblockdevice_set": [
+      {
+        "firmware_version": null,
+        "model": "",
+        "path": "/dev/disk/by-dname/vda",
+        "serial": "",
+        "block_size": 4096,
+        "partitions": [
+          {
+            "uuid": "b4922056-6481-4d40-87cd-5bac47dca519",
+            "size": 7994343424,
+            "bootable": false,
+            "tags": [],
+            "type": "partition",
+            "path": "/dev/disk/by-dname/vda-part1",
+            "device_id": 2,
+            "used_for": "ext4 formatted filesystem mounted at /",
+            "system_id": "e8xa8m",
+            "filesystem": {
+              "fstype": "ext4",
+              "label": "root",
+              "uuid": "bc478524-ad85-419f-8795-aa7b89590f6f",
+              "mount_point": "/",
+              "mount_options": null
+            },
+            "id": 2,
+            "resource_uri": "/MAAS/api/2.0/nodes/e8xa8m/blockdevices/2/partition/2"
+          }
+        ],
+        "available_size": 0,
+        "used_size": 7999586304,
+        "id_path": "/dev/vda",
+        "name": "vda",
+        "id": 2,
+        "used_for": "MBR partitioned with 1 partition",
+        "partition_table_type": "MBR",
+        "system_id": "e8xa8m",
+        "size": 8000000000,
+        "tags": [
+          "rotary"
+        ],
+        "filesystem": null,
+        "uuid": null,
+        "storage_pool": "30c2ef09-cfca-4a17-b2b0-2b69bf4d62d8",
+        "type": "physical",
+        "resource_uri": "/MAAS/api/2.0/nodes/e8xa8m/blockdevices/2/"
+      }
+    ],
+    "testing_status_name": "Passed",
+    "disable_ipv4": false,
+    "blockdevice_set": [
+      {
+        "id_path": "/dev/vda",
+        "size": 8000000000,
+        "block_size": 4096,
+        "tags": [
+          "rotary"
+        ],
+        "model": "",
+        "path": "/dev/disk/by-dname/vda",
+        "serial": "",
+        "partitions": [
+          {
+            "uuid": "b4922056-6481-4d40-87cd-5bac47dca519",
+            "size": 7994343424,
+            "bootable": false,
+            "tags": [],
+            "type": "partition",
+            "path": "/dev/disk/by-dname/vda-part1",
+            "device_id": 2,
+            "used_for": "ext4 formatted filesystem mounted at /",
+            "system_id": "e8xa8m",
+            "filesystem": {
+              "fstype": "ext4",
+              "label": "root",
+              "uuid": "bc478524-ad85-419f-8795-aa7b89590f6f",
+              "mount_point": "/",
+              "mount_options": null
+            },
+            "id": 2,
+            "resource_uri": "/MAAS/api/2.0/nodes/e8xa8m/blockdevices/2/partition/2"
+          }
+        ],
+        "available_size": 0,
+        "used_size": 7999586304,
+        "name": "vda",
+        "id": 2,
+        "used_for": "MBR partitioned with 1 partition",
+        "partition_table_type": "MBR",
+        "system_id": "e8xa8m",
+        "filesystem": null,
+        "uuid": null,
+        "storage_pool": "30c2ef09-cfca-4a17-b2b0-2b69bf4d62d8",
+        "type": "physical",
+        "resource_uri": "/MAAS/api/2.0/nodes/e8xa8m/blockdevices/2/"
+      }
+    ],
+    "interface_set": [
+      {
+        "vlan": {
+          "vid": 0,
+          "mtu": 1500,
+          "dhcp_on": true,
+          "external_dhcp": null,
+          "relay_vlan": null,
+          "fabric": "fabric-1",
+          "fabric_id": 1,
+          "primary_rack": "mhce3f",
+          "secondary_rack": null,
+          "space": "FooSpace",
+          "name": "untagged",
+          "id": 5002,
+          "resource_uri": "/MAAS/api/2.0/vlans/5002/"
+        },
+        "links": [
+          {
+            "id": 13,
+            "mode": "auto",
+            "ip_address": "172.16.99.5",
+            "subnet": {
+              "name": "172.16.99.0/24",
+              "vlan": {
+                "vid": 0,
+                "mtu": 1500,
+                "dhcp_on": true,
+                "external_dhcp": null,
+                "relay_vlan": null,
+                "fabric": "fabric-1",
+                "fabric_id": 1,
+                "primary_rack": "mhce3f",
+                "secondary_rack": null,
+                "space": "FooSpace",
+                "name": "untagged",
+                "id": 5002,
+                "resource_uri": "/MAAS/api/2.0/vlans/5002/"
+              },
+              "cidr": "172.16.99.0/24",
+              "rdns_mode": 2,
+              "gateway_ip": "172.16.99.1",
+              "dns_servers": [],
+              "allow_dns": true,
+              "allow_proxy": true,
+              "active_discovery": false,
+              "managed": true,
+              "space": "FooSpace",
+              "id": 2,
+              "resource_uri": "/MAAS/api/2.0/subnets/2/"
+            }
+          }
+        ],
+        "vendor": "QEMU",
+        "enabled": true,
+        "children": [],
+        "name": "ens4",
+        "id": 5,
+        "discovered": [],
+        "parents": [],
+        "effective_mtu": 1500,
+        "product": "Standard PC (i440FX + PIIX, 1996)",
+        "firmware_version": null,
+        "system_id": "e8xa8m",
+        "mac_address": "52:54:00:52:a5:9e",
+        "tags": [],
+        "type": "physical",
+        "params": "",
+        "resource_uri": "/MAAS/api/2.0/nodes/e8xa8m/interfaces/5/"
+      }
+    ],
+    "architecture": "amd64/generic",
+    "commissioning_status": 2,
+    "hwe_kernel": "ga-18.04",
+    "current_installation_result_id": 8,
+    "swap_size": null,
+    "memory": 1024,
+    "pod": {
+      "id": 1,
+      "name": "MyPodName",
+      "resource_uri": "/MAAS/api/2.0/pods/1/"
+    },
+    "current_commissioning_result_id": 6,
+    "hardware_info": {
+      "system_vendor": "QEMU",
+      "system_product": "Standard PC (i440FX + PIIX, 1996)",
+      "system_version": "pc-i440fx-bionic",
+      "system_serial": "Unknown",
+      "cpu_model": "QEMU Virtual CPU version 2.5+",
+      "mainboard_vendor": "Unknown",
+      "mainboard_product": "Unknown",
+      "mainboard_firmware_version": "1.10.2-1ubuntu1",
+      "mainboard_firmware_date": "04/01/2014"
+    },
+    "pool": {
+      "name": "newname",
+      "description": "new description",
+      "id": 1,
+      "resource_uri": "/MAAS/api/2.0/resourcepool/1/"
+    },
+    "current_testing_result_id": 7,
+    "tag_names": [
+      "virtual",
+      "mypod"
+    ],
+    "storage_test_status": 2,
+    "address_ttl": null,
+    "status_message": "'cloudinit' running modules for final",
+    "cache_sets": [],
+    "other_test_status_name": "Unknown",
+    "node_type_name": "Machine",
+    "distro_series": "bionic",
+    "zone": {
+      "name": "default",
+      "description": "",
+      "id": 1,
+      "resource_uri": "/MAAS/api/2.0/zones/default/"
+    },
+    "min_hwe_kernel": "",
+    "domain": {
+      "authoritative": true,
+      "ttl": null,
+      "name": "maas",
+      "resource_record_count": 0,
+      "id": 0,
+      "is_default": true,
+      "resource_uri": "/MAAS/api/2.0/domains/0/"
+    },
+    "system_id": "e8xa8m",
+    "locked": false,
+    "power_type": "virsh",
+    "node_type": 0,
+    "memory_test_status": -1,
+    "memory_test_status_name": "Unknown",
+    "status": 6,
+    "netboot": false,
+    "volume_groups": [],
+    "raids": [],
+    "default_gateways": {
+      "ipv4": {
+        "gateway_ip": "172.16.99.1",
+        "link_id": null
+      },
+      "ipv6": {
+        "gateway_ip": null,
+        "link_id": null
+      }
+    },
+    "commissioning_status_name": "Passed",
+    "status_action": "modules-final",
+    "other_test_status": -1,
+    "status_name": "Deployed",
+    "storage_test_status_name": "Passed",
+    "owner": "admin",
+    "resource_uri": "/MAAS/api/2.0/machines/e8xa8m/"
+  },
+  "power-off": {
+    "cpu_count": 1,
+    "fqdn": "node2.maas",
+    "hostname": "node2",
+    "power_state": "on",
+    "cpu_test_status": -1,
+    "storage": 8000,
+    "osystem": "ubuntu",
+    "cpu_test_status_name": "Unknown",
+    "testing_status": 2,
+    "iscsiblockdevice_set": [],
+    "boot_interface": {
+      "vlan": {
+        "vid": 0,
+        "mtu": 1500,
+        "dhcp_on": true,
+        "external_dhcp": null,
+        "relay_vlan": null,
+        "fabric": "fabric-1",
+        "fabric_id": 1,
+        "primary_rack": "mhce3f",
+        "secondary_rack": null,
+        "space": "FooSpace",
+        "name": "untagged",
+        "id": 5002,
+        "resource_uri": "/MAAS/api/2.0/vlans/5002/"
+      },
+      "links": [
+        {
+          "id": 13,
+          "mode": "auto",
+          "ip_address": "172.16.99.5",
+          "subnet": {
+            "name": "172.16.99.0/24",
+            "vlan": {
+              "vid": 0,
+              "mtu": 1500,
+              "dhcp_on": true,
+              "external_dhcp": null,
+              "relay_vlan": null,
+              "fabric": "fabric-1",
+              "fabric_id": 1,
+              "primary_rack": "mhce3f",
+              "secondary_rack": null,
+              "space": "FooSpace",
+              "name": "untagged",
+              "id": 5002,
+              "resource_uri": "/MAAS/api/2.0/vlans/5002/"
+            },
+            "cidr": "172.16.99.0/24",
+            "rdns_mode": 2,
+            "gateway_ip": "172.16.99.1",
+            "dns_servers": [],
+            "allow_dns": true,
+            "allow_proxy": true,
+            "active_discovery": false,
+            "managed": true,
+            "space": "FooSpace",
+            "id": 2,
+            "resource_uri": "/MAAS/api/2.0/subnets/2/"
+          }
+        }
+      ],
+      "vendor": "QEMU",
+      "enabled": true,
+      "children": [],
+      "name": "ens4",
+      "id": 5,
+      "discovered": [],
+      "parents": [],
+      "effective_mtu": 1500,
+      "product": "Standard PC (i440FX + PIIX, 1996)",
+      "firmware_version": null,
+      "system_id": "e8xa8m",
+      "mac_address": "52:54:00:52:a5:9e",
+      "tags": [],
+      "type": "physical",
+      "params": "",
+      "resource_uri": "/MAAS/api/2.0/nodes/e8xa8m/interfaces/5/"
+    },
+    "boot_disk": {
+      "firmware_version": null,
+      "model": "",
+      "path": "/dev/disk/by-dname/vda",
+      "serial": "",
+      "block_size": 4096,
+      "partitions": [
+        {
+          "uuid": "b4922056-6481-4d40-87cd-5bac47dca519",
+          "size": 7994343424,
+          "bootable": false,
+          "tags": [],
+          "type": "partition",
+          "path": "/dev/disk/by-dname/vda-part1",
+          "device_id": 2,
+          "used_for": "ext4 formatted filesystem mounted at /",
+          "system_id": "e8xa8m",
+          "filesystem": {
+            "fstype": "ext4",
+            "label": "root",
+            "uuid": "bc478524-ad85-419f-8795-aa7b89590f6f",
+            "mount_point": "/",
+            "mount_options": null
+          },
+          "id": 2,
+          "resource_uri": "/MAAS/api/2.0/nodes/e8xa8m/blockdevices/2/partition/2"
+        }
+      ],
+      "available_size": 0,
+      "used_size": 7999586304,
+      "id_path": "/dev/vda",
+      "name": "vda",
+      "id": 2,
+      "used_for": "MBR partitioned with 1 partition",
+      "partition_table_type": "MBR",
+      "system_id": "e8xa8m",
+      "size": 8000000000,
+      "tags": [
+        "rotary"
+      ],
+      "filesystem": null,
+      "uuid": null,
+      "storage_pool": "30c2ef09-cfca-4a17-b2b0-2b69bf4d62d8",
+      "type": "physical",
+      "resource_uri": "/MAAS/api/2.0/nodes/e8xa8m/blockdevices/2/"
+    },
+    "bcaches": [],
+    "cpu_speed": 2500,
+    "ip_addresses": [
+      "172.16.99.5"
+    ],
+    "virtualblockdevice_set": [],
+    "special_filesystems": [],
+    "owner_data": {},
+    "physicalblockdevice_set": [
+      {
+        "firmware_version": null,
+        "model": "",
+        "path": "/dev/disk/by-dname/vda",
+        "serial": "",
+        "block_size": 4096,
+        "partitions": [
+          {
+            "uuid": "b4922056-6481-4d40-87cd-5bac47dca519",
+            "size": 7994343424,
+            "bootable": false,
+            "tags": [],
+            "type": "partition",
+            "path": "/dev/disk/by-dname/vda-part1",
+            "device_id": 2,
+            "used_for": "ext4 formatted filesystem mounted at /",
+            "system_id": "e8xa8m",
+            "filesystem": {
+              "fstype": "ext4",
+              "label": "root",
+              "uuid": "bc478524-ad85-419f-8795-aa7b89590f6f",
+              "mount_point": "/",
+              "mount_options": null
+            },
+            "id": 2,
+            "resource_uri": "/MAAS/api/2.0/nodes/e8xa8m/blockdevices/2/partition/2"
+          }
+        ],
+        "available_size": 0,
+        "used_size": 7999586304,
+        "id_path": "/dev/vda",
+        "name": "vda",
+        "id": 2,
+        "used_for": "MBR partitioned with 1 partition",
+        "partition_table_type": "MBR",
+        "system_id": "e8xa8m",
+        "size": 8000000000,
+        "tags": [
+          "rotary"
+        ],
+        "filesystem": null,
+        "uuid": null,
+        "storage_pool": "30c2ef09-cfca-4a17-b2b0-2b69bf4d62d8",
+        "type": "physical",
+        "resource_uri": "/MAAS/api/2.0/nodes/e8xa8m/blockdevices/2/"
+      }
+    ],
+    "testing_status_name": "Passed",
+    "disable_ipv4": false,
+    "blockdevice_set": [
+      {
+        "id_path": "/dev/vda",
+        "size": 8000000000,
+        "block_size": 4096,
+        "tags": [
+          "rotary"
+        ],
+        "model": "",
+        "path": "/dev/disk/by-dname/vda",
+        "serial": "",
+        "partitions": [
+          {
+            "uuid": "b4922056-6481-4d40-87cd-5bac47dca519",
+            "size": 7994343424,
+            "bootable": false,
+            "tags": [],
+            "type": "partition",
+            "path": "/dev/disk/by-dname/vda-part1",
+            "device_id": 2,
+            "used_for": "ext4 formatted filesystem mounted at /",
+            "system_id": "e8xa8m",
+            "filesystem": {
+              "fstype": "ext4",
+              "label": "root",
+              "uuid": "bc478524-ad85-419f-8795-aa7b89590f6f",
+              "mount_point": "/",
+              "mount_options": null
+            },
+            "id": 2,
+            "resource_uri": "/MAAS/api/2.0/nodes/e8xa8m/blockdevices/2/partition/2"
+          }
+        ],
+        "available_size": 0,
+        "used_size": 7999586304,
+        "name": "vda",
+        "id": 2,
+        "used_for": "MBR partitioned with 1 partition",
+        "partition_table_type": "MBR",
+        "system_id": "e8xa8m",
+        "filesystem": null,
+        "uuid": null,
+        "storage_pool": "30c2ef09-cfca-4a17-b2b0-2b69bf4d62d8",
+        "type": "physical",
+        "resource_uri": "/MAAS/api/2.0/nodes/e8xa8m/blockdevices/2/"
+      }
+    ],
+    "interface_set": [
+      {
+        "vlan": {
+          "vid": 0,
+          "mtu": 1500,
+          "dhcp_on": true,
+          "external_dhcp": null,
+          "relay_vlan": null,
+          "fabric": "fabric-1",
+          "fabric_id": 1,
+          "primary_rack": "mhce3f",
+          "secondary_rack": null,
+          "space": "FooSpace",
+          "name": "untagged",
+          "id": 5002,
+          "resource_uri": "/MAAS/api/2.0/vlans/5002/"
+        },
+        "links": [
+          {
+            "id": 13,
+            "mode": "auto",
+            "ip_address": "172.16.99.5",
+            "subnet": {
+              "name": "172.16.99.0/24",
+              "vlan": {
+                "vid": 0,
+                "mtu": 1500,
+                "dhcp_on": true,
+                "external_dhcp": null,
+                "relay_vlan": null,
+                "fabric": "fabric-1",
+                "fabric_id": 1,
+                "primary_rack": "mhce3f",
+                "secondary_rack": null,
+                "space": "FooSpace",
+                "name": "untagged",
+                "id": 5002,
+                "resource_uri": "/MAAS/api/2.0/vlans/5002/"
+              },
+              "cidr": "172.16.99.0/24",
+              "rdns_mode": 2,
+              "gateway_ip": "172.16.99.1",
+              "dns_servers": [],
+              "allow_dns": true,
+              "allow_proxy": true,
+              "active_discovery": false,
+              "managed": true,
+              "space": "FooSpace",
+              "id": 2,
+              "resource_uri": "/MAAS/api/2.0/subnets/2/"
+            }
+          }
+        ],
+        "vendor": "QEMU",
+        "enabled": true,
+        "children": [],
+        "name": "ens4",
+        "id": 5,
+        "discovered": [],
+        "parents": [],
+        "effective_mtu": 1500,
+        "product": "Standard PC (i440FX + PIIX, 1996)",
+        "firmware_version": null,
+        "system_id": "e8xa8m",
+        "mac_address": "52:54:00:52:a5:9e",
+        "tags": [],
+        "type": "physical",
+        "params": "",
+        "resource_uri": "/MAAS/api/2.0/nodes/e8xa8m/interfaces/5/"
+      }
+    ],
+    "architecture": "amd64/generic",
+    "commissioning_status": 2,
+    "hwe_kernel": "ga-18.04",
+    "current_installation_result_id": 8,
+    "swap_size": null,
+    "memory": 1024,
+    "pod": {
+      "id": 1,
+      "name": "MyPodName",
+      "resource_uri": "/MAAS/api/2.0/pods/1/"
+    },
+    "current_commissioning_result_id": 6,
+    "hardware_info": {
+      "system_vendor": "QEMU",
+      "system_product": "Standard PC (i440FX + PIIX, 1996)",
+      "system_version": "pc-i440fx-bionic",
+      "system_serial": "Unknown",
+      "cpu_model": "QEMU Virtual CPU version 2.5+",
+      "mainboard_vendor": "Unknown",
+      "mainboard_product": "Unknown",
+      "mainboard_firmware_version": "1.10.2-1ubuntu1",
+      "mainboard_firmware_date": "04/01/2014"
+    },
+    "pool": {
+      "name": "newname",
+      "description": "new description",
+      "id": 1,
+      "resource_uri": "/MAAS/api/2.0/resourcepool/1/"
+    },
+    "current_testing_result_id": 7,
+    "tag_names": [
+      "virtual",
+      "mypod"
+    ],
+    "storage_test_status": 2,
+    "address_ttl": null,
+    "status_message": "'cloudinit' running modules for final",
+    "cache_sets": [],
+    "other_test_status_name": "Unknown",
+    "node_type_name": "Machine",
+    "distro_series": "bionic",
+    "zone": {
+      "name": "default",
+      "description": "",
+      "id": 1,
+      "resource_uri": "/MAAS/api/2.0/zones/default/"
+    },
+    "min_hwe_kernel": "",
+    "domain": {
+      "authoritative": true,
+      "ttl": null,
+      "name": "maas",
+      "resource_record_count": 0,
+      "id": 0,
+      "is_default": true,
+      "resource_uri": "/MAAS/api/2.0/domains/0/"
+    },
+    "system_id": "e8xa8m",
+    "locked": false,
+    "power_type": "virsh",
+    "node_type": 0,
+    "memory_test_status": -1,
+    "memory_test_status_name": "Unknown",
+    "status": 6,
+    "netboot": false,
+    "volume_groups": [],
+    "raids": [],
+    "default_gateways": {
+      "ipv4": {
+        "gateway_ip": "172.16.99.1",
+        "link_id": null
+      },
+      "ipv6": {
+        "gateway_ip": null,
+        "link_id": null
+      }
+    },
+    "commissioning_status_name": "Passed",
+    "status_action": "modules-final",
+    "other_test_status": -1,
+    "status_name": "Deployed",
+    "storage_test_status_name": "Passed",
+    "owner": "admin",
+    "resource_uri": "/MAAS/api/2.0/machines/e8xa8m/"
+  },
+  "test": {
+    "cpu_speed": 2500,
+    "disable_ipv4": false,
+    "cache_sets": [],
+    "other_test_status_name": "Unknown",
+    "memory_test_status": -1,
+    "tag_names": [
+      "virtual",
+      "mypod"
+    ],
+    "netboot": false,
+    "power_type": "virsh",
+    "hostname": "node2",
+    "node_type": 0,
+    "testing_status": 0,
+    "default_gateways": {
+      "ipv4": {
+        "gateway_ip": "172.16.99.1",
+        "link_id": null
+      },
+      "ipv6": {
+        "gateway_ip": null,
+        "link_id": null
+      }
+    },
+    "raids": [],
+    "current_installation_result_id": 8,
+    "locked": false,
+    "zone": {
+      "name": "default",
+      "description": "",
+      "id": 1,
+      "resource_uri": "/MAAS/api/2.0/zones/default/"
+    },
+    "iscsiblockdevice_set": [],
+    "current_commissioning_result_id": 6,
+    "current_testing_result_id": 49,
+    "osystem": "ubuntu",
+    "cpu_count": 1,
+    "node_type_name": "Machine",
+    "blockdevice_set": [
+      {
+        "id_path": "/dev/vda",
+        "size": 8000000000,
+        "block_size": 4096,
+        "tags": [
+          "rotary"
+        ],
+        "used_size": 7999586304,
+        "used_for": "MBR partitioned with 1 partition",
+        "filesystem": null,
+        "model": "",
+        "storage_pool": "30c2ef09-cfca-4a17-b2b0-2b69bf4d62d8",
+        "serial": "",
+        "partition_table_type": "MBR",
+        "type": "physical",
+        "id": 2,
+        "path": "/dev/disk/by-dname/vda",
+        "system_id": "e8xa8m",
+        "uuid": null,
+        "available_size": 0,
+        "partitions": [
+          {
+            "uuid": "b4922056-6481-4d40-87cd-5bac47dca519",
+            "size": 7994343424,
+            "bootable": false,
+            "tags": [],
+            "used_for": "ext4 formatted filesystem mounted at /",
+            "filesystem": {
+              "fstype": "ext4",
+              "label": "root",
+              "uuid": "bc478524-ad85-419f-8795-aa7b89590f6f",
+              "mount_point": "/",
+              "mount_options": null
+            },
+            "device_id": 2,
+            "type": "partition",
+            "id": 2,
+            "path": "/dev/disk/by-dname/vda-part1",
+            "system_id": "e8xa8m",
+            "resource_uri": "/MAAS/api/2.0/nodes/e8xa8m/blockdevices/2/partition/2"
+          }
+        ],
+        "name": "vda",
+        "resource_uri": "/MAAS/api/2.0/nodes/e8xa8m/blockdevices/2/"
+      }
+    ],
+    "boot_interface": {
+      "firmware_version": null,
+      "vlan": {
+        "vid": 0,
+        "mtu": 1500,
+        "dhcp_on": true,
+        "external_dhcp": null,
+        "relay_vlan": null,
+        "secondary_rack": null,
+        "primary_rack": "mhce3f",
+        "space": "FooSpace",
+        "id": 5002,
+        "fabric": "fabric-1",
+        "fabric_id": 1,
+        "name": "untagged",
+        "resource_uri": "/MAAS/api/2.0/vlans/5002/"
+      },
+      "links": [
+        {
+          "id": 13,
+          "mode": "auto",
+          "ip_address": "172.16.99.5",
+          "subnet": {
+            "name": "172.16.99.0/24",
+            "vlan": {
+              "vid": 0,
+              "mtu": 1500,
+              "dhcp_on": true,
+              "external_dhcp": null,
+              "relay_vlan": null,
+              "secondary_rack": null,
+              "primary_rack": "mhce3f",
+              "space": "FooSpace",
+              "id": 5002,
+              "fabric": "fabric-1",
+              "fabric_id": 1,
+              "name": "untagged",
+              "resource_uri": "/MAAS/api/2.0/vlans/5002/"
+            },
+            "cidr": "172.16.99.0/24",
+            "rdns_mode": 2,
+            "gateway_ip": "172.16.99.1",
+            "dns_servers": [],
+            "allow_dns": true,
+            "allow_proxy": true,
+            "active_discovery": false,
+            "managed": true,
+            "space": "FooSpace",
+            "id": 2,
+            "resource_uri": "/MAAS/api/2.0/subnets/2/"
+          }
+        }
+      ],
+      "mac_address": "52:54:00:52:a5:9e",
+      "parents": [],
+      "effective_mtu": 1500,
+      "discovered": [],
+      "type": "physical",
+      "children": [],
+      "product": "Standard PC (i440FX + PIIX, 1996)",
+      "params": "",
+      "tags": [],
+      "id": 5,
+      "vendor": "QEMU",
+      "system_id": "e8xa8m",
+      "enabled": true,
+      "name": "ens4",
+      "resource_uri": "/MAAS/api/2.0/nodes/e8xa8m/interfaces/5/"
+    },
+    "pod": {
+      "id": 1,
+      "name": "MyPodName",
+      "resource_uri": "/MAAS/api/2.0/pods/1/"
+    },
+    "storage_test_status": 0,
+    "architecture": "amd64/generic",
+    "memory_test_status_name": "Unknown",
+    "storage": 8000,
+    "status_action": "modules-final",
+    "virtualblockdevice_set": [],
+    "special_filesystems": [],
+    "other_test_status": -1,
+    "status_name": "Testing",
+    "volume_groups": [],
+    "ip_addresses": [
+      "172.16.99.5"
+    ],
+    "hardware_info": {
+      "system_vendor": "QEMU",
+      "system_product": "Standard PC (i440FX + PIIX, 1996)",
+      "system_version": "pc-i440fx-bionic",
+      "system_serial": "Unknown",
+      "cpu_model": "QEMU Virtual CPU version 2.5+",
+      "mainboard_vendor": "Unknown",
+      "mainboard_product": "Unknown",
+      "mainboard_firmware_version": "1.10.2-1ubuntu1",
+      "mainboard_firmware_date": "04/01/2014"
+    },
+    "swap_size": null,
+    "owner_data": {},
+    "status": 21,
+    "cpu_test_status_name": "Unknown",
+    "boot_disk": {
+      "firmware_version": null,
+      "id_path": "/dev/vda",
+      "block_size": 4096,
+      "used_size": 7999586304,
+      "used_for": "MBR partitioned with 1 partition",
+      "filesystem": null,
+      "model": "",
+      "size": 8000000000,
+      "storage_pool": "30c2ef09-cfca-4a17-b2b0-2b69bf4d62d8",
+      "serial": "",
+      "partition_table_type": "MBR",
+      "type": "physical",
+      "tags": [
+        "rotary"
+      ],
+      "id": 2,
+      "path": "/dev/disk/by-dname/vda",
+      "system_id": "e8xa8m",
+      "uuid": null,
+      "available_size": 0,
+      "partitions": [
+        {
+          "uuid": "b4922056-6481-4d40-87cd-5bac47dca519",
+          "size": 7994343424,
+          "bootable": false,
+          "tags": [],
+          "used_for": "ext4 formatted filesystem mounted at /",
+          "filesystem": {
+            "fstype": "ext4",
+            "label": "root",
+            "uuid": "bc478524-ad85-419f-8795-aa7b89590f6f",
+            "mount_point": "/",
+            "mount_options": null
+          },
+          "device_id": 2,
+          "type": "partition",
+          "id": 2,
+          "path": "/dev/disk/by-dname/vda-part1",
+          "system_id": "e8xa8m",
+          "resource_uri": "/MAAS/api/2.0/nodes/e8xa8m/blockdevices/2/partition/2"
+        }
+      ],
+      "name": "vda",
+      "resource_uri": "/MAAS/api/2.0/nodes/e8xa8m/blockdevices/2/"
+    },
+    "address_ttl": null,
+    "system_id": "e8xa8m",
+    "memory": 1024,
+    "domain": {
+      "authoritative": true,
+      "ttl": null,
+      "resource_record_count": 0,
+      "is_default": true,
+      "id": 0,
+      "name": "maas",
+      "resource_uri": "/MAAS/api/2.0/domains/0/"
+    },
+    "min_hwe_kernel": "",
+    "physicalblockdevice_set": [
+      {
+        "firmware_version": null,
+        "id_path": "/dev/vda",
+        "block_size": 4096,
+        "used_size": 7999586304,
+        "used_for": "MBR partitioned with 1 partition",
+        "filesystem": null,
+        "model": "",
+        "size": 8000000000,
+        "storage_pool": "30c2ef09-cfca-4a17-b2b0-2b69bf4d62d8",
+        "serial": "",
+        "partition_table_type": "MBR",
+        "type": "physical",
+        "tags": [
+          "rotary"
+        ],
+        "id": 2,
+        "path": "/dev/disk/by-dname/vda",
+        "system_id": "e8xa8m",
+        "uuid": null,
+        "available_size": 0,
+        "partitions": [
+          {
+            "uuid": "b4922056-6481-4d40-87cd-5bac47dca519",
+            "size": 7994343424,
+            "bootable": false,
+            "tags": [],
+            "used_for": "ext4 formatted filesystem mounted at /",
+            "filesystem": {
+              "fstype": "ext4",
+              "label": "root",
+              "uuid": "bc478524-ad85-419f-8795-aa7b89590f6f",
+              "mount_point": "/",
+              "mount_options": null
+            },
+            "device_id": 2,
+            "type": "partition",
+            "id": 2,
+            "path": "/dev/disk/by-dname/vda-part1",
+            "system_id": "e8xa8m",
+            "resource_uri": "/MAAS/api/2.0/nodes/e8xa8m/blockdevices/2/partition/2"
+          }
+        ],
+        "name": "vda",
+        "resource_uri": "/MAAS/api/2.0/nodes/e8xa8m/blockdevices/2/"
+      }
+    ],
+    "owner": "admin",
+    "power_state": "on",
+    "hwe_kernel": "ga-18.04",
+    "testing_status_name": "Pending",
+    "pool": {
+      "name": "newname",
+      "description": "new description",
+      "id": 1,
+      "resource_uri": "/MAAS/api/2.0/resourcepool/1/"
+    },
+    "fqdn": "node2.maas",
+    "status_message": "'cloudinit' running modules for final",
+    "commissioning_status": 2,
+    "distro_series": "bionic",
+    "cpu_test_status": -1,
+    "storage_test_status_name": "Pending",
+    "bcaches": [],
+    "interface_set": [
+      {
+        "firmware_version": null,
+        "vlan": {
+          "vid": 0,
+          "mtu": 1500,
+          "dhcp_on": true,
+          "external_dhcp": null,
+          "relay_vlan": null,
+          "secondary_rack": null,
+          "primary_rack": "mhce3f",
+          "space": "FooSpace",
+          "id": 5002,
+          "fabric": "fabric-1",
+          "fabric_id": 1,
+          "name": "untagged",
+          "resource_uri": "/MAAS/api/2.0/vlans/5002/"
+        },
+        "links": [
+          {
+            "id": 13,
+            "mode": "auto",
+            "ip_address": "172.16.99.5",
+            "subnet": {
+              "name": "172.16.99.0/24",
+              "vlan": {
+                "vid": 0,
+                "mtu": 1500,
+                "dhcp_on": true,
+                "external_dhcp": null,
+                "relay_vlan": null,
+                "secondary_rack": null,
+                "primary_rack": "mhce3f",
+                "space": "FooSpace",
+                "id": 5002,
+                "fabric": "fabric-1",
+                "fabric_id": 1,
+                "name": "untagged",
+                "resource_uri": "/MAAS/api/2.0/vlans/5002/"
+              },
+              "cidr": "172.16.99.0/24",
+              "rdns_mode": 2,
+              "gateway_ip": "172.16.99.1",
+              "dns_servers": [],
+              "allow_dns": true,
+              "allow_proxy": true,
+              "active_discovery": false,
+              "managed": true,
+              "space": "FooSpace",
+              "id": 2,
+              "resource_uri": "/MAAS/api/2.0/subnets/2/"
+            }
+          }
+        ],
+        "mac_address": "52:54:00:52:a5:9e",
+        "parents": [],
+        "effective_mtu": 1500,
+        "discovered": [],
+        "type": "physical",
+        "children": [],
+        "product": "Standard PC (i440FX + PIIX, 1996)",
+        "params": "",
+        "tags": [],
+        "id": 5,
+        "vendor": "QEMU",
+        "system_id": "e8xa8m",
+        "enabled": true,
+        "name": "ens4",
+        "resource_uri": "/MAAS/api/2.0/nodes/e8xa8m/interfaces/5/"
+      }
+    ],
+    "commissioning_status_name": "Passed",
+    "resource_uri": "/MAAS/api/2.0/machines/e8xa8m/"
+  },
+  "get-power-params": {
+    "dypesm": {
+      "power_address": "qemu+ssh://ubuntu@172.16.1.28/system",
+      "power_id": "driven-bat"
+    },
+    "xs7qfn": {
+      "power_address": "qemu+ssh://ubuntu@172.16.1.134/system",
+      "power_id": "nice-shad"
+    }
+  }
+}

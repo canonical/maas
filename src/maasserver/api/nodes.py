@@ -297,7 +297,8 @@ def get_script_status_name(script_status):
 
 
 class NodeHandler(OperationsHandler):
-    """Manage an individual Node.
+    """
+    Manage an individual Node.
 
     The Node is identified by its system_id.
     """
@@ -420,9 +421,20 @@ class NodeHandler(OperationsHandler):
         return ret
 
     def read(self, request, system_id):
-        """Read a specific Node.
+        """@description-title Read a node
+        @description Reads a node with the given system_id.
 
-        Returns 404 if the node is not found.
+        @param (string) "{system_id}" [required=true] A node's system_id.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing
+        information about the requested node.
+        @success-example "success-json" [exkey=read-node] placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested node is not found.
+        @error-example "not-found"
+            Not Found
         """
         node = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.view)
@@ -434,11 +446,21 @@ class NodeHandler(OperationsHandler):
             return node.as_self()
 
     def delete(self, request, system_id):
-        """Delete a specific Node.
+        """@description-title Delete a node
+        @description Deletes a node with a given system_id.
 
-        Returns 404 if the node is not found.
-        Returns 403 if the user does not have permission to delete the node.
-        Returns 204 if the node is successfully deleted.
+        @param (string) "{system_id}" [required=true] A node's system_id.
+
+        @success (http-status-code) "204" 204
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested node is not found.
+        @error-example "not-found"
+            Not Found
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user is not authorized to delete the
+        node.
         """
         node = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user,
@@ -476,18 +498,31 @@ class NodeHandler(OperationsHandler):
 
     @operation(idempotent=True)
     def details(self, request, system_id):
-        """Obtain various system details.
-
-        For example, LLDP and ``lshw`` XML dumps.
+        """@description-title Get system details
+        @description Returns system details -- for example, LLDP and
+        ``lshw`` XML dumps.
 
         Returns a ``{detail_type: xml, ...}`` map, where
         ``detail_type`` is something like "lldp" or "lshw".
 
         Note that this is returned as BSON and not JSON. This is for
-        efficiency, but mainly because JSON can't do binary content
-        without applying additional encoding like base-64.
+        efficiency, but mainly because JSON can't do binary content without
+        applying additional encoding like base-64. The example output below is
+        represented in ASCII using ``bsondump example.bson`` and is for
+        demonstrative purposes.
 
-        Returns 404 if the node is not found.
+        @param (string) "{system_id}" [required=true] The node's system_id.
+
+        @success (http-status-code) "200" 200
+
+        @success (content) "success-content" A BSON object represented here in
+        ASCII using ``bsondump example.bson``.
+        @success-example "success-content" [exkey=details] placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested node is not found.
+        @error-example "not-found"
+            Not Found
         """
         node = get_object_or_404(self.model, system_id=system_id)
         probe_details = get_single_probed_details(node)
@@ -503,16 +538,26 @@ class NodeHandler(OperationsHandler):
     @admin_method
     @operation(idempotent=True)
     def power_parameters(self, request, system_id):
-        """Obtain power parameters.
+        """@description-title Get power parameters
+        @description Gets power parameters for a given system_id, if any. For
+        some types of power control this will include private information such
+        as passwords and secret keys.
 
-        This method is reserved for admin users and returns a 403 if the
-        user is not one.
+        Note that this method is reserved for admin users and returns a 403 if
+        the user is not one.
 
-        This returns the power parameters, if any, configured for a
-        node. For some types of power control this will include private
-        information such as passwords and secret keys.
+        @success (http-status-code) "200" 200
 
-        Returns 404 if the node is not found.
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permission to see
+        the power parameters.
+        @error-example "no-perms"
+            This method is reserved for admin users.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested node is not found.
+        @error-example "not-found"
+            Not Found
         """
         node = get_object_or_404(self.model, system_id=system_id)
         return node.power_parameters
@@ -532,15 +577,24 @@ class AnonNodesHandler(AnonymousOperationsHandler):
 
     @operation(idempotent=True)
     def is_registered(self, request):
-        """Returns whether or not the given MAC address is registered within
-        this MAAS (and attached to a non-retired node).
+        """@description-title MAC address registered
+        @description Returns whether or not the given MAC address is registered
+        within this MAAS (and attached to a non-retired node).
 
-        :param mac_address: The mac address to be checked.
-        :type mac_address: unicode
-        :return: 'true' or 'false'.
-        :rtype: unicode
+        @param (url-string) "mac_address" [required=true] The MAC address to be
+        checked.
+        @param-example "mac_address"
+            ``/nodes/?op=is_registered&mac_address=28:16:ad:a1:fa:63``
 
-        Returns 400 if any mandatory parameters are missing.
+        @success (http-status-code) "200" 200
+        @success (boolean) "success_example" 'true' or 'false'
+        @success-example "success_example"
+            false
+
+        @error (http-status-code) "400" 400
+        @error (content) "no-address" mac_address was missing
+        @error-example "no-address"
+            No provided mac_address!
         """
         # If a node is added with missing/incorrect arch/boot MAC it will
         # enter enlistment instead of commissioning. Enlistment should be
@@ -555,13 +609,24 @@ class AnonNodesHandler(AnonymousOperationsHandler):
 
     @operation(idempotent=True)
     def is_action_in_progress(self, request):
-        """Returns whether or not the given MAC address is a machine
+        """@description-title MAC address of deploying or commissioning node
+        @description Returns whether or not the given MAC address is a machine
         that's either 'deploying' or 'commissioning'.
 
-        :param mac_address: The mac address to be checked.
-        :type mac_address: unicode
-        :return: 'true' or 'false'.
-        :rtype: unicode
+        @param (url-string) "mac_address" [required=true] The MAC address to be
+        checked.
+        @param-example "mac_address"
+            ``/nodes/?op=is_action_in_progress&mac_address=28:16:ad:a1:fa:63``
+
+        @success (http-status-code) "200" 200
+        @success (boolean) "success_example" 'true' or 'false'
+        @success "success_example"
+            false
+
+        @error (http-status-code) "400" 400
+        @error (content) "no-address" mac_address was missing
+        @error-example "no-address"
+            No provided mac_address!
         """
         mac_address = get_mandatory_param(request.GET, 'mac_address')
         interfaces = Interface.objects.filter(mac_address=mac_address)
@@ -583,39 +648,41 @@ class NodesHandler(OperationsHandler):
     base_model = Node
 
     def read(self, request):
-        """List Nodes visible to the user, optionally filtered by criteria.
+        """@description-title List Nodes visible to the user
+        @description List nodes visible to current user, optionally filtered by
+        criteria.
 
         Nodes are sorted by id (i.e. most recent last) and grouped by type.
 
-        :param hostname: An optional hostname. Only nodes relating to the node
-            with the matching hostname will be returned. This can be specified
-            multiple times to see multiple nodes.
-        :type hostname: unicode
+        @param (string) "hostname" [required=false] Only nodes relating to the
+        node with the matching hostname will be returned. This can be specified
+        multiple times to see multiple nodes.
 
-        :param mac_address: An optional MAC address. Only nodes relating to the
-            node owning the specified MAC address will be returned. This can be
-            specified multiple times to see multiple nodes.
-        :type mac_address: unicode
+        @param (string) "mac_address" [required=false] Only nodes relating to
+        the node owning the specified MAC address will be returned. This can be
+        specified multiple times to see multiple nodes.
 
-        :param id: An optional list of system ids.  Only nodes relating to the
-            nodes with matching system ids will be returned.
-        :type id: unicode
+        @param (string) "id" [required=false] Only nodes relating to the nodes
+        with matching system ids will be returned.
 
-        :param domain: An optional name for a dns domain. Only nodes relating
-            to the nodes in the domain will be returned.
-        :type domain: unicode
+        @param (string) "domain" [required=false] Only nodes relating to the
+        nodes in the domain will be returned.
 
-        :param zone: An optional name for a physical zone. Only nodes relating
-            to the nodes in the zone will be returned.
-        :type zone: unicode
+        @param (string) "zone" [required=false] Only nodes relating to the
+        nodes in the zone will be returned.
 
-        :param pool: An optional name for a resource pool. Only nodes belonging
-            to the pool will be returned.
-        :type pool: unicode
+        @param (string) "pool" [required=false] Only nodes belonging to the
+        pool will be returned.
 
-        :param agent_name: An optional agent name.  Only nodes relating to the
-            nodes with matching agent names will be returned.
-        :type agent_name: unicode
+        @param (string) "agent_name" [required=false] Only nodes relating to
+        the nodes with matching agent names will be returned.
+
+        @success (http-status-code) "200" 200
+
+        @success (json) "success_json" A JSON object containing a list of node
+        objects.
+        @success-example "success_json" [exkey=read-visible-nodes] placeholder
+        text
         """
 
         if self.base_model == Node:
@@ -650,29 +717,46 @@ class NodesHandler(OperationsHandler):
 
     @operation(idempotent=True)
     def is_registered(self, request):
-        """Returns whether or not the given MAC address is registered within
-        this MAAS (and attached to a non-retired node).
+        """@description-title MAC address registered
+        @description Returns whether or not the given MAC address is registered
+        within this MAAS (and attached to a non-retired node).
 
-        :param mac_address: The mac address to be checked.
-        :type mac_address: unicode
-        :return: 'true' or 'false'.
-        :rtype: unicode
+        @param (url-string) "mac_address" [required=true] The MAC address to be
+        checked.
+        @param-example "mac_address"
+            ``/nodes/?op=is_registered&mac_address=28:16:ad:a1:fa:63``
 
-        Returns 400 if any mandatory parameters are missing.
+        @success (http-status-code) "200" 200
+
+        @success (boolean) "success_example" 'true' or 'false'
+        @success-example "success_example"
+            false
+
+        @error (http-status-code) "400" 400
+        @error (content) "no-address" mac_address was missing
+        @error-example "no-address"
+            No provided mac_address!
         """
         return is_registered(request)
 
     @admin_method
     @operation(idempotent=False)
     def set_zone(self, request):
-        """Assign multiple nodes to a physical zone at once.
+        """@description-title Assign nodes to a zone
+        @description Assigns a given node to a given zone.
 
-        :param zone: Zone name.  If omitted, the zone is "none" and the nodes
-            will be taken out of their physical zones.
-        :param nodes: system_ids of the nodes whose zones are to be set.
-           (An empty list is acceptable).
+        @param (string) "zone" [required=true] The zone name.
+        @param (string) "nodes" [required=true] The node to add.
 
-        Raises 403 if the user is not an admin.
+        @success (http-status-code) "204" 204
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have set the zone.
+        @error-example "no-perms"
+            This method is reserved for admin users.
+
+        @error (http-status-code) "400" 400
+        @error (content) "bad-param" The given parameters were not correct.
         """
         data = {
             'action': 'set_zone',
@@ -703,17 +787,25 @@ class OwnerDataMixin:
 
     @operation(idempotent=False)
     def set_owner_data(self, request, system_id):
-        """Set key/value data for the current owner.
+        """@description-title Set key=value data
+        @description Set key=value data for the current owner.
 
-        Pass any key/value data to this method to add, modify, or remove. A key
-        is removed when the value for that key is set to an empty string.
+        Pass any key=value form data to this method to add, modify, or remove.
+        A key is removed when the value for that key is set to an empty string.
 
         This operation will not remove any previous keys unless explicitly
         passed with an empty string. All owner data is removed when the machine
         is no longer allocated to a user.
 
-        Returns 404 if the machine is not found.
-        Returns 403 if the user does not have permission.
+        @param (string) "key" [required=true] ``key`` can be any string value.
+
+        @success (http-status-code) "204" 204
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested node is not found.
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have set the zone.
         """
         node = self.model.objects.get_node_or_404(
             user=request.user, system_id=system_id, perm=NodePermission.edit)
@@ -731,20 +823,25 @@ class PowerMixin:
 
     @operation(idempotent=True)
     def query_power_state(self, request, system_id):
-        """Query the power state of a node.
+        """@description-title Get the power state of a node
+        @description Gets the power state of a given node. MAAS sends a request
+        to the node's power controller, which asks it about the node's state.
+        The reply to this could be delayed by up to 30 seconds while waiting
+        for the power controller to respond.  Use this method sparingly as it
+        ties up an appserver thread while waiting.
 
-        Send a request to the node's power controller which asks it about
-        the node's state.  The reply to this could be delayed by up to
-        30 seconds while waiting for the power controller to respond.
-        Use this method sparingly as it ties up an appserver thread
-        while waiting.
+        @param (string) "system_id" [required=true] The node to query.
 
-        :param system_id: The node to query.
-        :return: a dict whose key is "state" with a value of one of
-            'on' or 'off'.
+        @success (http-status-code) "200" 200
+        @success (json) "success_json" A JSON object containing the node's
+        power state.
+        @success-example "success_json" [exkey=query-power-state] placeholder
+        text.
 
-        Returns 404 if the node is not found.
-        Returns node's power state.
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested node is not found.
+        @error-example "not-found"
+            Not Found
         """
         node = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user,
@@ -755,24 +852,33 @@ class PowerMixin:
 
     @operation(idempotent=False)
     def power_on(self, request, system_id):
-        """Turn on a node.
+        """@description-title Turn on a node
+        @description Turn on the given node with optional user-data and
+        comment.
 
-        :param user_data: If present, this blob of user-data to be made
-            available to the nodes through the metadata service.
-        :type user_data: base64-encoded unicode
-        :param comment: Optional comment for the event log.
-        :type comment: unicode
+        @param (string) "user_data" [required=false] Base64-encoded blob of
+        data to be made available to the nodes through the metadata service.
 
-        Ideally we'd have MIME multipart and content-transfer-encoding etc.
-        deal with the encapsulation of binary data, but couldn't make it work
-        with the framework in reasonable time so went for a dumb, manual
-        encoding instead.
+        @param (string) "comment" [required=false] Comment for the event log.
 
-        Returns 404 if the node is not found.
-        Returns 403 if the user does not have permission to start the machine.
-        Returns 503 if the start-up attempted to allocate an IP address,
-        and there were no IP addresses available on the relevant cluster
-        interface.
+        @success (http-status-code) "204" 204
+        @success (json) "success_json" A JSON object containing the node's
+        information.
+        @success-example "success_json" [exkey=power-on] placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested node is not found.
+        @error-example "not-found"
+            Not Found
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user is not authorized to power on the
+        node.
+
+        @error (http-status-code) "503" 503
+        @error (content) "no-ips" Returns 503 if the start-up attempted to
+        allocate an IP address, and there were no IP addresses available on the
+        relevant cluster interface.
         """
         user_data = request.POST.get('user_data', None)
         comment = get_optional_param(request.POST, 'comment')
@@ -797,21 +903,32 @@ class PowerMixin:
 
     @operation(idempotent=False)
     def power_off(self, request, system_id):
-        """Power off a node.
+        """@description-title Power off a node
+        @description Powers off a given node.
 
-        :param stop_mode: An optional power off mode. If 'soft',
-            perform a soft power down if the node's power type supports
-            it, otherwise perform a hard power off. For all values other
-            than 'soft', and by default, perform a hard power off. A
-            soft power off generally asks the OS to shutdown the system
-            gracefully before powering off, while a hard power off
-            occurs immediately without any warning to the OS.
-        :type stop_mode: unicode
-        :param comment: Optional comment for the event log.
-        :type comment: unicode
+        @param (string) "stop_mode" [required=false] Power-off mode. If 'soft',
+        perform a soft power down if the node's power type supports it,
+        otherwise perform a hard power off. For all values other than 'soft',
+        and by default, perform a hard power off. A soft power off generally
+        asks the OS to shutdown the system gracefully before powering off,
+        while a hard power off occurs immediately without any warning to the
+        OS.
 
-        Returns 404 if the node is not found.
-        Returns 403 if the user does not have permission to stop the node.
+        @param (string) "comment" [required=false] Comment for the event log.
+
+        @success (http-status-code) "204" 204
+        @success (json) "success_json" A JSON object containing the node's
+        information.
+        @success-example "success_json" [exkey=power-off] placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested node is not found.
+        @error-example "not-found"
+            Not Found
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user is not authorized to power off the
+        node.
         """
         stop_mode = request.POST.get('stop_mode', 'hard')
         comment = get_optional_param(request.POST, 'comment')
@@ -827,23 +944,32 @@ class PowerMixin:
 
     @operation(idempotent=False)
     def test(self, request, system_id):
-        """Begin testing process for a node.
-
-        :param enable_ssh: Whether to enable SSH for the testing environment
-            using the user's SSH key(s).
-        :type enable_ssh: bool ('0' for False, '1' for True)
-        :param testing_scripts: A comma seperated list of testing script names
-            and tags to be run. By default all tests tagged 'commissioning'
-            will be run.
-        :type testing_scripts: string
+        """@description-title Begin testing process for a node
+        @description Begins the testing process for a given node.
 
         A node in the 'ready', 'allocated', 'deployed', 'broken', or any failed
         state may run tests. If testing is started and successfully passes from
-        a 'broken', or any failed state besides 'failed commissioning' the node
+        'broken' or any failed state besides 'failed commissioning' the node
         will be returned to a ready state. Otherwise the node will return to
         the state it was when testing started.
 
-        Returns 404 if the node is not found.
+        @param (int) "enable_ssh" [required=false] Whether to enable SSH for
+        the testing environment using the user's SSH key(s). 0 == false. 1 ==
+        true.
+
+        @param (string) "testing_scripts" [required=false] A comma-separated
+        list of testing script names and tags to be run. By default all tests
+        tagged 'commissioning' will be run.
+
+        @success (http-status-code) "204" 204
+        @success (json) "success_json" A JSON object containing the node's
+        information.
+        @success-example "success_json" [exkey=test] placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested node is not found.
+        @error-example "not-found"
+            Not Found
         """
         node = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.admin)
@@ -858,14 +984,21 @@ class PowerMixin:
 
     @operation(idempotent=False)
     def override_failed_testing(self, request, system_id):
-        """Ignore failed tests and put node back into a usable state.
+        """@description-title Ignore failed tests
+        @description Ignore failed tests and put node back into a usable state.
 
-        :param comment: Optional comment for the event log.
-        :type comment: unicode
+        @param (string) "comment" [required=false] Comment for the event log.
 
-        Returns 404 if the machine is not found.
-        Returns 403 if the user does not have permission to ignore tests for
-        the node.
+        @success (http-status-code) "204" 204
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested node is not found.
+        @error-example "not-found"
+            Not Found
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user is not authorized to override
+        tests.
         """
         comment = get_optional_param(request.POST, 'comment')
         node = self.model.objects.get_node_or_404(
@@ -875,13 +1008,20 @@ class PowerMixin:
 
     @operation(idempotent=False)
     def abort(self, request, system_id):
-        """Abort a node's current operation.
+        """@description-title Abort a node operation
+        @description Abort a node's current operation.
 
-        :param comment: Optional comment for the event log.
-        :type comment: unicode
+        @param (string) "comment" [required=false] Comment for the event log.
 
-        Returns 404 if the node could not be found.
-        Returns 403 if the user does not have permission to abort the
+        @success (http-status-code) "204" 204
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested node is not found.
+        @error-example "not-found"
+            Not Found
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user is not authorized to abort the
         current operation.
         """
         comment = get_optional_param(request.POST, 'comment')
@@ -898,15 +1038,26 @@ class PowersMixin:
     @admin_method
     @operation(idempotent=True)
     def power_parameters(self, request):
-        """Retrieve power parameters for multiple machines.
+        """@description-title Get power parameters
+        @description Get power parameters for multiple machines. To request
+        power parameters for a specific machine or more than one machine:
+        ``op=power_parameters&id=abc123&id=def456``.
 
-        :param id: An optional list of system ids.  Only machines with
-            matching system ids will be returned.
-        :type id: iterable
+        @param (url-string) "id" [required=false] A system ID. To request more
+        than one machine, provide multiple ``id`` arguments in the request.
+        Only machines with matching system ids will be returned.
+        @param-example "id"
+            op=power_parameters&id=abc123&id=def456
 
-        :return: A dictionary of power parameters, keyed by machine system_id.
+        @success (http-status-code) "200" 200
+        @success (json) "success_json" A JSON object containing a list of
+        power parameters with system_ids as keys.
+        @success-example "success_json" [exkey=get-power-params] placeholder
+        text
 
-        Raises 403 if the user is not an admin.
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user is not authorized to view the
+        power parameters.
         """
         match_ids = get_optional_list(request.GET, 'id')
 
