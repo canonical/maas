@@ -115,7 +115,13 @@ class AccessMiddleware:
             return HttpResponseRedirect("%s?next=%s" % (
                 reverse('login'), urlquote_plus(request.path)))
 
-        if (not Config.objects.get_config('completed_intro') or
+        completed_intro = Config.objects.get_config('completed_intro')
+        if not completed_intro and not request.user.is_superuser:
+            # Only administrators can completed the main intro, normal users
+            # cannot complete it so to them it has been done.
+            completed_intro = True
+
+        if (not completed_intro or
                 not request.user.userprofile.completed_intro):
             index_path = reverse('index')
             if (request.path != index_path and

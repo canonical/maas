@@ -13,6 +13,7 @@ from unittest.mock import Mock
 
 from crochet import TimeoutError
 from django.conf import settings
+from django.contrib.auth.models import AnonymousUser
 from django.contrib.messages import constants
 from django.core.exceptions import (
     PermissionDenied,
@@ -34,6 +35,7 @@ from maasserver.exceptions import (
     MAASAPINotFound,
 )
 from maasserver.middleware import (
+    AccessMiddleware,
     APIRPCErrorsMiddleware,
     CSRFHelperMiddleware,
     DebuggingLoggerMiddleware,
@@ -83,6 +85,56 @@ class IsPublicPathTest(MAASServerTestCase):
     def test_path_not_public(self):
         self.assertFalse(is_public_path('/'))
         self.assertFalse(is_public_path('/MAAS/'))
+
+
+class TestAccessMiddleware(MAASServerTestCase):
+
+    def process_request(self, request, response=None):
+
+        def get_response(request):
+            if response:
+                return response
+            else:
+                return HttpResponse(status=200)
+
+        middleware = AccessMiddleware(get_response)
+        return middleware(request)
+
+    def test_return_request_on_public_path(self):
+        request = factory.make_fake_request("/MAAS/accounts/login/")
+        self.assertEqual(
+            http.client.OK, self.process_request(request).status_code)
+
+    def test_return_redirect_login(self):
+        request = factory.make_fake_request("/MAAS/")
+        request.user = AnonymousUser()
+        self.assertEqual(
+            '/MAAS/accounts/login/',
+            extract_redirect(self.process_request(request)))
+
+    def test_return_redirect_to_index_on_admin_not_completed_intro(self):
+        Config.objects.set_config('completed_intro', False)
+        request = factory.make_fake_request("/MAAS/account/prefs")
+        request.user = factory.make_admin()
+        self.assertEqual(
+            '/MAAS/',
+            extract_redirect(self.process_request(request)))
+
+    def test_return_request_on_user_not_completed_intro(self):
+        Config.objects.set_config('completed_intro', False)
+        request = factory.make_fake_request("/MAAS/account/prefs")
+        request.user = factory.make_User()
+        self.assertEqual(
+            http.client.OK, self.process_request(request).status_code)
+
+    def test_return_redirect_to_index_on_user_not_completed_user_intro(self):
+        Config.objects.set_config('completed_intro', False)
+        request = factory.make_fake_request("/MAAS/account/prefs")
+        request.user = factory.make_admin()
+        request.user.userprofile.completed_intro = False
+        self.assertEqual(
+            '/MAAS/',
+            extract_redirect(self.process_request(request)))
 
 
 class ExceptionMiddlewareTest(MAASServerTestCase):
