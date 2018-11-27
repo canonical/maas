@@ -68,7 +68,14 @@ class SpacesHandler(OperationsHandler):
         return ('spaces_handler', [])
 
     def read(self, request):
-        """List all spaces."""
+        """@description-title List all spaces
+        @description Generates a list of all spaces.
+
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing a list of space
+        objects.
+        @success-example "success-json" [exkey=read-spaces] placeholder text
+        """
         spaces_query = Space.objects.all()
         # The .all() method will return a QuerySet, but we need to coerce it to
         # a SpacesQuerySet to get our custom iterator. This must be an instance
@@ -78,10 +85,20 @@ class SpacesHandler(OperationsHandler):
 
     @admin_method
     def create(self, request):
-        """Create a space.
+        """@description-title Create a space
+        @description Create a new space.
 
-        :param name: Name of the space.
-        :param description: Description of the space.
+        @param (string) "name" [required=true] The name of the new space.
+        @param (string) "description" [required=false] A description of the new
+        space.
+
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing information
+        about the new space.
+        @success-example "success-json" [exkey=create] placeholder text
+
+        @error (http-status-code) "400" 400
+        @error (content) "already-exists" Space with this name already exists.
         """
         form = SpaceForm(data=request.data)
         if form.is_valid():
@@ -130,9 +147,20 @@ class SpaceHandler(OperationsHandler):
         return space.vlan_set.all()
 
     def read(self, request, id):
-        """Read space.
+        """@description-title Reads a space
+        @description Gets a space with the given ID.
 
-        Returns 404 if the space is not found.
+        @param (int) "{id}" [required=true] The space's ID.
+
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing information
+        about the requested space.
+        @success-example "success-json" [exkey=read-a-space] placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested space is not found.
+        @error-example "not-found"
+            Not Found
         """
         # Backward compatibility for Juju 2.0. This is a special case to check
         # if the user requested to read the undefined space.
@@ -142,12 +170,23 @@ class SpaceHandler(OperationsHandler):
             id, request.user, NodePermission.view)
 
     def update(self, request, id):
-        """Update space.
+        """@description-title Update space
+        @description Updates a space with the given ID.
 
-        :param name: Name of the space.
-        :param description: Description of the space.
+        @param (int) "{id}" [required=true] The space's ID.
+        @param (string) "name" [required=true] The name of the new space.
+        @param (string) "description" [required=false] A description of the new
+        space.
 
-        Returns 404 if the space is not found.
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing information
+        about the updated space.
+        @success-example "success-json" [exkey=update-a-space] placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested space is not found.
+        @error-example "not-found"
+            Not Found
         """
         if id == "-1" or id == Space.UNDEFINED:
             raise MAASAPIBadRequest(
@@ -161,9 +200,17 @@ class SpaceHandler(OperationsHandler):
             raise MAASAPIValidationError(form.errors)
 
     def delete(self, request, id):
-        """Delete space.
+        """@description-title Delete a space
+        @description Deletes a space with the given ID.
 
-        Returns 404 if the space is not found.
+        @param (int) "{id}" [required=true] The space's ID.
+
+        @success (http-status-code) "204" 204
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested space is not found.
+        @error-example "not-found"
+            Not Found
         """
         if id == "-1" or id == Space.UNDEFINED:
             raise MAASAPIBadRequest(

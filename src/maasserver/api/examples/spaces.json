@@ -1,0 +1,527 @@
+{
+  "read-spaces": [
+    {
+      "subnets": [
+        {
+          "name": "192.168.122.0/24",
+          "vlan": {
+            "vid": 0,
+            "mtu": 1500,
+            "dhcp_on": false,
+            "external_dhcp": null,
+            "relay_vlan": null,
+            "fabric_id": 1,
+            "id": 5003,
+            "primary_rack": "7xtf67",
+            "secondary_rack": "76y7pg",
+            "space": "management",
+            "fabric": "fabric-1",
+            "name": "untagged",
+            "resource_uri": "/MAAS/api/2.0/vlans/5003/"
+          },
+          "cidr": "192.168.122.0/24",
+          "rdns_mode": 2,
+          "gateway_ip": "192.168.122.1",
+          "dns_servers": [],
+          "allow_dns": true,
+          "allow_proxy": true,
+          "active_discovery": false,
+          "managed": true,
+          "id": 6,
+          "space": "management",
+          "resource_uri": "/MAAS/api/2.0/subnets/6/"
+        },
+        {
+          "name": "name-v5djzQ",
+          "vlan": {
+            "vid": 0,
+            "mtu": 1500,
+            "dhcp_on": false,
+            "external_dhcp": null,
+            "relay_vlan": null,
+            "fabric_id": 1,
+            "id": 5003,
+            "primary_rack": "7xtf67",
+            "secondary_rack": "76y7pg",
+            "space": "management",
+            "fabric": "fabric-1",
+            "name": "untagged",
+            "resource_uri": "/MAAS/api/2.0/vlans/5003/"
+          },
+          "cidr": "172.16.2.0/24",
+          "rdns_mode": 2,
+          "gateway_ip": "172.16.2.1",
+          "dns_servers": [
+            "fcb0:c682:8c15:817d:7d80:2713:e225:5624",
+            "fd66:86c9:6a50:27cd:de13:3f1c:40d1:8aac",
+            "120.129.237.29"
+          ],
+          "allow_dns": true,
+          "allow_proxy": true,
+          "active_discovery": false,
+          "managed": true,
+          "id": 2,
+          "space": "management",
+          "resource_uri": "/MAAS/api/2.0/subnets/2/"
+        },
+        {
+          "name": "172.16.99.0/24",
+          "vlan": {
+            "vid": 0,
+            "mtu": 1500,
+            "dhcp_on": false,
+            "external_dhcp": null,
+            "relay_vlan": null,
+            "fabric_id": 0,
+            "id": 5001,
+            "primary_rack": "7xtf67",
+            "secondary_rack": "76y7pg",
+            "space": "management",
+            "fabric": "fabric-0",
+            "name": "untagged",
+            "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+          },
+          "cidr": "172.16.99.0/24",
+          "rdns_mode": 2,
+          "gateway_ip": null,
+          "dns_servers": [],
+          "allow_dns": true,
+          "allow_proxy": true,
+          "active_discovery": false,
+          "managed": true,
+          "id": 7,
+          "space": "management",
+          "resource_uri": "/MAAS/api/2.0/subnets/7/"
+        },
+        {
+          "name": "name-rLI3eq",
+          "vlan": {
+            "vid": 0,
+            "mtu": 1500,
+            "dhcp_on": false,
+            "external_dhcp": null,
+            "relay_vlan": null,
+            "fabric_id": 0,
+            "id": 5001,
+            "primary_rack": "7xtf67",
+            "secondary_rack": "76y7pg",
+            "space": "management",
+            "fabric": "fabric-0",
+            "name": "untagged",
+            "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+          },
+          "cidr": "172.16.1.0/24",
+          "rdns_mode": 2,
+          "gateway_ip": "172.16.1.1",
+          "dns_servers": [
+            "fd89:8724:81f1:5512:557f:99c3:6967:8d63"
+          ],
+          "allow_dns": true,
+          "allow_proxy": true,
+          "active_discovery": false,
+          "managed": true,
+          "id": 1,
+          "space": "management",
+          "resource_uri": "/MAAS/api/2.0/subnets/1/"
+        }
+      ],
+      "id": 1,
+      "vlans": [
+        {
+          "vid": 0,
+          "mtu": 1500,
+          "dhcp_on": false,
+          "external_dhcp": null,
+          "relay_vlan": null,
+          "fabric_id": 1,
+          "id": 5003,
+          "primary_rack": "7xtf67",
+          "secondary_rack": "76y7pg",
+          "space": "management",
+          "fabric": "fabric-1",
+          "name": "untagged",
+          "resource_uri": "/MAAS/api/2.0/vlans/5003/"
+        },
+        {
+          "vid": 0,
+          "mtu": 1500,
+          "dhcp_on": false,
+          "external_dhcp": null,
+          "relay_vlan": null,
+          "fabric_id": 0,
+          "id": 5001,
+          "primary_rack": "7xtf67",
+          "secondary_rack": "76y7pg",
+          "space": "management",
+          "fabric": "fabric-0",
+          "name": "untagged",
+          "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+        }
+      ],
+      "name": "management",
+      "resource_uri": "/MAAS/api/2.0/spaces/1/"
+    },
+    {
+      "subnets": [],
+      "id": 2,
+      "vlans": [],
+      "name": "storage",
+      "resource_uri": "/MAAS/api/2.0/spaces/2/"
+    },
+    {
+      "subnets": [
+        {
+          "name": "name-c2ULe1",
+          "vlan": {
+            "vid": 10,
+            "mtu": 1500,
+            "dhcp_on": false,
+            "external_dhcp": null,
+            "relay_vlan": null,
+            "fabric_id": 0,
+            "id": 5002,
+            "primary_rack": "7xtf67",
+            "secondary_rack": "76y7pg",
+            "space": "internal",
+            "fabric": "fabric-0",
+            "name": "10",
+            "resource_uri": "/MAAS/api/2.0/vlans/5002/"
+          },
+          "cidr": "172.16.4.0/24",
+          "rdns_mode": 2,
+          "gateway_ip": "172.16.4.1",
+          "dns_servers": [
+            "fd08:fef7:5c1f:a2e6:3d8e:6c3b:89f9:80cb",
+            "fc67:ad6a:88fe:9192:62f9:e882:8bcc:339e",
+            "255.59.162.158"
+          ],
+          "allow_dns": true,
+          "allow_proxy": true,
+          "active_discovery": false,
+          "managed": true,
+          "id": 4,
+          "space": "internal",
+          "resource_uri": "/MAAS/api/2.0/subnets/4/"
+        },
+        {
+          "name": "name-zznp45",
+          "vlan": {
+            "vid": 10,
+            "mtu": 1500,
+            "dhcp_on": false,
+            "external_dhcp": null,
+            "relay_vlan": null,
+            "fabric_id": 0,
+            "id": 5002,
+            "primary_rack": "7xtf67",
+            "secondary_rack": "76y7pg",
+            "space": "internal",
+            "fabric": "fabric-0",
+            "name": "10",
+            "resource_uri": "/MAAS/api/2.0/vlans/5002/"
+          },
+          "cidr": "172.16.3.0/24",
+          "rdns_mode": 2,
+          "gateway_ip": "172.16.3.1",
+          "dns_servers": [
+            "fd98:8601:90d0:c8c:dd2e:ba51:fa5a:dcfa",
+            "11.209.150.208",
+            "fde6:f9ef:3ee9:c5de:2a66:1582:cc83:abaf"
+          ],
+          "allow_dns": true,
+          "allow_proxy": true,
+          "active_discovery": false,
+          "managed": true,
+          "id": 3,
+          "space": "internal",
+          "resource_uri": "/MAAS/api/2.0/subnets/3/"
+        }
+      ],
+      "id": 3,
+      "vlans": [
+        {
+          "vid": 10,
+          "mtu": 1500,
+          "dhcp_on": false,
+          "external_dhcp": null,
+          "relay_vlan": null,
+          "fabric_id": 0,
+          "id": 5002,
+          "primary_rack": "7xtf67",
+          "secondary_rack": "76y7pg",
+          "space": "internal",
+          "fabric": "fabric-0",
+          "name": "10",
+          "resource_uri": "/MAAS/api/2.0/vlans/5002/"
+        }
+      ],
+      "name": "internal",
+      "resource_uri": "/MAAS/api/2.0/spaces/3/"
+    },
+    {
+      "subnets": [
+        {
+          "name": "name-m3vYqT",
+          "vlan": {
+            "vid": 42,
+            "mtu": 1500,
+            "dhcp_on": false,
+            "external_dhcp": null,
+            "relay_vlan": null,
+            "fabric_id": 1,
+            "id": 5004,
+            "primary_rack": null,
+            "secondary_rack": null,
+            "space": "ipv6-testbed",
+            "fabric": "fabric-1",
+            "name": "42",
+            "resource_uri": "/MAAS/api/2.0/vlans/5004/"
+          },
+          "cidr": "2001:db8:42::/64",
+          "rdns_mode": 2,
+          "gateway_ip": null,
+          "dns_servers": [
+            "fd15:6cb0:a55c:235f:e78f:ba4f:2eb4:6b3",
+            "fcc5:8b5e:c55b:90e0:8be:6b87:eb5:f4c7"
+          ],
+          "allow_dns": true,
+          "allow_proxy": true,
+          "active_discovery": false,
+          "managed": true,
+          "id": 5,
+          "space": "ipv6-testbed",
+          "resource_uri": "/MAAS/api/2.0/subnets/5/"
+        }
+      ],
+      "id": 4,
+      "vlans": [
+        {
+          "vid": 42,
+          "mtu": 1500,
+          "dhcp_on": false,
+          "external_dhcp": null,
+          "relay_vlan": null,
+          "fabric_id": 1,
+          "id": 5004,
+          "primary_rack": null,
+          "secondary_rack": null,
+          "space": "ipv6-testbed",
+          "fabric": "fabric-1",
+          "name": "42",
+          "resource_uri": "/MAAS/api/2.0/vlans/5004/"
+        }
+      ],
+      "name": "ipv6-testbed",
+      "resource_uri": "/MAAS/api/2.0/spaces/4/"
+    },
+    {
+      "subnets": [],
+      "id": -1,
+      "vlans": [
+        {
+          "vid": 0,
+          "mtu": 1500,
+          "dhcp_on": false,
+          "external_dhcp": null,
+          "relay_vlan": null,
+          "fabric_id": 12,
+          "id": 5016,
+          "primary_rack": null,
+          "secondary_rack": null,
+          "space": "undefined",
+          "fabric": "fabric-12",
+          "name": "untagged",
+          "resource_uri": "/MAAS/api/2.0/vlans/5016/"
+        },
+        {
+          "vid": 0,
+          "mtu": 1500,
+          "dhcp_on": false,
+          "external_dhcp": null,
+          "relay_vlan": null,
+          "fabric_id": 11,
+          "id": 5015,
+          "primary_rack": null,
+          "secondary_rack": null,
+          "space": "undefined",
+          "fabric": "fabric-11",
+          "name": "untagged",
+          "resource_uri": "/MAAS/api/2.0/vlans/5015/"
+        },
+        {
+          "vid": 0,
+          "mtu": 1500,
+          "dhcp_on": false,
+          "external_dhcp": null,
+          "relay_vlan": null,
+          "fabric_id": 10,
+          "id": 5014,
+          "primary_rack": null,
+          "secondary_rack": null,
+          "space": "undefined",
+          "fabric": "fabric-10",
+          "name": "untagged",
+          "resource_uri": "/MAAS/api/2.0/vlans/5014/"
+        },
+        {
+          "vid": 0,
+          "mtu": 1500,
+          "dhcp_on": false,
+          "external_dhcp": null,
+          "relay_vlan": null,
+          "fabric_id": 9,
+          "id": 5013,
+          "primary_rack": null,
+          "secondary_rack": null,
+          "space": "undefined",
+          "fabric": "fabric-9",
+          "name": "untagged",
+          "resource_uri": "/MAAS/api/2.0/vlans/5013/"
+        },
+        {
+          "vid": 0,
+          "mtu": 1500,
+          "dhcp_on": false,
+          "external_dhcp": null,
+          "relay_vlan": null,
+          "fabric_id": 8,
+          "id": 5012,
+          "primary_rack": null,
+          "secondary_rack": null,
+          "space": "undefined",
+          "fabric": "fabric-8",
+          "name": "untagged",
+          "resource_uri": "/MAAS/api/2.0/vlans/5012/"
+        },
+        {
+          "vid": 0,
+          "mtu": 1500,
+          "dhcp_on": false,
+          "external_dhcp": null,
+          "relay_vlan": null,
+          "fabric_id": 7,
+          "id": 5011,
+          "primary_rack": null,
+          "secondary_rack": null,
+          "space": "undefined",
+          "fabric": "fabric-7",
+          "name": "untagged",
+          "resource_uri": "/MAAS/api/2.0/vlans/5011/"
+        },
+        {
+          "vid": 0,
+          "mtu": 1500,
+          "dhcp_on": false,
+          "external_dhcp": null,
+          "relay_vlan": null,
+          "fabric_id": 6,
+          "id": 5010,
+          "primary_rack": null,
+          "secondary_rack": null,
+          "space": "undefined",
+          "fabric": "fabric-6",
+          "name": "untagged",
+          "resource_uri": "/MAAS/api/2.0/vlans/5010/"
+        },
+        {
+          "vid": 0,
+          "mtu": 1500,
+          "dhcp_on": false,
+          "external_dhcp": null,
+          "relay_vlan": null,
+          "fabric_id": 5,
+          "id": 5009,
+          "primary_rack": null,
+          "secondary_rack": null,
+          "space": "undefined",
+          "fabric": "fabric-5",
+          "name": "untagged",
+          "resource_uri": "/MAAS/api/2.0/vlans/5009/"
+        },
+        {
+          "vid": 0,
+          "mtu": 1500,
+          "dhcp_on": false,
+          "external_dhcp": null,
+          "relay_vlan": null,
+          "fabric_id": 4,
+          "id": 5008,
+          "primary_rack": null,
+          "secondary_rack": null,
+          "space": "undefined",
+          "fabric": "fabric-4",
+          "name": "untagged",
+          "resource_uri": "/MAAS/api/2.0/vlans/5008/"
+        },
+        {
+          "vid": 0,
+          "mtu": 1500,
+          "dhcp_on": false,
+          "external_dhcp": null,
+          "relay_vlan": null,
+          "fabric_id": 3,
+          "id": 5007,
+          "primary_rack": null,
+          "secondary_rack": null,
+          "space": "undefined",
+          "fabric": "fabric-3",
+          "name": "untagged",
+          "resource_uri": "/MAAS/api/2.0/vlans/5007/"
+        },
+        {
+          "vid": 3743,
+          "mtu": 1500,
+          "dhcp_on": false,
+          "external_dhcp": null,
+          "relay_vlan": null,
+          "fabric_id": 2,
+          "id": 5006,
+          "primary_rack": null,
+          "secondary_rack": null,
+          "space": "undefined",
+          "fabric": "fabric-2",
+          "name": "3743",
+          "resource_uri": "/MAAS/api/2.0/vlans/5006/"
+        },
+        {
+          "vid": 0,
+          "mtu": 1500,
+          "dhcp_on": false,
+          "external_dhcp": null,
+          "relay_vlan": null,
+          "fabric_id": 2,
+          "id": 5005,
+          "primary_rack": null,
+          "secondary_rack": null,
+          "space": "undefined",
+          "fabric": "fabric-2",
+          "name": "untagged",
+          "resource_uri": "/MAAS/api/2.0/vlans/5005/"
+        }
+      ],
+      "name": "undefined",
+      "resource_uri": "/MAAS/api/2.0/spaces/undefined/"
+    }
+  ],
+  "create": {
+    "id": 5,
+    "name": "newspace",
+    "vlans": [],
+    "resource_uri": "/MAAS/api/2.0/spaces/5/",
+    "subnets": []
+  },
+  "read-a-space": {
+    "resource_uri": "/MAAS/api/2.0/spaces/5/",
+    "subnets": [],
+    "vlans": [],
+    "id": 5,
+    "name": "newspace"
+  },
+  "update-a-space": {
+    "resource_uri": "/MAAS/api/2.0/spaces/5/",
+    "subnets": [],
+    "vlans": [],
+    "id": 5,
+    "name": "newspacename"
+  }
+}
