@@ -49,84 +49,85 @@ class SubnetsHandler(OperationsHandler):
         return ('subnets_handler', [])
 
     def read(self, request):
-        """List all subnets."""
+        """@description-title List all subnets
+        @description Get a list of all subnets.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing list of all
+        known subnets.
+        @success-example "success-json" [exkey=subnets-read] placeholder text
+        """
         return Subnet.objects.all()
 
     @admin_method
     def create(self, request):
-        """\
-        Create a subnet.
+        """@description-title Create a subnet
+        @description Creates a new subnet.
 
-        Required parameters
-        -------------------
+        @param (string) "cidr" [required=true] The network CIDR for this
+        subnet.
+        @param-example "cidr"
+            192.168.1.1/24
 
-        cidr
-          The network CIDR for this subnet.
+        @param (string) "name" [required=false] The subnet's name.
 
+        @param (string) "description" [required=false] The subnet's
+        description.
 
-        Optional parameters
-        -------------------
+        @param (string) "vlan" [required=false] VLAN this subnet belongs to.
+        Defaults to the default VLAN for the provided fabric or defaults to the
+        default VLAN in the default fabric (if unspecified).
 
-        name
-          Name of the subnet.
+        @param (string) "fabric" [required=false] Fabric for the subnet.
+        Defaults to the fabric the provided VLAN belongs to, or defaults to the
+        default fabric.
 
-        description
-          Description of the subnet.
+        @param (int) "vid" [required=false] VID of the VLAN this subnet belongs
+        to. Only used when vlan is not provided. Picks the VLAN with this VID
+        in the provided fabric or the default fabric if one is not given.
 
-        vlan
-          VLAN this subnet belongs to. Defaults to the default VLAN for the
-          provided fabric or defaults to the default VLAN in the default fabric
-          (if unspecified).
+        @param (string) "space" [required=false] Space this subnet is in.
+        Defaults to the default space.
 
-        fabric
-          Fabric for the subnet. Defaults to the fabric the
-          provided VLAN belongs to, or defaults to the default fabric.
+        @param (string) "gateway_ip" [required=false] The gateway IP address
+        for this subnet.
 
-        vid
-          VID of the VLAN this subnet belongs to. Only used when vlan is
-          not provided. Picks the VLAN with this VID in the provided
-          fabric or the default fabric if one is not given.
+        @param (int) "rdns_mode" [required=false,formatting=true] How reverse
+        DNS is handled for this subnet.  One of:
 
-        space
-          Space this subnet is in. Defaults to the default space.
+        - ``0`` Disabled: No reverse zone is created.
+        - ``1`` Enabled: Generate reverse zone.
+        - ``2`` RFC2317: Extends '1' to create the necessary parent zone with
+          the appropriate CNAME resource records for the network, if the the
+          network is small enough to require the support described in RFC2317.
 
-        gateway_ip
-          The gateway IP address for this subnet.
+        @param (int) "allow_dns" [required=false] Configure MAAS DNS to allow
+        DNS resolution from this subnet. '0' == False,'1' == True.
 
-        rdns_mode
-          How reverse DNS is handled for this subnet.
-          One of: 0 (Disabled), 1 (Enabled), or 2 (RFC2317).  Disabled
-          means no reverse zone is created; Enabled means generate the
-          reverse zone; RFC2317 extends Enabled to create the necessary
-          parent zone with the appropriate CNAME resource records for the
-          network, if the network is small enough to require the support
-          described in RFC2317.
+        @param (int) "allow_proxy" [required=false] Configure maas-proxy to
+        allow requests from this subnet. '0' == False, '1' == True.
 
-        allow_dns
-          Configure MAAS DNS to allow DNS resolution from this subnet.
+        @param (string) "dns_servers" [required=false] Comma-seperated list of
+        DNS servers for this subnet.
 
-        allow_proxy
-          Configure maas-proxy to allow requests from this
-          subnet.
+        @param (int) "managed" [required=false,formatting=true] In MAAS 2.0+,
+        all subnets are assumed to be managed by default.
 
-        dns_servers
-          Comma-seperated list of DNS servers for this subnet.
+        Only managed subnets allow DHCP to be enabled on their related dynamic
+        ranges. (Thus, dynamic ranges become "informational only"; an
+        indication that another DHCP server is currently handling them, or that
+        MAAS will handle them when the subnet is enabled for management.)
 
-        managed
-          In MAAS 2.0+, all subnets are assumed to be managed by default.
+        Managed subnets do not allow IP allocation by default. The meaning of a
+        "reserved" IP range is reversed for an unmanaged subnet. (That is, for
+        managed subnets, "reserved" means "MAAS cannot allocate any IP address
+        within this reserved block". For unmanaged subnets, "reserved" means
+        "MAAS must allocate IP addresses only from reserved IP ranges."
 
-          Only managed subnets allow DHCP to be enabled on their related
-          dynamic ranges. (Thus, dynamic ranges become "informational
-          only"; an indication that another DHCP server is currently
-          handling them, or that MAAS will handle them when the subnet is
-          enabled for management.)
-
-          Managed subnets do not allow IP allocation by default. The
-          meaning of a "reserved" IP range is reversed for an unmanaged
-          subnet. (That is, for managed subnets, "reserved" means "MAAS
-          cannot allocate any IP address within this reserved block". For
-          unmanaged subnets, "reserved" means "MAAS must allocate IP
-          addresses only from reserved IP ranges".
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing information
+        about the new subnet.
+        @success-example "success-json" [exkey=subnets-create] placeholder text
         """
         form = SubnetForm(data=request.data)
         if form.is_valid():
@@ -158,58 +159,100 @@ class SubnetHandler(OperationsHandler):
         return subnet.space.get_name()
 
     def read(self, request, id):
-        """\
-        Read subnet.
+        """@description-title Get a subnet
+        @description Get information about a subnet with the given ID.
 
-        Returns 404 if the subnet is not found.
+        @param (int) "{id}" [required=true] A subnet ID.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing information
+        about the subnet.
+        @success-example "success-json" [exkey=subnets-read-by-id] placeholder
+        text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested subnet is not found.
+        @error-example "not-found"
+            Not Found
         """
         return Subnet.objects.get_subnet_or_404(
             id, request.user, NodePermission.view)
 
     def update(self, request, id):
-        """\
-        Update the specified subnet.
+        """@description-title Update a subnet
+        @description Update a subnet with the given ID.
 
-        Please see the documentation for the 'create' operation for detailed
-        descriptions of each parameter.
+        @param (int) "{id}" [required=true] A subnet ID.
 
-        Optional parameters
-        -------------------
+        @param (string) "cidr" [required=false] The network CIDR for this
+        subnet.
+        @param-example "cidr"
+            192.168.1.1/24
 
-        name
-          Name of the subnet.
+        @param (string) "name" [required=false] The subnet's name.
 
-        description
-          Description of the subnet.
+        @param (string) "description" [required=false] The subnet's
+        description.
 
-        vlan
-          VLAN this subnet belongs to.
+        @param (string) "vlan" [required=false] VLAN this subnet belongs to.
+        Defaults to the default VLAN for the provided fabric or defaults to the
+        default VLAN in the default fabric (if unspecified).
 
-        space
-          Space this subnet is in.
+        @param (string) "fabric" [required=false] Fabric for the subnet.
+        Defaults to the fabric the provided VLAN belongs to, or defaults to the
+        default fabric.
 
-        cidr
-          The network CIDR for this subnet.
+        @param (int) "vid" [required=false] VID of the VLAN this subnet belongs
+        to. Only used when vlan is not provided. Picks the VLAN with this VID
+        in the provided fabric or the default fabric if one is not given.
 
-        gateway_ip
-          The gateway IP address for this subnet.
+        @param (string) "space" [required=false] Space this subnet is in.
+        Defaults to the default space.
 
-        rdns_mode
-          How reverse DNS is handled for this subnet.
+        @param (string) "gateway_ip" [required=false] The gateway IP address
+        for this subnet.
 
-        allow_dns
-          Configure MAAS DNS to allow DNS resolution from this subnet.
+        @param (int) "rdns_mode" [required=false,formatting=true] How reverse
+        DNS is handled for this subnet.  One of:
 
-        allow_proxy
-          Configure maas-proxy to allow requests from this subnet.
+        - ``0`` Disabled: No reverse zone is created.
+        - ``1`` Enabled: Generate reverse zone.
+        - ``2`` RFC2317: Extends '1' to create the necessary parent zone with
+          the appropriate CNAME resource records for the network, if the the
+          network is small enough to require the support described in RFC2317.
 
-        dns_servers
-          Comma-seperated list of DNS servers for this subnet.
+        @param (int) "allow_dns" [required=false] Configure MAAS DNS to allow
+        DNS resolution from this subnet. '0' == False,'1' == True.
 
-        managed
-          If False, MAAS should not manage this subnet. (Default: True)
+        @param (int) "allow_proxy" [required=false] Configure maas-proxy to
+        allow requests from this subnet. '0' == False, '1' == True.
 
-        Returns 404 if the subnet is not found.
+        @param (string) "dns_servers" [required=false] Comma-seperated list of
+        DNS servers for this subnet.
+
+        @param (int) "managed" [required=false,formatting=true] In MAAS 2.0+,
+        all subnets are assumed to be managed by default.
+
+        Only managed subnets allow DHCP to be enabled on their related dynamic
+        ranges. (Thus, dynamic ranges become "informational only"; an
+        indication that another DHCP server is currently handling them, or that
+        MAAS will handle them when the subnet is enabled for management.)
+
+        Managed subnets do not allow IP allocation by default. The meaning of a
+        "reserved" IP range is reversed for an unmanaged subnet. (That is, for
+        managed subnets, "reserved" means "MAAS cannot allocate any IP address
+        within this reserved block". For unmanaged subnets, "reserved" means
+        "MAAS must allocate IP addresses only from reserved IP ranges."
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing information
+        about the updated subnet.
+        @success-example "success-json" [exkey=subnets-create] placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested subnet is not found.
+        @error-example "not-found"
+            Not Found
         """
         subnet = Subnet.objects.get_subnet_or_404(
             id, request.user, NodePermission.admin)
@@ -220,10 +263,17 @@ class SubnetHandler(OperationsHandler):
             raise MAASAPIValidationError(form.errors)
 
     def delete(self, request, id):
-        """\
-        Delete subnet.
+        """@description-title Delete a subnet
+        @description Delete a subnet with the given ID.
 
-        Returns 404 if the subnet is not found.
+        @param (int) "{id}" [required=true] A subnet ID.
+
+        @success (http-status-code) "server-success" 204
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested subnet is not found.
+        @error-example "not-found"
+            Not Found
         """
         subnet = Subnet.objects.get_subnet_or_404(
             id, request.user, NodePermission.admin)
@@ -232,10 +282,21 @@ class SubnetHandler(OperationsHandler):
 
     @operation(idempotent=True)
     def reserved_ip_ranges(self, request, id):
-        """\
-        Lists IP ranges currently reserved in the subnet.
+        """@description-title List reserved IP ranges
+        @description Lists IP ranges currently reserved in the subnet.
 
-        Returns 404 if the subnet is not found.
+        @param (int) "{id}" [required=true] A subnet ID.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing a list of
+        reserved IP ranges.
+        @success-example "success-json" [exkey=subnets-reserved-ips]
+        placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested subnet is not found.
+        @error-example "not-found"
+            Not Found
         """
         subnet = Subnet.objects.get_subnet_or_404(
             id, request.user, NodePermission.view)
@@ -243,10 +304,21 @@ class SubnetHandler(OperationsHandler):
 
     @operation(idempotent=True)
     def unreserved_ip_ranges(self, request, id):
-        """\
-        Lists IP ranges currently unreserved in the subnet.
+        """@description-title List unreserved IP ranges
+        @description Lists IP ranges currently unreserved in the subnet.
 
-        Returns 404 if the subnet is not found.
+        @param (int) "{id}" [required=true] A subnet ID.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing a list of
+        unreserved IP ranges.
+        @success-example "success-json" [exkey=subnets-unreserved-ips]
+        placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested subnet is not found.
+        @error-example "not-found"
+            Not Found
         """
         subnet = Subnet.objects.get_subnet_or_404(
             id, request.user, NodePermission.view)
@@ -255,29 +327,44 @@ class SubnetHandler(OperationsHandler):
 
     @operation(idempotent=True)
     def statistics(self, request, id):
-        """\
-        Returns statistics for the specified subnet, including:
+        """@description-title Get subnet statistics
+        @description Returns statistics for the specified subnet, including:
 
-        num_available: the number of available IP addresses
-        largest_available: the largest number of contiguous free IP addresses
-        num_unavailable: the number of unavailable IP addresses
-        total_addresses: the sum of the available plus unavailable addresses
-        usage: the (floating point) usage percentage of this subnet
-        usage_string: the (formatted unicode) usage percentage of this subnet
-        ranges: the specific IP ranges present in ths subnet (if specified)
+        - **num_available**: the number of available IP addresses
+        - **largest_available**: the largest number of contiguous free IP
+          addresses
+        - **num_unavailable**: the number of unavailable IP addresses
+        - **total_addresses**: the sum of the available plus unavailable
+          addresses
+        - **usage**: the (floating point) usage percentage of this subnet
+        - **usage_string**: the (formatted unicode) usage percentage of this
+          subnet
+        - **ranges**: the specific IP ranges present in ths subnet (if
+          specified)
 
-        Optional parameters
-        -------------------
+        Note: to supply additional optional parameters for this request, add
+        them to the request URI: e.g.
+        ``/subnets/1/?op=statistics&include_suggestions=1``
 
-        include_ranges
-           If True, includes detailed information
-           about the usage of this range.
+        @param (int) "{id}" [required=true] A subnet ID.
 
-        include_suggestions
-          If True, includes the suggested gateway and dynamic range for this
-          subnet, if it were to be configured.
+        @param (int) "include_ranges" [required=false] If '1', includes
+        detailed information about the usage of this range. '1' == True, '0' ==
+        False.
 
-        Returns 404 if the subnet is not found.
+        @param (int) "include_suggestions" [required=false] If '1', includes
+        the suggested gateway and dynamic range for this subnet, if it were to
+        be configured. '1' == True, '0' == False.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the statistics.
+        @success-example "success-json" [exkey=subnets-statistics]
+        placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested subnet is not found.
+        @error-example "not-found"
+            Not Found
         """
         subnet = Subnet.objects.get_subnet_or_404(
             id, request.user, NodePermission.view)
@@ -294,22 +381,32 @@ class SubnetHandler(OperationsHandler):
 
     @operation(idempotent=True)
     def ip_addresses(self, request, id):
-        """\
-        Returns a summary of IP addresses assigned to this subnet.
+        """@description-title Summary of IP addresses
+        @description Returns a summary of IP addresses assigned to this subnet.
 
-        Optional parameters
-        -------------------
+        @param (int) "{id}" [required=true] A subnet ID.
 
-        with_username
-          If False, suppresses the display of usernames associated with each
-          address. (Default: True)
+        @param (int) "with_username" [required=false] If '0', suppresses the
+        display of usernames associated with each address. '1' == True, '0' ==
+        False. (Default: '1')
 
-        with_summary
-          If False, suppresses the display of nodes, BMCs, and and DNS records
-          associated with each address. (Default: True)
+        @param (int) "with_summary" [required=false] If '0', suppresses the
+        display of nodes, BMCs, and and DNS records associated with each
+        address. '1' == True, '0' == False. (Default: True)
 
-        with_node_summary
-          Deprecated form of with_summary.
+        @param (int) "with_node_summary" [required=false] Deprecated. Use
+        'with_summary'.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing a list of IP
+        addresses and information about each.
+        @success-example "success-json" [exkey=subnets-ip-addresses]
+        placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested subnet is not found.
+        @error-example "not-found"
+            Not Found
         """
         subnet = Subnet.objects.get_subnet_or_404(
             id, request.user, NodePermission.view)

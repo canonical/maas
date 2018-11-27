@@ -1,0 +1,716 @@
+{
+  "subnets-read": [
+    {
+      "name": "name-rLI3eq",
+      "vlan": {
+        "vid": 0,
+        "mtu": 1500,
+        "dhcp_on": false,
+        "external_dhcp": null,
+        "relay_vlan": null,
+        "secondary_rack": "76y7pg",
+        "fabric_id": 0,
+        "space": "management",
+        "fabric": "fabric-0",
+        "id": 5001,
+        "name": "untagged",
+        "primary_rack": "7xtf67",
+        "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+      },
+      "cidr": "172.16.1.0/24",
+      "rdns_mode": 2,
+      "gateway_ip": "172.16.1.1",
+      "dns_servers": [
+        "fd89:8724:81f1:5512:557f:99c3:6967:8d63"
+      ],
+      "allow_dns": true,
+      "allow_proxy": true,
+      "active_discovery": false,
+      "managed": true,
+      "space": "management",
+      "id": 1,
+      "resource_uri": "/MAAS/api/2.0/subnets/1/"
+    },
+    {
+      "name": "name-v5djzQ",
+      "vlan": {
+        "vid": 0,
+        "mtu": 1500,
+        "dhcp_on": false,
+        "external_dhcp": null,
+        "relay_vlan": null,
+        "secondary_rack": "76y7pg",
+        "fabric_id": 1,
+        "space": "management",
+        "fabric": "fabric-1",
+        "id": 5003,
+        "name": "untagged",
+        "primary_rack": "7xtf67",
+        "resource_uri": "/MAAS/api/2.0/vlans/5003/"
+      },
+      "cidr": "172.16.2.0/24",
+      "rdns_mode": 2,
+      "gateway_ip": "172.16.2.1",
+      "dns_servers": [
+        "fcb0:c682:8c15:817d:7d80:2713:e225:5624",
+        "fd66:86c9:6a50:27cd:de13:3f1c:40d1:8aac",
+        "120.129.237.29"
+      ],
+      "allow_dns": true,
+      "allow_proxy": true,
+      "active_discovery": false,
+      "managed": true,
+      "space": "management",
+      "id": 2,
+      "resource_uri": "/MAAS/api/2.0/subnets/2/"
+    },
+    {
+      "name": "name-zznp45",
+      "vlan": {
+        "vid": 10,
+        "mtu": 1500,
+        "dhcp_on": false,
+        "external_dhcp": null,
+        "relay_vlan": null,
+        "secondary_rack": "76y7pg",
+        "fabric_id": 0,
+        "space": "internal",
+        "fabric": "fabric-0",
+        "id": 5002,
+        "name": "10",
+        "primary_rack": "7xtf67",
+        "resource_uri": "/MAAS/api/2.0/vlans/5002/"
+      },
+      "cidr": "172.16.3.0/24",
+      "rdns_mode": 2,
+      "gateway_ip": "172.16.3.1",
+      "dns_servers": [
+        "fd98:8601:90d0:c8c:dd2e:ba51:fa5a:dcfa",
+        "11.209.150.208",
+        "fde6:f9ef:3ee9:c5de:2a66:1582:cc83:abaf"
+      ],
+      "allow_dns": true,
+      "allow_proxy": true,
+      "active_discovery": false,
+      "managed": true,
+      "space": "internal",
+      "id": 3,
+      "resource_uri": "/MAAS/api/2.0/subnets/3/"
+    },
+    {
+      "name": "name-c2ULe1",
+      "vlan": {
+        "vid": 10,
+        "mtu": 1500,
+        "dhcp_on": false,
+        "external_dhcp": null,
+        "relay_vlan": null,
+        "secondary_rack": "76y7pg",
+        "fabric_id": 0,
+        "space": "internal",
+        "fabric": "fabric-0",
+        "id": 5002,
+        "name": "10",
+        "primary_rack": "7xtf67",
+        "resource_uri": "/MAAS/api/2.0/vlans/5002/"
+      },
+      "cidr": "172.16.4.0/24",
+      "rdns_mode": 2,
+      "gateway_ip": "172.16.4.1",
+      "dns_servers": [
+        "fd08:fef7:5c1f:a2e6:3d8e:6c3b:89f9:80cb",
+        "fc67:ad6a:88fe:9192:62f9:e882:8bcc:339e",
+        "255.59.162.158"
+      ],
+      "allow_dns": true,
+      "allow_proxy": true,
+      "active_discovery": false,
+      "managed": true,
+      "space": "internal",
+      "id": 4,
+      "resource_uri": "/MAAS/api/2.0/subnets/4/"
+    },
+    {
+      "name": "name-m3vYqT",
+      "vlan": {
+        "vid": 42,
+        "mtu": 1500,
+        "dhcp_on": false,
+        "external_dhcp": null,
+        "relay_vlan": null,
+        "secondary_rack": null,
+        "fabric_id": 1,
+        "space": "ipv6-testbed",
+        "fabric": "fabric-1",
+        "id": 5004,
+        "name": "42",
+        "primary_rack": null,
+        "resource_uri": "/MAAS/api/2.0/vlans/5004/"
+      },
+      "cidr": "2001:db8:42::/64",
+      "rdns_mode": 2,
+      "gateway_ip": null,
+      "dns_servers": [
+        "fd15:6cb0:a55c:235f:e78f:ba4f:2eb4:6b3",
+        "fcc5:8b5e:c55b:90e0:8be:6b87:eb5:f4c7"
+      ],
+      "allow_dns": true,
+      "allow_proxy": true,
+      "active_discovery": false,
+      "managed": true,
+      "space": "ipv6-testbed",
+      "id": 5,
+      "resource_uri": "/MAAS/api/2.0/subnets/5/"
+    },
+    {
+      "name": "192.168.122.0/24",
+      "vlan": {
+        "vid": 0,
+        "mtu": 1500,
+        "dhcp_on": false,
+        "external_dhcp": null,
+        "relay_vlan": null,
+        "secondary_rack": "76y7pg",
+        "fabric_id": 0,
+        "space": "management",
+        "fabric": "fabric-0",
+        "id": 5001,
+        "name": "untagged",
+        "primary_rack": "7xtf67",
+        "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+      },
+      "cidr": "192.168.122.0/24",
+      "rdns_mode": 2,
+      "gateway_ip": "192.168.122.1",
+      "dns_servers": [],
+      "allow_dns": true,
+      "allow_proxy": true,
+      "active_discovery": false,
+      "managed": true,
+      "space": "management",
+      "id": 6,
+      "resource_uri": "/MAAS/api/2.0/subnets/6/"
+    },
+    {
+      "name": "172.16.99.0/24",
+      "vlan": {
+        "vid": 0,
+        "mtu": 1500,
+        "dhcp_on": false,
+        "external_dhcp": null,
+        "relay_vlan": null,
+        "secondary_rack": "76y7pg",
+        "fabric_id": 0,
+        "space": "management",
+        "fabric": "fabric-0",
+        "id": 5001,
+        "name": "untagged",
+        "primary_rack": "7xtf67",
+        "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+      },
+      "cidr": "172.16.99.0/24",
+      "rdns_mode": 2,
+      "gateway_ip": null,
+      "dns_servers": [],
+      "allow_dns": true,
+      "allow_proxy": true,
+      "active_discovery": false,
+      "managed": true,
+      "space": "management",
+      "id": 7,
+      "resource_uri": "/MAAS/api/2.0/subnets/7/"
+    }
+  ],
+  "subnets-create": {
+    "name": "172.16.5.0/24",
+    "vlan": {
+      "vid": 0,
+      "mtu": 1500,
+      "dhcp_on": false,
+      "external_dhcp": null,
+      "relay_vlan": null,
+      "secondary_rack": "76y7pg",
+      "fabric_id": 0,
+      "space": "management",
+      "fabric": "fabric-0",
+      "id": 5001,
+      "name": "untagged",
+      "primary_rack": "7xtf67",
+      "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+    },
+    "cidr": "172.16.5.0/24",
+    "rdns_mode": 2,
+    "gateway_ip": "",
+    "dns_servers": [],
+    "allow_dns": true,
+    "allow_proxy": true,
+    "active_discovery": false,
+    "managed": true,
+    "space": "management",
+    "id": 9,
+    "resource_uri": "/MAAS/api/2.0/subnets/9/"
+  },
+  "subnets-read-by-id": {
+    "name": "172.16.5.0/24",
+    "vlan": {
+      "vid": 0,
+      "mtu": 1500,
+      "dhcp_on": false,
+      "external_dhcp": null,
+      "relay_vlan": null,
+      "fabric_id": 0,
+      "secondary_rack": "76y7pg",
+      "id": 5001,
+      "fabric": "fabric-0",
+      "name": "untagged",
+      "space": "management",
+      "primary_rack": "7xtf67",
+      "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+    },
+    "cidr": "172.16.5.0/24",
+    "rdns_mode": 2,
+    "gateway_ip": null,
+    "dns_servers": [],
+    "allow_dns": true,
+    "allow_proxy": true,
+    "active_discovery": false,
+    "managed": true,
+    "id": 9,
+    "space": "management",
+    "resource_uri": "/MAAS/api/2.0/subnets/9/"
+  },
+  "subnets-update": {
+    "name": "172.16.5.0/24",
+    "vlan": {
+      "vid": 0,
+      "mtu": 1500,
+      "dhcp_on": false,
+      "external_dhcp": null,
+      "relay_vlan": null,
+      "primary_rack": "7xtf67",
+      "secondary_rack": "76y7pg",
+      "id": 5001,
+      "fabric": "fabric-0",
+      "fabric_id": 0,
+      "name": "untagged",
+      "space": "management",
+      "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+    },
+    "cidr": "172.16.5.0/24",
+    "rdns_mode": 2,
+    "gateway_ip": "",
+    "dns_servers": [],
+    "allow_dns": true,
+    "allow_proxy": true,
+    "active_discovery": false,
+    "managed": true,
+    "id": 9,
+    "space": "management",
+    "resource_uri": "/MAAS/api/2.0/subnets/9/"
+  },
+  "subnets-reserved-ips": [
+    {
+      "start": "172.16.2.1",
+      "end": "172.16.2.1",
+      "num_addresses": 1,
+      "purpose": [
+        "gateway-ip"
+      ]
+    },
+    {
+      "start": "172.16.2.3",
+      "end": "172.16.2.4",
+      "num_addresses": 2,
+      "purpose": [
+        "assigned-ip"
+      ]
+    },
+    {
+      "start": "172.16.2.11",
+      "end": "172.16.2.11",
+      "num_addresses": 1,
+      "purpose": [
+        "assigned-ip"
+      ]
+    },
+    {
+      "start": "172.16.2.26",
+      "end": "172.16.2.26",
+      "num_addresses": 1,
+      "purpose": [
+        "assigned-ip"
+      ]
+    },
+    {
+      "start": "172.16.2.62",
+      "end": "172.16.2.63",
+      "num_addresses": 2,
+      "purpose": [
+        "assigned-ip"
+      ]
+    },
+    {
+      "start": "172.16.2.101",
+      "end": "172.16.2.101",
+      "num_addresses": 1,
+      "purpose": [
+        "gateway-ip"
+      ]
+    },
+    {
+      "start": "172.16.2.109",
+      "end": "172.16.2.109",
+      "num_addresses": 1,
+      "purpose": [
+        "assigned-ip"
+      ]
+    },
+    {
+      "start": "172.16.2.111",
+      "end": "172.16.2.111",
+      "num_addresses": 1,
+      "purpose": [
+        "assigned-ip"
+      ]
+    },
+    {
+      "start": "172.16.2.116",
+      "end": "172.16.2.116",
+      "num_addresses": 1,
+      "purpose": [
+        "assigned-ip"
+      ]
+    },
+    {
+      "start": "172.16.2.134",
+      "end": "172.16.2.134",
+      "num_addresses": 1,
+      "purpose": [
+        "assigned-ip"
+      ]
+    },
+    {
+      "start": "172.16.2.174",
+      "end": "172.16.2.174",
+      "num_addresses": 1,
+      "purpose": [
+        "gateway-ip"
+      ]
+    },
+    {
+      "start": "172.16.2.206",
+      "end": "172.16.2.206",
+      "num_addresses": 1,
+      "purpose": [
+        "assigned-ip"
+      ]
+    },
+    {
+      "start": "172.16.2.235",
+      "end": "172.16.2.235",
+      "num_addresses": 1,
+      "purpose": [
+        "assigned-ip"
+      ]
+    },
+    {
+      "start": "172.16.2.237",
+      "end": "172.16.2.237",
+      "num_addresses": 1,
+      "purpose": [
+        "gateway-ip"
+      ]
+    },
+    {
+      "start": "172.16.2.252",
+      "end": "172.16.2.252",
+      "num_addresses": 1,
+      "purpose": [
+        "assigned-ip"
+      ]
+    }
+  ],
+  "subnets-unreserved-ips": [
+    {
+      "start": "172.16.2.2",
+      "end": "172.16.2.2",
+      "num_addresses": 1
+    },
+    {
+      "start": "172.16.2.5",
+      "end": "172.16.2.10",
+      "num_addresses": 6
+    },
+    {
+      "start": "172.16.2.12",
+      "end": "172.16.2.25",
+      "num_addresses": 14
+    },
+    {
+      "start": "172.16.2.27",
+      "end": "172.16.2.61",
+      "num_addresses": 35
+    },
+    {
+      "start": "172.16.2.64",
+      "end": "172.16.2.100",
+      "num_addresses": 37
+    },
+    {
+      "start": "172.16.2.102",
+      "end": "172.16.2.108",
+      "num_addresses": 7
+    },
+    {
+      "start": "172.16.2.110",
+      "end": "172.16.2.110",
+      "num_addresses": 1
+    },
+    {
+      "start": "172.16.2.112",
+      "end": "172.16.2.115",
+      "num_addresses": 4
+    },
+    {
+      "start": "172.16.2.117",
+      "end": "172.16.2.133",
+      "num_addresses": 17
+    },
+    {
+      "start": "172.16.2.135",
+      "end": "172.16.2.173",
+      "num_addresses": 39
+    },
+    {
+      "start": "172.16.2.175",
+      "end": "172.16.2.205",
+      "num_addresses": 31
+    },
+    {
+      "start": "172.16.2.207",
+      "end": "172.16.2.234",
+      "num_addresses": 28
+    },
+    {
+      "start": "172.16.2.236",
+      "end": "172.16.2.236",
+      "num_addresses": 1
+    },
+    {
+      "start": "172.16.2.238",
+      "end": "172.16.2.251",
+      "num_addresses": 14
+    },
+    {
+      "start": "172.16.2.253",
+      "end": "172.16.2.254",
+      "num_addresses": 2
+    }
+  ],
+  "subnets-statistics": {
+    "num_available": 232,
+    "largest_available": 41,
+    "num_unavailable": 22,
+    "total_addresses": 254,
+    "usage": 0.08661417322834646,
+    "usage_string": "9%",
+    "available_string": "91%",
+    "first_address": "172.16.1.1",
+    "last_address": "172.16.1.254",
+    "ip_version": 4
+  },
+  "subnets-ip-addresses": [
+    {
+      "ip": "172.16.2.3",
+      "alloc_type": 1,
+      "created": "Tue, 27 Nov. 2018 18:06:19",
+      "updated": "Tue, 27 Nov. 2018 18:06:19",
+      "node_summary": {
+        "system_id": "76y7pg",
+        "node_type": 2,
+        "fqdn": "happy-rack.maas",
+        "hostname": "happy-rack",
+        "is_container": false,
+        "via": "eth2"
+      }
+    },
+    {
+      "ip": "172.16.2.4",
+      "alloc_type": 1,
+      "created": "Tue, 27 Nov. 2018 18:06:19",
+      "updated": "Tue, 27 Nov. 2018 18:06:19",
+      "node_summary": {
+        "system_id": "nfkend",
+        "node_type": 3,
+        "fqdn": "happy-region.maas",
+        "hostname": "happy-region",
+        "is_container": false,
+        "via": "eth2"
+      }
+    },
+    {
+      "ip": "172.16.2.11",
+      "alloc_type": 1,
+      "created": "Tue, 27 Nov. 2018 18:07:25",
+      "updated": "Tue, 27 Nov. 2018 18:07:25",
+      "node_summary": {
+        "system_id": "dq3sda",
+        "node_type": 0,
+        "fqdn": "kind-dory.maas",
+        "hostname": "kind-dory",
+        "is_container": false,
+        "via": "eth-xnY2lB"
+      },
+      "user": "user2"
+    },
+    {
+      "ip": "172.16.2.26",
+      "alloc_type": 1,
+      "created": "Tue, 27 Nov. 2018 18:07:09",
+      "updated": "Tue, 27 Nov. 2018 18:07:09",
+      "node_summary": {
+        "system_id": "seebkg",
+        "node_type": 0,
+        "fqdn": "grown-cougar.maas",
+        "hostname": "grown-cougar",
+        "is_container": false,
+        "via": "eth-GZF5ig"
+      },
+      "user": "user2"
+    },
+    {
+      "ip": "172.16.2.62",
+      "alloc_type": 1,
+      "created": "Tue, 27 Nov. 2018 18:07:24",
+      "updated": "Tue, 27 Nov. 2018 18:07:24",
+      "node_summary": {
+        "system_id": "r7enqt",
+        "node_type": 0,
+        "fqdn": "nice-gannet.maas",
+        "hostname": "nice-gannet",
+        "is_container": false,
+        "via": "eth-nlvMd2"
+      },
+      "user": "user1"
+    },
+    {
+      "ip": "172.16.2.63",
+      "alloc_type": 1,
+      "created": "Tue, 27 Nov. 2018 18:06:29",
+      "updated": "Tue, 27 Nov. 2018 18:06:29",
+      "node_summary": {
+        "system_id": "pme7wb",
+        "node_type": 0,
+        "fqdn": "solid-liger.sample",
+        "hostname": "solid-liger",
+        "is_container": false,
+        "via": "eth-2VCthm"
+      }
+    },
+    {
+      "ip": "172.16.2.109",
+      "alloc_type": 1,
+      "created": "Tue, 27 Nov. 2018 18:07:25",
+      "updated": "Tue, 27 Nov. 2018 18:07:25",
+      "node_summary": {
+        "system_id": "dq3sda",
+        "node_type": 0,
+        "fqdn": "kind-dory.maas",
+        "hostname": "kind-dory",
+        "is_container": false,
+        "via": "eth-fS18k5"
+      },
+      "user": "user2"
+    },
+    {
+      "ip": "172.16.2.111",
+      "alloc_type": 1,
+      "created": "Tue, 27 Nov. 2018 18:07:07",
+      "updated": "Tue, 27 Nov. 2018 18:07:07",
+      "node_summary": {
+        "system_id": "ydpcwh",
+        "node_type": 0,
+        "fqdn": "game-owl.ubnt",
+        "hostname": "game-owl",
+        "is_container": false,
+        "via": "eth-Cyk2jC"
+      },
+      "user": "user2"
+    },
+    {
+      "ip": "172.16.2.116",
+      "alloc_type": 1,
+      "created": "Tue, 27 Nov. 2018 18:07:10",
+      "updated": "Tue, 27 Nov. 2018 18:07:10",
+      "node_summary": {
+        "system_id": "seebkg",
+        "node_type": 0,
+        "fqdn": "grown-cougar.maas",
+        "hostname": "grown-cougar",
+        "is_container": false,
+        "via": "eth-0nEEnB"
+      },
+      "user": "user2"
+    },
+    {
+      "ip": "172.16.2.134",
+      "alloc_type": 1,
+      "created": "Tue, 27 Nov. 2018 18:07:24",
+      "updated": "Tue, 27 Nov. 2018 18:07:24",
+      "node_summary": {
+        "system_id": "r7enqt",
+        "node_type": 0,
+        "fqdn": "nice-gannet.maas",
+        "hostname": "nice-gannet",
+        "is_container": false,
+        "via": "eth-dMPw46"
+      },
+      "user": "user1"
+    },
+    {
+      "ip": "172.16.2.206",
+      "alloc_type": 1,
+      "created": "Tue, 27 Nov. 2018 18:07:24",
+      "updated": "Tue, 27 Nov. 2018 18:07:24",
+      "node_summary": {
+        "system_id": "r7enqt",
+        "node_type": 0,
+        "fqdn": "nice-gannet.maas",
+        "hostname": "nice-gannet",
+        "is_container": false,
+        "via": "eth-6Wz9hw"
+      },
+      "user": "user1"
+    },
+    {
+      "ip": "172.16.2.235",
+      "alloc_type": 1,
+      "created": "Tue, 27 Nov. 2018 18:07:29",
+      "updated": "Tue, 27 Nov. 2018 18:07:29",
+      "node_summary": {
+        "system_id": "7ghwxs",
+        "node_type": 0,
+        "fqdn": "alert-lion.sample",
+        "hostname": "alert-lion",
+        "is_container": false,
+        "via": "bond-wnZNKS"
+      },
+      "user": "user2"
+    },
+    {
+      "ip": "172.16.2.252",
+      "alloc_type": 1,
+      "created": "Tue, 27 Nov. 2018 18:07:32",
+      "updated": "Tue, 27 Nov. 2018 18:07:32",
+      "node_summary": {
+        "system_id": "dnq43f",
+        "node_type": 0,
+        "fqdn": "square-hornet.maas",
+        "hostname": "square-hornet",
+        "is_container": false,
+        "via": "eth-3GCPHI"
+      },
+      "user": "user2"
+    }
+  ]
+}
