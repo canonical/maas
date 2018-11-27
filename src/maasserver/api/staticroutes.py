@@ -35,17 +35,39 @@ class StaticRoutesHandler(OperationsHandler):
         return ('staticroutes_handler', [])
 
     def read(self, request):
-        """List all static routes."""
+        """@description-title List static routes
+        @description Lists all static routes.
+
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing a list of
+        static route objects.
+        @success-example "success-json" [exkey=static-routes-read] placeholder
+        text
+        """
         return StaticRoute.objects.all()
 
     @admin_method
     def create(self, request):
-        """Create a static route.
+        """@description-title Create a static route
+        @description Creates a static route.
 
-        :param source: Source subnet for the route.
-        :param destination: Destination subnet for the route.
-        :param gateway_ip: IP address of the gateway on the source subnet.
-        :param metric: Weight of the route on a deployed machine.
+        @param (string) "source" [required=true] Source subnet name for the
+        route.
+
+        @param (string) "destination" [required=true] Destination subnet name
+        for the route.
+
+        @param (string) "gateway_ip" [required=true]  IP address of the
+        gateway on the source subnet.
+
+        @param (int) "metric" [required=false] Weight of the route on a
+        deployed machine.
+
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing information
+        about the new static route object.
+        @success-example "success-json" [exkey=static-routes-create]
+        placeholder text
         """
         form = StaticRouteForm(data=request.data)
         if form.is_valid():
@@ -70,22 +92,53 @@ class StaticRouteHandler(OperationsHandler):
         return ('staticroute_handler', (staticroute_id,))
 
     def read(self, request, id):
-        """Read static route.
+        """@description-title Get a static route
+        @description Gets a static route with the given ID.
 
-        Returns 404 if the static route is not found.
+        @param (int) "{id}" [required=true] A static-route ID.
+
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing information
+        about the requested static route.
+        @success-example "success-json" [exkey=static-routes-read-by-id]
+        placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested static-route is not found.
+        @error-example "not-found"
+            Not Found
         """
         return StaticRoute.objects.get_staticroute_or_404(
             id, request.user, NodePermission.view)
 
     def update(self, request, id):
-        """Update static route.
+        """@description-title Update a static route
+        @description Updates a static route with the given ID.
 
-        :param source: Source subnet for the route.
-        :param destination: Destination subnet for the route.
-        :param gateway_ip: IP address of the gateway on the source subnet.
-        :param metric: Weight of the route on a deployed machine.
+        @param (int) "{id}" [required=true] A static-route ID.
 
-        Returns 404 if the static route is not found.
+        @param (string) "source" [required=false] Source subnet name for the
+        route.
+
+        @param (string) "destination" [required=false] Destination subnet name
+        for the route.
+
+        @param (string) "gateway_ip" [required=false]  IP address of the
+        gateway on the source subnet.
+
+        @param (int) "metric" [required=false] Weight of the route on a
+        deployed machine.
+
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing information
+        about the updated static route object.
+        @success-example "success-json" [exkey=static-routes-update]
+        placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested static-route is not found.
+        @error-example "not-found"
+            Not Found
         """
         staticroute = StaticRoute.objects.get_staticroute_or_404(
             id, request.user, NodePermission.admin)
@@ -96,9 +149,17 @@ class StaticRouteHandler(OperationsHandler):
             raise MAASAPIValidationError(form.errors)
 
     def delete(self, request, id):
-        """Delete static route.
+        """@description-title Delete static route
+        @description Deletes the static route with the given ID.
 
-        Returns 404 if the static route is not found.
+        @param (int) "{id}" [required=true] A static-route ID.
+
+        @success (http-status-code) "204" 204
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested static-route is not found.
+        @error-example "not-found"
+            Not Found
         """
         staticroute = StaticRoute.objects.get_staticroute_or_404(
             id, request.user, NodePermission.admin)
