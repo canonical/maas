@@ -166,6 +166,18 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
             "hostname": node.hostname,
             }, handler.full_dehydrate(node))
 
+    def test_full_dehydrate_includes_permissions_when_defined(self):
+        handler = self.make_nodes_handler(
+            fields=["hostname"],
+            edit_permission=NodePermission.admin,
+            delete_permission=NodePermission.admin)
+        handler.user = factory.make_admin()
+        node = factory.make_Node()
+        self.assertEqual({
+            "hostname": node.hostname,
+            "permissions": ["edit", "delete"],
+            }, handler.full_dehydrate(node))
+
     def test_full_dehydrate_only_includes_list_fields_when_for_list(self):
         handler = self.make_nodes_handler(
             list_fields=["cpu_count", "power_state"])

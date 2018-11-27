@@ -40,7 +40,7 @@ from provisioningserver.events import AUDIT
 class SettingsTest(MAASServerTestCase):
 
     def test_settings_redirects_to_index_when_intro_not_completed(self):
-        self.client.login(user=factory.make_User())
+        self.client.login(user=factory.make_admin())
         Config.objects.set_config('completed_intro', False)
         response = self.client.get(reverse('settings'))
         self.assertEqual(reverse('index'), extract_redirect(response))

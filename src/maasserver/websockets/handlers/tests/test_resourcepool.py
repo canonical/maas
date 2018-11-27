@@ -46,7 +46,8 @@ class TestResourcePoolHandler(MAASServerTestCase):
              'created': dehydrate_datetime(pool.created),
              'updated': dehydrate_datetime(pool.updated),
              'machine_total_count': 0,
-             'machine_ready_count': 0},
+             'machine_ready_count': 0,
+             'permissions': []},
             result)
 
     def test_get_rbac(self):
@@ -65,7 +66,8 @@ class TestResourcePoolHandler(MAASServerTestCase):
              'created': dehydrate_datetime(pool.created),
              'updated': dehydrate_datetime(pool.updated),
              'machine_total_count': 0,
-             'machine_ready_count': 0},
+             'machine_ready_count': 0,
+             'permissions': []},
             result)
 
     def test_get_rbac_fails(self):

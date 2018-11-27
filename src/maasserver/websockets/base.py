@@ -211,6 +211,9 @@ class Handler(metaclass=HandlerMetaclass):
                 else:
                     data[field_name] = field.value_to_string(obj)
 
+        # Add permissions that can be performed on this object.
+        data = self._add_permissions(obj, data)
+
         # Return the data after the final dehydrate.
         return self.dehydrate(obj, data, for_list=for_list)
 
@@ -233,6 +236,26 @@ class Handler(metaclass=HandlerMetaclass):
             if field_type == 'ForeignKey' and not isinstance(value, Model):
                 return True
         return False
+
+    def _add_permissions(self, obj, data):
+        """Add permissions to `data` for `obj` based on the current user."""
+        # Only `edit` and `delete` are used because if the user cannot view
+        # then it will not call this method at all and create is a global
+        # action that is not scoped to an object.
+        has_permissions = (
+            self._meta.edit_permission is not None or
+            self._meta.delete_permission is not None)
+        if not has_permissions:
+            return data
+        permissions = []
+        if (self._meta.edit_permission is not None and
+                self.user.has_perm(self._meta.edit_permission, obj)):
+            permissions.append('edit')
+        if (self._meta.delete_permission is not None and
+                self.user.has_perm(self._meta.delete_permission, obj)):
+            permissions.append('delete')
+        data['permissions'] = permissions
+        return data
 
     def full_hydrate(self, obj, data):
         """Convert the given dictionary to a object."""
