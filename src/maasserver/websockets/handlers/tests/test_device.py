@@ -25,6 +25,7 @@ from maasserver.forms import (
 from maasserver.models.interface import Interface
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.node_action import compile_node_actions
+from maasserver.permissions import NodePermission
 from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import RBACForceOffFixture
 from maasserver.testing.testcase import MAASTransactionServerTestCase
@@ -137,6 +138,9 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
             if iface.vlan is not None)
         fabric_names.update({subnet.vlan.fabric.name for subnet in subnets})
         boot_interface = node.get_boot_interface()
+        permissions = []
+        if user.has_perm(NodePermission.edit, node):
+            permissions = ['edit', 'delete']
         data = {
             "actions": list(compile_node_actions(node, user).keys()),
             "created": dehydrate_datetime(node.created),
@@ -158,6 +162,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
                 "%s" % boot_interface.mac_address),
             "parent": (
                 node.parent.system_id if node.parent is not None else None),
+            "permissions": permissions,
             "ip_address": self.dehydrate_ip_address(node, boot_interface),
             "ip_assignment": self.dehydrate_ip_assignment(
                 node, boot_interface),
@@ -196,6 +201,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
                 "ip_assignment",
                 "link_type",
                 "node_type_display",
+                "permissions",
                 "primary_mac",
                 "spaces",
                 "subnets",

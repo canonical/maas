@@ -61,6 +61,7 @@ from maasserver.models.partition import (
 )
 from maasserver.node_action import compile_node_actions
 import maasserver.node_action as node_action_module
+from maasserver.permissions import NodePermission
 from maasserver.rbac import (
     FakeRBACClient,
     rbac,
@@ -192,6 +193,11 @@ class TestMachineHandler(MAASServerTestCase):
                     script_result.status == SCRIPT_STATUS.PASSED):
                 log_results.add(script_result.name)
 
+        permissions = []
+        if (handler.user is not None and
+                handler.user.has_perm(NodePermission.admin, node)):
+            permissions = ['edit', 'delete']
+
         data = {
             "actions": list(compile_node_actions(node, handler.user).keys()),
             "architecture": node.architecture,
@@ -236,6 +242,7 @@ class TestMachineHandler(MAASServerTestCase):
                 for device in node.children.all().order_by('id')
             ], key=itemgetter('fqdn')),
             "domain": handler.dehydrate_domain(node.domain),
+            "permissions": permissions,
             "physical_disk_count": node.physicalblockdevice_set.count(),
             "disks": disks,
             "storage_layout_issues": node.storage_layout_issues(),
@@ -332,6 +339,7 @@ class TestMachineHandler(MAASServerTestCase):
                 "metadata",
                 "node_type_display",
                 "osystem",
+                "permissions",
                 "physical_disk_count",
                 "pod",
                 "pxe_mac",

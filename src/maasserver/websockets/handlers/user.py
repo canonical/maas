@@ -12,6 +12,10 @@ from django.http import HttpRequest
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT
 from maasserver.models.user import SYSTEM_USERS
+from maasserver.permissions import (
+    NodePermission,
+    ResourcePoolPermission,
+)
 from maasserver.websockets.base import (
     Handler,
     HandlerDoesNotExistError,
@@ -71,7 +75,22 @@ class UserHandler(Handler):
 
     def dehydrate(self, obj, data, for_list=False):
         data["sshkeys_count"] = obj.sshkey_set.count()
+        if obj.id == self.user.id:
+            # User is reading information about itself, so provide the global
+            # permissions.
+            data['global_permissions'] = self._get_global_permissions()
         return data
+
+    def _get_global_permissions(self):
+        """Return the global permissions the user can perform."""
+        permissions = []
+        if self.user.has_perm(NodePermission.admin):
+            permissions.append('machine_create')
+        if self.user.has_perm(NodePermission.view):
+            permissions.append('device_create')
+        if self.user.has_perm(ResourcePoolPermission.create):
+            permissions.append('resource_pool_create')
+        return permissions
 
     def auth_user(self, params):
         """Return the authenticated user."""
