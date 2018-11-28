@@ -202,36 +202,36 @@
                         <form class="p-form">
                             <ul class="p-inline-list--settings u-no-margin--left u-no-padding--left ng-hide" data-ng-show="tabs[tab].actionOption.name === 'test'">
                                 <li class="p-inline-list__item">
-                                    <input id="{$ tab $}-enableSSH" type="checkbox" data-ng-model="tabs[tab].commissionOptions.enableSSH"></input>
+                                    <input id="{$ tab $}-enableSSH" type="checkbox" data-ng-model="tabs[tab].commissionOptions.enableSSH">
                                     <label for="{$ tab $}-enableSSH">Allow SSH access and prevent machine powering off</label>
                                 </li>
                             </ul>
                             <div class="p-form__group ng-hide" data-ng-show="tabs[tab].actionOption.name === 'deploy'">
-                                <div class="p-form__control u-clearfix">
-                                    <div data-maas-os-select="osinfo" data-ng-model="tabs[tab].osSelection"></div>
-                                    <div class="row" data-ng-if="isSuperUser()">
-                                    <ul class="p-inline-list--settings u-no-margin--left u-no-padding--left">
-                                        <li class="p-inline-list__item">
-                                            <label class="p-form__label">Additional install</label>
-                                        </li>
-                                        <li class="p-inline-list__item">
-                                            <input id="{$ tab $}-installKVM" type="checkbox" data-ng-model="tabs[tab].deployOptions.installKVM" ng-disabled="!nodesManager.isModernUbuntu(tabs['machines'].osSelection)">
-                                            <label for="{$ tab $}-installKVM">Register as MAAS KVM host</label>
-                                        </li>
-                                        <li class="p-inline-list__item">
-                                            <div data-ng-if="!nodesManager.isModernUbuntu(tabs['machines'].osSelection)" style="display: block">
-                                                <span class="p-icon--warning">Warning</span>
-                                                <strong>Warning:</strong> Ubuntu 18.04 is the minimum required. <a class="p-link--external" target="_blank" href="https://docs.maas.io/2.5/en/manage-pods-webui#compose-a-machine">Learn more</a>.
+                                <div class="row p-form--stacked">
+                                    <div class="col-12">
+                                        <div class="p-strip is-shallow u-no-padding--top">
+                                            <div class="p-form__group" data-maas-os-select="osinfo" data-ng-model="tabs[tab].osSelection" style="width: 100%"></div>
+                                        </div>
+                                        <div class="p-strip is-shallow u-no-padding--top" data-ng-if="isSuperUser()">
+                                            <div class="p-form__group">
+                                                <label class="p-form__label u-no-padding--top">Additional install</label>
+                                                <div class="p-form__control" style="width: 70%">
+                                                    <input id="{$ tab $}-installKVM" type="checkbox" data-ng-model="tabs[tab].deployOptions.installKVM" ng-disabled="!nodesManager.isModernUbuntu(tabs['machines'].osSelection)">
+                                                    <label for="{$ tab $}-installKVM" class="u-float--left" style="width:auto; margin-right: 1rem;">
+                                                        Register as MAAS KVM host
+                                                    </label>
+                                                    <span data-ng-if="!nodesManager.isModernUbuntu(tabs['machines'].osSelection)">
+                                                            <i class="p-icon--warning"></i>
+                                                            <strong>Warning:</strong> Ubuntu 18.04 is the minimum required. <a class="p-link--external" target="_blank" href="https://docs.maas.io/2.5/en/manage-pods-webui#compose-a-machine">Learn more</a>.
+                                                    </span>
+                                                    <span data-ng-if="nodesManager.isModernUbuntu(tabs['machines'].osSelection)">
+                                                        <i class="p-icon--information">Information:</i>
+                                                        <a target="_blank" class="p-link--external"
+                                                        href="https://docs.maas.io/2.5/en/manage-pods-webui#compose-a-machine">Learn more</a>
+                                                    </span>
+                                                </div>
                                             </div>
-                                            <div data-ng-if="nodesManager.isModernUbuntu(tabs['machines'].osSelection)" style="display: block">
-                                                <span class="p-icon--information"></span>
-                                                <a
-                                                target="_blank"
-                                                class="p-link--external"
-                                                href="https://docs.maas.io/2.5/en/manage-pods-webui#compose-a-machine">Learn more</a>
-                                            </div>
-                                        </li>
-                                    </ul>
+                                        </div>
                                     </div>
                                 </div>
                                 <div data-ng-if="tabs[tab].actionOption.name === 'release'">
@@ -279,42 +279,46 @@
                 </div>
                 <div class="row u-align--right" data-ng-if="tabs[tab].actionOption.name !== 'commission' && tabs[tab].actionOption.name !== 'test' && !tabs[tab].actionProgress.showing_confirmation">
                     <div class="col-12">
-                        <button class="p-button--base" type="button" data-ng-click="actionCancel(tab)">Cancel</button>
-                        <button data-ng-class="tabs[tab].actionOption.name === 'delete' ? 'p-button--negative' : 'p-button--positive'" data-ng-click="actionGo(tab)" data-ng-hide="hasActionsFailed(tab)">
-                            <span data-ng-if="tabs[tab].actionOption.name === 'acquire'">Acquire {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $}
-                            </span>
-                            <span data-ng-if="tabs[tab].actionOption.name === 'deploy'">Deploy {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $}
-                            </span>
-                            <span data-ng-if="tabs[tab].actionOption.name === 'release'">Release {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $}
-                            </span>
-                            <span data-ng-if="tabs[tab].actionOption.name === 'set-zone'">Set zone for {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $}
-                            </span>
-                            <span data-ng-if="tabs[tab].actionOption.name === 'set-pool'">Set pool for {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $}
-                            </span>
-                            <span data-ng-if="tabs[tab].actionOption.name === 'on'">Power on {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $}
-                            </span>
-                            <span data-ng-if="tabs[tab].actionOption.name === 'off'">Power off {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $}
-                            </span>
-                            <span data-ng-if="tabs[tab].actionOption.name === 'abort'">Abort action for {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $}
-                            </span>
-                            <span data-ng-if="tabs[tab].actionOption.name === 'rescue-mode'">Set rescue mode for {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $}
-                            </span>
-                            <span data-ng-if="tabs[tab].actionOption.name === 'exit-rescue-mode'">Exit rescue mode for {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $}
-                            </span>
-                            <span data-ng-if="tabs[tab].actionOption.name === 'mark-broken'">Mark {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $} as broken
-                            </span>
-                            <span data-ng-if="tabs[tab].actionOption.name === 'mark-fixed'">Mark {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $} as fixed
-                            </span>
-                            <span data-ng-if="tabs[tab].actionOption.name === 'override-failed-testing'">Override failed testing on {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $}
-                            </span>
-                            <span data-ng-if="tabs[tab].actionOption.name === 'lock'">Lock {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $}
-                            </span>
-                            <span data-ng-if="tabs[tab].actionOption.name === 'unlock'">Unlock {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $}
-                            </span>
-                            <span data-ng-if="tabs[tab].actionOption.name === 'delete'">Delete {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $}
-                            </span>
-                        </button>
-                        <button class="p-button--neutral" data-ng-click="actionGo(tab)" data-ng-show="hasActionsFailed(tab)">Retry</button>
+                        <div class="u-space-between page-header__controls" data-ng-if="tabs[tab].actionOption.name !== 'commission' && tabs[tab].actionOption.name !== 'test'">
+                            <div class="u-align--right">
+                                <button class="p-button--base" type="button" data-ng-click="actionCancel(tab)">Cancel</button>
+                                <button data-ng-class="tabs[tab].actionOption.name === 'delete' ? 'p-button--negative' : 'p-button--positive'" data-ng-click="actionGo(tab)" data-ng-hide="hasActionsFailed(tab)">
+                                    <span data-ng-if="tabs[tab].actionOption.name === 'acquire'">Acquire {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $}
+                                    </span>
+                                    <span data-ng-if="tabs[tab].actionOption.name === 'deploy'">Deploy {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $}
+                                    </span>
+                                    <span data-ng-if="tabs[tab].actionOption.name === 'release'">Release {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $}
+                                    </span>
+                                    <span data-ng-if="tabs[tab].actionOption.name === 'set-zone'">Set zone for {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $}
+                                    </span>
+                                    <span data-ng-if="tabs[tab].actionOption.name === 'set-pool'">Set pool for {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $}
+                                    </span>
+                                    <span data-ng-if="tabs[tab].actionOption.name === 'on'">Power on {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $}
+                                    </span>
+                                    <span data-ng-if="tabs[tab].actionOption.name === 'off'">Power off {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $}
+                                    </span>
+                                    <span data-ng-if="tabs[tab].actionOption.name === 'abort'">Abort action for {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $}
+                                    </span>
+                                    <span data-ng-if="tabs[tab].actionOption.name === 'rescue-mode'">Set rescue mode for {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $}
+                                    </span>
+                                    <span data-ng-if="tabs[tab].actionOption.name === 'exit-rescue-mode'">Exit rescue mode for {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $}
+                                    </span>
+                                    <span data-ng-if="tabs[tab].actionOption.name === 'mark-broken'">Mark {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $} as broken
+                                    </span>
+                                    <span data-ng-if="tabs[tab].actionOption.name === 'mark-fixed'">Mark {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $} as fixed
+                                    </span>
+                                    <span data-ng-if="tabs[tab].actionOption.name === 'override-failed-testing'">Override failed testing on {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $}
+                                    </span>
+                                    <span data-ng-if="tabs[tab].actionOption.name === 'lock'">Lock {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $}
+                                    </span>
+                                    <span data-ng-if="tabs[tab].actionOption.name === 'unlock'">Unlock {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $}
+                                    </span>
+                                    <span data-ng-if="tabs[tab].actionOption.name === 'delete'">Delete {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $}
+                                    </span>
+                                </button>
+                                <button class="p-button--neutral" data-ng-click="actionGo(tab)" data-ng-if="hasActionsFailed(tab)">Retry</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>

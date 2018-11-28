@@ -362,8 +362,7 @@ angular.module('MAAS').service(
                 return false;
             }
 
-            if (KVMDeployOSBlacklist.includes(
-                osSelection.osystem + '/' + osSelection.release)) {
+            if (KVMDeployOSBlacklist.includes(osSelection.release)) {
                 return false;
             }
 

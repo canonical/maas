@@ -369,7 +369,7 @@ describe("NodesManager", function() {
         it("returns false when ubuntu and precise", function() {
             var osSelection = {
                 osystem: 'ubuntu',
-                release: 'precise'
+                release: 'ubuntu/precise'
             };
 
             expect(MachinesManager.isModernUbuntu(osSelection)).toBe(false);
@@ -378,7 +378,7 @@ describe("NodesManager", function() {
         it("returns false when ubuntu and trusty", function() {
             var osSelection = {
                 osystem: 'ubuntu',
-                release: 'trusty'
+                release: 'ubuntu/trusty'
             };
 
             expect(MachinesManager.isModernUbuntu(osSelection)).toBe(false);
@@ -387,7 +387,7 @@ describe("NodesManager", function() {
         it("returns false when ubuntu and xenial", function() {
             var osSelection = {
                 osystem: 'ubuntu',
-                release: 'xenial'
+                release: 'ubuntu/xenial'
             };
 
             expect(MachinesManager.isModernUbuntu(osSelection)).toBe(false);
@@ -396,7 +396,7 @@ describe("NodesManager", function() {
         it("returns true when ubuntu and bionic", function() {
             var osSelection = {
                 osystem: 'ubuntu',
-                release: 'bionic'
+                release: 'ubuntu/bionic'
             };
 
             expect(MachinesManager.isModernUbuntu(osSelection)).toBe(true);

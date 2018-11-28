@@ -52,3 +52,9 @@ $table-h-indent: $sph-intra--condensed;
 .u-valign--middle {
   vertical-align: middle;
 }
+
+
+.u-space-between {
+  display: flex;
+  justify-content: space-between;
+}
