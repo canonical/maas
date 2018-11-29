@@ -571,7 +571,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
         // Return true if only the name or mac address of an interface can
         // be edited.
         $scope.isLimitedEditingAllowed = function(nic) {
-            if (!$scope.isSuperUser()) {
+            if (!$scope.canEdit()) {
                 // If the user is not the superuser, pretend it's not Ready.
                 return false;
             }
@@ -589,7 +589,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
         // (it can't be changed when the node is in any state other
         // than Ready or Broken and the user is not a superuser)
         $scope.isAllNetworkingDisabled = function() {
-            if (!$scope.isSuperUser() && !$scope.$parent.isDevice) {
+            if (!$scope.canEdit() && !$scope.$parent.isDevice) {
                 // If the user is not a superuser and not looking at a
                 // device, disable the networking panel.
                 return true;

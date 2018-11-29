@@ -20,5 +20,5 @@
   <li class="p-list__item" data-ng-if="node.power_type">Power type: {$ node.power_type $}</li>
 </ul>
 <footer class="p-card__footer">
-  <p data-ng-if="isSuperUser()"><a data-ng-click="section.area = 'configuration'">Edit &rsaquo;</a></p>
+  <p data-ng-if="canEdit()"><a data-ng-click="section.area = 'configuration'">Edit &rsaquo;</a></p>
 </footer>

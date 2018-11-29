@@ -55,7 +55,7 @@
                         <input type="text" class="p-form-validation__input"
                             data-ng-model="item.name"
                             data-ng-show="availableMode === 'edit' && item.$selected"
-                            data-ng-disabled="item.type === 'partition' || isAllStorageDisabled() || !isSuperUser()"
+                            data-ng-disabled="item.type === 'partition' || isAllStorageDisabled() || !canEdit()"
                             data-ng-change="nameHasChanged(item)">
                     </td>
                     <td class="col-1" aria-label="Boot">
@@ -142,7 +142,7 @@
                                         <input type="text" id="device-name" class="p-form-validation__input"
                                             data-ng-model="item.name"
                                             data-ng-show="availableMode === 'edit' && item.$selected"
-                                            data-ng-disabled="item.type === 'partition' || isAllStorageDisabled() || !isSuperUser()"
+                                            data-ng-disabled="item.type === 'partition' || isAllStorageDisabled() || !canEdit()"
                                             data-ng-change="nameHasChanged(item)">
                                     </div>
                                 </div>
@@ -808,21 +808,21 @@
         </table>
         <button class="p-button--neutral p-tooltip p-tooltip--top-center"
             data-ng-disabled="!canCreateRAID()"
-            data-ng-hide="isAllStorageDisabled() || !isSuperUser()"
+            data-ng-hide="isAllStorageDisabled() || !canEdit()"
             data-ng-click="createRAID()">
             Create RAID
             <span class="p-tooltip__message" role="tooltip">Select two or more physical devices to create a RAID</span>
         </button>
         <button class="p-button--neutral p-tooltip p-tooltip--top-center"
             data-ng-disabled="!canCreateVolumeGroup()"
-            data-ng-hide="isAllStorageDisabled() || !isSuperUser()"
+            data-ng-hide="isAllStorageDisabled() || !canEdit()"
             data-ng-click="createVolumeGroup()">
             Create volume group
             <span class="p-tooltip__message" role="tooltip">Select one or more devices to create a volume group</span>
         </button>
         <button class="p-button--neutral p-tooltip p-tooltip--top-center"
             data-ng-disabled="!canCreateCacheSet()"
-            data-ng-hide="isAllStorageDisabled() || !isSuperUser()"
+            data-ng-hide="isAllStorageDisabled() || !canEdit()"
             data-ng-click="createCacheSet()">
             Create cache Set
             <span class="p-tooltip__message" role="tooltip">Select one device to create a cache set</span>
@@ -830,7 +830,7 @@
         <button class="p-button--neutral p-tooltip--top-center"
             data-ng-class="{ 'p-tooltip': !canCreateBcache() }"
             data-ng-disabled="!canCreateBcache()"
-            data-ng-hide="isAllStorageDisabled() || !isSuperUser()"
+            data-ng-hide="isAllStorageDisabled() || !canEdit()"
             data-ng-click="createBcache()">
             Create bcache
             <span class="p-tooltip__message" role="tooltip">{$ getCannotCreateBcacheMsg() $}</span>

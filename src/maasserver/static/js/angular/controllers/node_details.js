@@ -715,6 +715,15 @@ angular.module('MAAS').controller('NodeDetailsController', [
             return UsersManager.isSuperUser();
         };
 
+        // Return true if the authenticated user has `perm` on node.
+        $scope.hasPermission = function(perm) {
+            if(angular.isObject($scope.node) &&
+                angular.isArray($scope.node.permissions)) {
+                return $scope.node.permissions.indexOf(perm) >= 0;
+            }
+            return false;
+        };
+
         // Return true if their are usable architectures.
         $scope.hasUsableArchitectures = function() {
             return $scope.summary.architecture.options.length > 0;
@@ -769,16 +778,16 @@ angular.module('MAAS').controller('NodeDetailsController', [
 
         // Return true when the edit buttons can be clicked.
         $scope.canEdit = function() {
-            // Devices can be edited, since either the user is a super
-            // user, or he owns the device (since he can't see devices
-            // that he doesn't own).
+            // Devices can be edited, if the user has the permission.
             if ($scope.isDevice) {
-                return true;
+                return $scope.hasPermission('edit');
             }
+            // Other nodes require the rack to be connected and the
+            // machine to not be locked.
             return (
                 $scope.isRackControllerConnected() &&
-                    $scope.isSuperUser() &&
-                    ! $scope.isLocked());
+                $scope.hasPermission('edit') &&
+                !$scope.isLocked());
         };
 
         // Called to edit the domain name.

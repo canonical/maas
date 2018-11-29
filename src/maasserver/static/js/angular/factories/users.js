@@ -140,5 +140,16 @@ angular.module('MAAS').factory(
                 });
         };
 
+        // Return True if the authenticated user has provided
+        // global permission.
+        UsersManager.prototype.hasGlobalPermission = function(perm) {
+            var self = this;
+            var user = self.getAuthUser();
+            if(user && user.global_permissions) {
+                return user.global_permissions.indexOf(perm) !== -1;
+            }
+            return false;
+        };
+
         return new UsersManager();
     }]);

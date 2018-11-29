@@ -448,6 +448,7 @@ describe("NodeDetailsController", function() {
     it("summary section placed in edit mode if architecture blank",
         function() {
             node.architecture = "";
+            node.permissions = ['edit'];
             GeneralManager._data.power_types.data = [{}];
             GeneralManager._data.architectures.data = ["amd64/generic"];
 
@@ -489,6 +490,7 @@ describe("NodeDetailsController", function() {
 
     it("power section edit mode if power_type blank for a machine", function() {
         GeneralManager._data.power_types.data = [{}];
+        node.permissions = ['edit'];
         var controller = makeControllerResolveSetActiveItem();
         expect($scope.power.editing).toBe(true);
     });
@@ -684,18 +686,23 @@ describe("NodeDetailsController", function() {
     });
 
     describe("isSuperUser", function() {
-        it("returns true if the user is a superuser", function() {
+
+        it("returns false if no authUser", function() {
             var controller = makeController();
-            spyOn(UsersManager, "getAuthUser").and.returnValue(
-                { is_superuser: true });
-            expect($scope.isSuperUser()).toBe(true);
+            UsersManager._authUser = null;
+            expect($scope.isSuperUser()).toBe(false);
         });
 
-        it("returns false if the user is not a superuser", function() {
+        it("returns false if authUser.is_superuser is false", function() {
             var controller = makeController();
-            spyOn(UsersManager, "getAuthUser").and.returnValue(
-                { is_superuser: false });
+            UsersManager._authUser.is_superuser = false;
             expect($scope.isSuperUser()).toBe(false);
+        });
+
+        it("returns true if authUser.is_superuser is true", function() {
+            var controller = makeController();
+            UsersManager._authUser.is_superuser = true;
+            expect($scope.isSuperUser()).toBe(true);
         });
     });
 
@@ -1382,27 +1389,6 @@ describe("NodeDetailsController", function() {
         });
     });
 
-    describe("isSuperUser", function() {
-
-        it("returns false if no authUser", function() {
-            var controller = makeController();
-            UsersManager._authUser = null;
-            expect($scope.isSuperUser()).toBe(false);
-        });
-
-        it("returns false if authUser.is_superuser is false", function() {
-            var controller = makeController();
-            UsersManager._authUser.is_superuser = false;
-            expect($scope.isSuperUser()).toBe(false);
-        });
-
-        it("returns true if authUser.is_superuser is true", function() {
-            var controller = makeController();
-            UsersManager._authUser.is_superuser = true;
-            expect($scope.isSuperUser()).toBe(true);
-        });
-    });
-
     describe("hasUsableArchitectures", function() {
 
         it("returns true if architecture available", function() {
@@ -1511,60 +1497,68 @@ describe("NodeDetailsController", function() {
         });
     });
 
+    describe("hasPermission", function() {
+
+        it("returns false no permissions field", function() {
+            var controller = makeController();
+            $scope.node = {};
+            expect($scope.hasPermission('edit')).toBe(false);
+        });
+
+        it("returns false no permission in field", function() {
+            var controller = makeController();
+            $scope.node = {
+                permissions: ['delete']
+            };
+            expect($scope.hasPermission('edit')).toBe(false);
+        });
+
+        it("returns true permissions", function() {
+            var controller = makeController();
+            $scope.node = {
+                permissions: ['edit']
+            };
+            expect($scope.hasPermission('edit')).toBe(true);
+        });
+    });
+
     describe("canEdit", function() {
 
-        it("returns false if not super user", function() {
+        it("returns false if no edit permission", function() {
             var controller = makeController();
-            $scope.isController = false;
-            spyOn($scope, "isSuperUser").and.returnValue(false);
+            $scope.isDevice = false;
+            spyOn($scope, "hasPermission").and.returnValue(false);
             spyOn(
                 $scope,
                 "isRackControllerConnected").and.returnValue(true);
             expect($scope.canEdit()).toBe(false);
         });
 
-        it("returns true if not super user but device", function() {
+        it("returns true if edit permission but device", function() {
             var controller = makeController();
             $scope.isDevice = true;
-            spyOn($scope, "isSuperUser").and.returnValue(false);
+            spyOn($scope, "hasPermission").and.returnValue(true);
             spyOn(
                 $scope,
-                "isRackControllerConnected").and.returnValue(true);
-            expect($scope.canEdit()).toBe(true);
-        });
-
-        it("returns true if controller", function() {
-            var controller = makeController();
-            $scope.isController = true;
-            spyOn(
-                $scope,
-                "isRackControllerConnected").and.returnValue(true);
+                "isRackControllerConnected").and.returnValue(false);
             expect($scope.canEdit()).toBe(true);
         });
 
         it("returns false if rack disconnected", function() {
             var controller = makeController();
-            $scope.isController = false;
+            $scope.isDevice = false;
+            spyOn($scope, "hasPermission").and.returnValue(true);
             spyOn(
                 $scope,
                 "isRackControllerConnected").and.returnValue(false);
             expect($scope.canEdit()).toBe(false);
         });
 
-        it("returns true if super user, rack connected, not controller",
-            function() {
-                var controller = makeController();
-                $scope.isController = false;
-                spyOn(
-                    $scope,
-                    "isRackControllerConnected").and.returnValue(true);
-                expect($scope.canEdit()).toBe(true);
-            });
-
         it("returns false if machine is locked",
            function() {
                var controller = makeController();
-               $scope.isController = false;
+               $scope.isDevice = false;
+               spyOn($scope, "hasPermission").and.returnValue(true);
                spyOn(
                    $scope,
                    "isRackControllerConnected").and.returnValue(true);

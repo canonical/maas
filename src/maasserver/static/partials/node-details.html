@@ -337,7 +337,7 @@
                             data-ng-click="section.area = 'events'">Events</a>
                     </li>
                     <li class="p-tabs__item" role="presentation">
-                        <a role="tab" class="p-tabs__link" data-ng-if="isSuperUser()"
+                        <a role="tab" class="p-tabs__link" data-ng-if="canEdit()"
                             data-ng-class="{ 'is-active': section.area === 'configuration'}"
                             data-ng-click="section.area = 'configuration'">Configuration</a>
                     </li>
@@ -348,7 +348,7 @@
 
     <section class="p-strip is-shallow" data-ng-if="section.area === 'summary'">
       <div class="row">
-        <div data-ng-if="isSuperUser()">
+        <div data-ng-if="canEdit()">
             <div class="p-notification--negative"
                 data-ng-if="!isController && !isDevice && !isRackControllerConnected()">
                 <p class="p-notification__response">
@@ -830,14 +830,14 @@
             </div>
             <form data-ng-if="loaded">
                 <div class="row" data-ng-if="
-                !isDevice && ((!isController && isAllNetworkingDisabled() && isSuperUser()) ||
+                !isDevice && ((!isController && isAllNetworkingDisabled() && canEdit()) ||
                 !node.on_network || (!isController && !isUbuntuOS()))">
                     <div class="col-12">
                         <div class="p-notification--negative" data-ng-if="!node.on_network">
                             <p class="p-notification__response">
                                 <span class="p-notification__status">Error:</span> Node must be connected to a network.</p>
                         </div>
-                        <div class="p-notification" data-ng-if="!isController && isAllNetworkingDisabled() && isSuperUser()">
+                        <div class="p-notification" data-ng-if="!isController && isAllNetworkingDisabled() && canEdit()">
                             <p class="p-notification__response">Interface
                                 configuration cannot be modified unless the
                                 node is New, Ready, Allocated, or Broken.</p>
@@ -2511,7 +2511,7 @@
                             <span class="p-notification__status">Error:</span> No storage information. Commissioning this node will gather the storage information.
                         </p>
                     </div>
-                    <div class="p-notification ng-hide" data-ng-show="isAllStorageDisabled() && isSuperUser()">
+                    <div class="p-notification ng-hide" data-ng-show="isAllStorageDisabled() && canEdit()">
                         <p class="p-notification__response">Storage configuration cannot be modified unless the machine is Ready or Allocated.</p>
                     </div>
                     <div class="p-notification ng-hide" data-ng-show="!isUbuntuOS() && !isCentOS()">
