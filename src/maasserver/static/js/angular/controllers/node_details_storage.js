@@ -604,7 +604,7 @@ angular.module('MAAS').controller('NodeStorageController', [
         // Return true if the item can be a boot disk.
         $scope.isBootDiskDisabled = function(item, section) {
             // Only superusers can change the boot disk.
-            if(!$scope.isSuperUser()) {
+            if(!$scope.canEdit()) {
                 return true;
             }
 
@@ -921,7 +921,7 @@ angular.module('MAAS').controller('NodeStorageController', [
 
         // Return true if a partition can be added to disk.
         $scope.canAddPartition = function(disk) {
-            if(!$scope.isSuperUser() || $scope.isAllStorageDisabled()) {
+            if(!$scope.canEdit() || $scope.isAllStorageDisabled()) {
                 return false;
             } else if(disk.type === "partition" || disk.type === "lvm-vg") {
                 return false;
@@ -996,7 +996,7 @@ angular.module('MAAS').controller('NodeStorageController', [
 
         // Return true if the disk can be deleted.
         $scope.canDelete = function(disk) {
-            if (!$scope.isSuperUser() || $scope.isAllStorageDisabled()) {
+            if (!$scope.canEdit() || $scope.isAllStorageDisabled()) {
                 return false;
             } else if(disk.type === "lvm-vg") {
                 return disk.original.used_size === 0;
@@ -1020,7 +1020,7 @@ angular.module('MAAS').controller('NodeStorageController', [
 
         // Return true if it can be edited.
         $scope.canEdit = function(disk) {
-          if (!$scope.isSuperUser() || $scope.isAllStorageDisabled()) {
+          if (!$scope.$parent.canEdit() || $scope.isAllStorageDisabled()) {
               return false;
           } else {
               return true;
@@ -1383,7 +1383,7 @@ angular.module('MAAS').controller('NodeStorageController', [
         $scope.isCacheSetsDisabled = function() {
             return ((
                 $scope.isAllStorageDisabled() &&
-                !$scope.isSuperUser()) || (
+                !$scope.canEdit()) || (
                 $scope.cachesetsMode !== SELECTION_MODE.NONE &&
                 $scope.cachesetsMode !== SELECTION_MODE.SINGLE &&
                 $scope.cachesetsMode !== SELECTION_MODE.MUTLI));
@@ -1399,7 +1399,7 @@ angular.module('MAAS').controller('NodeStorageController', [
         $scope.canDeleteCacheSet = function(cacheset) {
             return (cacheset.used_by === "" &&
                     !$scope.isAllStorageDisabled() &&
-                    $scope.isSuperUser());
+                    $scope.canEdit());
         };
 
         // Enter delete mode.
@@ -1427,7 +1427,7 @@ angular.module('MAAS').controller('NodeStorageController', [
 
         // Return true if a cache set can be created.
         $scope.canCreateCacheSet = function() {
-            if($scope.isAvailableDisabled() || !$scope.isSuperUser()) {
+            if($scope.isAvailableDisabled() || !$scope.canEdit()) {
                 return false;
             }
 
@@ -1488,7 +1488,7 @@ angular.module('MAAS').controller('NodeStorageController', [
 
         // Return true if a bcache can be created.
         $scope.canCreateBcache = function() {
-            if($scope.isAvailableDisabled() || !$scope.isSuperUser()) {
+            if($scope.isAvailableDisabled() || !$scope.canEdit()) {
                 return false;
             }
 
@@ -1622,7 +1622,7 @@ angular.module('MAAS').controller('NodeStorageController', [
 
         // Return true if a RAID can be created.
         $scope.canCreateRAID = function() {
-            if($scope.isAvailableDisabled() || !$scope.isSuperUser()) {
+            if($scope.isAvailableDisabled() || !$scope.canEdit()) {
                 return false;
             }
 
@@ -1836,7 +1836,7 @@ angular.module('MAAS').controller('NodeStorageController', [
 
         // Return true if a volume group can be created.
         $scope.canCreateVolumeGroup = function() {
-            if($scope.isAvailableDisabled() || !$scope.isSuperUser()) {
+            if($scope.isAvailableDisabled() || !$scope.canEdit()) {
                 return false;
             }
 

@@ -173,6 +173,100 @@ describe("NodesListController", function() {
         });
     });
 
+    describe("canAddMachine", function() {
+        it("calls hasGlobalPermission with machine_create", function() {
+            var controller = makeController();
+            spyOn(UsersManager, "hasGlobalPermission").and.returnValue(true);
+            expect($scope.canAddMachine()).toBe(true);
+            expect(UsersManager.hasGlobalPermission).toHaveBeenCalledWith(
+                'machine_create');
+        });
+    });
+
+    describe("canCreateResourcePool", function() {
+        it("calls hasGlobalPermission with resource_pool_create", function() {
+            var controller = makeController();
+            spyOn(UsersManager, "hasGlobalPermission").and.returnValue(true);
+            expect($scope.canCreateResourcePool()).toBe(true);
+            expect(UsersManager.hasGlobalPermission).toHaveBeenCalledWith(
+                'resource_pool_create');
+        });
+    });
+
+    describe("showResourcePoolActions", function() {
+        it("returns false if no permissions on any pool", function() {
+            var controller = makeController();
+            $scope.pools = [
+                {
+                    permissions: []
+                },
+                {}
+            ];
+            expect($scope.showResourcePoolActions()).toBe(false);
+        });
+
+        it("returns true if permissions on any pool", function() {
+            var controller = makeController();
+            $scope.pools = [
+                {
+                    permissions: []
+                },
+                {
+                    permissions: ['edit']
+                },
+            ];
+            expect($scope.showResourcePoolActions()).toBe(true);
+        });
+    });
+
+    describe("canEditResourcePool", function() {
+        it("returns false if not permissions on pool", function() {
+            var controller = makeController();
+            var pool = {};
+            expect($scope.canEditResourcePool(pool)).toBe(false);
+        });
+
+        it("returns false if no edit permission", function() {
+            var controller = makeController();
+            var pool = {
+                permissions: ['delete']
+            };
+            expect($scope.canEditResourcePool(pool)).toBe(false);
+        });
+
+        it("returns true if edit permission", function() {
+            var controller = makeController();
+            var pool = {
+                permissions: ['edit']
+            };
+            expect($scope.canEditResourcePool(pool)).toBe(true);
+        });
+    });
+
+    describe("canDeleteResourcePool", function() {
+        it("returns false if not permissions on pool", function() {
+            var controller = makeController();
+            var pool = {};
+            expect($scope.canDeleteResourcePool(pool)).toBe(false);
+        });
+
+        it("returns false if no delete permission", function() {
+            var controller = makeController();
+            var pool = {
+                permissions: ['edit']
+            };
+            expect($scope.canDeleteResourcePool(pool)).toBe(false);
+        });
+
+        it("returns true if delete permission", function() {
+            var controller = makeController();
+            var pool = {
+                permissions: ['delete']
+            };
+            expect($scope.canDeleteResourcePool(pool)).toBe(true);
+        });
+    });
+
     it("sets title and page on $rootScope", function() {
         var controller = makeController();
         expect($rootScope.title).toBe("Machines");

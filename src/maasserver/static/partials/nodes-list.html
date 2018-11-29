@@ -21,7 +21,7 @@
                     </li>
                     <li class="p-inline-list__item"
                         data-ng-class="{'u-no-margin--right': !tabs.machines.selectedItems.length}"
-                        data-ng-hide="!isSuperUser()">
+                        data-ng-hide="!canAddMachine()">
                         <div
                             data-maas-cta="addHardwareOptions"
                             data-ng-model="addHardwareOption"
@@ -44,7 +44,7 @@
 
         <div data-ng-show="currentpage === 'pools'">
             <div class="page-header__controls"
-                 data-ng-show="isSuperUser()">
+                 data-ng-show="canCreateResourcePool()">
               <button class="p-button--neutral"
                       data-ng-click="tabs.pools.addPool()"
                       data-ng-hide="tabs.pools.actionOption">Add pool</button>
@@ -1047,7 +1047,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                         <th class="p-table__cell col-3" role="columnheader" data-ng-click="sortTable('name', 'pools')" data-ng-class="{'is-sorted': tabs.pools.predicate === 'name', 'sort-asc': tabs.pools.reverse === false, 'sort-desc': tabs.pools.reverse === true}">Name</th>
                         <th class="p-table__cell col-2" role="columnheader" data-ng-click="sortTable('machine_total_count', 'pools')" data-ng-class="{'is-sorted': tabs.pools.predicate === 'name', 'sort-asc': tabs.pools.reverse === false, 'sort-desc': tabs.pools.reverse === true}">Machines</th>
                         <th class="p-table__cell col-5" role="columnheader" data-ng-click="sortTable('description', 'pools')" data-ng-class="{'is-sorted': tabs.pools.predicate === 'description', 'sort-asc': tabs.pools.reverse === false, 'sort-desc': tabs.pools.reverse === true}">Description</th>
-                        <th class="p-table__cell col-2 u-align--right" data-ng-show="isSuperUser()">Actions</th>
+                        <th class="p-table__cell col-2 u-align--right" data-ng-show="showResourcePoolActions()">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -1072,12 +1072,12 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                         <td class="p-table__cell col-5" aria-label="Description">
                           <span ng-if="!tabs.pools.isPoolAction(pool, 'edit')">{$ pool.description $}</span>
                         </td>
-                        <td class="p-table__cell col-2 u-align--right" aria-label="Actions" data-ng-show="isSuperUser()">
+                        <td class="p-table__cell col-2 u-align--right" aria-label="Actions" data-ng-show="showResourcePoolActions()">
                           <span data-ng-hide="tabs.pools.isPoolAction(pool)">
-                            <button class="p-button--base is-small u-no-margin--right" data-ng-click="tabs.pools.initiatePoolAction(pool, 'edit')">
+                            <button class="p-button--base is-small u-no-margin--right" data-ng-if="canEditResourcePool(pool)" data-ng-click="tabs.pools.initiatePoolAction(pool, 'edit')">
                               <i class="p-icon--edit">Edit</i>
                             </button>
-                            <button class="p-button--base is-small" data-ng-hide="tabs.pools.isDefaultPool(pool)" data-ng-click="tabs.pools.initiatePoolAction(pool, 'delete')">
+                            <button class="p-button--base is-small" data-ng-hide="tabs.pools.isDefaultPool(pool)" data-ng-if="canDeleteResourcePool(pool)" data-ng-click="tabs.pools.initiatePoolAction(pool, 'delete')">
                               <i class="p-icon--delete">Delete</i>
                             </button>
                           </span>

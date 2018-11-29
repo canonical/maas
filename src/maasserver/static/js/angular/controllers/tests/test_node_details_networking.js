@@ -3099,7 +3099,7 @@ describe("NodeNetworkingController", function() {
 
         it("returns false when in none, single, or multi mode", function() {
             var controller = makeController();
-            $scope.isSuperUser = function() { return true; };
+            $scope.canEdit = function() { return true; };
             // Node needs to be Ready or Broken for the mode to be considered.
             $scope.node = {status: "Ready"};
             $scope.selectedMode = null;
@@ -3112,7 +3112,7 @@ describe("NodeNetworkingController", function() {
 
         it("returns true when in delete, add, or create modes", function() {
             var controller = makeController();
-            $scope.isSuperUser = function() { return true; };
+            $scope.canEdit = function() { return true; };
             // Node needs to be Ready or Broken for the mode to be considered.
             $scope.node = {status: "Ready"};
             $scope.selectedMode = "create-bond";
@@ -3126,7 +3126,7 @@ describe("NodeNetworkingController", function() {
         it("returns true when the node state is not 'Ready' or 'Broken'",
             function() {
             var controller = makeController();
-            $scope.isSuperUser = function() { return true; };
+            $scope.canEdit = function() { return true; };
             $scope.node = {status: "Ready"};
             expect($scope.isDisabled()).toBe(false);
             $scope.node = {status: "Broken"};
@@ -3152,7 +3152,7 @@ describe("NodeNetworkingController", function() {
 
         it("returns true if the user is not a superuser", function() {
             var controller = makeController();
-            $scope.isSuperUser = function() { return false; };
+            $scope.canEdit = function() { return false; };
             $scope.node = {status: "Ready"};
             expect($scope.isDisabled()).toBe(true);
             $scope.node = {status: "Broken"};
@@ -3164,20 +3164,20 @@ describe("NodeNetworkingController", function() {
 
         it("returns false when not superuser", function() {
             var controller = makeController();
-            $scope.isSuperUser = function() { return false; };
+            $scope.canEdit = function() { return false; };
             expect($scope.isLimitedEditingAllowed()).toBe(false);
         });
 
         it("returns false when isController", function() {
             var controller = makeController();
-            $scope.isSuperUser = function() { return true; };
+            $scope.canEdit = function() { return true; };
             $parentScope.isController = true;
             expect($scope.isLimitedEditingAllowed()).toBe(false);
         });
 
         it("returns true when deployed and not vlan", function() {
             var controller = makeController();
-            $scope.isSuperUser = function() { return true; };
+            $scope.canEdit = function() { return true; };
             $parentScope.isController = false;
             $scope.node = {
                 status: "Deployed"
@@ -3196,7 +3196,7 @@ describe("NodeNetworkingController", function() {
             function() {
             var controller = makeController();
             $parentScope.isDevice = false;
-            $scope.isSuperUser = function() { return false; };
+            $scope.canEdit = function() { return false; };
             expect($scope.isAllNetworkingDisabled()).toBe(true);
         });
 
@@ -3205,7 +3205,7 @@ describe("NodeNetworkingController", function() {
             function() {
             var controller = makeController();
             $parentScope.isDevice = true;
-            $scope.isSuperUser = function() { return false; };
+            $scope.canEdit = function() { return false; };
             expect($scope.isAllNetworkingDisabled()).toBe(false);
         });
 
@@ -3213,7 +3213,7 @@ describe("NodeNetworkingController", function() {
            "is 'New', 'Ready', 'Allocated' or 'Broken' and we are a superuser",
             function() {
             var controller = makeController();
-            $scope.isSuperUser = function() { return true; };
+            $scope.canEdit = function() { return true; };
             $scope.node = {status: "New"};
             expect($scope.isAllNetworkingDisabled()).toBe(false);
             $scope.node = {status: "Ready"};
@@ -3244,7 +3244,7 @@ describe("NodeNetworkingController", function() {
             function() {
             var controller = makeController();
             $parentScope.isController = true;
-            $scope.isSuperUser = function() { return true; };
+            $scope.canEdit = function() { return true; };
             ["Ready",
              "Broken",
              "New",

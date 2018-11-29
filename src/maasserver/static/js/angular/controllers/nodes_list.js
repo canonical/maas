@@ -932,6 +932,44 @@ angular.module('MAAS').controller('NodesListController', [
             return UsersManager.isSuperUser();
         };
 
+        // Return true if the user can create a resource pool.
+        $scope.canAddMachine = function() {
+            return UsersManager.hasGlobalPermission('machine_create');
+        };
+
+        // Return true if the user can create a resource pool.
+        $scope.canCreateResourcePool = function() {
+            return UsersManager.hasGlobalPermission('resource_pool_create');
+        };
+
+        // Return true if the actions column should be shown.
+        $scope.showResourcePoolActions = function() {
+            for(var i = 0; i < $scope.pools.length; i++) {
+                if($scope.pools[i].permissions &&
+                    $scope.pools[i].permissions.length > 0) {
+                    return true;
+                }
+            }
+            return false;
+        };
+
+        // Return true if user can edit resource pool.
+        $scope.canEditResourcePool = function(pool) {
+            if(pool.permissions && pool.permissions.indexOf('edit') !== -1) {
+                return true;
+            }
+            return false;
+        };
+
+        // Return true if user can delete resource pool.
+        $scope.canDeleteResourcePool = function(pool) {
+            if(pool.permissions && pool.permissions.indexOf('delete') !== -1) {
+                return true;
+            }
+            return false;
+        };
+
+        // Return true if custom commissioning scripts exist.
         $scope.hasCustomCommissioningScripts = function() {
             var i;
             for(i=0;i<$scope.scripts.length;i++) {

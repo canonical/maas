@@ -198,4 +198,32 @@ describe("UsersManager", function() {
             expect(ErrorService.raiseError).toHaveBeenCalledWith(error);
         });
     });
+
+    describe("hasGlobalPermission", function() {
+
+        it("returns true if auth user has permission", function() {
+            var user = {
+                global_permissions: ['create_machine']
+            };
+            UsersManager._authUser = user;
+            expect(UsersManager.hasGlobalPermission(
+                'create_machine')).toBe(true);
+        });
+
+        it("returns false if auth user doesn't have permission", function() {
+            var user = {
+                global_permissions: ['create_machine']
+            };
+            UsersManager._authUser = user;
+            expect(UsersManager.hasGlobalPermission(
+                'create_device')).toBe(false);
+        });
+
+        it("returns false if auth user no global_permissions", function() {
+            var user = {};
+            UsersManager._authUser = user;
+            expect(UsersManager.hasGlobalPermission(
+                'create_device')).toBe(false);
+        });
+    });
 });
