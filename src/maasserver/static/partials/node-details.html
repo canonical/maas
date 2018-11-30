@@ -1006,6 +1006,23 @@
                                             </select>
                                         </div>
                                     </div>
+                                    <div class="p-form__group" data-ng-if="!isLinkModeDisabled(newBridgeInterface)">
+                                        <label for="link-mode" class="p-form__label">IP mode</label>
+                                        <div class="p-form__control">
+                                            <select name="link-mode"
+                                                data-ng-model="newBridgeInterface.mode"
+                                                data-ng-change="modeChanged(newBridgeInterface)"
+                                                data-ng-options="mode.mode as mode.text for mode in modes | filterLinkModes:newBridgeInterface">
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="p-form__group" data-ng-if="newBridgeInterface.mode == 'static'">
+                                        <label for="ip-address" class="p-form__label">IP address</label>
+                                        <div class="p-form__control"
+                                        data-ng-class="{ 'is-error': isIPAddressInvalid(newBridgeInterface) }">
+                                            <input name="ip-address" type="text" placeholder="IP address" data-ng-model="newBridgeInterface.ip_address">
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1482,6 +1499,22 @@
                                                             </select>
                                                         </div>
                                                     </div>
+                                                    <div class="p-form__group" data-ng-if="!isLinkModeDisabled(editInterface)">
+                                                        <label for="link-mode" class="p-form__label">IP mode</label>
+                                                        <div class="p-form__control">
+                                                            <select name="link-mode"
+                                                                data-ng-model="editInterface.mode"
+                                                                data-ng-change="modeChanged(editInterface)"
+                                                                data-ng-options="mode.mode as mode.text for mode in modes | filterLinkModes:editInterface">
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="p-form__group" data-ng-if="editInterface.mode == 'static'">
+                                                        <label for="ip-address" class="p-form__label">IP address</label>
+                                                        <div class="p-form__control" data-ng-class="{ 'is-error': isIPAddressInvalid(editInterface) }">
+                                                            <input name="ip-address" type="text" placeholder="IP address" data-ng-model="editInterface.ip_address">
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -1776,6 +1809,22 @@
                                                 data-ng-options="subnet as getSubnetText(subnet) for subnet in subnets | filterByVLAN:newBondInterface.vlan">
                                                 <option value="" data-ng-hide="newBondInterface.type === 'alias'">Unconfigured</option>
                                             </select>
+                                        </div>
+                                    </div>
+                                    <div class="p-form__group u-vertically-center" data-ng-if="!isLinkModeDisabled(newBondInterface)">
+                                        <label for="link-mode" class="p-form__label">IP mode</label>
+                                        <div class="p-form__control">
+                                            <select name="link-mode"
+                                                data-ng-model="newBondInterface.mode"
+                                                data-ng-change="modeChanged(newBondInterface)"
+                                                data-ng-options="mode.mode as mode.text for mode in modes | filterLinkModes:newBondInterface">
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="p-form__group u-vertically-center" data-ng-if="newBondInterface.mode == 'static'">
+                                        <label for="ip-address" class="p-form__label">IP address</label>
+                                        <div class="p-form__control" data-ng-class="{ 'is-error': isIPAddressInvalid(newBondInterface) }">
+                                            <input name="ip-address" type="text" placeholder="IP address" data-ng-model="newBondInterface.ip_address">
                                         </div>
                                     </div>
                                 </div>
