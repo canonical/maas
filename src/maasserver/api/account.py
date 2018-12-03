@@ -46,16 +46,17 @@ class AccountHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def create_authorisation_token(self, request):
-        """Create an authorisation OAuth token and OAuth consumer.
+        """@description-title Create an authorisation token
+        @description Create an authorisation OAuth token and OAuth consumer.
 
-        :param name: Optional name of the token that will be generated.
-        :type name: unicode
-        :return: a json dict with four keys: 'token_key',
-            'token_secret', 'consumer_key'  and 'name'(e.g.
-            {token_key: 's65244576fgqs', token_secret: 'qsdfdhv34',
-            consumer_key: '68543fhj854fg', name: 'MAAS consumer'}).
-        :rtype: string (json)
+        @param (string) "name" [required=false] Optional name of the token that
+        will be generated.
 
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing: ``token_key``,
+        ``token_secret``, ``consumer_key``, and ``name``.
+        @success-example "success-json" [exkey=account-create-token]
+        placeholder text
         """
         profile = request.user.userprofile
         consumer_name = get_optional_param(request.data, 'name')
@@ -74,10 +75,14 @@ class AccountHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def delete_authorisation_token(self, request):
-        """Delete an authorisation OAuth token and the related OAuth consumer.
+        """@description-title Delete an authorisation token
+        @description Delete an authorisation OAuth token and the related OAuth
+        consumer.
 
-        :param token_key: The key of the token to be deleted.
-        :type token_key: unicode
+        @param (string) "token_key" [required=true] The key of the token to be
+        deleted.
+
+        @success (http-status-code) "204" 204
         """
         profile = request.user.userprofile
         token_key = get_mandatory_param(request.data, 'token_key')
@@ -89,12 +94,17 @@ class AccountHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def update_token_name(self, request):
-        """Modify the consumer name of an authorisation OAuth token.
+        """@description-title Modify authorisation token
+        @description Modify the consumer name of an authorisation OAuth token.
 
-        :param token: Can be the whole token or only the token key.
-        :type token: unicode
-        :param name: New name of the token.
-        :type name: unicode
+        @param (string) "token" [required=true] Can be the whole token or only
+        the token key.
+
+        @param (string) "name" [required=true] New name of the token.
+
+        @success (http-status-code) "200" 200
+        @success (content) "success"
+            Accepted
         """
         profile = request.user.userprofile
         token = get_mandatory_param(request.data, 'token')
@@ -112,9 +122,15 @@ class AccountHandler(OperationsHandler):
 
     @operation(idempotent=True)
     def list_authorisation_tokens(self, request):
-        """List authorisation tokens available to the currently logged-in user.
+        """@description-title List authorisation tokens
+        @description List authorisation tokens available to the currently
+        logged-in user.
 
-        :return: list of dictionaries representing each key's name and token.
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing a list of token
+        objects.
+        @success-example "success-json" [exkey=account-list-tokens]
+        placeholder text
         """
         profile = request.user.userprofile
         tokens = _format_tokens(profile.get_authorisation_tokens())

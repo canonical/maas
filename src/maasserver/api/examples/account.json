@@ -52,5 +52,21 @@
   "ssl-keys-get": {
     "key": "-----BEGIN CERTIFICATE-----\r\nMIIDYDCCAkigAwIBAgIJANv2xTlvnerlMA0GCSqGSIb3DQEBCwUAMEUxCzAJBgNV\r\nBAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBX\r\naWRnaXRzIFB0eSBMdGQwHhcNMTgxMTIxMjMxNjUwWhcNMjgxMTE4MjMxNjUwWjBF\r\nMQswCQYDVQQGEwJBVTETMBEGA1UECAwKU29tZS1TdGF0ZTEhMB8GA1UECgwYSW50\r\nZXJuZXQgV2lkZ2l0cyBQdHkgTHRkMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIB\r\nCgKCAQEAqD8WoD9CWZ6gpwN7nGZfWjVMYRs2Mv+aaureSQudpE53XOGTrMBBxon2\r\nJNp6a1BwpOIl1sbTsYPDyOVhZZ4vRdHQ2pGSW8b4eKQqaB8Ae9w55gMxvUgK1e6t\r\nIe8Quhb7bs2UsaG/6vDRJetmSiX6ASjcBNG/0X6IJGsw0J5m+sgKLJwb49ZU72eZ\r\nGNwV1nJcz741AMpKU4apeafmSYQSfie+kSP9uDqekNzSDx615+HrClSdGwwya1P/\r\nE6Xb3WvgRnh30HJpZG61E6+vUfYYJtowLaj0gaWY6ohjkVHmgfIvHTVI7p7d0jZ4\r\nZvZgw2nWDSm/qV/Cl2embYWVUyctaQIDAQABo1MwUTAdBgNVHQ4EFgQUmZyWKIt8\r\nlUJUBj7f8kiOEs/Xih8wHwYDVR0jBBgwFoAUmZyWKIt8lUJUBj7f8kiOEs/Xih8w\r\nDwYDVR0TAQH/BAUwAwEB/zANBgkqhkiG9w0BAQsFAAOCAQEAje7KLWW/tf2tx2/g\r\nXmkltSQLfhL+mTVCUm3LaxDrDR5Iw0igngBekxACyqy20OyVl26bybYxAAGIZC+s\r\nax24ARKizUhd/FTFya7Xc4bEvWOcytcODUOBCuAmbRn/saeGVC+b81OjF+ndkXso\r\nweQ7YADaZQQD8ZkaPCzz8jQBe4AL48lA7TovHDDk68XDgYkcyArvGsQpo1527NYZ\r\nngMT9th7eWeHD+AAo9LGE9D4+6FoPo0Wloq9pCarM7q53Vp7pEOwar8Z3N9+Wms3\r\nrw4e59fnqslCXdztMO7Y4VTsyRUR6c9tEou560i48PXIYuGHf18ioouGg50XPT5Z\r\nFnCh/w==\r\n-----END CERTIFICATE-----",
     "id": 2
-  }
+  },
+  "account-create-token": {
+    "token_key": "K6bhJZXCFKWFTfQTk5",
+    "token_secret": "entQ246T7KyyfkwMSWRLuSwycruNDfDG",
+    "consumer_key": "dFTQGcQLNvhJVc2H69",
+    "name": "MAAS consumer"
+  },
+  "account-list-tokens": [
+    {
+      "name": "MAAS consumer",
+      "token": "6FSsXwk3QsktR96BJd:KVA8C3VTCEg8aYSuy4:c5D88bRZCSSTDwMgwycQEagc7sqd4N9p"
+    },
+    {
+      "name": "mytoken",
+      "token": "QVphn5VQs8QvXuRETw:bNVmuqaTJmP3dbmGwU:fWpkqzKEkq8SeKa26FaN4UuX6CNT44C9"
+    }
+  ]
 }
