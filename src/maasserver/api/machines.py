@@ -312,9 +312,10 @@ def get_allocated_composed_machine(
 
 
 class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
-    """Manage an individual Machine.
+    """
+    Manage an individual machine.
 
-    The Machine is identified by its system_id.
+    A machine is identified by its system_id.
     """
     api_doc_section_name = "Machine"
 
@@ -322,16 +323,28 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
     fields = DISPLAYED_MACHINE_FIELDS
 
     def delete(self, request, system_id):
-        """Delete a specific machine.
+        """@description-title Delete a machine
+        @description Deletes a machine with the given system_id.
 
-        A machine cannot be deleted if it hosts pod virtual machines.
-        Use `force` to override this behavior. Forcing deletion will also
-        remove hosted pods.
+        Note: A machine cannot be deleted if it hosts pod virtual machines.
+        Use ``force`` to override this behavior. Forcing deletion will also
+        remove hosted pods. E.g. ``/machines/abc123/?force=1``.
 
-        Returns 404 if the node is not found.
-        Returns 403 if the user does not have permission to delete the node.
-        Returns 400 if the machine cannot be deleted.
-        Returns 204 if the node is successfully deleted.
+        @param (string) "{system_id}" [required=true] The machines's system_id.
+
+        @success (http-status-code) "204" 204
+
+        @error (http-status-code) "400" 400
+        @error (content) "no-delete" The machine cannot be deleted.
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permission to delete
+        this machine.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested static-route is not found.
+        @error-example "not-found"
+            Not Found
         """
         node = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.admin)
@@ -490,63 +503,71 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
 
     @admin_method
     def update(self, request, system_id):
-        """Update a specific Machine.
+        """@description-title Update a machine
+        @description Updates a machine with the given system_id.
 
-        :param hostname: The new hostname for this machine.
-        :type hostname: unicode
+        @param (string) "{system_id}" [required=true] The machines's system_id.
 
-        :param domain: The domain for this machine. If not given the default
-            domain is used.
-        :type domain: unicode
+        @param (string) "hostname" [required=false] The new hostname for this
+        machine.
 
-        :param architecture: The new architecture for this machine.
-        :type architecture: unicode
+        @param (string) "domain" [required=false] The domain for this machine.
+        If not given the default domain is used.
 
-        :param min_hwe_kernel: A string containing the minimum kernel version
-            allowed to be ran on this machine.
-        :type min_hwe_kernel: unicode
+        @param (string) "architecture" [required=false] The new architecture
+        for this machine.
 
-        :param power_type: The new power type for this machine. If you use the
-            default value, power_parameters will be set to the empty string.
-            Available to admin users.
-            See the `Power types`_ section for a list of the available power
-            types.
-        :type power_type: unicode
+        @param (string) "min_hwe_kernel" [required=false] A string containing
+        the minimum kernel version allowed to be ran on this machine.
 
-        :param power_parameters_{param1}: The new value for the 'param1'
-            power parameter.  Note that this is dynamic as the available
-            parameters depend on the selected value of the Machine's
-            power_type.  Available to admin users. See the `Power types`_
-            section for a list of the available power parameters for each
-            power type.
-        :type power_parameters_{param1}: unicode
+        @param (string) "power_type" [required=false] The new power type for
+        this machine. If you use the default value, power_parameters will be
+        set to the empty string.  Available to admin users.  See the `Power
+        types`_ section for a list of the available power types.
 
-        :param power_parameters_skip_check: Whether or not the new power
-            parameters for this machine should be checked against the expected
-            power parameters for the machine's power type ('true' or 'false').
-            The default is 'false'.
-        :type power_parameters_skip_check: unicode
+        @param (string) "power_parameters_{param1}" [required=false] The new
+        value for the 'param1' power parameter.  Note that this is dynamic as
+        the available parameters depend on the selected value of the Machine's
+        power_type.  Available to admin users. See the `Power types`_ section
+        for a list of the available power parameters for each power type.
 
-        :param zone: Name of a valid physical zone in which to place this
-            machine.
-        :type zone: unicode
+        @param (boolean) "power_parameters_skip_check" [required=false]
+        Whether or not the new power parameters for this machine should be
+        checked against the expected power parameters for the machine's power
+        type ('true' or 'false').  The default is 'false'.
 
-        :param swap_size: Specifies the size of the swap file, in bytes. Field
-            accept K, M, G and T suffixes for values expressed respectively in
-            kilobytes, megabytes, gigabytes and terabytes.
-        :type swap_size: unicode
+        @param (string) "zone" [required=false] Name of a valid physical zone
+        in which to place this machine.
 
-        :param disable_ipv4: Deprecated.  If specified, must be False.
-        :type disable_ipv4: boolean
+        @param (string) "swap_size" [required=false] Specifies the size of the
+        swap file, in bytes. Field accept K, M, G and T suffixes for values
+        expressed respectively in kilobytes, megabytes, gigabytes and
+        terabytes.
 
-        :param cpu_count: The amount of CPU cores the machine has.
-        :type cpu_count: integer
+        @param (boolean) "disable_ipv4" [required=false] Deprecated. If
+        specified, must be false.
 
-        :param memory: How much memory the machine has.
-        :type memory: unicode
+        @param (int) "cpu_count" [required=false] The amount of CPU cores the
+        machine has.
 
-        Returns 404 if the machine is not found.
-        Returns 403 if the user does not have permission to update the machine.
+        @param (string) "memory" [required=false] How much memory the machine
+        has.  Field accept K, M, G and T suffixes for values expressed
+        respectively in kilobytes, megabytes, gigabytes and terabytes.
+
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing information
+        about the updated machine.
+        @success-example "success-json" [exkey=machines-update]
+        placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine is not found.
+        @error-example "not-found"
+            Not Found
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permission to update
+        this machine.
         """
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.edit)
@@ -573,51 +594,64 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
 
     @operation(idempotent=False)
     def deploy(self, request, system_id):
-        """Deploy an operating system to a machine.
+        """@description-title Deploy a machine
+        @description Deploys an operating system to a machine with the given
+        system_id.
 
-        :param user_data: If present, this blob of user-data to be made
-            available to the machines through the metadata service.
-        :type user_data: base64-encoded unicode
-        :param distro_series: If present, this parameter specifies the
-            OS release the machine will use.
-        :type distro_series: unicode
-        :param hwe_kernel: If present, this parameter specified the kernel to
-            be used on the machine
-        :type hwe_kernel: unicode
-        :param agent_name: An optional agent name to attach to the
-            acquired machine.
-        :type agent_name: unicode
-        :param bridge_all: Optionally create a bridge interface for every
-            configured interface on the machine. The created bridges will be
-            removed once the machine is released.
-            (Default: False)
-        :type bridge_all: boolean
-        :param bridge_stp: Optionally turn spanning tree protocol on or off
-            for the bridges created on every configured interface.
-            (Default: off)
-        :type bridge_stp: boolean
-        :param bridge_fd: Optionally adjust the forward delay to time seconds.
-            (Default: 15)
-        :type bridge_fd: integer
-        :param comment: Optional comment for the event log.
-        :type comment: unicode
-        :param install_rackd: If True, the Rack Controller will be installed on
-            this machine.
-        :type install_rackd: boolean
-        :param install_kvm: If True, KVM will be installed on this machine and
-            added to MAAS.
-        :type install_kvm: boolean
+        @param (string) "{system_id}" [required=true] The machines's system_id.
 
-        Ideally we'd have MIME multipart and content-transfer-encoding etc.
-        deal with the encapsulation of binary data, but couldn't make it work
-        with the framework in reasonable time so went for a dumb, manual
-        encoding instead.
+        @param (string) "user_data" [required=false] If present, this blob of
+        base64-encoded user-data to be made available to the machines through
+        the metadata service.
 
-        Returns 404 if the machine is not found.
-        Returns 403 if the user does not have permission to start the machine.
-        Returns 503 if the start-up attempted to allocate an IP address,
-        and there were no IP addresses available on the relevant cluster
-        interface.
+        @param (string) "distro_series" [required=false] If present, this
+        parameter specifies the OS release the machine will use.
+
+        @param (string) "hwe_kernel" [required=false] If present, this
+        parameter specified the kernel to be used on the machine
+
+        @param (string) "agent_name" [required=false] An optional agent name to
+        attach to the acquired machine.
+
+        @param (boolean) "bridge_all" [required=false] Optionally create a
+        bridge interface for every configured interface on the machine. The
+        created bridges will be removed once the machine is released.
+        (Default: false)
+
+        @param (boolean) "bridge_stp" [required=false] Optionally turn spanning
+        tree protocol on or off for the bridges created on every configured
+        interface.  (Default: false)
+
+        @param (int) "bridge_fd" [required=false] Optionally adjust the forward
+        delay to time seconds.  (Default: 15)
+
+        @param (string) "comment" [required=false] Optional comment for the
+        event log.
+
+        @param (boolean) "install_rackd" [required=false] If true, the rack
+        controller will be installed on this machine.
+
+        @param (boolean) "install_kvm" [required=false] If true, KVM will be
+        installed on this machine and added to MAAS.
+
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing information
+        about the deployed machine.
+        @success-example "success-json" [exkey=machines-deploy] placeholder
+        text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine is not found.
+        @error-example "not-found"
+            Not Found
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permission to deploy
+        this machine.
+
+        @error (http-status-code) "503" 503
+        @error (content) "no-ips" MAAS attempted to allocate an IP address, and
+        there were no IP addresses available on the relevant cluster interface.
         """
         series = request.POST.get('distro_series', None)
         license_key = request.POST.get('license_key', None)
@@ -684,37 +718,59 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
 
     @operation(idempotent=False)
     def release(self, request, system_id):
-        """Release a machine. Opposite of `Machines.allocate`.
+        """@description-title Release a machine
+        @description Releases a machine with the given system_id. Note that
+        this operation is the opposite of allocating a machine.
 
-        :param comment: Optional comment for the event log.
-        :type comment: unicode
-        :param erase: Erase the disk when releasing.
-        :type erase: boolean
-        :param secure_erase: Use the drive's secure erase feature if available.
-            In some cases this can be much faster than overwriting the drive.
-            Some drives implement secure erasure by overwriting themselves so
-            this could still be slow.
-        :type secure_erase: boolean
-        :param quick_erase: Wipe 2MiB at the start and at the end of the drive
-            to make data recovery inconvenient and unlikely to happen by
-            accident. This is not secure.
-        :type quick_erase: boolean
+        **Erasing drives**:
 
-        If neither secure_erase nor quick_erase are specified, MAAS will
-        overwrite the whole disk with null bytes. This can be very slow.
+        If neither ``secure_erase`` nor ``quick_erase`` are specified, MAAS
+        will overwrite the whole disk with null bytes. This can be very slow.
 
-        If both secure_erase and quick_erase are specified and the drive does
-        NOT have a secure erase feature, MAAS will behave as if only
-        quick_erase was specified.
+        If both ``secure_erase`` and ``quick_erase`` are specified and the
+        drive does NOT have a secure erase feature, MAAS will behave as if only
+        ``quick_erase`` was specified.
 
-        If secure_erase is specified and quick_erase is NOT specified and the
-        drive does NOT have a secure erase feature, MAAS will behave as if
-        secure_erase was NOT specified, i.e. will overwrite the whole disk
-        with null bytes. This can be very slow.
+        If ``secure_erase`` is specified and ``quick_erase`` is NOT specified
+        and the drive does NOT have a secure erase feature, MAAS will behave as
+        if ``secure_erase`` was NOT specified, i.e. MAAS will overwrite the
+        whole disk with null bytes. This can be very slow.
 
-        Returns 404 if the machine is not found.
-        Returns 403 if the user doesn't have permission to release the machine.
-        Returns 409 if the machine is in a state where it may not be released.
+        @param (string) "{system_id}" [required=true] The machines's system_id.
+
+        @param (string) "comment" [required=true] Optional comment for the
+        event log.
+
+        @param (boolean) "erase" [required=false] Erase the disk when
+        releasing.
+
+        @param (boolean) "secure_erase" [required=false] Use the drive's secure
+        erase feature if available.  In some cases, this can be much faster
+        than overwriting the drive.  Some drives implement secure erasure by
+        overwriting themselves so this could still be slow.
+
+        @param (boolean) "quick_erase" [required=false] Wipe 2MiB at the start
+        and at the end of the drive to make data recovery inconvenient and
+        unlikely to happen by accident. This is not secure.
+
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing information
+        about the released machine.
+        @success-example "success-json" [exkey=machines-release] placeholder
+        text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine is not found.
+        @error-example "not-found"
+            Not Found
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permission to
+        release this machine.
+
+        @error (http-status-code) "409" 409
+        @error (content) "no-release" The machine is in a state that prevents
+        it from being released.
         """
         comment = get_optional_param(request.POST, 'comment')
         erase = get_optional_param(
@@ -743,39 +799,56 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
 
     @operation(idempotent=False)
     def commission(self, request, system_id):
-        """Begin commissioning process for a machine.
-
-        :param enable_ssh: Whether to enable SSH for the commissioning
-            environment using the user's SSH key(s).
-        :type enable_ssh: bool ('0' for False, '1' for True)
-        :param skip_bmc_config: Whether to skip re-configuration of the BMC
-            for IPMI based machines.
-        :type skip_bmc_config: bool ('0' for False, '1' for True)
-        :param skip_networking: Whether to skip re-configuring the networking
-            on the machine after the commissioning has completed.
-        :type skip_networking: bool ('0' for False, '1' for True)
-        :param skip_storage: Whether to skip re-configuring the storage
-            on the machine after the commissioning has completed.
-        :type skip_storage: bool ('0' for False, '1' for True)
-        :param commissioning_scripts: A comma seperated list of commissioning
-            script names and tags to be run. By default all custom
-            commissioning scripts are run. Builtin commissioning scripts always
-            run. Selecting 'update_firmware' or 'configure_hba' will run
-            firmware updates or configure HBA's on matching machines.
-        :type commissioning_scripts: string
-        :param testing_scripts: A comma seperated list of testing script names
-            and tags to be run. By default all tests tagged 'commissioning'
-            will be run. Set to 'none' to disable running tests.
-        :type testing_scripts: string
+        """@description-title Commission a machine
+        @description Begin commissioning process for a machine.
 
         A machine in the 'ready', 'declared' or 'failed test' state may
-        initiate a commissioning cycle where it is checked out and tested
-        in preparation for transitioning to the 'ready' state. If it is
-        already in the 'ready' state this is considered a re-commissioning
-        process which is useful if commissioning tests were changed after
-        it previously commissioned.
+        initiate a commissioning cycle where it is checked out and tested in
+        preparation for transitioning to the 'ready' state. If it is already in
+        the 'ready' state this is considered a re-commissioning process which
+        is useful if commissioning tests were changed after it previously
+        commissioned.
 
-        Returns 404 if the machine is not found.
+        @param (string) "{system_id}" [required=true] The machines's system_id.
+
+        @param (int) "enable_ssh" [required=false]  Whether to enable SSH for
+        the commissioning environment using the user's SSH key(s). '1' == True,
+        '0' == False.
+
+        @param (int) "skip_bmc_config" [required=false] Whether to skip
+        re-configuration of the BMC for IPMI based machines. '1' == True, '0'
+        == False.
+
+        @param (int) "skip_networking" [required=false] Whether to skip
+        re-configuring the networking on the machine after the commissioning
+        has completed. '1' == True, '0' == False.
+
+        @param (int) "skip_storage" [required=false] Whether to skip
+        re-configuring the storage on the machine after the commissioning has
+        completed. '1' == True, '0' == False.
+
+        @param (string) "commissioning_scripts" [required=false] A comma
+        seperated list of commissioning script names and tags to be run. By
+        default all custom commissioning scripts are run. Built-in
+        commissioning scripts always run. Selecting 'update_firmware' or
+        'configure_hba' will run firmware updates or configure HBA's on
+        matching machines.
+
+        @param (string) "testing_scripts" [required=false] A comma seperated
+        list of testing script names and tags to be run. By default all tests
+        tagged 'commissioning' will be run. Set to 'none' to disable running
+        tests.
+
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing information
+        about the commissioning machine.
+        @success-example "success-json" [exkey=machines-set-storage]
+        placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine is not found.
+        @error-example "not-found"
+            Not Found
         """
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.admin)
@@ -788,7 +861,9 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
 
     @operation(idempotent=False)
     def set_storage_layout(self, request, system_id):
-        """Changes the storage layout on the machine.
+        """@description-title Change storage layout
+        @description Changes the storage layout on machine with the given
+        system_id.
 
         This operation can only be performed on a machine with a status
         of 'Ready'.
@@ -796,35 +871,59 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         Note: This will clear the current storage layout and any extra
         configuration and replace it will the new layout.
 
-        :param storage_layout: Storage layout for the machine. (flat, lvm,
-            and bcache)
+        @param (string) "{system_id}" [required=true] The machines's system_id.
 
-        The following are optional for all layouts:
+        @param (string) "storage_layout" [required=true] Storage layout for the
+        machine: ``flat``, ``lvm``, and ``bcache``.
 
-        :param boot_size: Size of the boot partition.
-        :param root_size: Size of the root partition.
-        :param root_device: Physical block device to place the root partition.
+        @param (string) "boot_size" [required=false] All layouts. Size of the
+        boot partition (e.g. 512M, 1G).
 
-        The following are optional for LVM:
+        @param (string) "root_size" [required=false] All layouts. Size of the
+        root partition (e.g. 24G).
 
-        :param vg_name: Name of created volume group.
-        :param lv_name: Name of created logical volume.
-        :param lv_size: Size of created logical volume.
+        @param (string) "root_device" [required=false] All layouts. Physical
+        block device to place the root partition (e.g. /dev/sda).
 
-        The following are optional for Bcache:
+        @param (string) "vg_name" [required=false] LVM only. Name of created
+        volume group.
 
-        :param cache_device: Physical block device to use as the cache device.
-        :param cache_mode: Cache mode for bcache device. (writeback,
-            writethrough, writearound)
-        :param cache_size: Size of the cache partition to create on the cache
-            device.
-        :param cache_no_part: Don't create a partition on the cache device.
-            Use the entire disk as the cache device.
+        @param (string) "lv_name" [required=false] LVM only. Name of created
+        logical volume.
 
-        Returns 400 if the machine is currently not allocated.
-        Returns 404 if the machine could not be found.
-        Returns 403 if the user does not have permission to set the storage
-        layout.
+        @param (string) "lv_size" [required=false] LVM only.  Size of created
+        logical volume.
+
+        @param (string) "cache_device" [required=false] Bcache only. Physical
+        block device to use as the cache device (e.g. /dev/sda).
+
+        @param (string) "cache_mode" [required=false] Bcache only. Cache mode
+        for bcache device: ``writeback``, ``writethrough``, ``writearound``.
+
+        @param (string) "cache_size" [required=false] Bcache only. Size of the
+        cache partition to create on the cache device (e.g. 48G).
+
+        @param (boolean) "cache_no_part" [required=false] Bcache only. Don't
+        create a partition on the cache device.  Use the entire disk as the
+        cache device.
+
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing information
+        about the machine.
+        @success-example "success-json" [exkey=machines-commission] placeholder
+        text
+
+        @error (http-status-code) "400" 400
+        @error (content) "no-alloc" The requested machine is not allocated.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine is not found.
+        @error-example "not-found"
+            Not Found
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permission to set
+        the storage layout of this machine.
         """
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.admin)
@@ -862,14 +961,35 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
 
     @operation(idempotent=False)
     def mount_special(self, request, system_id):
-        """Mount a special-purpose filesystem, like tmpfs.
+        """@description-title Mount a special-purpose filesystem
+        @description Mount a special-purpose filesystem, like tmpfs on a
+        machine with the given system_id.
 
-        :param fstype: The filesystem type. This must be a filesystem that
-            does not require a block special device.
-        :param mount_point: Path on the filesystem to mount.
-        :param mount_option: Options to pass to mount(8).
+        @param (string) "{system_id}" [required=true] The machines's system_id.
 
-        Returns 403 when the user is not permitted to mount the partition.
+        @param (string) "fstype" [required=true] The filesystem type. This must
+        be a filesystem that does not require a block special device.
+
+        @param (string) "mount_point" [required=true] Path on the filesystem to
+        mount.
+
+        @param (string) "mount_option" [required=false] Options to pass to
+        mount(8).
+
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing information
+        about the machine.
+        @success-example "success-json" [exkey=machines-mount-special]
+        placeholder text
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permission to mount
+        the special filesystem on this machine.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine is not found.
+        @error-example "not-found"
+            Not Found
         """
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.edit)
@@ -888,11 +1008,29 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
 
     @operation(idempotent=False)
     def unmount_special(self, request, system_id):
-        """Unmount a special-purpose filesystem, like tmpfs.
+        """@description-title Unmount a special-purpose filesystem
+        @description Unmount a special-purpose filesystem, like tmpfs, on a
+        machine with the given system_id.
 
-        :param mount_point: Path on the filesystem to unmount.
+        @param (string) "{system_id}" [required=true] The machines's system_id.
 
-        Returns 403 when the user is not permitted to unmount the partition.
+        @param (string) "mount_point" [required=true] Path on the filesystem to
+        unmount.
+
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing information
+        about the machine.
+        @success-example "success-json" [exkey=machines-unmount-special]
+        placeholder text
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permission to
+        unmount the special filesystem on this machine.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine is not found.
+        @error-example "not-found"
+            Not Found
         """
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.edit)
@@ -909,7 +1047,9 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
 
     @operation(idempotent=False)
     def clear_default_gateways(self, request, system_id):
-        """Clear any set default gateways on the machine.
+        """@description-title Clear set default gateways
+        @description Clear any set default gateways on a machine with the given
+        system_id.
 
         This will clear both IPv4 and IPv6 gateways on the machine. This will
         transition the logic of identifing the best gateway to MAAS. This logic
@@ -926,9 +1066,22 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         set which interface and subnet's gateway to use when this machine is
         deployed with the `interfaces set-default-gateway` API.
 
-        Returns 404 if the machine could not be found.
-        Returns 403 if the user does not have permission to clear the default
-        gateways.
+        @param (string) "{system_id}" [required=true] The machines's system_id.
+
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing information
+        about the machine.
+        @success-example "success-json" [exkey=machines-clear-gateways]
+        placeholder text
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permission to
+        clear default gateways on this machine.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine is not found.
+        @error-example "not-found"
+            Not Found
         """
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.admin)
@@ -939,11 +1092,25 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
 
     @operation(idempotent=True)
     def get_curtin_config(self, request, system_id):
-        """Return the rendered curtin configuration for the machine.
+        """@description-title Get curtin configuration
+        @description Return the rendered curtin configuration for the machine.
 
-        Returns 404 if the machine could not be found.
-        Returns 403 if the user does not have permission to get the curtin
+        @param (string) "{system_id}" [required=true] The machines's system_id.
+
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing the curtin
         configuration.
+        @success-example "success-json" [exkey=machines-placeholder]
+        placeholder text
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permission to
+        see curtin configuration on this machine.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine is not found.
+        @error-example "not-found"
+            Not Found
         """
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.view)
@@ -961,10 +1128,26 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
 
     @operation(idempotent=False)
     def restore_networking_configuration(self, request, system_id):
-        """Reset a machine's networking options to its initial state.
+        """@description-title Restore networking options
+        @description Restores networking options to their initial state on a
+        machine with the given system_id.
 
-        Returns 404 if the machine is not found.
-        Returns 403 if the user does not have permission to reset the machine.
+        @param (string) "{system_id}" [required=true] The machines's system_id.
+
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing the machine
+        information.
+        @success-example "success-json" [exkey=machines-restore-networking]
+        placeholder text
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permission to
+        restore networking options on this machine.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine is not found.
+        @error-example "not-found"
+            Not Found
         """
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user,
@@ -979,10 +1162,26 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
 
     @operation(idempotent=False)
     def restore_storage_configuration(self, request, system_id):
-        """Reset a machine's storage options to its initial state.
+        """@description-title Restore storage configuration
+        @description Restores storage configuration options to their initial
+        state on a machine with the given system_id.
 
-        Returns 404 if the machine is not found.
-        Returns 403 if the user does not have permission to reset the machine.
+        @param (string) "{system_id}" [required=true] The machines's system_id.
+
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing the machine
+        information.
+        @success-example "success-json" [exkey=machines-restore-storage]
+        placeholder text
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permission to
+        restore storage options on this machine.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine is not found.
+        @error-example "not-found"
+            Not Found
         """
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user,
@@ -996,10 +1195,26 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
 
     @operation(idempotent=False)
     def restore_default_configuration(self, request, system_id):
-        """Reset a machine's configuration to its initial state.
+        """@description-title Restore default configuration
+        @description Restores the default configuration options on a machine
+        with the given system_id.
 
-        Returns 404 if the machine is not found.
-        Returns 403 if the user does not have permission to reset the machine.
+        @param (string) "{system_id}" [required=true] The machines's system_id.
+
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing the machine
+        information.
+        @success-example "success-json" [exkey=machines-restore-default]
+        placeholder text
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permission to
+        restore default options on this machine.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine is not found.
+        @error-example "not-found"
+            Not Found
         """
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user,
@@ -1015,17 +1230,31 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
 
     @operation(idempotent=False)
     def mark_broken(self, request, system_id):
-        """Mark a node as 'broken'.
+        """@description-title Mark a machine as Broken
+        @description Mark a machine with the given system_id as 'Broken'.
 
         If the node is allocated, release it first.
 
-        :param comment: Optional comment for the event log. Will be
-            displayed on the node as an error description until marked fixed.
-        :type comment: unicode
+        @param (string) "{system_id}" [required=true] The machines's system_id.
 
-        Returns 404 if the node is not found.
-        Returns 403 if the user does not have permission to mark the node
-        broken.
+        @param (string) "comment" [required=false] Optional comment for the
+        event log. Will be displayed on the node as an error description until
+        marked fixed.
+
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing the machine
+        information.
+        @success-example "success-json" [exkey=machines-mark-broken]
+        placeholder text
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permission to
+        the machine as Broken.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine is not found.
+        @error-example "not-found"
+            Not Found
         """
         node = self.model.objects.get_node_or_404(
             user=request.user, system_id=system_id, perm=NodePermission.edit)
@@ -1038,14 +1267,28 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
 
     @operation(idempotent=False)
     def mark_fixed(self, request, system_id):
-        """Mark a broken node as fixed and set its status as 'ready'.
+        """@description-title Mark a machine as Fixed
+        @description Mark a machine with the given system_id as 'Fixed'.
 
-        :param comment: Optional comment for the event log.
-        :type comment: unicode
+        @param (string) "{system_id}" [required=true] The machines's system_id.
 
-        Returns 404 if the machine is not found.
-        Returns 403 if the user does not have permission to mark the machine
-        fixed.
+        @param (string) "comment" [required=false] Optional comment for the
+        event log.
+
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing the machine
+        information.
+        @success-example "success-json" [exkey=machines-mark-fixed]
+        placeholder text
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permission to
+        the machine as Fixed.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine is not found.
+        @error-example "not-found"
+            Not Found
         """
         comment = get_optional_param(request.POST, 'comment')
         node = self.model.objects.get_node_or_404(
@@ -1058,14 +1301,29 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
 
     @operation(idempotent=False)
     def rescue_mode(self, request, system_id):
-        """Begin rescue mode process for a machine.
+        """@description-title Enter rescue mode
+        @description Begins the rescue mode process on a machine with the given
+        system_id.
 
         A machine in the 'deployed' or 'broken' state may initiate the
         rescue mode process.
 
-        Returns 404 if the machine is not found.
-        Returns 403 if the user does not have permission to start the
-        rescue mode process for this machine.
+        @param (string) "{system_id}" [required=true] The machines's system_id.
+
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing the machine
+        information.
+        @success-example "success-json" [exkey=machines-rescue-mode]
+        placeholder text
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permission to
+        begin rescue mode on the machine.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine is not found.
+        @error-example "not-found"
+            Not Found
         """
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.admin)
@@ -1077,14 +1335,29 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
 
     @operation(idempotent=False)
     def exit_rescue_mode(self, request, system_id):
-        """Exit rescue mode process for a machine.
+        """@description-title Exit rescue mode
+        @description Exits the rescue mode process on a machine with the given
+        system_id.
 
         A machine in the 'rescue mode' state may exit the rescue mode
         process.
 
-        Returns 404 if the machine is not found.
-        Returns 403 if the user does not have permission to exit the
-        rescue mode process for this machine.
+        @param (string) "{system_id}" [required=true] The machines's system_id.
+
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing the machine
+        information.
+        @success-example "success-json" [exkey=machines-exit-rescue-mode]
+        placeholder text
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permission to
+        exit rescue mode on the machine.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine is not found.
+        @error-example "not-found"
+            Not Found
         """
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.admin)
@@ -1096,15 +1369,29 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
 
     @operation(idempotent=False)
     def lock(self, request, system_id):
-        """Mark a deployed machine as locked, to prevent changes.
+        """@description-title Lock a machine
+        @description Mark a machine with the given system_id as 'Locked' to
+        prevent changes.
 
-        A locked machine cannot be released or modified.
+        @param (string) "{system_id}" [required=true] The machines's system_id.
 
-        :param comment: Optional comment for the event log.
-        :type comment: unicode
+        @param (string) "comment" [required=false] Optional comment for the
+        event log.
 
-        Returns 404 if the machine is not found.
-        Returns 403 if the user does not have permission lock the machine.
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing the machine
+        information.
+        @success-example "success-json" [exkey=machines-lock]
+        placeholder text
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permission to
+        lock the machine.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine is not found.
+        @error-example "not-found"
+            Not Found
         """
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.lock)
@@ -1116,13 +1403,29 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
 
     @operation(idempotent=False)
     def unlock(self, request, system_id):
-        """Mark a machine as unlocked, allowing changes.
+        """@description-title Unlock a machine
+        @description Mark a machine with the given system_id as 'Unlocked' to
+        allow changes.
 
-        :param comment: Optional comment for the event log.
-        :type comment: unicode
+        @param (string) "{system_id}" [required=true] The machines's system_id.
 
-        Returns 404 if the machine is not found.
-        Returns 403 if the user does not have permission unlock the machine.
+        @param (string) "comment" [required=false] Optional comment for the
+        event log.
+
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing the machine
+        information.
+        @success-example "success-json" [exkey=machines-lock]
+        placeholder text
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permission to
+        unlock the machine.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine is not found.
+        @error-example "not-found"
+            Not Found
         """
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.lock)
@@ -1257,55 +1560,56 @@ class AnonMachinesHandler(AnonNodesHandler):
 
     def create(self, request):
         # Note: this docstring is duplicated below. Be sure to update both.
-        """Create a new Machine.
+        """@description-title Create a new machine
+        @description Create a new machine.
 
-        Adding a server to MAAS puts it on a path that will wipe its disks
-        and re-install its operating system, in the event that it PXE boots.
-        In anonymous enlistment (and when the enlistment is done by a
-        non-admin), the machine is held in the "New" state for approval by a
-        MAAS admin.
+        Adding a server to MAAS wipes its disks and re-installs its operating
+        system, in the event that it PXE boots.  In anonymous enlistment (and
+        when the enlistment is done by a non-admin), the machine is held in the
+        "New" state for approval by a MAAS admin.
 
         The minimum data required is:
+
         architecture=<arch string> (e.g. "i386/generic")
         mac_addresses=<value> (e.g. "aa:bb:cc:dd:ee:ff")
 
-        :param architecture: A string containing the architecture type of
-            the machine. (For example, "i386", or "amd64".) To determine the
-            supported architectures, use the boot-resources endpoint.
+        @param (string) "architecture" [required=true] A string containing the
+        architecture type of the machine. (For example, "i386", or "amd64".) To
         :type architecture: unicode
 
-        :param min_hwe_kernel: A string containing the minimum kernel version
-            allowed to be ran on this machine.
-        :type min_hwe_kernel: unicode
+        @param (string) "min_hwe_kernel" [required=false] A string containing
+        the minimum kernel version allowed to be ran on this machine.
 
-        :param subarchitecture: A string containing the subarchitecture type
-            of the machine. (For example, "generic" or "hwe-t".) To determine
-            the supported subarchitectures, use the boot-resources endpoint.
-        :type subarchitecture: unicode
+        @param (string) "subarchitecture" [required=false] A string containing
+        the subarchitecture type of the machine. (For example, "generic" or
+        "hwe-t".) To determine the supported subarchitectures, use the
+        boot-resources endpoint.
 
-        :param mac_addresses: One or more MAC addresses for the machine. To
-            specify more than one MAC address, the parameter must be specified
-            twice. (such as "machines new mac_addresses=01:02:03:04:05:06
-            mac_addresses=02:03:04:05:06:07")
-        :type mac_addresses: unicode
+        @param (string) "mac_addresses" [required=true] One or more MAC
+        addresses for the machine. To specify more than one MAC address, the
+        parameter must be specified twice. (such as "machines new
+        mac_addresses=01:02:03:04:05:06 mac_addresses=02:03:04:05:06:07")
 
-        :param hostname: A hostname. If not given, one will be generated.
-        :type hostname: unicode
+        @param (string) "hostname" [required=false] A hostname. If not given,
+        one will be generated.
 
-        :param domain: The domain of the machine. If not given the default
-            domain is used.
-        :type domain: unicode
+        @param (string) "domain" [required=false] The domain of the machine. If
+        not given the default domain is used.
 
-        :param power_type: A power management type, if applicable (e.g.
-            "virsh", "ipmi").
-        :type power_type:unicode
+        @param (string) "power_type" [required=false] A power management type,
+        if applicable (e.g.  "virsh", "ipmi").
 
-        :param power_parameters_{param}: The parameter(s) for the power_type.
-            Note that this is dynamic as the available parameters depend on
-            the selected value of the Machine's power_type. `Power types`_
-            section for a list of the available power parameters for each
-            power type.
-        :type power_parameters_{param1}: unicode
+        @param (string) "power_parameters_{param}" [required=false] The
+        parameter(s) for the power_type.  Note that this is dynamic as the
+        available parameters depend on the selected value of the Machine's
+        power_type. `Power types`_ section for a list of the available power
+        parameters for each power type.
+
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing the machine
+        information.
+        @success-example "success-json" [exkey=machines-create]
+        placeholder text
         """
         architecture = request.data.get('architecture')
         power_type = request.data.get('power_type')
@@ -1388,48 +1692,56 @@ class MachinesHandler(NodesHandler, PowersMixin):
 
     def create(self, request):
         # Note: this docstring is duplicated above. Be sure to update both.
-        """Create a new Machine.
+        """@description-title Create a new machine
+        @description Create a new machine.
 
-        Adding a server to MAAS puts it on a path that will wipe its disks
-        and re-install its operating system, in the event that it PXE boots.
-        In anonymous enlistment (and when the enlistment is done by a
-        non-admin), the machine is held in the "New" state for approval by a
-        MAAS admin.
+        Adding a server to MAAS wipes its disks and re-installs its operating
+        system, in the event that it PXE boots.  In anonymous enlistment (and
+        when the enlistment is done by a non-admin), the machine is held in the
+        "New" state for approval by a MAAS admin.
 
         The minimum data required is:
+
         architecture=<arch string> (e.g. "i386/generic")
         mac_addresses=<value> (e.g. "aa:bb:cc:dd:ee:ff")
 
-        :param architecture: A string containing the architecture type of
-            the machine. (For example, "i386", or "amd64".) To determine the
-            supported architectures, use the boot-resources endpoint.
+        @param (string) "architecture" [required=true] A string containing the
+        architecture type of the machine. (For example, "i386", or "amd64".) To
         :type architecture: unicode
 
-        :param min_hwe_kernel: A string containing the minimum kernel version
-            allowed to be ran on this machine.
-        :type min_hwe_kernel: unicode
+        @param (string) "min_hwe_kernel" [required=false] A string containing
+        the minimum kernel version allowed to be ran on this machine.
 
-        :param subarchitecture: A string containing the subarchitecture type
-            of the machine. (For example, "generic" or "hwe-t".) To determine
-            the supported subarchitectures, use the boot-resources endpoint.
-        :type subarchitecture: unicode
+        @param (string) "subarchitecture" [required=false] A string containing
+        the subarchitecture type of the machine. (For example, "generic" or
+        "hwe-t".) To determine the supported subarchitectures, use the
+        boot-resources endpoint.
 
-        :param mac_addresses: One or more MAC addresses for the machine. To
-            specify more than one MAC address, the parameter must be specified
-            twice. (such as "machines new mac_addresses=01:02:03:04:05:06
-            mac_addresses=02:03:04:05:06:07")
-        :type mac_addresses: unicode
+        @param (string) "mac_addresses" [required=true] One or more MAC
+        addresses for the machine. To specify more than one MAC address, the
+        parameter must be specified twice. (such as "machines new
+        mac_addresses=01:02:03:04:05:06 mac_addresses=02:03:04:05:06:07")
 
-        :param hostname: A hostname. If not given, one will be generated.
-        :type hostname: unicode
+        @param (string) "hostname" [required=false] A hostname. If not given,
+        one will be generated.
 
-        :param domain: The domain of the machine. If not given the default
-            domain is used.
-        :type domain: unicode
+        @param (string) "domain" [required=false] The domain of the machine. If
+        not given the default domain is used.
 
-        :param power_type: A power management type, if applicable (e.g.
-            "virsh", "ipmi").
-        :type power_type: unicode
+        @param (string) "power_type" [required=false] A power management type,
+        if applicable (e.g.  "virsh", "ipmi").
+
+        @param (string) "power_parameters_{param}" [required=false] The
+        parameter(s) for the power_type.  Note that this is dynamic as the
+        available parameters depend on the selected value of the Machine's
+        power_type. `Power types`_ section for a list of the available power
+        parameters for each power type.
+
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing the machine
+        information.
+        @success-example "success-json" [exkey=machines-create]
+        placeholder text
         """
         machine = create_machine(request)
         if request.user.is_superuser:
@@ -1459,7 +1771,8 @@ class MachinesHandler(NodesHandler, PowersMixin):
 
     @operation(idempotent=False)
     def accept(self, request):
-        """Accept declared machines into the MAAS.
+        """@description-title Accept declared machines
+        @description Accept declared machines into MAAS.
 
         Machines can be enlisted in the MAAS anonymously or by non-admin users,
         as opposed to by an admin.  These machines are held in the New
@@ -1470,14 +1783,23 @@ class MachinesHandler(NodesHandler, PowersMixin):
         this call.  Accepting an already accepted machine is not an error, but
         accepting one that is already allocated, broken, etc. is.
 
-        :param machines: system_ids of the machines whose enlistment is to be
-            accepted.  (An empty list is acceptable).
-        :return: The system_ids of any machines that have their status changed
-            by this call.  Thus, machines that were already accepted are
-            excluded from the result.
+        @param (string) "machines" [required=false] A list of system_ids of the
+        machines whose enlistment is to be accepted. (An empty list is
+        acceptable).
 
-        Returns 400 if any of the machines do not exist.
-        Returns 403 if the user is not an admin.
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing a list of
+        accepted machines.
+        @success-example "success-json" [exkey=machines-placeholder]
+        placeholder text
+
+        @error (http-status-code) "400" 400
+        @error (content) "not-found" One or more of the given machines is not
+        found.
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permission to accept
+        machines.
         """
         system_ids = set(request.POST.getlist('machines'))
         # Check the existence of these machines first.
@@ -1497,16 +1819,19 @@ class MachinesHandler(NodesHandler, PowersMixin):
 
     @operation(idempotent=False)
     def accept_all(self, request):
-        """Accept all declared machines into the MAAS.
+        """@description-title Accept all declared machines
+        @description Accept all declared machines into MAAS.
 
         Machines can be enlisted in the MAAS anonymously or by non-admin users,
         as opposed to by an admin.  These machines are held in the New
         state; a MAAS admin must first verify the authenticity of these
         enlistments, and accept them.
 
-        :return: Representations of any machines that have their status changed
-            by this call.  Thus, machines that were already accepted are
-            excluded from the result.
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing a list of
+        accepted machines.
+        @success-example "success-json" [exkey=machines-placeholder]
+        placeholder text
         """
         machines = self.base_model.objects.get_nodes(
             request.user, perm=NodePermission.admin)
@@ -1517,23 +1842,33 @@ class MachinesHandler(NodesHandler, PowersMixin):
 
     @operation(idempotent=False)
     def release(self, request):
-        """Release multiple machines.
+        """@description-title Release machines
+        @description Release multiple machines. Places the machines back into
+        the pool, ready to be reallocated.
 
-        This places the machines back into the pool, ready to be reallocated.
+        @param (string) "machines" [required=true] A list of system_ids of the
+        machines which are to be released.  (An empty list is acceptable).
 
-        :param machines: system_ids of the machines which are to be released.
-           (An empty list is acceptable).
-        :param comment: Optional comment for the event log.
-        :type comment: unicode
-        :return: The system_ids of any machines that have their status
-            changed by this call. Thus, machines that were already released
-            are excluded from the result.
+        @param (string) "comment" [required=false] Optional comment for the
+        event log.
 
-        Returns 400 if any of the machines cannot be found.
-        Returns 403 if the user does not have permission to release any of
-        the machines.
-        Returns a 409 if any of the machines could not be released due to their
-        current state.
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing a list of
+        release machines.
+        @success-example "success-json" [exkey=machines-placeholder]
+        placeholder text
+
+        @error (http-status-code) "400" 400
+        @error (content) "not-found" One or more of the given machines is not
+        found.
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permission to
+        release machines.
+
+        @error (http-status-code) "409" 409
+        @error (content) "no-release" The current state of the machine prevents
+        it from being released.
         """
         system_ids = set(request.POST.getlist('machines'))
         comment = get_optional_param(request.POST, 'comment')
@@ -1571,7 +1906,15 @@ class MachinesHandler(NodesHandler, PowersMixin):
 
     @operation(idempotent=True)
     def list_allocated(self, request):
-        """Fetch Machines that were allocated to the User/oauth token."""
+        """@description-title List allocated
+        @description List machines that were allocated to the User/oauth token.
+
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing a list of
+        allocated machines.
+        @success-example "success-json" [exkey=machines-placeholder]
+        placeholder text
+        """
         token = get_oauth_token(request)
         match_ids = get_optional_list(request.GET, 'id')
         machines = Machine.objects.get_allocated_visible_machines(
@@ -1580,217 +1923,228 @@ class MachinesHandler(NodesHandler, PowersMixin):
 
     @operation(idempotent=False)
     def allocate(self, request):
-        """Allocate an available machine for deployment.
+        """@description-title Allocate a machine
+        @description Allocates an available machine for deployment.
 
         Constraints parameters can be used to allocate a machine that possesses
         certain characteristics.  All the constraints are optional and when
         multiple constraints are provided, they are combined using 'AND'
         semantics.
 
-        :param name: Hostname or FQDN of the desired machine. If a FQDN is
-            specified, both the domain and the hostname portions must match.
-        :type name: unicode
-        :param system_id: system_id of the desired machine.
-        :type system_id: unicode
-        :param arch: Architecture of the returned machine (e.g. 'i386/generic',
-            'amd64', 'armhf/highbank', etc.).
+        @param (string) "name" [required=false] Hostname or FQDN of the desired
+        machine. If a FQDN is specified, both the domain and the hostname
+        portions must match.
 
-            If multiple architectures are specified, the machine to acquire may
-            match any of the given architectures. To request multiple
-            architectures, this parameter must be repeated in the request with
-            each value.
-        :type arch: unicode (accepts multiple)
-        :param cpu_count: Minimum number of CPUs a returned machine must have.
+        @param (string) "system_id" [required=false] system_id of the desired
+        machine.
 
-            A machine with additional CPUs may be allocated if there is no
-            exact match, or if the 'mem' constraint is not also specified.
-        :type cpu_count: positive integer
-        :param mem: The minimum amount of memory (expressed in MB) the
-             returned machine must have. A machine with additional memory may
-             be allocated if there is no exact match, or the 'cpu_count'
-             constraint is not also specified.
-        :type mem: positive integer
-        :param tags: Tags the machine must match in order to be acquired.
+        @param (string) "arch" [required=false,formatting=true] Architecture of
+        the returned machine (e.g. 'i386/generic', 'amd64', 'armhf/highbank',
+        etc.).
 
-            If multiple tag names are specified, the machine must be
-            tagged with all of them. To request multiple tags, this parameter
-            must be repeated in the request with each value.
-        :type tags: unicode (accepts multiple)
-        :param not_tags: Tags the machine must NOT match.
+        If multiple architectures are specified, the machine to acquire may
+        match any of the given architectures. To request multiple
+        architectures, this parameter must be repeated in the request with each
+        value.
 
-            If multiple tag names are specified, the machine must NOT be
-            tagged with ANY of them. To request exclusion of multiple tags,
-            this parameter must be repeated in the request with each value.
-        :type tags: unicode (accepts multiple)
-        :param zone: Physical zone name the machine must be located in.
-        :type zone: unicode
-        :param not_in_zone: List of physical zones from which the machine must
-            not be acquired.
+        @param (int) "cpu_count" [required=false,formatting=true] Minimum
+        number of CPUs a returned machine must have.
 
-            If multiple zones are specified, the machine must NOT be
-            associated with ANY of them. To request multiple zones to
-            exclude, this parameter must be repeated in the request with each
-            value.
-        :type not_in_zone: unicode (accepts multiple)
-        :param pool: Resource pool name the machine must belong to.
-        :type pool: unicode
-        :param not_in_pool: List of resource pool from which the machine must
-            not be acquired.
+        A machine with additional CPUs may be allocated if there is no exact
+        match, or if the 'mem' constraint is not also specified.
 
-            If multiple pools are specified, the machine must NOT be associated
-            with ANY of them. To request multiple pools to exclude, this
-            parameter must be repeated in the request with each value.
-        :type not_in_pool: unicode (accepts multiple)
-        :param pod: Pod the machine must be located in.
-        :type pod: unicode
-        :param not_pod: Pod the machine must not be located in.
-        :type not_pod: unicode
-        :param pod_type: Pod type the machine must be located in.
-        :type pod_type: unicode
-        :param not_pod_type: Pod type the machine must not be located in.
-        :type not_pod_type: unicode
-        :param subnets: Subnets that must be linked to the machine.
+        @param (int) "mem" [required=false] The minimum amount of memory
+        (expressed in MB) the returned machine must have. A machine with
+        additional memory may be allocated if there is no exact match, or the
+        'cpu_count' constraint is not also specified.
 
-            "Linked to" means the node must be configured to acquire an address
-            in the specified subnet, have a static IP address in the specified
-            subnet, or have been observed to DHCP from the specified subnet
-            during commissioning time (which implies that it *could* have an
-            address on the specified subnet).
+        @param (string) "tags" [required=false,formatting=true] Tags the
+        machine must match in order to be acquired.
 
-            Subnets can be specified by one of the following criteria:
+        If multiple tag names are specified, the machine must be tagged with
+        all of them. To request multiple tags, this parameter must be repeated
+        in the request with each value.
 
-            - <id>: match the subnet by its 'id' field
-            - fabric:<fabric-spec>: match all subnets in a given fabric.
-            - ip:<ip-address>: Match the subnet containing <ip-address> with
-              the with the longest-prefix match.
-            - name:<subnet-name>: Match a subnet with the given name.
-            - space:<space-spec>: Match all subnets in a given space.
-            - vid:<vid-integer>: Match a subnet on a VLAN with the specified
-              VID. Valid values range from 0 through 4094 (inclusive). An
-              untagged VLAN can be specified by using the value "0".
-            - vlan:<vlan-spec>: Match all subnets on the given VLAN.
+        @param (string) "not_tags" [required=false] Tags the machine must NOT
+        match. If multiple tag names are specified, the machine must NOT be
+        tagged with ANY of them. To request exclusion of multiple tags, this
+        parameter must be repeated in the request with each value.
 
-            Note that (as of this writing), the 'fabric', 'space', 'vid', and
-            'vlan' specifiers are only useful for the 'not_spaces' version of
-            this constraint, because they will most likely force the query
-            to match ALL the subnets in each fabric, space, or VLAN, and thus
-            not return any nodes. (This is not a particularly useful behavior,
-            so may be changed in the future.)
+        @param (string) "zone" [required=false] Physical zone name the machine
+        must be located in.
 
-            If multiple subnets are specified, the machine must be associated
-            with all of them. To request multiple subnets, this parameter must
-            be repeated in the request with each value.
+        @param (string) "not_in_zone" [required=false] List of physical zones
+        from which the machine must not be acquired.  If multiple zones are
+        specified, the machine must NOT be associated with ANY of them. To
+        request multiple zones to exclude, this parameter must be repeated in
+        the request with each value.
 
-            Note that this replaces the leagcy 'networks' constraint in MAAS
-            1.x.
-        :type subnets: unicode (accepts multiple)
-        :param not_subnets: Subnets that must NOT be linked to the machine.
+        @param (string) "pool" [required=false] Resource pool name the machine
+        must belong to.
 
-            See the 'subnets' constraint documentation above for more
-            information about how each subnet can be specified.
+        @param (string) "not_in_pool" [required=false] List of resource pool
+        from which the machine must not be acquired. If multiple pools are
+        specified, the machine must NOT be associated with ANY of them. To
+        request multiple pools to exclude, this parameter must be repeated in
+        the request with each value.
 
-            If multiple subnets are specified, the machine must NOT be
-            associated with ANY of them. To request multiple subnets to
-            exclude, this parameter must be repeated in the request with each
-            value. (Or a fabric, space, or VLAN specifier may be used to match
-            multiple subnets).
+        @param (string) "pod" [required=false] Pod the machine must be located
+        in.
 
-            Note that this replaces the leagcy 'not_networks' constraint in
-            MAAS 1.x.
-        :type not_subnets: unicode (accepts multiple)
-        :param storage: A list of storage constraint identifiers, in the form:
-            <label>:<size>(<tag>[,<tag>[,...])][,<label>:...]
-        :type storage: unicode
-        :param interfaces: A labeled constraint map associating constraint
-            labels with interface properties that should be matched. Returned
-            nodes must have one or more interface matching the specified
-            constraints. The labeled constraint map must be in the format:
-            ``<label>:<key>=<value>[,<key2>=<value2>[,...]]``
+        @param (string) "not_pod" [required=false] Pod the machine must not be
+        located in.
 
-            Each key can be one of the following:
+        @param (string) "pod_type" [required=false] Pod type the machine must
+        be located in.
 
-            - id: Matches an interface with the specific id
-            - fabric: Matches an interface attached to the specified fabric.
-            - fabric_class: Matches an interface attached to a fabric
-              with the specified class.
-            - ip: Matches an interface with the specified IP address
-              assigned to it.
-            - mode: Matches an interface with the specified mode. (Currently,
-              the only supported mode is "unconfigured".)
-            - name: Matches an interface with the specified name.
-              (For example, "eth0".)
-            - hostname: Matches an interface attached to the node with
-              the specified hostname.
-            - subnet: Matches an interface attached to the specified subnet.
-            - space: Matches an interface attached to the specified space.
-            - subnet_cidr: Matches an interface attached to the specified
-              subnet CIDR. (For example, "192.168.0.0/24".)
-            - type: Matches an interface of the specified type. (Valid
-              types: "physical", "vlan", "bond", "bridge", or "unknown".)
-            - vlan: Matches an interface on the specified VLAN.
-            - vid: Matches an interface on a VLAN with the specified VID.
-            - tag: Matches an interface tagged with the specified tag.
-        :type interfaces: unicode
-        :param fabrics: Set of fabrics that the machine must be associated with
-            in order to be acquired.
+        @param (string) "not_pod_type" [required=false] Pod type the machine
+        must not be located in.
 
-            If multiple fabrics names are specified, the machine can be
-            in any of the specified fabrics. To request multiple possible
-            fabrics to match, this parameter must be repeated in the request
-            with each value.
-        :type fabrics: unicode (accepts multiple)
-        :param not_fabrics: Fabrics the machine must NOT be associated with in
-            order to be acquired.
+        @param (string) "subnets" [required=false,formatting=true] Subnets that
+        must be linked to the machine.
 
-            If multiple fabrics names are specified, the machine must NOT be
-            in ANY of them. To request exclusion of multiple fabrics, this
-            parameter must be repeated in the request with each value.
-        :type not_fabrics: unicode (accepts multiple)
-        :param fabric_classes: Set of fabric class types whose fabrics the
-            machine must be associated with in order to be acquired.
+        "Linked to" means the node must be configured to acquire an address in
+        the specified subnet, have a static IP address in the specified subnet,
+        or have been observed to DHCP from the specified subnet during
+        commissioning time (which implies that it *could* have an address on
+        the specified subnet).
 
-            If multiple fabrics class types are specified, the machine can be
-            in any matching fabric. To request multiple possible fabrics class
-            types to match, this parameter must be repeated in the request
-            with each value.
-        :type fabric_classes: unicode (accepts multiple)
-        :param not_fabric_classes: Fabric class types whose fabrics the machine
-            must NOT be associated with in order to be acquired.
+        Subnets can be specified by one of the following criteria:
 
-            If multiple fabrics names are specified, the machine must NOT be
-            in ANY of them. To request exclusion of multiple fabrics, this
-            parameter must be repeated in the request with each value.
-        :type not_fabric_classes: unicode (accepts multiple)
-        :param agent_name: An optional agent name to attach to the
-            acquired machine.
-        :type agent_name: unicode
-        :param comment: Optional comment for the event log.
-        :type comment: unicode
-        :param bridge_all: Optionally create a bridge interface for every
-            configured interface on the machine. The created bridges will be
-            removed once the machine is released.
-            (Default: False)
-        :type bridge_all: boolean
-        :param bridge_stp: Optionally turn spanning tree protocol on or off
-            for the bridges created on every configured interface.
-            (Default: off)
-        :type bridge_stp: boolean
-        :param bridge_fd: Optionally adjust the forward delay to time seconds.
-            (Default: 15)
-        :type bridge_fd: integer
-        :param dry_run: Optional boolean to indicate that the machine should
-            not actually be acquired (this is for support/troubleshooting, or
-            users who want to see which machine would match a constraint,
-            without acquiring a machine). Defaults to False.
-        :type dry_run: bool
-        :param verbose: Optional boolean to indicate that the user would like
-            additional verbosity in the constraints_by_type field (each
-            constraint will be prefixed by `verbose_`, and contain the full
-            data structure that indicates which machine(s) matched).
-        :type verbose: bool
+        - <id>: Match the subnet by its 'id' field
+        - fabric:<fabric-spec>: Match all subnets in a given fabric.
+        - ip:<ip-address>: Match the subnet containing <ip-address> with the
+          with the longest-prefix match.
+        - name:<subnet-name>: Match a subnet with the given name.
+        - space:<space-spec>: Match all subnets in a given space.
+        - vid:<vid-integer>: Match a subnet on a VLAN with the specified VID.
+          Valid values range from 0 through 4094 (inclusive). An untagged VLAN
+          can be specified by using the value "0".
+        - vlan:<vlan-spec>: Match all subnets on the given VLAN.
 
-        Returns 409 if a suitable machine matching the constraints could not be
-        found.
+        Note that (as of this writing), the 'fabric', 'space', 'vid', and
+        'vlan' specifiers are only useful for the 'not_spaces' version of this
+        constraint, because they will most likely force the query to match ALL
+        the subnets in each fabric, space, or VLAN, and thus not return any
+        nodes. (This is not a particularly useful behavior, so may be changed
+        in the future.)
+
+        If multiple subnets are specified, the machine must be associated with
+        all of them. To request multiple subnets, this parameter must be
+        repeated in the request with each value.
+
+        Note that this replaces the legacy 'networks' constraint in MAAS 1.x.
+
+        @param (string) "not_subnets" [required=false,formatting=true] Subnets
+        that must NOT be linked to the machine.
+
+        See the 'subnets' constraint documentation above for more information
+        about how each subnet can be specified.
+
+        If multiple subnets are specified, the machine must NOT be associated
+        with ANY of them. To request multiple subnets to exclude, this
+        parameter must be repeated in the request with each value. (Or a
+        fabric, space, or VLAN specifier may be used to match multiple
+        subnets).
+
+        Note that this replaces the legacy 'not_networks' constraint in MAAS
+        1.x.
+
+        @param (string) "storage" [required=false] A list of storage constraint
+        identifiers, in the form: ``label:size(tag[,tag[,...])][,label:...]``.
+
+        @param (string) "interfaces" [required=false,formatting=true] A labeled
+        constraint map associating constraint labels with interface properties
+        that should be matched. Returned nodes must have one or more interface
+        matching the specified constraints. The labeled constraint map must be
+        in the format: ``label:key=value[,key2=value2[,...]]``.
+
+        Each key can be one of the following:
+
+        - ``id``: Matches an interface with the specific id
+        - ``fabric``: Matches an interface attached to the specified fabric.
+        - ``fabric_class``: Matches an interface attached to a fabric with the
+          specified class.
+        - ``ip``: Matches an interface with the specified IP address assigned
+          to it.
+        - ``mode``: Matches an interface with the specified mode. (Currently,
+          the only supported mode is "unconfigured".)
+        - ``name``: Matches an interface with the specified name.  (For
+          example, "eth0".)
+        - ``hostname``: Matches an interface attached to the node with the
+          specified hostname.
+        - ``subnet``: Matches an interface attached to the specified subnet.
+        - ``space``: Matches an interface attached to the specified space.
+        - ``subnet_cidr``: Matches an interface attached to the specified
+          subnet CIDR. (For example, "192.168.0.0/24".)
+        - ``type``: Matches an interface of the specified type. (Valid types:
+          "physical", "vlan", "bond", "bridge", or "unknown".)
+        - ``vlan``: Matches an interface on the specified VLAN.
+        - ``vid``: Matches an interface on a VLAN with the specified VID.
+        - ``tag``: Matches an interface tagged with the specified tag.
+
+        @param (string) "fabrics" [required=false] Set of fabrics that the
+        machine must be associated with in order to be acquired. If multiple
+        fabrics names are specified, the machine can be in any of the specified
+        fabrics. To request multiple possible fabrics to match, this parameter
+        must be repeated in the request with each value.
+
+        @param (string) "not_fabrics" [required=false] Fabrics the machine must
+        NOT be associated with in order to be acquired. If multiple fabrics
+        names are specified, the machine must NOT be in ANY of them. To request
+        exclusion of multiple fabrics, this parameter must be repeated in the
+        request with each value.
+
+        @param (string) "fabric_classes" [required=false] Set of fabric class
+        types whose fabrics the machine must be associated with in order to be
+        acquired. If multiple fabrics class types are specified, the machine
+        can be in any matching fabric. To request multiple possible fabrics
+        class types to match, this parameter must be repeated in the request
+        with each value.
+
+        @param (string) "not_fabric_classes" [required=false] Fabric class
+        types whose fabrics the machine must NOT be associated with in order to
+        be acquired. If multiple fabrics names are specified, the machine must
+        NOT be in ANY of them. To request exclusion of multiple fabrics, this
+        parameter must be repeated in the request with each value.
+
+        @param (string) "agent_name" [required=false] An optional agent name to
+        attach to the acquired machine.
+
+        @param (string) "comment" [required=false] Comment for the event log.
+
+        @param (boolean) "bridge_all" [required=false] Optionally create a
+        bridge interface for every configured interface on the machine. The
+        created bridges will be removed once the machine is released.
+        (Default: False)
+
+        @param (boolean) "bridge_stp" [required=false] Optionally turn spanning
+        tree protocol on or off for the bridges created on every configured
+        interface.  (Default: off)
+
+        @param (int) "bridge_fd" [required=false] Optionally adjust the forward
+        delay to time seconds.  (Default: 15)
+
+        @param (boolean) "dry_run" [required=false] Optional boolean to
+        indicate that the machine should not actually be acquired (this is for
+        support/troubleshooting, or users who want to see which machine would
+        match a constraint, without acquiring a machine). Defaults to False.
+
+        @param (boolean) "verbose" [required=false] Optional boolean to
+        indicate that the user would like additional verbosity in the
+        constraints_by_type field (each constraint will be prefixed by
+        ``verbose_``, and contain the full data structure that indicates which
+        machine(s) matched).
+
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing a newly
+        allocated machine object.
+        @success-example "success-json" [exkey=machines-allocate]
+        placeholder text
+
+        @error (http-status-code) "409" 409
+        @error (content) "no-match" No machine matching the given constraints
+        could be found.
         """
         form = AcquireNodeForm(data=request.data)
         # XXX AndresRodriguez 2016-10-27: If new params are added and are not
@@ -1902,77 +2256,79 @@ class MachinesHandler(NodesHandler, PowersMixin):
     @admin_method
     @operation(idempotent=False)
     def add_chassis(self, request):
-        """Add special hardware types.
+        """@description-title Add special hardware
+        @description Add special hardware types.
 
-        :param chassis_type: The type of hardware.
-            mscm is the type for the Moonshot Chassis Manager.
-            msftocs is the type for the Microsoft OCS Chassis Manager.
-            powerkvm is the type for Virtual Machines on Power KVM,
-            managed by Virsh.
-            recs_box is the type for the christmann RECS|Box servers.
-            seamicro15k is the type for the Seamicro 1500 Chassis.
-            ucsm is the type for the Cisco UCS Manager.
-            virsh is the type for virtual machines managed by Virsh.
-            vmware is the type for virtual machines managed by VMware.
-        :type chassis_type: unicode
+        @param (string) "chassis_type" [required=true,formatting=true] The type
+        of hardware:
 
-        :param hostname: The URL, hostname, or IP address to access the
-            chassis.
-        :type url: unicode
+        - ``mscm``: Moonshot Chassis Manager.
+        - ``msftocs``: Microsoft OCS Chassis Manager.
+        - ``powerkvm``: Virtual Machines on Power KVM, managed by Virsh.
+        - ``recs_box``: Christmann RECS|Box servers.
+        - ``seamicro15k``: Seamicro 1500 Chassis.
+        - ``ucsm``: Cisco UCS Manager.
+        - ``virsh``: virtual machines managed by Virsh.
+        - ``vmware`` is the type for virtual machines managed by VMware.
 
-        :param username: The username used to access the chassis. This field
-            is required for the recs_box, seamicro15k, vmware, mscm, msftocs,
-            and ucsm chassis types.
-        :type username: unicode
+        @param (string) "hostname" [required=true] The URL, hostname, or IP
+        address to access the chassis.
 
-        :param password: The password used to access the chassis. This field
-            is required for the recs_box, seamicro15k, vmware, mscm, msftocs,
-            and ucsm chassis types.
-        :type password: unicode
+        @param (string) "username" [required=false] The username used to access
+        the chassis. This field is required for the recs_box, seamicro15k,
+        vmware, mscm, msftocs, and ucsm chassis types.
 
-        :param accept_all: If true, all enlisted machines will be
-            commissioned.
-        :type accept_all: unicode
+        @param (string) "password" [required=false] The password used to access
+        the chassis. This field is required for the ``recs_box``,
+        ``seamicro15k``, ``vmware``, ``mscm``, ``msftocs``, and ``ucsm``
+        chassis types.
 
-        :param rack_controller: The system_id of the rack controller to send
-            the add chassis command through. If none is specifed MAAS will
-            automatically determine the rack controller to use.
-        :type rack_controller: unicode
+        @param (string) "accept_all" [required=false] If true, all enlisted
+        machines will be commissioned.
 
-        :param domain: The domain that each new machine added should use.
-        :type domain: unicode
+        @param (string) "rack_controller" [required=false] The system_id of the
+        rack controller to send the add chassis command through. If none is
+        specifed MAAS will automatically determine the rack controller to use.
 
-        The following are optional if you are adding a virsh, vmware, or
-        powerkvm chassis:
+        @param (string) "domain" [required=false] The domain that each new
+        machine added should use.
 
-        :param prefix_filter: Filter machines with supplied prefix.
-        :type prefix_filter: unicode
+        @param (string) "prefix_filter" [required=false] (``virsh``,
+        ``vmware``, ``powerkvm`` only.) Filter machines with supplied prefix.
 
-        The following are optional if you are adding a seamicro15k chassis:
-
-        :param power_control: The power_control to use, either ipmi (default),
-            restapi, or restapi2.
-        :type power_control: unicode
+        @param (string) "power_control" [required=false] (``seamicro15k`` only)
+        The power_control to use, either ipmi (default), restapi, or restapi2.
 
         The following are optional if you are adding a recs_box, vmware or
         msftocs chassis.
 
-        :param port: The port to use when accessing the chassis.
-        :type port: integer
+        @param (int) "port" [required=false] (``recs_box``, ``vmware``,
+        ``msftocs`` only) The port to use when accessing the chassis.
 
         The following are optioanl if you are adding a vmware chassis:
 
-        :param protocol: The protocol to use when accessing the VMware
-            chassis (default: https).
-        :type protocol: unicode
+        @param (string) "protocol" [required=false] (``vmware`` only) The
+        protocol to use when accessing the VMware chassis (default: https).
 
         :return: A string containing the chassis powered on by which rack
             controller.
 
-        Returns 404 if no rack controller can be found which has access to the
-        given URL.
-        Returns 403 if the user does not have access to the rack controller.
-        Returns 400 if the required parameters were not passed.
+        @success (http-status-code) "200" 200
+        @success (content) "success-content"
+            Asking maas-run to add machines from chassis
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permission to
+        access the rack controller.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" No rack controller can be found that has
+        access to the given URL.
+        @error-example "not-found"
+            Not Found
+
+        @error (http-status-code) "400" 400
+        @error (content) "bad-params" Required parameters are missing.
         """
         chassis_type = get_mandatory_param(
             request.POST, 'chassis_type',
