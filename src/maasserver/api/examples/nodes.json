@@ -2601,5 +2601,8 @@
       "power_address": "qemu+ssh://ubuntu@172.16.1.134/system",
       "power_id": "nice-shad"
     }
+  },
+  "bcache-placeholder": {
+    "message": "Information about this object is not available at this time."
   }
 }

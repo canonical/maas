@@ -47,24 +47,52 @@ class BcacheCacheSetsHandler(OperationsHandler):
         return ('bcache_cache_sets_handler', ["system_id"])
 
     def read(self, request, system_id):
-        """List all bcache cache sets belonging to a machine.
+        """@description-title List bcache sets
+        @description List all bcache cache sets belonging to a machine.
 
-        Returns 404 if the machine is not found.
+        @param (string) "{system_id}" [required=true] A machine system_id.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing a list of
+        bcache sets.
+        @success-example "success-json" [exkey=bcache-placeholder] placeholder
+        text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine is not found.
+        @error-example "not-found"
+            Not Found
         """
         machine = Machine.objects.get_node_or_404(
             system_id, request.user, NodePermission.view)
         return CacheSet.objects.get_cache_sets_for_node(machine)
 
     def create(self, request, system_id):
-        """Creates a bcache Cache Set.
+        """@description-title Creates a bcache cache set
+        @description Creates a bcache cache set.
 
-        :param cache_device: Cache block device.
-        :param cache_partition: Cache partition.
+        Note: specifying both a cache_device and a cache_partition is not
+        allowed.
 
-        Specifying both a cache_device and a cache_partition is not allowed.
+        @param (string) "{system_id}" [required=true] A machine system_id.
 
-        Returns 404 if the machine is not found.
-        Returns 409 if the machine is not Ready.
+        @param (string) "cache_device" [required=false] Cache block device.
+
+        @param (string) "cache_partition" [required=false]  Cache partition.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing
+        the new bcache set.
+        @success-example "success-json" [exkey=bcache-placeholder] placeholder
+        text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine is not found.
+        @error-example "not-found"
+            Not Found
+
+        @error (http-status-code) "409" 409
+        @error (content) "not-ready" The requested machine is not ready.
         """
         machine = Machine.objects.get_node_or_404(
             system_id, request.user, NodePermission.admin)
@@ -111,19 +139,44 @@ class BcacheCacheSetHandler(OperationsHandler):
         return cache_set.get_device()
 
     def read(self, request, system_id, id):
-        """Read bcache cache set on a machine.
+        """@description-title Read a bcache cache set
+        @description Read bcache cache set on a machine.
 
-        Returns 404 if the machine or cache set is not found.
+        @param (string) "{system_id}" [required=true] A machine system_id.
+        @param (string) "{id}" [required=true] A cache_set_id.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing a bcache set.
+        @success-example "success-json" [exkey=bcache-placeholder] placeholder
+        text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine is not found.
+        @error-example "not-found"
+            Not Found
         """
         return CacheSet.objects.get_cache_set_or_404(
             system_id, id, request.user, NodePermission.view)
 
     def delete(self, request, system_id, id):
-        """Delete bcache cache set on a machine.
+        """@description-title Delete a bcache set
+        @description Delete bcache cache set on a machine.
 
-        Returns 400 if the cache set is in use.
-        Returns 404 if the machine or cache set is not found.
-        Returns 409 if the machine is not Ready.
+        @param (string) "{system_id}" [required=true] A machine system_id.
+        @param (string) "{id}" [required=true] A cache_set_id.
+
+        @success (http-status-code) "server-success" 204
+
+        @error (http-status-code) "400" 400
+        @error (content) "not-ready" The cache set is in use.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine is not found.
+        @error-example "not-found"
+            Not Found
+
+        @error (http-status-code) "409" 409
+        @error (content) "not-ready" The requested machine is not ready.
         """
         cache_set = CacheSet.objects.get_cache_set_or_404(
             system_id, id, request.user, NodePermission.admin)
@@ -142,15 +195,33 @@ class BcacheCacheSetHandler(OperationsHandler):
             return rc.DELETED
 
     def update(self, request, system_id, id):
-        """Update bcache cache set on a machine.
+        """@description-title Update a bcache set
+        @description Update bcache cache set on a machine.
 
-        :param cache_device: Cache block device to replace current one.
-        :param cache_partition: Cache partition to replace current one.
+        Note: specifying both a cache_device and a cache_partition is not
+        allowed.
 
-        Specifying both a cache_device and a cache_partition is not allowed.
+        @param (string) "{system_id}" [required=true] A machine system_id.
+        @param (string) "{id}" [required=true] A cache_set_id.
 
-        Returns 404 if the machine or the cache set is not found.
-        Returns 409 if the machine is not Ready.
+        @param (string) "cache_device" [required=false] Cache block device to
+        replace current one.
+
+        @param (string) "cache_partition" [required=false] Cache partition to
+        replace current one.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing a bcache set.
+        @success-example "success-json" [exkey=bcache-placeholder] placeholder
+        text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine is not found.
+        @error-example "not-found"
+            Not Found
+
+        @error (http-status-code) "409" 409
+        @error (content) "not-ready" The requested machine is not ready.
         """
         cache_set = CacheSet.objects.get_cache_set_or_404(
             system_id, id, request.user, NodePermission.admin)
