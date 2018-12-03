@@ -82,9 +82,21 @@ class BlockDevicesHandler(OperationsHandler):
         return ('blockdevices_handler', ["system_id"])
 
     def read(self, request, system_id):
-        """List all block devices belonging to a machine.
+        """@description-title List block devices
+        @description List all block devices belonging to a machine.
 
-        Returns 404 if the machine is not found.
+        @param (string) "{system_id}" [required=true] The machine system_id.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing a list of block
+        devices.
+        @success-example "success-json" [exkey=block-devs-read] placeholder
+        text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine is not found.
+        @error-example "not-found"
+            Not Found
         """
         machine = Machine.objects.get_node_or_404(
             system_id, request.user, NodePermission.view)
@@ -92,18 +104,37 @@ class BlockDevicesHandler(OperationsHandler):
 
     @admin_method
     def create(self, request, system_id):
-        """Create a physical block device.
+        """@description-title Create a block device
+        @description Create a physical block device.
 
-        :param name: Name of the block device.
-        :param model: Model of the block device.
-        :param serial: Serial number of the block device.
-        :param id_path: (optional) Only used if model and serial cannot be
-            provided. This should be a path that is fixed and doesn't change
-            depending on the boot order or kernel version.
-        :param size: Size of the block device.
-        :param block_size: Block size of the block device.
+        @param (string) "{system_id}" [required=true] The machine system_id.
 
-        Returns 404 if the node is not found.
+        @param (string) "name" [required=true] Name of the block device.
+
+        @param (string) "model" [required=false] Model of the block device.
+
+        @param (string) "serial" [required=false] Serial number of the block
+        device.
+
+        @param (string) "id_path" [required=false] Only used if model and
+        serial cannot be provided. This should be a path that is fixed and
+        doesn't change depending on the boot order or kernel version.
+
+        @param (string) "size" [required=true] Size of the block device.
+
+        @param (string) "block_size" [required=true] Block size of the block
+        device.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the new block
+        device.
+        @success-example "success-json" [exkey=block-devs-create] placeholder
+        text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine is not found.
+        @error-example "not-found"
+            Not Found
         """
         machine = Machine.objects.get_node_or_404(
             system_id, request.user, NodePermission.admin)
@@ -212,19 +243,48 @@ class BlockDeviceHandler(OperationsHandler):
         return None
 
     def read(self, request, system_id, id):
-        """Read block device on node.
+        """@description-title Read a block device
+        @description Read a block device on a given machine.
 
-        Returns 404 if the machine or block device is not found.
+        @param (string) "{system_id}" [required=true] The machine system_id.
+        @param (string) "{id}" [required=true] The block device's id.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the requested
+        block device.
+        @success-example "success-json" [exkey=block-devs-read-by-id]
+        placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine or block device is
+        not found.
+        @error-example "not-found"
+            Not Found
         """
         return BlockDevice.objects.get_block_device_or_404(
             system_id, id, request.user, NodePermission.view)
 
     def delete(self, request, system_id, id):
-        """Delete block device on a machine.
+        """@description-title Delete a block device
+        @description Delete block device on a given machine.
 
-        Returns 404 if the machine or block device is not found.
-        Returns 403 if the user is not allowed to delete the block device.
-        Returns 409 if the machine is not Ready.
+        @param (string) "{system_id}" [required=true] The machine system_id.
+        @param (string) "{id}" [required=true] The block device's id.
+
+        @success (http-status-code) "204" 204
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permissions to
+        delete the block device.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine or block device is
+        not found.
+        @error-example "not-found"
+            Not Found
+
+        @error (http-status-code) "409" 409
+        @error (content) "not-ready" The requested machine is not ready.
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, id, request.user, NodePermission.admin)
@@ -236,34 +296,63 @@ class BlockDeviceHandler(OperationsHandler):
         return rc.DELETED
 
     def update(self, request, system_id, id):
-        """Update block device on a machine.
+        """@description-title Update a block device
+        @description Update block device on a given machine.
 
         Machines must have a status of Ready to have access to all options.
         Machines with Deployed status can only have the name, model, serial,
         and/or id_path updated for a block device. This is intented to allow a
         bad block device to be replaced while the machine remains deployed.
 
-        Fields for physical block device:
+        @param (string) "{system_id}" [required=true] The machine system_id.
+        @param (string) "{id}" [required=true] The block device's id.
 
-        :param name: Name of the block device.
-        :param model: Model of the block device.
-        :param serial: Serial number of the block device.
-        :param id_path: (optional) Only used if model and serial cannot be \
-            provided. This should be a path that is fixed and doesn't change \
-            depending on the boot order or kernel version.
-        :param size: Size of the block device.
-        :param block_size: Block size of the block device.
+        @param (string) "name" [required=false] (Physical devices) Name of the
+        block device.
 
-        Fields for virtual block device:
+        @param (string) "model" [required=false] (Physical devices) Model of
+        the block device.
 
-        :param name: Name of the block device.
-        :param uuid: UUID of the block device.
-        :param size: Size of the block device. (Only allowed for logical \
-            volumes.)
+        @param (string) "serial" [required=false] (Physical devices) Serial
+        number of the block device.
 
-        Returns 404 if the machine or block device is not found.
-        Returns 403 if the user is not allowed to update the block device.
-        Returns 409 if the machine is not Ready.
+        @param (string) "id_path" [required=false] (Physical devices) Only used
+        if model and serial cannot be provided. This should be a path that is
+        fixed and doesn't change depending on the boot order or kernel version.
+
+        @param (string) "size" [required=false] (Physical devices) Size of the
+        block device.
+
+        @param (string) "block_size" [required=false] (Physical devices) Block
+        size of the block device.
+
+        @param (string) "name" [required=false] (Virtual devices) Name of
+        the block device.
+
+        @param (string) "uuid" [required=false] (Virtual devices) UUID of
+        the block device.
+
+        @param (string) "size" [required=false] (Virtual devices) Size of
+        the block device. (Only allowed for logical volumes.)
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the updated
+        block device.
+        @success-example "success-json" [exkey=block-devs-update] placeholder
+        text
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permissions to
+        update the block device.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine or block device is
+        not found.
+        @error-example "not-found"
+            Not Found
+
+        @error (http-status-code) "409" 409
+        @error (content) "not-ready" The requested machine is not ready.
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, id, request.user, NodePermission.admin)
@@ -296,13 +385,32 @@ class BlockDeviceHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def add_tag(self, request, system_id, id):
-        """Add a tag to block device on a machine.
+        """@description-title Add a tag
+        @description Add a tag to block device on a given machine.
 
-        :param tag: The tag being added.
+        @param (string) "{system_id}" [required=true] The machine system_id.
+        @param (string) "{id}" [required=true] The block device's id.
 
-        Returns 404 if the machine or block device is not found.
-        Returns 403 if the user is not allowed to update the block device.
-        Returns 409 if the machine is not Ready.
+        @param (string) "tag" [required=true] The tag being added.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the updated
+        block device.
+        @success-example "success-json" [exkey=block-devs-add-tag] placeholder
+        text
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permissions to
+        add a tag.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine or block device is
+        not found.
+        @error-example "not-found"
+            Not Found
+
+        @error (http-status-code) "409" 409
+        @error (content) "not-ready" The requested machine is not ready.
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, id, request.user, NodePermission.admin)
@@ -316,13 +424,32 @@ class BlockDeviceHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def remove_tag(self, request, system_id, id):
-        """Remove a tag from block device on a machine.
+        """@description-title Remove a tag
+        @description Remove a tag from block device on a given machine.
 
-        :param tag: The tag being removed.
+        @param (string) "{system_id}" [required=true] The machine system_id.
+        @param (string) "{id}" [required=true] The block device's id.
 
-        Returns 404 if the machine or block device is not found.
-        Returns 403 if the user is not allowed to update the block device.
-        Returns 409 if the machine is not Ready.
+        @param (string) "tag" [required=false] The tag being removed.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the updated
+        block device.
+        @success-example "success-json" [exkey=block-devs-remove-tag]
+        placeholder text
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permissions to
+        remove a tag.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine or block device is
+        not found.
+        @error-example "not-found"
+            Not Found
+
+        @error (http-status-code) "409" 409
+        @error (content) "not-ready" The requested machine is not ready.
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, id, request.user, NodePermission.admin)
@@ -336,15 +463,34 @@ class BlockDeviceHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def format(self, request, system_id, id):
-        """Format block device with filesystem.
+        """@description-title Format block device
+        @description Format block device with filesystem.
 
-        :param fstype: Type of filesystem.
-        :param uuid: UUID of the filesystem.
+        @param (string) "{system_id}" [required=true] The machine system_id.
+        @param (string) "{id}" [required=true] The block device's id.
 
-        Returns 403 when the user doesn't have the ability to format the \
-            block device.
-        Returns 404 if the machine or block device is not found.
-        Returns 409 if the machine is not Ready or Allocated.
+        @param (string) "fstype" [required=true] Type of filesystem.
+
+        @param (string) "uuid" [required=false] UUID of the filesystem.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the updated
+        block device.
+        @success-example "success-json" [exkey=block-devs-format] placeholder
+        text
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permissions to
+        format the block device.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine or block device is
+        not found.
+        @error-example "not-found"
+            Not Found
+
+        @error (http-status-code) "409" 409
+        @error (content) "not-ready" The requested machine is not ready.
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, id, request.user, NodePermission.edit)
@@ -359,14 +505,34 @@ class BlockDeviceHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def unformat(self, request, system_id, id):
-        """Unformat block device with filesystem.
+        """@description-title Unformat a block device
+        @description Unformat a previously formatted block device.
 
-        Returns 400 if the block device is not formatted, currently mounted, \
-            or part of a filesystem group.
-        Returns 403 when the user doesn't have the ability to unformat the \
-            block device.
-        Returns 404 if the machine or block device is not found.
-        Returns 409 if the machine is not Ready or Allocated.
+        @param (string) "{system_id}" [required=true] The machine system_id.
+        @param (string) "{id}" [required=true] The block device's id.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing
+        the updated block device.
+        @success-example "success-json" [exkey=block-devs-unformat] placeholder
+        text
+
+        @error (http-status-code) "400" 400
+        @error (content) "problem" The block device is not formatted, currently
+        mounted, or part of a filesystem group.
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permissions to
+        unformat the block device.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine or block device is
+        not found.
+        @error-example "not-found"
+            Not Found
+
+        @error (http-status-code) "409" 409
+        @error (content) "not-ready" The requested machine is not ready.
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, id, request.user, NodePermission.edit)
@@ -392,15 +558,36 @@ class BlockDeviceHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def mount(self, request, system_id, id):
-        """Mount the filesystem on block device.
+        """@description-title Mount a filesystem
+        @description Mount the filesystem on block device.
 
-        :param mount_point: Path on the filesystem to mount.
-        :param mount_options: Options to pass to mount(8).
+        @param (string) "{system_id}" [required=true] The machine system_id.
+        @param (string) "{id}" [required=true] The block device's id.
 
-        Returns 403 when the user doesn't have the ability to mount the \
-            block device.
-        Returns 404 if the machine or block device is not found.
-        Returns 409 if the machine is not Ready or Allocated.
+        @param (string) "mount_point" [required=true] Path on the filesystem
+        to mount.
+
+        @param (string) "mount_options" [required=false] Options to pass to
+        mount(8).
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the updated
+        block device.
+        @success-example "success-json" [exkey=block-devs-mount] placeholder
+        text
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permissions to
+        mount the filesystem.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine or block device is
+        not found.
+        @error-example "not-found"
+            Not Found
+
+        @error (http-status-code) "409" 409
+        @error (content) "not-ready" The requested machine is not ready.
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, id, request.user, NodePermission.edit)
@@ -416,14 +603,34 @@ class BlockDeviceHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def unmount(self, request, system_id, id):
-        """Unmount the filesystem on block device.
+        """@description-title Unmount a filesystem
+        @description Unmount the filesystem on block device.
 
-        Returns 400 if the block device is not formatted or not currently \
-            mounted.
-        Returns 403 when the user doesn't have the ability to unmount the \
-            block device.
-        Returns 404 if the machine or block device is not found.
-        Returns 409 if the machine is not Ready or Allocated.
+        @param (string) "{system_id}" [required=true] The machine system_id.
+        @param (string) "{id}" [required=true] The block device's id.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the updated
+        block device.
+        @success-example "success-json" [exkey=block-devs-unmount] placeholder
+        text
+
+        @error (http-status-code) "400" 400
+        @error (content) "problem" The block device is not formatted or
+        currently mounted.
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permissions to mount
+        the filesystem.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine or block device is
+        not found.
+        @error-example "not-found"
+            Not Found
+
+        @error (http-status-code) "409" 409
+        @error (content) "not-ready" The requested machine is not ready.
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, id, request.user, NodePermission.edit)
@@ -442,12 +649,32 @@ class BlockDeviceHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def set_boot_disk(self, request, system_id, id):
-        """Set this block device as the boot disk for the machine.
+        """@description-title Set boot disk
+        @description Set a block device as the boot disk for the machine.
 
-        Returns 400 if the block device is a virtual block device.
-        Returns 404 if the machine or block device is not found.
-        Returns 403 if the user is not allowed to update the block device.
-        Returns 409 if the machine is not Ready or Allocated.
+        @param (string) "{system_id}" [required=true] The machine system_id.
+        @param (string) "{id}" [required=true] The block device's id.
+
+        @success (http-status-code) "server-success" 200
+        @success (content) "success-content" Boot disk set.
+        @success-example "success-content"
+            OK
+
+        @error (http-status-code) "400" 400
+        @error (content) "problem" The block device is a virtual block device.
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permissions to set
+        the boot disk.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine or block device is
+        not found.
+        @error-example "not-found"
+            Not Found
+
+        @error (http-status-code) "409" 409
+        @error (content) "not-ready" The requested machine is not ready.
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, id, request.user, NodePermission.admin)
