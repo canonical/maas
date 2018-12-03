@@ -53,29 +53,62 @@ class BcachesHandler(OperationsHandler):
         return ('bcache_devices_handler', ["system_id"])
 
     def read(self, request, system_id):
-        """List all bcache devices belonging to a machine.
+        """@description-title List all bcache devices
+        @description List all bcache devices belonging to a
+        machine.
 
-        Returns 404 if the machine is not found.
+        @param (string) "{system_id}" [required=true] The machine's system_id.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing a list of
+        bcache devices.
+        @success-example "success-json" [exkey=bcache-placeholder] placeholder
+        text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested system_id is not found.
+        @error-example "not-found"
+            Not Found
         """
         machine = Machine.objects.get_node_or_404(
             system_id, request.user, NodePermission.view)
         return Bcache.objects.filter_by_node(machine)
 
     def create(self, request, system_id):
-        """Creates a Bcache.
-
-        :param name: Name of the Bcache.
-        :param uuid: UUID of the Bcache.
-        :param cache_set: Cache set.
-        :param backing_device: Backing block device.
-        :param backing_partition: Backing partition.
-        :param cache_mode: Cache mode (WRITEBACK, WRITETHROUGH, WRITEAROUND).
+        """@description-title Creates a bcache
+        @description Creates a bcache.
 
         Specifying both a device and a partition for a given role (cache or
         backing) is not allowed.
 
-        Returns 404 if the machine is not found.
-        Returns 409 if the machine is not Ready.
+        @param (string) "{system_id}" [required=true] The machine's system_id.
+
+        @param (string) "name" [required=false] Name of the Bcache.
+
+        @param (string) "uuid" [required=false] UUID of the Bcache.
+
+        @param (string) "cache_set" [required=false] Cache set.
+
+        @param (string) "backing_device" [required=false] Backing block device.
+
+        @param (string) "backing_partition" [required=false] Backing partition.
+
+        @param (string) "cache_mode" [required=false] Cache mode:
+        ``WRITEBACK``, ``WRITETHROUGH``, ``WRITEAROUND``.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the new bcache
+        device.
+        @success-example "success-json" [exkey=bcache-placeholder] placeholder
+        text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested system_id is not found.
+        @error-example "not-found"
+            Not Found
+
+        @error (http-status-code) "409" 409
+        @error (content) "not-ready" The requested machine is not ready.
         """
         machine = Machine.objects.get_node_or_404(
             system_id, request.user, NodePermission.admin)
@@ -135,18 +168,44 @@ class BcacheHandler(OperationsHandler):
         return bcache.get_bcache_backing_filesystem().get_parent()
 
     def read(self, request, system_id, id):
-        """Read bcache device on a machine.
+        """@description-title Read a bcache device
+        @description Read bcache device on a machine.
 
-        Returns 404 if the machine or bcache is not found.
+        @param (string) "{system_id}" [required=true] The machine's system_id.
+        @param (string) "{id}" [required=true] The bcache id.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the bcache
+        device.
+        @success-example "success-json" [exkey=bcache-placeholder] placeholder
+        text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine or bcache id is not
+        found.
+        @error-example "not-found"
+            Not Found
         """
         return Bcache.objects.get_object_or_404(
             system_id, id, request.user, NodePermission.view)
 
     def delete(self, request, system_id, id):
-        """Delete bcache on a machine.
+        """@description-title Delete a bcache
+        @description Delete bcache on a machine.
 
-        Returns 404 if the machine or bcache is not found.
-        Returns 409 if the machine is not Ready.
+        @param (string) "{system_id}" [required=true] The machine's system_id.
+        @param (string) "{id}" [required=true] The bcache id.
+
+        @success (http-status-code) "server-success" 204
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested id or system_id is not
+        found.
+        @error-example "not-found"
+            Not Found
+
+        @error (http-status-code) "409" 409
+        @error (content) "not-ready" The requested machine is not ready.
         """
         bcache = Bcache.objects.get_object_or_404(
             system_id, id, request.user, NodePermission.admin)
@@ -161,20 +220,45 @@ class BcacheHandler(OperationsHandler):
         return rc.DELETED
 
     def update(self, request, system_id, id):
-        """Update bcache on a machine.
-
-        :param name: Name of the Bcache.
-        :param uuid: UUID of the Bcache.
-        :param cache_set: Cache set to replace current one.
-        :param backing_device: Backing block device to replace current one.
-        :param backing_partition: Backing partition to replace current one.
-        :param cache_mode: Cache mode (writeback, writethrough, writearound).
+        """@description-title Update a bcache
+        @description Update bcache on a machine.
 
         Specifying both a device and a partition for a given role (cache or
         backing) is not allowed.
 
-        Returns 404 if the machine or the bcache is not found.
-        Returns 409 if the machine is not Ready.
+        @param (string) "{system_id}" [required=true] The machine's system_id.
+        @param (string) "{id}" [required=true] The bcache id.
+
+        @param (string) "name" [required=false] Name of the Bcache.
+
+        @param (string) "uuid" [required=false] UUID of the Bcache.
+
+        @param (string) "cache_set" [required=false] Cache set to replace
+        current one.
+
+        @param (string) "backing_device" [required=false] Backing block device
+        to replace current one.
+
+        @param (string) "backing_partition" [required=false] Backing partition
+        to replace current one.
+
+        @param (string) "cache_mode" [required=false] Cache mode:
+        ``WRITEBACK``, ``WRITETHROUGH``, ``WRITEAROUND``.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the new bcache
+        device.
+        @success-example "success-json" [exkey=bcache-placeholder] placeholder
+        text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested id or system_id is not
+        found.
+        @error-example "not-found"
+            Not Found
+
+        @error (http-status-code) "409" 409
+        @error (content) "not-ready" The requested machine is not ready.
         """
         bcache = Bcache.objects.get_object_or_404(
             system_id, id, request.user, NodePermission.admin)
