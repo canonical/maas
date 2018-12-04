@@ -1,0 +1,270 @@
+{
+  "devices-update": {
+    "domain": {
+      "authoritative": true,
+      "ttl": null,
+      "is_default": true,
+      "resource_record_count": 0,
+      "name": "maas",
+      "id": 0,
+      "resource_uri": "/MAAS/api/2.0/domains/0/"
+    },
+    "owner": null,
+    "address_ttl": null,
+    "node_type_name": "Device",
+    "fqdn": "newhostname.maas",
+    "owner_data": {},
+    "parent": null,
+    "interface_set": [
+      {
+        "product": null,
+        "discovered": null,
+        "links": [],
+        "name": "eth-jBhEqB",
+        "enabled": true,
+        "firmware_version": null,
+        "type": "physical",
+        "vlan": {
+          "vid": 0,
+          "mtu": 1500,
+          "dhcp_on": false,
+          "external_dhcp": null,
+          "relay_vlan": null,
+          "secondary_rack": null,
+          "space": "undefined",
+          "fabric": "fabric-12",
+          "name": "untagged",
+          "primary_rack": null,
+          "id": 5016,
+          "fabric_id": 12,
+          "resource_uri": "/MAAS/api/2.0/vlans/5016/"
+        },
+        "parents": [],
+        "params": "",
+        "effective_mtu": 1500,
+        "children": [],
+        "id": 134,
+        "vendor": null,
+        "mac_address": "4d:2f:6f:d3:b7:6d",
+        "system_id": "shqe4g",
+        "tags": [
+          "tag-Vg3OLy",
+          "tag-KY66Uo",
+          "tag-jh3fOB"
+        ],
+        "resource_uri": "/MAAS/api/2.0/nodes/shqe4g/interfaces/134/"
+      }
+    ],
+    "zone": {
+      "name": "default",
+      "description": "",
+      "id": 1,
+      "resource_uri": "/MAAS/api/2.0/zones/default/"
+    },
+    "node_type": 1,
+    "ip_addresses": [],
+    "hostname": "newhostname",
+    "tag_names": [],
+    "system_id": "shqe4g",
+    "resource_uri": "/MAAS/api/2.0/devices/shqe4g/"
+  },
+  "devices-restore-network-conf": {
+    "interface_set": [
+      {
+        "system_id": "shqe4g",
+        "mac_address": "4d:2f:6f:d3:b7:6d",
+        "type": "physical",
+        "enabled": true,
+        "links": [
+          {
+            "id": 70,
+            "mode": "dhcp"
+          }
+        ],
+        "firmware_version": null,
+        "vlan": {
+          "vid": 0,
+          "mtu": 1500,
+          "dhcp_on": false,
+          "external_dhcp": null,
+          "relay_vlan": null,
+          "fabric": "fabric-12",
+          "space": "undefined",
+          "name": "untagged",
+          "fabric_id": 12,
+          "id": 5016,
+          "secondary_rack": null,
+          "primary_rack": null,
+          "resource_uri": "/MAAS/api/2.0/vlans/5016/"
+        },
+        "discovered": null,
+        "tags": [
+          "tag-Vg3OLy",
+          "tag-KY66Uo",
+          "tag-jh3fOB"
+        ],
+        "parents": [],
+        "name": "eth-jBhEqB",
+        "params": "",
+        "children": [],
+        "effective_mtu": 1500,
+        "id": 134,
+        "product": null,
+        "vendor": null,
+        "resource_uri": "/MAAS/api/2.0/nodes/shqe4g/interfaces/134/"
+      }
+    ],
+    "system_id": "shqe4g",
+    "node_type": 1,
+    "tag_names": [],
+    "address_ttl": null,
+    "ip_addresses": [],
+    "owner_data": {},
+    "zone": {
+      "name": "default",
+      "description": "",
+      "id": 1,
+      "resource_uri": "/MAAS/api/2.0/zones/default/"
+    },
+    "owner": null,
+    "node_type_name": "Device",
+    "domain": {
+      "authoritative": true,
+      "ttl": null,
+      "name": "maas",
+      "is_default": true,
+      "resource_record_count": 0,
+      "id": 0,
+      "resource_uri": "/MAAS/api/2.0/domains/0/"
+    },
+    "parent": null,
+    "fqdn": "newhostname.maas",
+    "hostname": "newhostname",
+    "resource_uri": "/MAAS/api/2.0/devices/shqe4g/"
+  },
+  "devices-restore-default-conf": {
+    "owner_data": {},
+    "node_type": 1,
+    "parent": null,
+    "ip_addresses": [],
+    "system_id": "shqe4g",
+    "tag_names": [],
+    "interface_set": [
+      {
+        "discovered": null,
+        "firmware_version": null,
+        "name": "eth-jBhEqB",
+        "system_id": "shqe4g",
+        "parents": [],
+        "effective_mtu": 1500,
+        "children": [],
+        "links": [
+          {
+            "id": 71,
+            "mode": "dhcp"
+          }
+        ],
+        "vlan": {
+          "vid": 0,
+          "mtu": 1500,
+          "dhcp_on": false,
+          "external_dhcp": null,
+          "relay_vlan": null,
+          "name": "untagged",
+          "primary_rack": null,
+          "fabric_id": 12,
+          "id": 5016,
+          "space": "undefined",
+          "secondary_rack": null,
+          "fabric": "fabric-12",
+          "resource_uri": "/MAAS/api/2.0/vlans/5016/"
+        },
+        "enabled": true,
+        "vendor": null,
+        "type": "physical",
+        "tags": [
+          "tag-Vg3OLy",
+          "tag-KY66Uo",
+          "tag-jh3fOB"
+        ],
+        "product": null,
+        "id": 134,
+        "params": "",
+        "mac_address": "4d:2f:6f:d3:b7:6d",
+        "resource_uri": "/MAAS/api/2.0/nodes/shqe4g/interfaces/134/"
+      }
+    ],
+    "domain": {
+      "authoritative": true,
+      "ttl": null,
+      "resource_record_count": 0,
+      "name": "maas",
+      "is_default": true,
+      "id": 0,
+      "resource_uri": "/MAAS/api/2.0/domains/0/"
+    },
+    "zone": {
+      "name": "default",
+      "description": "",
+      "id": 1,
+      "resource_uri": "/MAAS/api/2.0/zones/default/"
+    },
+    "owner": null,
+    "address_ttl": null,
+    "fqdn": "newhostname.maas",
+    "hostname": "newhostname",
+    "node_type_name": "Device",
+    "resource_uri": "/MAAS/api/2.0/devices/shqe4g/"
+  },
+  "devices-create": {
+    "address_ttl": null,
+    "fqdn": "moral-buck.maas",
+    "interface_set": [
+      {
+        "discovered": null,
+        "product": null,
+        "name": "eth0",
+        "children": [],
+        "effective_mtu": 1500,
+        "firmware_version": null,
+        "vendor": null,
+        "id": 136,
+        "type": "physical",
+        "tags": [],
+        "links": [],
+        "enabled": true,
+        "params": "",
+        "vlan": null,
+        "system_id": "kas8m6",
+        "mac_address": "00:00:00:00:00:00",
+        "parents": [],
+        "resource_uri": "/MAAS/api/2.0/nodes/kas8m6/interfaces/136/"
+      }
+    ],
+    "owner": "admin",
+    "hostname": "moral-buck",
+    "parent": null,
+    "node_type_name": "Device",
+    "ip_addresses": [],
+    "zone": {
+      "name": "default",
+      "description": "",
+      "id": 1,
+      "resource_uri": "/MAAS/api/2.0/zones/default/"
+    },
+    "owner_data": {},
+    "system_id": "kas8m6",
+    "domain": {
+      "authoritative": true,
+      "ttl": null,
+      "is_default": true,
+      "name": "maas",
+      "id": 0,
+      "resource_record_count": 0,
+      "resource_uri": "/MAAS/api/2.0/domains/0/"
+    },
+    "tag_names": [],
+    "node_type": 1,
+    "resource_uri": "/MAAS/api/2.0/devices/kas8m6/"
+  }
+}

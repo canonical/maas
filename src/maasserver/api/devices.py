@@ -44,7 +44,8 @@ DISPLAYED_DEVICE_FIELDS = (
 
 
 class DeviceHandler(NodeHandler, OwnerDataMixin):
-    """Manage an individual device.
+    """
+    Manage an individual device.
 
     The device is identified by its system_id.
     """
@@ -63,25 +64,36 @@ class DeviceHandler(NodeHandler, OwnerDataMixin):
             return node.parent.system_id
 
     def update(self, request, system_id):
-        """Update a specific device.
+        """@description-title Update a device
+        @description Update a device with a given system_id.
 
-        :param hostname: The new hostname for this device.
-        :type hostname: unicode
+        @param (string) "{system_id}" [required=true] A device system_id.
 
-        :param domain: The domain for this device.
-        :type domain: unicode
+        @param (string) "hostname" [required=false] The hostname for this
+        device.
 
-        :param parent: Optional system_id to indicate this device's parent.
-            If the parent is already set and this parameter is omitted,
-            the parent will be unchanged.
-        :type parent: unicode
+        @param (string) "domain" [required=false] The domain for this device.
 
-        :param zone: Name of a valid physical zone in which to place this
-            node.
-        :type zone: unicode
+        @param (string) "parent" [required=false] Optional system_id to
+        indicate this device's parent. If the parent is already set and this
+        parameter is omitted, the parent will be unchanged.
 
-        Returns 404 if the device is not found.
-        Returns 403 if the user does not have permission to update the device.
+        @param (string) "zone" [required=false] Name of a valid physical zone
+        in which to place this node.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the updated
+        device.
+        @success-example "success-json" [exkey=devices-update] placeholder text
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have the permissions
+        required to update the device.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested device is not found.
+        @error-example "not-found"
+            Not Found
         """
         device = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.edit)
@@ -93,11 +105,21 @@ class DeviceHandler(NodeHandler, OwnerDataMixin):
             raise MAASAPIValidationError(form.errors)
 
     def delete(self, request, system_id):
-        """Delete a specific Device.
+        """@description-title Delete a device
+        @description Delete a device with the given system_id.
 
-        Returns 404 if the device is not found.
-        Returns 403 if the user does not have permission to delete the device.
-        Returns 204 if the device is successfully deleted.
+        @param (string) "{system_id}" [required=true] A device system_id.
+
+        @success (http-status-code) "server-success" 204
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have the permissions
+        required to delete the device.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested device is not found.
+        @error-example "not-found"
+            Not Found
         """
         device = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user,
@@ -107,10 +129,26 @@ class DeviceHandler(NodeHandler, OwnerDataMixin):
 
     @operation(idempotent=False)
     def restore_networking_configuration(self, request, system_id):
-        """Reset a device's network options.
+        """@description-title Reset networking options
+        @description Restore the networking options of a device with the given
+        system_id to default values.
 
-        Returns 404 if the device is not found
-        Returns 403 if the user does not have permission to reset the device.
+        @param (string) "{system_id}" [required=true] A device system_id.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the updated
+        device.
+        @success-example "success-json" [exkey=devices-restore-network-conf]
+        placeholder text
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have the permissions
+        required to update the device.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested device is not found.
+        @error-example "not-found"
+            Not Found
         """
         device = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user,
@@ -120,10 +158,26 @@ class DeviceHandler(NodeHandler, OwnerDataMixin):
 
     @operation(idempotent=False)
     def restore_default_configuration(self, request, system_id):
-        """Reset a device's configuration to its initial state.
+        """@description-title Reset device configuration
+        @description Restore the configuration options of a device with the
+        given system_id to default values.
 
-        Returns 404 if the device is not found.
-        Returns 403 if the user does not have permission to reset the device.
+        @param (string) "{system_id}" [required=true] A device system_id.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the updated
+        device.
+        @success-example "success-json" [exkey=devices-restore-default-conf]
+        placeholder text
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have the permissions
+        required to update the device.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested device is not found.
+        @error-example "not-found"
+            Not Found
         """
         device = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user,
@@ -151,20 +205,27 @@ class DevicesHandler(NodesHandler):
     base_model = Device
 
     def create(self, request):
-        """Create a new device.
+        """@description-title Create a new device
+        @description Create a new device.
 
-        :param hostname: A hostname. If not given, one will be generated.
-        :type hostname: unicode
+        @param (string) "hostname" [required=false] A hostname. If not given,
+        one will be generated.
 
-        :param domain: The domain of the device. If not given the default
-            domain is used.
-        :type domain: unicode
+        @param (string) "domain" [required=false] The domain of the device. If
+        not given the default domain is used.
 
-        :param mac_addresses: One or more MAC addresses for the device.
-        :type mac_addresses: unicode
+        @param (string) "mac_addresses" [required=true] One or more MAC
+        addresses for the device.
 
-        :param parent: The system id of the parent.  Optional.
-        :type parent: unicode
+        @param (string) "parent" [required=false] The system id of the parent.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the new device.
+        @success-example "success-json" [exkey=devices-create] placeholder text
+
+        @error (http-status-code) "400" 400
+        @error (content) "bad-param" There was a problem with the given
+        parameters.
         """
         form = DeviceWithMACsForm(data=request.data, request=request)
         if form.is_valid():
