@@ -144,9 +144,16 @@ class BootResourcesHandler(OperationsHandler):
     update = delete = None
 
     def read(self, request):
-        """List all boot resources.
+        """@description-title List boot resources
+        @description List all boot resources
 
-        :param type: Type of boot resources to list. Default: all
+        @param (string) "type" [required=false] Type of boot resources to list.
+        If not provided, returns all types.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing a list of boot
+        resource objects.
+        @success-example "success-json" [exkey=boot-res-read] placeholder text
         """
         if 'type' not in request.GET:
             rtype = 'all'
@@ -175,16 +182,35 @@ class BootResourcesHandler(OperationsHandler):
 
     @admin_method
     def create(self, request):
-        """Uploads a new boot resource.
+        """@description-title Upload a new boot resource
+        @description Uploads a new boot resource.
 
-        :param name: Name of the boot resource.
-        :param title: Title for the boot resource.
-        :param architecture: Architecture the boot resource supports.
-        :param filetype: Filetype for uploaded content. (Default: tgz,
-            Supported: tgz, ddtgz, ddtbz, ddtxz, ddtar, ddbz2, ddgz,
-            ddxz, ddraw
-        :param content: Image content. Note: this is not a normal parameter,
-            but a file upload.
+        @param (string) "name" [required=true] Name of the boot resource.
+
+        @param (string) "architecture" [required=true] Architecture the boot
+        resource supports.
+
+        @param (string) "sha256" [required=true] The ``sha256`` hash of the
+        resource.
+
+        @param (string) "size" [required=true] The size of the resource in
+        bytes.
+
+        @param (string) "title" [required=false] Title for the boot resource.
+
+        @param (string) "filetype" [required=false] Filetype for uploaded
+        content. (Default: ``tgz``. Supported: ``tgz``, ``ddtgz``, ``ddtbz``,
+        ``ddtxz``, ``ddtar``, ``ddbz2``, ``ddgz``, ``ddxz``, ``ddraw``)
+
+        @param (string) "content" [required=false] Image content. Note: this is
+        not a normal parameter, but an ``application/octet-stream`` file
+        upload.
+
+        @success (http-status-code) "server-success" 201
+        @success (json) "success-json" A JSON object containing information
+        about the uploaded resource.
+        @success-example "success-json" [exkey=boot-res-create] placeholder
+        text
         """
         # If the user provides no parameters to the create command, then
         # django will treat the form as valid, and so it won't actually
@@ -226,7 +252,13 @@ class BootResourcesHandler(OperationsHandler):
     @admin_method
     @operation(idempotent=False, exported_as='import')
     def import_resources(self, request):
-        """Import the boot resources."""
+        """@description-title Import boot resources
+        @description Import the boot resources.
+
+        @success (http-status-code) "server-success" 200
+        @success (content) "success-content"
+            Import of boot resources started
+        """
         import_resources()
         return HttpResponse(
             "Import of boot resources started",
@@ -235,7 +267,13 @@ class BootResourcesHandler(OperationsHandler):
     @admin_method
     @operation(idempotent=False)
     def stop_import(self, request):
-        """Stop import of boot resources."""
+        """@description-title Stop import boot resources
+        @description Stop import the boot resources.
+
+        @success (http-status-code) "server-success" 200
+        @success (content) "success-content"
+            Import of boot resources is being stopped.
+        """
         stop_import_resources()
         return HttpResponse(
             "Import of boot resources is being stopped",
@@ -243,7 +281,15 @@ class BootResourcesHandler(OperationsHandler):
 
     @operation(idempotent=True)
     def is_importing(self, request):
-        """Return import status."""
+        """@description-title Importing status
+        @description Get the status of importing resources.
+
+        @success (http-status-code) "server-success" 200
+        @success (content) "success-content-true"
+            true
+        @success (content) "success-content-false"
+            false
+        """
         return is_import_resources_running()
 
     @classmethod
@@ -259,7 +305,22 @@ class BootResourceHandler(OperationsHandler):
     create = update = None
 
     def read(self, request, id):
-        """Read a boot resource."""
+        """@description-title Read a boot resource
+        @description Reads a boot resource by id
+
+        @param (int) "{id}" [required=true] The boot resource id.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing information
+        about the requested resource.
+        @success-example "success-json" [exkey=boot-res-read-by-id] placeholder
+        text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested boot resource is not found.
+        @error-example "not-found"
+            Not Found
+        """
         resource = get_object_or_404(BootResource, id=id)
         stream = json_object(
             boot_resource_to_dict(resource, with_sets=True), request)
@@ -269,7 +330,18 @@ class BootResourceHandler(OperationsHandler):
 
     @admin_method
     def delete(self, request, id):
-        """Delete boot resource."""
+        """@description-title Delete a boot resource
+        @description Delete a boot resource by id.
+
+        @param (int) "{id}" [required=true] The boot resource id.
+
+        @success (http-status-code) "server-success" 204
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested boot resource is not found.
+        @error-example "not-found"
+            Not Found
+        """
         resource = BootResource.objects.get(id=id)
         if resource is not None:
             resource.delete()

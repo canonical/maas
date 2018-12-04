@@ -1,0 +1,106 @@
+{
+  "boot-res-read": [
+    {
+      "id": 3,
+      "type": "Synced",
+      "name": "grub-efi-signed/uefi",
+      "architecture": "amd64/generic",
+      "resource_uri": "/MAAS/api/2.0/boot-resources/3/"
+    },
+    {
+      "id": 4,
+      "type": "Synced",
+      "name": "grub-efi/uefi",
+      "architecture": "arm64/generic",
+      "resource_uri": "/MAAS/api/2.0/boot-resources/4/"
+    },
+    {
+      "id": 5,
+      "type": "Synced",
+      "name": "grub-ieee1275/open-firmware",
+      "architecture": "ppc64el/generic",
+      "resource_uri": "/MAAS/api/2.0/boot-resources/5/"
+    },
+    {
+      "id": 6,
+      "type": "Synced",
+      "name": "pxelinux/pxe",
+      "architecture": "i386/generic",
+      "resource_uri": "/MAAS/api/2.0/boot-resources/6/"
+    },
+    {
+      "id": 1,
+      "type": "Synced",
+      "name": "ubuntu/bionic",
+      "architecture": "amd64/ga-18.04",
+      "resource_uri": "/MAAS/api/2.0/boot-resources/1/",
+      "subarches": "generic,hwe-p,hwe-q,hwe-r,hwe-s,hwe-t,hwe-u,hwe-v,hwe-w,ga-16.04,ga-16.10,ga-17.04,ga-17.10,ga-18.04"
+    },
+    {
+      "id": 2,
+      "type": "Synced",
+      "name": "ubuntu/bionic",
+      "architecture": "amd64/ga-18.04-lowlatency",
+      "resource_uri": "/MAAS/api/2.0/boot-resources/2/",
+      "subarches": "generic,hwe-p,hwe-q,hwe-r,hwe-s,hwe-t,hwe-u,hwe-v,hwe-w,ga-16.04,ga-16.10,ga-17.04,ga-17.10,ga-18.04"
+    }
+  ],
+  "boot-res-create": {
+    "id": 7,
+    "type": "Uploaded",
+    "name": "newresource",
+    "architecture": "amd64/generic",
+    "resource_uri": "/MAAS/api/2.0/boot-resources/7/",
+    "subarches": "generic",
+    "title": "",
+    "sets": {
+      "20181203": {
+        "version": "20181203",
+        "label": "uploaded",
+        "size": 4000000000,
+        "complete": false,
+        "progress": 0,
+        "files": {
+          "root-tgz": {
+            "filename": "root-tgz",
+            "filetype": "root-tgz",
+            "sha256": "aec070645fe53ee3b3763059376134f058cc337247c978add178b6ccdfb0019f",
+            "size": 4000000000,
+            "complete": false,
+            "progress": 0,
+            "upload_uri": "/MAAS/api/2.0/boot-resources/7/upload/18/"
+          }
+        }
+      }
+    }
+  },
+  "boot-res-read-by-id": {
+    "id": 7,
+    "type": "Uploaded",
+    "name": "newresource",
+    "architecture": "amd64/generic",
+    "resource_uri": "/MAAS/api/2.0/boot-resources/7/",
+    "subarches": "generic",
+    "title": "",
+    "sets": {
+      "20181203": {
+        "version": "20181203",
+        "label": "uploaded",
+        "size": 4000000000,
+        "complete": false,
+        "progress": 0,
+        "files": {
+          "root-tgz": {
+            "filename": "root-tgz",
+            "filetype": "root-tgz",
+            "sha256": "aec070645fe53ee3b3763059376134f058cc337247c978add178b6ccdfb0019f",
+            "size": 4000000000,
+            "complete": false,
+            "progress": 0,
+            "upload_uri": "/MAAS/api/2.0/boot-resources/7/upload/18/"
+          }
+        }
+      }
+    }
+  }
+}
