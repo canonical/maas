@@ -38,7 +38,8 @@ DISPLAYED_DHCP_SNIPPET_FIELDS = (
 
 
 class DHCPSnippetHandler(OperationsHandler):
-    """Manage an individual DHCP snippet.
+    """
+    Manage an individual DHCP snippet.
 
     The DHCP snippet is identified by its id.
     """
@@ -76,42 +77,62 @@ class DHCPSnippetHandler(OperationsHandler):
         return dhcp_snippet.node is None and dhcp_snippet.subnet is None
 
     def read(self, request, id):
-        """Read DHCP snippet.
+        """@description-title Read a DHCP snippet
+        @description Read a DHCP snippet with the given id.
 
-        Returns 404 if the snippet is not found.
+        @param (int) "{id}" [required=true] A DHCP snippet id.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing
+        information about the requested DHCP snippet.
+        @success-example "success-json" [exkey=dhcp-snippets-read-by-id]
+        placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested DHCP snippet is not found.
+        @error-example "not-found"
+            Not Found
         """
         return DHCPSnippet.objects.get_dhcp_snippet_or_404(id)
 
     @admin_method
     def update(self, request, id):
-        """Update a DHCP snippet.
+        """@description-title Update a DHCP snippet
+        @description Update a DHCP snippet with the given id.
 
-        :param name: The name of the DHCP snippet.
-        :type name: unicode
+        @param (int) "{id}" [required=true] A DHCP snippet id.
 
-        :param value: The new value of the DHCP snippet to be used in
-            dhcpd.conf. Previous values are stored and can be reverted.
-        :type value: unicode
+        @param (string) "name" [required=false] The name of the DHCP snippet.
 
-        :param description: A description of what the DHCP snippet does.
-        :type description: unicode
+        @param (string) "value" [required=false] The new value of the DHCP
+        snippet to be used in dhcpd.conf. Previous values are stored and can be
+        reverted.
 
-        :param enabled: Whether or not the DHCP snippet is currently enabled.
-        :type enabled: boolean
+        @param (string) "description" [required=false] A description of what
+        the DHCP snippet does.
 
-        :param node: The node the DHCP snippet is to be used for. Can not be
-            set if subnet is set.
-        :type node: unicode
+        @param (boolean) "enabled" [required=false] Whether or not the DHCP
+        snippet is currently enabled.
 
-        :param subnet: The subnet the DHCP snippet is to be used for. Can not
-            be set if node is set.
-        :type subnet: unicode
+        @param (string) "node" [required=false] The node the DHCP snippet is to
+        be used for. Can not be set if subnet is set.
 
-        :param global_snippet: Set the DHCP snippet to be a global option. This
-            removes any node or subnet links.
-        :type global_snippet: boolean
+        @param (string) "subnet" [required=false] The subnet the DHCP snippet
+        is to be used for. Can not be set if node is set.
 
-        Returns 404 if the DHCP snippet is not found.
+        @param (boolean) "global_snippet" [required=false] Set the DHCP snippet
+        to be a global option. This removes any node or subnet links.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing
+        information about the updated DHCP snippet.
+        @success-example "success-json" [exkey=dhcp-snippets-update]
+        placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested DHCP snippet is not found.
+        @error-example "not-found"
+            Not Found
         """
         dhcp_snippet = DHCPSnippet.objects.get_dhcp_snippet_or_404(id)
         form = DHCPSnippetForm(instance=dhcp_snippet, data=request.data)
@@ -122,9 +143,17 @@ class DHCPSnippetHandler(OperationsHandler):
 
     @admin_method
     def delete(self, request, id):
-        """Delete a DHCP snippet.
+        """@description-title Delete a DHCP snippet
+        @description Delete a DHCP snippet with the given id.
 
-        Returns 404 if the DHCP snippet is not found.
+        @param (int) "{id}" [required=true] A DHCP snippet id.
+
+        @success (http-status-code) "server-success" 204
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested DHCP snippet is not found.
+        @error-example "not-found"
+            Not Found
         """
         dhcp_snippet = DHCPSnippet.objects.get_dhcp_snippet_or_404(id)
         dhcp_snippet.delete()
@@ -136,14 +165,26 @@ class DHCPSnippetHandler(OperationsHandler):
     @admin_method
     @operation(idempotent=False)
     def revert(self, request, id):
-        """Revert the value of a DHCP snippet to an earlier revision.
+        """@description-title Revert DHCP snippet to earlier version
+        @description Revert the value of a DHCP snippet with the given id to an
+        earlier revision.
 
-        :param to: What revision in the DHCP snippet's history to revert to.
-            This can either be an ID or a negative number representing how far
-            back to go.
-        :type to: integer
+        @param (int) "{id}" [required=true] A DHCP snippet id.
 
-        Returns 404 if the DHCP snippet is not found.
+        @param (int) "to" [required=true] What revision in the DHCP snippet's
+        history to revert to.  This can either be an ID or a negative number
+        representing how far back to go.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing
+        information about the reverted DHCP snippet.
+        @success-example "success-json" [exkey=dhcp-snippets-revert]
+        placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested DHCP snippet is not found.
+        @error-example "not-found"
+            Not Found
         """
         revert_to = request.data.get('to')
         if revert_to is None:
@@ -180,41 +221,48 @@ class DHCPSnippetsHandler(OperationsHandler):
         return ('dhcp_snippets_handler', [])
 
     def read(self, request):
-        """List all DHCP snippets."""
+        """@description-title List DHCP snippets
+        @description List all available DHCP snippets.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing a list of all
+        available DHCP snippets.
+        @success-example "success-json" [exkey=dhcp-snippets-read] placeholder
+        text
+        """
         return DHCPSnippet.objects.all().select_related(
             'value', 'subnet', 'node')
 
     @admin_method
     def create(Self, request):
-        """Create a DHCP snippet.
+        """@description-title Create a DHCP snippet
+        @description Creates a DHCP snippet.
 
-        :param name: The name of the DHCP snippet. This is required to create
-            a new DHCP snippet.
-        :type name: unicode
+        @param (string) "name" [required=true] The name of the DHCP snippet.
 
-        :param value: The snippet of config inserted into dhcpd.conf. This is
-            required to create a new DHCP snippet.
-        :type value: unicode
+        @param (string) "value" [required=true] The snippet of config inserted
+        into dhcpd.conf.
 
-        :param description: A description of what the snippet does.
-        :type description: unicode
+        @param (string) "description" [required=false] A description of what
+        the snippet does.
 
-        :param enabled: Whether or not the snippet is currently enabled.
-        :type enabled: boolean
+        @param (boolean) "enabled" [required=false] Whether or not the snippet
+        is currently enabled.
 
-        :param node: The node this snippet applies to. Cannot be used with
-            subnet or global_snippet.
-        :type node: unicode
+        @param (string) "node" [required=false] The node this snippet applies
+        to. Cannot be used with subnet or global_snippet.
 
-        :param subnet: The subnet this snippet applies to. Cannot be used with
-            node or global_snippet.
-        :type subnet: unicode
+        @param (string) "subnet" [required=false] The subnet this snippet
+        applies to. Cannot be used with node or global_snippet.
 
-        :param global_snippet: Whether or not this snippet is to be applied
-            globally. Cannot be used with node or subnet.
-        :type global_snippet: boolean
+        @param (boolean) "global_snippet" [required=false] Whether or not this
+        snippet is to be applied globally. Cannot be used with node or subnet.
 
-        Returns 404 if the DHCP snippet is not found.
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the new DHCP
+        snippet object.
+        @success-example "success-json" [exkey=dhcp-snippets-create]
+        placeholder text
         """
         form = DHCPSnippetForm(data=request.data)
         if form.is_valid():

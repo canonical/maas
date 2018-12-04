@@ -1,0 +1,412 @@
+{
+  "dhcp-snippets-read-by-id": {
+    "name": "boot from other server",
+    "description": "instructs device to boot from other server",
+    "enabled": true,
+    "node": {
+      "created": "2018-12-04T19:21:11.134",
+      "updated": "2018-12-04T19:21:11.164",
+      "hostname": "free-orca",
+      "pool": null,
+      "domain": {
+        "authoritative": true,
+        "ttl": null,
+        "name": "maas",
+        "is_default": true,
+        "id": 0,
+        "resource_record_count": 0,
+        "resource_uri": "/MAAS/api/2.0/domains/0/"
+      },
+      "address_ttl": null,
+      "status": 0,
+      "previous_status": 0,
+      "status_expires": null,
+      "bios_boot_method": null,
+      "osystem": "",
+      "distro_series": "",
+      "architecture": null,
+      "min_hwe_kernel": null,
+      "hwe_kernel": null,
+      "node_type": 1,
+      "parent": null,
+      "agent_name": "",
+      "error_description": "",
+      "zone": {
+        "name": "default",
+        "description": "",
+        "id": 1,
+        "resource_uri": "/MAAS/api/2.0/zones/default/"
+      },
+      "cpu_count": 0,
+      "cpu_speed": 0,
+      "memory": 0,
+      "swap_size": null,
+      "bmc": null,
+      "instance_power_parameters": "",
+      "power_state": "unknown",
+      "power_state_queried": null,
+      "power_state_updated": null,
+      "last_image_sync": null,
+      "token": null,
+      "error": "",
+      "netboot": true,
+      "license_key": null,
+      "creation_type": 1,
+      "boot_interface": null,
+      "boot_cluster_ip": null,
+      "boot_disk": null,
+      "gateway_link_ipv4": null,
+      "gateway_link_ipv6": null,
+      "default_user": "",
+      "install_rackd": false,
+      "install_kvm": false,
+      "enable_ssh": false,
+      "skip_bmc_config": false,
+      "skip_networking": false,
+      "skip_storage": false,
+      "url": "",
+      "dns_process": null,
+      "managing_process": null,
+      "current_commissioning_script_set": null,
+      "current_installation_script_set": null,
+      "current_testing_script_set": null,
+      "locked": false,
+      "owner": null,
+      "resource_uri": "/MAAS/api/2.0/nodes/shqe4g/"
+    },
+    "subnet": null,
+    "global_snippet": false,
+    "value": "filename \"test-boot\";\nserver-name \"boot.from.me\";\n",
+    "history": [
+      {
+        "id": 20,
+        "value": "filename \"test-boot\";\nserver-name \"boot.from.me\";\n",
+        "created": "Tue, 04 Dec 2018 19:21:11 -0000"
+      }
+    ],
+    "id": 5,
+    "resource_uri": "/MAAS/api/2.0/dhcp-snippets/5/"
+  },
+  "dhcp-snippets-update": {
+    "name": "boot from other server",
+    "description": "instructs device to boot from other server",
+    "enabled": true,
+    "node": {
+      "created": "2018-12-04T19:21:11.134",
+      "updated": "2018-12-04T19:21:11.164",
+      "hostname": "free-orca",
+      "pool": null,
+      "domain": {
+        "authoritative": true,
+        "ttl": null,
+        "name": "maas",
+        "is_default": true,
+        "id": 0,
+        "resource_record_count": 0,
+        "resource_uri": "/MAAS/api/2.0/domains/0/"
+      },
+      "address_ttl": null,
+      "status": 0,
+      "previous_status": 0,
+      "status_expires": null,
+      "bios_boot_method": null,
+      "osystem": "",
+      "distro_series": "",
+      "architecture": null,
+      "min_hwe_kernel": null,
+      "hwe_kernel": null,
+      "node_type": 1,
+      "parent": null,
+      "agent_name": "",
+      "error_description": "",
+      "zone": {
+        "name": "default",
+        "description": "",
+        "id": 1,
+        "resource_uri": "/MAAS/api/2.0/zones/default/"
+      },
+      "cpu_count": 0,
+      "cpu_speed": 0,
+      "memory": 0,
+      "swap_size": null,
+      "bmc": null,
+      "instance_power_parameters": "",
+      "power_state": "unknown",
+      "power_state_queried": null,
+      "power_state_updated": null,
+      "last_image_sync": null,
+      "token": null,
+      "error": "",
+      "netboot": true,
+      "license_key": null,
+      "creation_type": 1,
+      "boot_interface": null,
+      "boot_cluster_ip": null,
+      "boot_disk": null,
+      "gateway_link_ipv4": null,
+      "gateway_link_ipv6": null,
+      "default_user": "",
+      "install_rackd": false,
+      "install_kvm": false,
+      "enable_ssh": false,
+      "skip_bmc_config": false,
+      "skip_networking": false,
+      "skip_storage": false,
+      "url": "",
+      "dns_process": null,
+      "managing_process": null,
+      "current_commissioning_script_set": null,
+      "current_installation_script_set": null,
+      "current_testing_script_set": null,
+      "locked": false,
+      "owner": null,
+      "resource_uri": "/MAAS/api/2.0/nodes/shqe4g/"
+    },
+    "subnet": null,
+    "global_snippet": false,
+    "value": "filename \"test-boot\";\nserver-name \"boot.from.me\";\n",
+    "history": [
+      {
+        "id": 20,
+        "value": "filename \"test-boot\";\nserver-name \"boot.from.me\";\n",
+        "created": "Tue, 04 Dec 2018 19:21:11 -0000"
+      }
+    ],
+    "id": 5,
+    "resource_uri": "/MAAS/api/2.0/dhcp-snippets/5/"
+  },
+  "dhcp-snippets-revert": {
+    "name": "600 lease time",
+    "description": "changes lease time to 600 secs.",
+    "enabled": true,
+    "node": null,
+    "subnet": {
+      "name": "name-rLI3eq",
+      "vlan": {
+        "vid": 0,
+        "mtu": 1500,
+        "dhcp_on": false,
+        "external_dhcp": null,
+        "relay_vlan": null,
+        "id": 5001,
+        "name": "untagged",
+        "fabric": "fabric-0",
+        "space": "management",
+        "fabric_id": 0,
+        "primary_rack": "7xtf67",
+        "secondary_rack": "76y7pg",
+        "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+      },
+      "cidr": "172.16.1.0/24",
+      "rdns_mode": 2,
+      "gateway_ip": "172.16.1.1",
+      "dns_servers": [
+        "fd89:8724:81f1:5512:557f:99c3:6967:8d63"
+      ],
+      "allow_dns": true,
+      "allow_proxy": true,
+      "active_discovery": false,
+      "managed": true,
+      "id": 1,
+      "space": "management",
+      "resource_uri": "/MAAS/api/2.0/subnets/1/"
+    },
+    "id": 3,
+    "history": [
+      {
+        "id": 18,
+        "value": "default-lease-time 600;",
+        "created": "Tue, 04 Dec 2018 19:21:11 -0000"
+      }
+    ],
+    "value": "default-lease-time 600;",
+    "global_snippet": false,
+    "resource_uri": "/MAAS/api/2.0/dhcp-snippets/3/"
+  },
+  "dhcp-snippets-read": [
+    {
+      "name": "foo class",
+      "description": "adds class for vender 'foo'",
+      "enabled": true,
+      "node": null,
+      "subnet": null,
+      "value": "class \"foo\" {\n    match if substring (\n        option vendor-class-identifier, 0, 3) = \"foo\";\n}\n",
+      "history": [
+        {
+          "id": 16,
+          "value": "class \"foo\" {\n    match if substring (\n        option vendor-class-identifier, 0, 3) = \"foo\";\n}\n",
+          "created": "Tue, 04 Dec 2018 19:21:11 -0000"
+        }
+      ],
+      "id": 1,
+      "global_snippet": true,
+      "resource_uri": "/MAAS/api/2.0/dhcp-snippets/1/"
+    },
+    {
+      "name": "bar class",
+      "description": "adds class for vender 'bar'",
+      "enabled": false,
+      "node": null,
+      "subnet": null,
+      "value": "class \"bar\" {\n    match if substring (\n        option vendor-class-identifier, 0, 3) = \"bar\";\n}\n",
+      "history": [
+        {
+          "id": 17,
+          "value": "class \"bar\" {\n    match if substring (\n        option vendor-class-identifier, 0, 3) = \"bar\";\n}\n",
+          "created": "Tue, 04 Dec 2018 19:21:11 -0000"
+        }
+      ],
+      "id": 2,
+      "global_snippet": true,
+      "resource_uri": "/MAAS/api/2.0/dhcp-snippets/2/"
+    },
+    {
+      "name": "600 lease time",
+      "description": "changes lease time to 600 secs.",
+      "enabled": true,
+      "node": null,
+      "subnet": {
+        "name": "name-rLI3eq",
+        "vlan": {
+          "vid": 0,
+          "mtu": 1500,
+          "dhcp_on": false,
+          "external_dhcp": null,
+          "relay_vlan": null,
+          "fabric": "fabric-0",
+          "id": 5001,
+          "fabric_id": 0,
+          "secondary_rack": "76y7pg",
+          "primary_rack": "7xtf67",
+          "name": "untagged",
+          "space": "management",
+          "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+        },
+        "cidr": "172.16.1.0/24",
+        "rdns_mode": 2,
+        "gateway_ip": "172.16.1.1",
+        "dns_servers": [
+          "fd89:8724:81f1:5512:557f:99c3:6967:8d63"
+        ],
+        "allow_dns": true,
+        "allow_proxy": true,
+        "active_discovery": false,
+        "managed": true,
+        "id": 1,
+        "space": "management",
+        "resource_uri": "/MAAS/api/2.0/subnets/1/"
+      },
+      "value": "default-lease-time 600;",
+      "history": [
+        {
+          "id": 18,
+          "value": "default-lease-time 600;",
+          "created": "Tue, 04 Dec 2018 19:21:11 -0000"
+        }
+      ],
+      "id": 3,
+      "global_snippet": false,
+      "resource_uri": "/MAAS/api/2.0/dhcp-snippets/3/"
+    },
+    {
+      "name": "7200 max lease time",
+      "description": "changes max lease time to 7200 secs.",
+      "enabled": false,
+      "node": null,
+      "subnet": {
+        "name": "name-v5djzQ",
+        "vlan": {
+          "vid": 0,
+          "mtu": 1500,
+          "dhcp_on": false,
+          "external_dhcp": null,
+          "relay_vlan": null,
+          "fabric": "fabric-1",
+          "id": 5003,
+          "fabric_id": 1,
+          "secondary_rack": "76y7pg",
+          "primary_rack": "7xtf67",
+          "name": "untagged",
+          "space": "management",
+          "resource_uri": "/MAAS/api/2.0/vlans/5003/"
+        },
+        "cidr": "172.16.2.0/24",
+        "rdns_mode": 2,
+        "gateway_ip": "172.16.2.1",
+        "dns_servers": [
+          "fcb0:c682:8c15:817d:7d80:2713:e225:5624",
+          "fd66:86c9:6a50:27cd:de13:3f1c:40d1:8aac",
+          "120.129.237.29"
+        ],
+        "allow_dns": true,
+        "allow_proxy": true,
+        "active_discovery": false,
+        "managed": true,
+        "id": 2,
+        "space": "management",
+        "resource_uri": "/MAAS/api/2.0/subnets/2/"
+      },
+      "value": "max-lease-time 7200;",
+      "history": [
+        {
+          "id": 19,
+          "value": "max-lease-time 7200;",
+          "created": "Tue, 04 Dec 2018 19:21:11 -0000"
+        }
+      ],
+      "id": 4,
+      "global_snippet": false,
+      "resource_uri": "/MAAS/api/2.0/dhcp-snippets/4/"
+    }
+  ],
+  "dhcp-snippets-create": {
+    "name": "7200 max lease time",
+    "description": "changes max lease time to 7200 secs.",
+    "enabled": false,
+    "node": null,
+    "subnet": {
+      "name": "name-v5djzQ",
+      "vlan": {
+        "vid": 0,
+        "mtu": 1500,
+        "dhcp_on": false,
+        "external_dhcp": null,
+        "relay_vlan": null,
+        "fabric": "fabric-1",
+        "id": 5003,
+        "fabric_id": 1,
+        "secondary_rack": "76y7pg",
+        "primary_rack": "7xtf67",
+        "name": "untagged",
+        "space": "management",
+        "resource_uri": "/MAAS/api/2.0/vlans/5003/"
+      },
+      "cidr": "172.16.2.0/24",
+      "rdns_mode": 2,
+      "gateway_ip": "172.16.2.1",
+      "dns_servers": [
+        "fcb0:c682:8c15:817d:7d80:2713:e225:5624",
+        "fd66:86c9:6a50:27cd:de13:3f1c:40d1:8aac",
+        "120.129.237.29"
+      ],
+      "allow_dns": true,
+      "allow_proxy": true,
+      "active_discovery": false,
+      "managed": true,
+      "id": 2,
+      "space": "management",
+      "resource_uri": "/MAAS/api/2.0/subnets/2/"
+    },
+    "value": "max-lease-time 7200;",
+    "history": [
+      {
+        "id": 19,
+        "value": "max-lease-time 7200;",
+        "created": "Tue, 04 Dec 2018 19:21:11 -0000"
+      }
+    ],
+    "id": 4,
+    "global_snippet": false,
+    "resource_uri": "/MAAS/api/2.0/dhcp-snippets/4/"
+  }
+}
