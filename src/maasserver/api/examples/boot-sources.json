@@ -1,0 +1,88 @@
+{
+  "boot-sources-read-by-id": {
+    "created": "2018-12-04T18:11:31.894",
+    "updated": "2018-12-04T18:11:31.894",
+    "url": "http://images.maas.io/ephemeral-v3/daily/",
+    "keyring_filename": "/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg",
+    "id": 1,
+    "keyring_data": "",
+    "resource_uri": "/MAAS/api/2.0/boot-sources/1/"
+  },
+  "boot-sources-update": {
+    "created": "2018-12-04T18:11:31.894",
+    "updated": "2018-12-04T18:20:08.070",
+    "url": "http://my.domain.com/ephemeral-v3/daily/",
+    "keyring_filename": "/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg",
+    "keyring_data": "",
+    "id": 1,
+    "resource_uri": "/MAAS/api/2.0/boot-sources/1/"
+  },
+  "boot-sources-read": [
+    {
+      "created": "2018-12-04T18:11:31.894",
+      "updated": "2018-12-04T18:20:08.070",
+      "url": "http://my.domain.com/ephemeral-v3/daily/",
+      "keyring_filename": "/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg",
+      "keyring_data": "",
+      "id": 1,
+      "resource_uri": "/MAAS/api/2.0/boot-sources/1/"
+    }
+  ],
+  "boot-sources-create": {
+    "created": "2018-12-04T18:34:59.543",
+    "updated": "2018-12-04T18:34:59.543",
+    "url": "http://foo.com/bleh",
+    "keyring_filename": "/bleh/foo.gpg",
+    "id": 2,
+    "keyring_data": "",
+    "resource_uri": "/MAAS/api/2.0/boot-sources/2/"
+  },
+  "boot-source-sel-read-by-id": {
+    "os": "ubuntu",
+    "release": "bionic",
+    "arches": [
+      "amd64"
+    ],
+    "subarches": [
+      "*"
+    ],
+    "labels": [
+      "*"
+    ],
+    "id": 1,
+    "boot_source_id": 1,
+    "resource_uri": "/MAAS/api/2.0/boot-sources/1/selections/1/"
+  },
+  "boot-source-sel-update": {
+    "os": "ubuntu",
+    "release": "bionic",
+    "arches": [
+      "amd64"
+    ],
+    "subarches": [
+      "*"
+    ],
+    "labels": [
+      "*"
+    ],
+    "id": 1,
+    "boot_source_id": 1,
+    "resource_uri": "/MAAS/api/2.0/boot-sources/1/selections/1/"
+  },
+  "boot-source-sel-create": {
+    "os": "ubuntu",
+    "release": "bionic",
+    "arches": [
+      "amd64"
+    ],
+    "subarches": [
+      "*"
+    ],
+    "labels": [
+      "*"
+    ],
+    "id": 1,
+    "boot_source_id": 1,
+    "resource_uri": "/MAAS/api/2.0/boot-sources/1/selections/1/"
+  }
+}

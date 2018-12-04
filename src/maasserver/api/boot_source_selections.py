@@ -40,21 +40,62 @@ class BootSourceSelectionHandler(OperationsHandler):
     fields = DISPLAYED_BOOTSOURCESELECTION_FIELDS
 
     def read(self, request, boot_source_id, id):
-        """Read a boot source selection."""
+        """@description-title Read a boot source selection
+        @description Read a boot source selection with the given id.
+
+        @param (string) "{boot_source_id}" [required=true] A boot-source id.
+        @param (string) "{id}" [required=true] A boot-source selection id.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the requested
+        boot-source selection object.
+        @success-example "success-json" [exkey=boot-source-sel-read-by-id]
+        placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested boot-source or boot-source
+        selection is not found.
+        @error-example "not-found"
+            Not Found
+        """
         boot_source = get_object_or_404(
             BootSource, id=boot_source_id)
         return get_object_or_404(
             BootSourceSelection, boot_source=boot_source, id=id)
 
     def update(self, request, boot_source_id, id):
-        """Update a specific boot source selection.
+        """@description-title Update a boot-source selection
+        @description Update a boot source selection with the given id.
 
-        :param os: The OS (e.g. ubuntu, centos) for which to import resources.
-        :param release: The release for which to import resources.
-        :param arches: The list of architectures for which to import resources.
-        :param subarches: The list of subarchitectures for which to import
-            resources.
-        :param labels: The list of labels for which to import resources.
+        @param (string) "{boot_source_id}" [required=true] A boot-source id.
+        @param (string) "{id}" [required=true] A boot-source selection id.
+
+        @param (string) "os" [required=false] The OS (e.g. ubuntu, centos) for
+        which to import resources.
+
+        @param (string) "release" [required=false] The release for which to
+        import resources.
+
+        @param (string) "arches" [required=false] The list of architectures for
+        which to import resources.
+
+        @param (string) "subarches" [required=false] The list of
+        sub-architectures for which to import resources.
+
+        @param (string) "labels" [required=false] The list of labels for which
+        to import resources.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the requested
+        boot-source selection object.
+        @success-example "success-json" [exkey=boot-source-sel-update]
+        placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested boot-source or boot-source
+        selection is not found.
+        @error-example "not-found"
+            Not Found
         """
         boot_source = get_object_or_404(
             BootSource, id=boot_source_id)
@@ -68,7 +109,20 @@ class BootSourceSelectionHandler(OperationsHandler):
             raise MAASAPIValidationError(form.errors)
 
     def delete(self, request, boot_source_id, id):
-        """Delete a specific boot source."""
+        """@description-title Delete a boot source
+        @description Delete a boot source with the given id.
+
+        @param (string) "{boot_source_id}" [required=true] A boot-source id.
+        @param (string) "{id}" [required=true] A boot-source selection id.
+
+        @success (http-status-code) "server-success" 204
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested boot-source or boot-source
+        selection is not found.
+        @error-example "not-found"
+            Not Found
+        """
         boot_source = get_object_or_404(
             BootSource, id=boot_source_id)
         boot_source_selection = get_object_or_404(
@@ -103,23 +157,57 @@ class BootSourceSelectionsHandler(OperationsHandler):
         return ('boot_source_selections_handler', [boot_source_id])
 
     def read(self, request, boot_source_id):
-        """List boot source selections.
+        """@description-title List boot-source selections
+        @description List all available boot-source selections.
 
-        Get a listing of a boot source's selections.
+        @param (string) "{boot_source_id}" [required=true] A boot-source id.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing a list of all
+        available boot-source selections.
+        @success-example "success-json" [exkey=boot-source-sel-update]
+        placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested boot-source is not found.
+        @error-example "not-found"
+            Not Found
         """
         boot_source = get_object_or_404(
             BootSource, id=boot_source_id)
         return BootSourceSelection.objects.filter(boot_source=boot_source)
 
     def create(self, request, boot_source_id):
-        """Create a new boot source selection.
+        """@description-title Create a boot-source selection
+        @description Create a new boot source selection.
 
-        :param os: The OS (e.g. ubuntu, centos) for which to import resources.
-        :param release: The release for which to import resources.
-        :param arches: The architecture list for which to import resources.
-        :param subarches: The subarchitecture list for which to import
-            resources.
-        :param labels: The label lists for which to import resources.
+        @param (string) "{boot_source_id}" [required=true] A boot-source id.
+
+        @param (string) "os" [required=false] The OS (e.g. ubuntu, centos) for
+        which to import resources.
+
+        @param (string) "release" [required=false] The release for which to
+        import resources.
+
+        @param (string) "arches" [required=false] The architecture list for
+        which to import resources.
+
+        @param (string) "subarches" [required=false] The subarchitecture list
+        for which to import resources.
+
+        @param (string) "labels" [required=false] The label lists for which to
+        import resources.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the new
+        boot-source selection.
+        @success-example "success-json" [exkey=boot-source-sel-create]
+        placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested boot-source is not found.
+        @error-example "not-found"
+            Not Found
         """
         boot_source = get_object_or_404(
             BootSource, id=boot_source_id)

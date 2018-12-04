@@ -41,17 +41,48 @@ class BootSourceHandler(OperationsHandler):
     fields = DISPLAYED_BOOTSOURCE_FIELDS
 
     def read(self, request, id):
-        """Read a boot source."""
+        """@description-title Read a boot source
+        @description Read a boot source with the given id.
+
+        @param (string) "{id}" [required=true] A boot-source id.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the requested
+        boot-source object.
+        @success-example "success-json" [exkey=boot-sources-read-by-id]
+        placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested boot-source is not found.
+        @error-example "not-found"
+            Not Found
+        """
         return get_object_or_404(BootSource, id=id)
 
     def update(self, request, id):
-        """Update a specific boot source.
+        """@description-title Update a boot source
+        @description Update a boot source with the given id.
 
-        :param url: The URL of the BootSource.
-        :param keyring_filename: The path to the keyring file for this
-            BootSource.
-        :param keyring_data: The GPG keyring for this BootSource,
-            base64-encoded data.
+        @param (string) "{id}" [required=true] A boot-source id.
+
+        @param (string) "url" [required=false] The URL of the BootSource.
+
+        @param (string) "keyring_filename" [required=false] The path to the
+        keyring file for this BootSource.
+
+        @param (string) "keyring_data" [required=false] The GPG keyring for
+        this BootSource, base64-encoded data.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the updated
+        boot-source object.
+        @success-example "success-json" [exkey=boot-sources-update] placeholder
+        text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested boot-source is not found.
+        @error-example "not-found"
+            Not Found
         """
         boot_source = get_object_or_404(
             BootSource, id=id)
@@ -63,7 +94,18 @@ class BootSourceHandler(OperationsHandler):
             raise MAASAPIValidationError(form.errors)
 
     def delete(self, request, id):
-        """Delete a specific boot source."""
+        """@description-title Delete a boot source
+        @description Delete a boot source with the given id.
+
+        @param (string) "{id}" [required=true] A boot-source id.
+
+        @success (http-status-code) "server-success" 204
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested boot-source is not found.
+        @error-example "not-found"
+            Not Found
+        """
         boot_source = get_object_or_404(
             BootSource, id=id)
         boot_source.delete()
@@ -92,20 +134,36 @@ class BootSourcesHandler(OperationsHandler):
         return ('boot_sources_handler', [])
 
     def read(self, request):
-        """List boot sources.
+        """@description-title List boot sources
+        @description List all boot sources.
 
-        Get a listing of boot sources.
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing a list of all
+        available boot-source objects.
+        @success-example "success-json" [exkey=boot-sources-read] placeholder
+        text
         """
         return BootSource.objects.all()
 
     def create(self, request):
-        """Create a new boot source.
+        """@description-title Create a boot source
+        @description Create a new boot source. Note that in addition to
+        ``url``, you must supply either ``keyring_data`` or
+        ``keyring_filename``.
 
-        :param url: The URL of the BootSource.
-        :param keyring_filename: The path to the keyring file for
-            this BootSource.
-        :param keyring_data: The GPG keyring for this BootSource,
-            base64-encoded.
+        @param (string) "url" [required=true] The URL of the BootSource.
+
+        @param (string) "keyring_filename" [required=false] The path to the
+        keyring file for this BootSource.
+
+        @param (string) "keyring_data" [required=false] The GPG keyring for
+        this BootSource, base64-encoded.
+
+        @success (http-status-code) "server-success" 201
+        @success (json) "success-json" A JSON object containing the new boot
+        source.
+        @success-example "success-json" [exkey=boot-sources-create] placeholder
+        text
         """
         form = BootSourceForm(
             data=request.data, files=request.FILES)
