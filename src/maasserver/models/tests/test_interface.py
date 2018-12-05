@@ -141,6 +141,17 @@ class TestInterfaceManager(MAASServerTestCase):
             node.system_id, interface.id,
             user, NodePermission.admin)
 
+    def test_get_interface_or_404_uses_device_perm(self):
+        device = factory.make_Device()
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=device)
+        user = factory.make_User()
+        self.assertEqual(
+            interface,
+            Interface.objects.get_interface_or_404(
+                device.system_id, interface.id, user,
+                NodePermission.admin, NodePermission.edit))
+
     def test_get_or_create_without_parents(self):
         node = factory.make_Node()
         mac_address = factory.make_mac_address()

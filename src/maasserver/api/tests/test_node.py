@@ -465,7 +465,7 @@ class TestSetOwnerData(APITestCase.ForUser):
         """Get the API URI for `node`."""
         return reverse(self.handler, args=[node.system_id])
 
-    def test_must_be_able_to_edit(self):
+    def test_must_be_owned(self):
         node = self.maker(status=NODE_STATUS.READY)
         owner_data = {
             factory.make_name("key"): factory.make_name("value")
@@ -474,7 +474,7 @@ class TestSetOwnerData(APITestCase.ForUser):
         params = dict(owner_data)
         params["op"] = "set_owner_data"
         response = self.client.post(self.get_node_uri(node), params)
-        self.assertEqual(http.client.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.CONFLICT, response.status_code)
 
     def test_adds_data(self):
         node = self.maker(
@@ -546,7 +546,7 @@ class TestPowerMixin(APITestCase.ForUser):
         return reverse('machine_handler', args=[node.system_id])
 
     def test_POST_power_off_checks_permission(self):
-        machine = factory.make_Node()
+        machine = factory.make_Node(owner=factory.make_User())
         machine_stop = self.patch(machine, 'stop')
         response = self.client.post(
             self.get_node_uri(machine), {'op': 'power_off'})
@@ -753,7 +753,7 @@ class TestPowerMixin(APITestCase.ForUser):
         node = factory.make_Node(status=status)
         response = self.client.post(
             self.get_node_uri(node), {'op': 'abort'})
-        self.assertEqual(http.client.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.CONFLICT, response.status_code)
 
     def test_abort_passes_comment(self):
         self.become_admin()

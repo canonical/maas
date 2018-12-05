@@ -809,6 +809,9 @@ class OwnerDataMixin:
         """
         node = self.model.objects.get_node_or_404(
             user=request.user, system_id=system_id, perm=NodePermission.edit)
+        if node.owner_id != request.user.id:
+            raise NodeStateViolation(
+                "Cannot set owner data: it hasn't been allocated.")
         owner_data = {
             key: None if value == "" else value
             for key, value in request.POST.items()

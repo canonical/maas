@@ -138,7 +138,8 @@ class TestNodeAction(MAASServerTestCase):
         class MyAction(FakeNodeAction):
             permission = NodePermission.edit
 
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, owner=factory.make_User())
         actions = compile_node_actions(
             node, factory.make_User(), classes=[MyAction])
         self.assertEqual({}, actions)
@@ -251,7 +252,7 @@ class TestNodeAction(MAASServerTestCase):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYED, locked=True)
         self.assertFalse(MyAction(node, factory.make_User()).is_actionable())
 
-    def test_is_actionable_true_if_allow_ed_when_locked(self):
+    def test_is_actionable_true_if_allowed_when_locked(self):
 
         class MyAction(FakeNodeAction):
             allowed_when_locked = True
@@ -273,6 +274,22 @@ class TestNodeAction(MAASServerTestCase):
 
 
 class TestDeleteAction(MAASServerTestCase):
+
+    def test__users_cannot_delete_controller(self):
+        controller = factory.make_RackController()
+        user = factory.make_User()
+        request = factory.make_fake_request('/')
+        request.user = user
+        action = Delete(controller, user, request)
+        self.assertFalse(action.is_permitted())
+
+    def test__admins_can_delete_controller(self):
+        controller = factory.make_RackController()
+        admin = factory.make_admin()
+        request = factory.make_fake_request('/')
+        request.user = admin
+        action = Delete(controller, admin, request)
+        self.assertTrue(action.is_permitted())
 
     def test__deletes_node(self):
         node = factory.make_Node()
@@ -915,7 +932,7 @@ class TestPowerOnAction(MAASServerTestCase):
         user = factory.make_User()
         request = factory.make_fake_request('/')
         request.user = user
-        node = factory.make_Node()
+        node = factory.make_Node(owner=factory.make_User())
         self.assertFalse(
             user.has_perm(NodePermission.edit, node))
         self.assertFalse(PowerOn(node, user, request).is_permitted())
@@ -1214,7 +1231,7 @@ class TestMarkBrokenAction(MAASServerTestCase):
         user = factory.make_User()
         request = factory.make_fake_request('/')
         request.user = user
-        node = factory.make_Node()
+        node = factory.make_Node(owner=factory.make_User())
         self.assertFalse(MarkBroken(node, user, request).is_permitted())
 
 
@@ -1316,7 +1333,7 @@ class TestMarkFixedAction(MAASServerTestCase):
 class TestOverrideFailedTesting(MAASServerTestCase):
 
     def test_ignore_tests_sets_status_to_ready(self):
-        owner = factory.make_User()
+        owner = factory.make_admin()
         request = factory.make_fake_request('/')
         request.user = owner
         description = factory.make_name('error-description')
@@ -1336,7 +1353,7 @@ class TestOverrideFailedTesting(MAASServerTestCase):
             "Overrode failed testing on '%s'." % node.hostname)
 
     def test_ignore_tests_sets_status_to_deployed(self):
-        owner = factory.make_User()
+        owner = factory.make_admin()
         request = factory.make_fake_request('/')
         request.user = owner
         osystem = factory.make_name('osystem')
@@ -1351,6 +1368,15 @@ class TestOverrideFailedTesting(MAASServerTestCase):
         self.assertEqual(NODE_STATUS.DEPLOYED, node.status)
         self.assertEqual(osystem, node.osystem)
         self.assertEqual('', node.error_description)
+
+    def test_requires_admin(self):
+        owner = factory.make_User()
+        request = factory.make_fake_request('/')
+        request.user = owner
+        node = factory.make_Node(
+            status=NODE_STATUS.FAILED_TESTING, owner=owner)
+        action = OverrideFailedTesting(node, owner, request)
+        self.assertFalse(action.is_permitted())
 
 
 class TestImportImagesAction(MAASServerTestCase):
