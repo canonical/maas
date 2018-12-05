@@ -5022,10 +5022,10 @@ class NodeManagerTest(MAASServerTestCase):
     def test_get_nodes_with_edit_perm_for_user_lists_owned_nodes(self):
         user = factory.make_User()
         visible_node = self.make_node(user)
-        self.make_node(None)
+        unowned = self.make_node(None)
         self.make_node(factory.make_User())
         self.assertItemsEqual(
-            [visible_node],
+            [visible_node, unowned],
             Node.objects.get_nodes(user, NodePermission.edit))
 
     def test_get_nodes_with_edit_perm_admin_lists_all_nodes(self):
@@ -5344,6 +5344,17 @@ class NodeManagerGetNodesRBACTest(MAASServerTestCase):
             [owned_node],
             Node.objects.get_nodes(user, NodePermission.view))
 
+    def test_get_nodes_view_view_all_permissions_owned_other(self):
+        user = factory.make_User()
+        other = factory.make_User()
+        pool1 = self.make_ResourcePool()
+        owned_node = factory.make_Node(pool=pool1, owner=user)
+        other_node = factory.make_Node(pool=pool1, owner=other)
+        self.store.allow(user.username, pool1, 'view-all')
+        self.assertCountEqual(
+            [owned_node, other_node],
+            Node.objects.get_nodes(user, NodePermission.view))
+
     def test_get_nodes_view_admin_permissions_unowned(self):
         user = factory.make_User()
         pool1 = self.make_ResourcePool()
@@ -5384,11 +5395,12 @@ class NodeManagerGetNodesRBACTest(MAASServerTestCase):
         user = factory.make_User()
         pool1 = self.make_ResourcePool()
         pool2 = self.make_ResourcePool()
-        factory.make_Node(pool=pool1)
+        node1 = factory.make_Node(pool=pool1)
         factory.make_Node(pool=pool2)
         self.store.allow(user.username, pool1, 'view')
+        self.store.allow(user.username, pool1, 'deploy-machines')
         self.assertCountEqual(
-            [], Node.objects.get_nodes(user, NodePermission.edit))
+            [node1], Node.objects.get_nodes(user, NodePermission.edit))
 
     def test_get_nodes_edit_view_permissions_owned_self(self):
         user = factory.make_User()
@@ -5397,6 +5409,7 @@ class NodeManagerGetNodesRBACTest(MAASServerTestCase):
         visible_node = factory.make_Node(pool=pool1, owner=user)
         factory.make_Node(pool=pool2)
         self.store.allow(user.username, pool1, 'view')
+        self.store.allow(user.username, pool1, 'deploy-machines')
         self.assertCountEqual(
             [visible_node],
             Node.objects.get_nodes(user, NodePermission.edit))
@@ -5408,6 +5421,10 @@ class NodeManagerGetNodesRBACTest(MAASServerTestCase):
         owned_node = factory.make_Node(pool=pool1, owner=user)
         factory.make_Node(pool=pool1, owner=other)
         self.store.allow(user.username, pool1, 'view')
+        # Even with view-all `NodePermission.edit` should not include the
+        # nodes owned by others because the user cannot edit those nodes.
+        self.store.allow(user.username, pool1, 'view-all')
+        self.store.allow(user.username, pool1, 'deploy-machines')
         self.assertCountEqual(
             [owned_node],
             Node.objects.get_nodes(user, NodePermission.edit))

@@ -2007,8 +2007,9 @@ class TestMachinesAPI(APITestCase.ForUser):
                 owner=self.user).system_id
             for _ in range(3)
         }
-        # And one with no owner
-        another_machine = factory.make_Node(status=NODE_STATUS.RESERVED)
+        # And one with another owner
+        another_machine = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
         machine_ids.add(another_machine.system_id)
         response = self.client.post(
             reverse('machines_handler'), {

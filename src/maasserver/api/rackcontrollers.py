@@ -167,7 +167,7 @@ class RackControllerHandler(NodeHandler, PowerMixin):
         @error (content) "no-perms" This method is reserved for admin users.
         """
         rack = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NodePermission.edit)
+            system_id=system_id, user=request.user, perm=NodePermission.admin)
         form = ControllerForm(data=request.data, instance=rack)
 
         if form.is_valid():
@@ -199,7 +199,7 @@ class RackControllerHandler(NodeHandler, PowerMixin):
         from maasserver.clusterrpc.boot_images import RackControllersImporter
 
         rack = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NodePermission.edit)
+            system_id=system_id, user=request.user, perm=NodePermission.admin)
         post_commit_do(RackControllersImporter.schedule, rack.system_id)
         return HttpResponse(
             "Import of boot images started on %s" % rack.hostname,

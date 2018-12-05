@@ -364,7 +364,8 @@ class InterfaceManager(Manager, InterfaceQueriesMixin):
             }
         return result
 
-    def get_interface_or_404(self, system_id, specifiers, user, perm):
+    def get_interface_or_404(
+            self, system_id, specifiers, user, perm, device_perm=None):
         """Fetch a `Interface` by its `Node`'s system_id and its id.  Raise
         exceptions if no `Interface` with this id exist, if the `Node` with
         system_id doesn't exist, if the `Interface` doesn't exist on the
@@ -379,6 +380,9 @@ class InterfaceManager(Manager, InterfaceQueriesMixin):
         :type user: django.contrib.auth.models.User
         :param perm: The permission to assert that the user has on the node.
         :type perm: str
+        :param device_perm: The permission to assert that the user has on
+            the device. If not provided then perm will be used.
+        :type device_perm: str
         :raises: django.http.Http404_,
             :class:`maasserver.exceptions.PermissionDenied`.
 
@@ -389,6 +393,8 @@ class InterfaceManager(Manager, InterfaceQueriesMixin):
         interface = self.get_object_by_specifiers_or_raise(
             specifiers, node__system_id=system_id)
         node = interface.get_node()
+        if node.is_device and device_perm is not None:
+            perm = device_perm
         if user.has_perm(perm, interface) and user.has_perm(perm, node):
             return interface
         else:

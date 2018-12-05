@@ -823,11 +823,11 @@ class TestMachineAPI(APITestCase.ForUser):
         self.assertEqual(
             http.client.NOT_FOUND, response.status_code, response.content)
 
-    def test_POST_release_forbidden_if_user_cannot_edit_machine(self):
+    def test_POST_release_on_ready_is_noop(self):
         machine = factory.make_Node(status=NODE_STATUS.READY)
         response = self.client.post(
             self.get_machine_uri(machine), {'op': 'release'})
-        self.assertEqual(http.client.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
 
     def test_POST_release_fails_for_other_machine_states(self):
         releasable_statuses = (
@@ -2005,9 +2005,9 @@ class TestMountSpecialScenarios(APITestCase.ForUser):
         self.assertCanMountFilesystem(factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=self.user))
 
-    def test__user_forbidden_to_mount_on_non_allocated_machine(self):
+    def test__conflict_to_mount_on_non_ready_allocated_machine(self):
         statuses = {name for name, _ in NODE_STATUS_CHOICES}
-        statuses -= {NODE_STATUS.ALLOCATED}
+        statuses -= {NODE_STATUS.READY, NODE_STATUS.ALLOCATED}
         for status in statuses:
             machine = factory.make_Node(status=status)
             response = self.client.post(
@@ -2017,7 +2017,7 @@ class TestMountSpecialScenarios(APITestCase.ForUser):
                     'mount_options': factory.make_name("options"),
                 })
             self.expectThat(
-                response.status_code, Equals(http.client.FORBIDDEN),
+                response.status_code, Equals(http.client.CONFLICT),
                 "using status %d" % status)
 
     def test__admin_mounts_non_storage_filesystem_on_allocated_machine(self):
@@ -2113,9 +2113,9 @@ class TestUnmountSpecialScenarios(APITestCase.ForUser):
         self.assertCanUnmountFilesystem(factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=self.user))
 
-    def test__user_forbidden_to_unmount_on_non_allocated_machine(self):
+    def test__conflict_to_unmount_on_non_ready_allocated_machine(self):
         statuses = {name for name, _ in NODE_STATUS_CHOICES}
-        statuses -= {NODE_STATUS.ALLOCATED}
+        statuses -= {NODE_STATUS.READY, NODE_STATUS.ALLOCATED}
         for status in statuses:
             machine = factory.make_Node(status=status)
             filesystem = factory.make_Filesystem(
@@ -2127,7 +2127,7 @@ class TestUnmountSpecialScenarios(APITestCase.ForUser):
                     'mount_point': filesystem.mount_point,
                 })
             self.expectThat(
-                response.status_code, Equals(http.client.FORBIDDEN),
+                response.status_code, Equals(http.client.CONFLICT),
                 "using status %d" % status)
 
     def test__admin_unmounts_non_storage_filesystem_on_allocated_machine(self):

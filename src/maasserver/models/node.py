@@ -473,9 +473,17 @@ class BaseNodeManager(Manager, NodeQueriesMixin):
                 NODE_TYPE.REGION_AND_RACK_CONTROLLER,
                 ]))
         if perm == NodePermission.view:
-            condition = Q(owner__isnull=True) | Q(owner=user)
+            condition = Q(Q(owner__isnull=True) | Q(owner=user))
+            if rbac.is_enabled():
+                view_all_pools = rbac.get_resource_pool_ids(
+                    user.username, 'view-all')
+                condition |= Q(pool_id__in=view_all_pools)
         elif perm == NodePermission.edit:
-            condition = Q(owner=user)
+            condition = Q(Q(owner__isnull=True) | Q(owner=user))
+            if rbac.is_enabled():
+                deploy_pools = rbac.get_resource_pool_ids(
+                    user.username, 'deploy-machines')
+                condition = Q(Q(pool_id__in=deploy_pools) & Q(condition))
         elif perm == NodePermission.admin:
             # There is no built-in Q object that represents False, but
             # this one does.
@@ -486,10 +494,13 @@ class BaseNodeManager(Manager, NodeQueriesMixin):
                 perm)
         if rbac.is_enabled():
             visible_pools = rbac.get_resource_pool_ids(user.username, 'view')
+            view_all_pools = rbac.get_resource_pool_ids(
+                user.username, 'view-all')
             admin_pools = rbac.get_resource_pool_ids(
                 user.username, 'admin-machines')
             condition |= Q(pool_id__in=admin_pools)
-            nodes = nodes.filter(pool_id__in=visible_pools)
+            nodes = nodes.filter(
+                pool_id__in=set(visible_pools).union(view_all_pools))
 
         return nodes.filter(condition)
 
@@ -592,7 +603,7 @@ class MachineManager(BaseNodeManager):
         :return: Those machines which can be acquired by the user.
         :rtype: `django.db.models.query.QuerySet`
         """
-        available_machines = self.get_nodes(for_user, NodePermission.view)
+        available_machines = self.get_nodes(for_user, NodePermission.edit)
         return available_machines.filter(status=NODE_STATUS.READY)
 
 

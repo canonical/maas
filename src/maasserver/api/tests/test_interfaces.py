@@ -601,6 +601,7 @@ class TestInterfacesAPI(APITestCase.ForUser):
             }, json_load_bytes(response.content))
 
     def test_create_acquired_bridge(self):
+        self.become_admin()
         name = factory.make_name("br")
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=self.user)

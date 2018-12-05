@@ -346,10 +346,15 @@ class MAASAuthorizationBackend(ModelBackend):
 
         from maasserver.rbac import rbac
         rbac_enabled = rbac.is_enabled()
-        visible_pools, admin_pools = [], []
+        visible_pools, view_all_pools = [], []
+        deploy_pools, admin_pools = [], []
         if rbac_enabled:
             visible_pools = rbac.get_resource_pool_ids(
                 user.username, 'view')
+            view_all_pools = rbac.get_resource_pool_ids(
+                user.username, 'view-all')
+            deploy_pools = rbac.get_resource_pool_ids(
+                user.username, 'deploy-machines')
             admin_pools = rbac.get_resource_pool_ids(
                 user.username, 'admin-machines')
 
@@ -375,6 +380,12 @@ class MAASAuthorizationBackend(ModelBackend):
             # View is only used for the create action, modifying a created
             # device uses the appropriate `NodePermission.edit` scoped to the
             # device being editted.
+            if rbac_enabled:
+                # User must either be global admin or have access to deploy
+                # or admin some machines.
+                return (
+                    user.is_superuser or
+                    (len(deploy_pools) > 0 or len(admin_pools) > 0))
             return True
 
         # ResourcePool permissions are handled specifically.
@@ -389,15 +400,17 @@ class MAASAuthorizationBackend(ModelBackend):
                 obj = obj.get_node()
             if perm == NodePermission.view:
                 return self._can_view(
-                    rbac_enabled, user, obj, visible_pools, admin_pools)
+                    rbac_enabled, user, obj,
+                    visible_pools, view_all_pools,
+                    deploy_pools, admin_pools)
             elif perm == NodePermission.edit:
                 can_edit = self._can_edit(
-                    rbac_enabled, user, obj, visible_pools, admin_pools)
+                    rbac_enabled, user, obj, deploy_pools, admin_pools)
                 return not obj.locked and can_edit
             elif perm == NodePermission.lock:
                 # only machines can be locked
                 can_edit = self._can_edit(
-                    rbac_enabled, user, obj, visible_pools, admin_pools)
+                    rbac_enabled, user, obj, deploy_pools, admin_pools)
                 return obj.pool_id is not None and can_edit
             elif perm == NodePermission.admin:
                 return not obj.locked and self._can_admin(
@@ -414,7 +427,9 @@ class MAASAuthorizationBackend(ModelBackend):
                 return user.is_superuser
             if perm == NodePermission.view:
                 return self._can_view(
-                    rbac_enabled, user, node, visible_pools, admin_pools)
+                    rbac_enabled, user, node,
+                    visible_pools, view_all_pools,
+                    deploy_pools, admin_pools)
             elif perm == NodePermission.edit:
                 # Machine interface can only be modified by an administrator
                 # of the machine. Even the owner of the machine cannot modify
@@ -425,7 +440,7 @@ class MAASAuthorizationBackend(ModelBackend):
                         rbac_enabled, user, node, admin_pools)
                 # Other node types must be editable by the user.
                 return self._can_edit(
-                    rbac_enabled, user, node, visible_pools, admin_pools)
+                    rbac_enabled, user, node, deploy_pools, admin_pools)
             elif perm == NodePermission.admin:
                 # Admin permission is solely granted to superusers.
                 return self._can_admin(
@@ -460,19 +475,24 @@ class MAASAuthorizationBackend(ModelBackend):
                 'Invalid permission check (invalid object type).')
 
     def _can_view(
-            self, rbac_enabled, user, machine, visible_pools, admin_pools):
+            self, rbac_enabled, user, machine,
+            visible_pools, view_all_pools, deploy_pools, admin_pools):
         if machine.pool_id is None:
             # Only machines are filtered for view access.
             return True
         if rbac_enabled:
-            # Machine not owned by the user must be in the admin_pools for
-            # the user to be able to view the machine.
+            # Machine not owned by the user must be in the view_all_pools or
+            # admin_pools for the user to be able to view the machine.
             if machine.owner_id is not None and machine.owner_id != user.id:
-                return machine.pool_id in admin_pools
+                return (
+                    machine.pool_id in view_all_pools or
+                    machine.pool_id in admin_pools)
             # Machine is not owned or owned by the user so must be in either
             # pool for the user to view it.
             return (
                 machine.pool_id in visible_pools or
+                machine.pool_id in view_all_pools or
+                machine.pool_id in deploy_pools or
                 machine.pool_id in admin_pools)
         return (
             machine.owner_id is None or
@@ -480,15 +500,14 @@ class MAASAuthorizationBackend(ModelBackend):
             user.is_superuser)
 
     def _can_edit(
-            self, rbac_enabled, user, machine, visible_pools, admin_pools):
-        is_owner = machine.owner_id == user.id
+            self, rbac_enabled, user, machine, deploy_pools, admin_pools):
+        editable = machine.owner_id is None or machine.owner_id == user.id
         if rbac_enabled:
-            can_view = self._can_view(
-                rbac_enabled, user, machine, visible_pools, admin_pools)
             can_admin = self._can_admin(
                 rbac_enabled, user, machine, admin_pools)
-            return (is_owner and can_view) or can_admin
-        return is_owner or user.is_superuser
+            can_edit = (machine.pool_id in deploy_pools) or can_admin
+            return (editable and can_edit) or can_admin
+        return editable or user.is_superuser
 
     def _can_admin(self, rbac_enabled, user, machine, admin_pools):
         if machine.pool_id is None:

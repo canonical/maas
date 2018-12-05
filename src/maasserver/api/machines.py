@@ -58,6 +58,7 @@ from maasserver.enum import (
 )
 from maasserver.exceptions import (
     MAASAPIBadRequest,
+    MAASAPIForbidden,
     MAASAPIValidationError,
     NodesNotAvailable,
     NodeStateViolation,
@@ -549,7 +550,7 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         Returns 403 if the user does not have permission to update the machine.
         """
         machine = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NodePermission.edit)
+            system_id=system_id, user=request.user, perm=NodePermission.admin)
 
         Form = get_machine_edit_form(request.user)
         form = Form(data=request.data, instance=machine)
@@ -622,10 +623,10 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         series = request.POST.get('distro_series', None)
         license_key = request.POST.get('license_key', None)
         hwe_kernel = request.POST.get('hwe_kernel', None)
-        # Acquiring a node requires VIEW permissions.
+        # Acquiring a node requires EDIT permissions.
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user,
-            perm=NodePermission.view)
+            perm=NodePermission.edit)
         options = get_allocation_options(request)
         if machine.status == NODE_STATUS.READY:
             with locks.node_acquire:
@@ -1029,6 +1030,8 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         """
         node = self.model.objects.get_node_or_404(
             user=request.user, system_id=system_id, perm=NodePermission.edit)
+        if node.owner_id != request.user.id:
+            raise MAASAPIForbidden()
         comment = get_optional_param(request.POST, 'comment')
         if not comment:
             # read old error_description to for backward compatibility

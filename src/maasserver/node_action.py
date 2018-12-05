@@ -123,6 +123,10 @@ class NodeAction(metaclass=ABCMeta):
     # is being applied to a node_type which is a machine.
     machine_permission = None
 
+    # Optional controller permission that will be used when the action
+    # is being applied to a node_type which is a controller.
+    controller_permission = None
+
     # Whether the action is allowed when the node is locked
     allowed_when_locked = False
 
@@ -176,9 +180,10 @@ class NodeAction(metaclass=ABCMeta):
 
     def get_permission(self):
         """Return the permission value depending on if the node_type."""
-        if(self.node.node_type == NODE_TYPE.MACHINE and
-           self.machine_permission is not None):
+        if self.node.is_machine and self.machine_permission is not None:
             return self.machine_permission
+        if self.node.is_controller and self.controller_permission is not None:
+            return self.controller_permission
         return self.permission
 
     def is_permitted(self):
@@ -194,6 +199,7 @@ class Delete(NodeAction):
     actionable_statuses = ALL_STATUSES
     permission = NodePermission.edit
     machine_permission = NodePermission.admin
+    controller_permission = NodePermission.admin
     for_type = {i for i, _ in enumerate(NODE_TYPE_CHOICES)}
     action_type = NODE_ACTION_TYPE.MISC
     audit_description = "Deleted the '%s' '%s'."
@@ -242,6 +248,7 @@ class SetZone(NodeAction):
     actionable_statuses = ALL_STATUSES
     permission = NodePermission.edit
     machine_permission = NodePermission.admin
+    controller_permission = NodePermission.admin
     for_type = {i for i, _ in enumerate(NODE_TYPE_CHOICES)}
     action_type = NODE_ACTION_TYPE.MISC
     audit_description = "Set the zone to '%s' on '%s'."
@@ -342,7 +349,7 @@ class Test(NodeAction):
         NODE_STATUS.FAILED_EXITING_RESCUE_MODE,
         NODE_STATUS.FAILED_TESTING,
     )
-    permission = NodePermission.view
+    permission = NodePermission.admin
     for_type = {NODE_TYPE.MACHINE, NODE_TYPE.RACK_CONTROLLER}
     action_type = NODE_ACTION_TYPE.TESTING
     audit_description = "Started testing on '%s'."
@@ -396,7 +403,7 @@ class Acquire(NodeAction):
     display = "Acquire..."
     display_sentence = "acquired"
     actionable_statuses = (NODE_STATUS.READY, )
-    permission = NodePermission.view
+    permission = NodePermission.edit
     for_type = {NODE_TYPE.MACHINE}
     action_type = NODE_ACTION_TYPE.LIFECYCLE
     audit_description = "Acquired '%s'."
@@ -420,7 +427,7 @@ class Deploy(NodeAction):
     display = "Deploy..."
     display_sentence = "deployed"
     actionable_statuses = (NODE_STATUS.READY, NODE_STATUS.ALLOCATED)
-    permission = NodePermission.view
+    permission = NodePermission.edit
     for_type = {NODE_TYPE.MACHINE}
     action_type = NODE_ACTION_TYPE.LIFECYCLE
     audit_description = "Started deploying '%s'."
@@ -633,6 +640,11 @@ class MarkBroken(NodeAction):
         """See `NodeAction.execute`."""
         self.node.mark_broken(self.user, "via web interface")
 
+    def is_permitted(self):
+        """Must also be owned to mark it broken."""
+        permitted = super(MarkBroken, self).is_permitted()
+        return permitted and self.node.owner_id == self.user.id
+
 
 class MarkFixed(NodeAction):
     """Mark a broken node as fixed and set its state to 'READY'."""
@@ -725,7 +737,7 @@ class OverrideFailedTesting(NodeAction):
     display = "Override failed testing..."
     display_sentence = "Override failed testing"
     actionable_statuses = (NODE_STATUS.FAILED_TESTING, )
-    permission = NodePermission.view
+    permission = NodePermission.admin
     for_type = {NODE_TYPE.MACHINE, NODE_TYPE.RACK_CONTROLLER}
     action_type = NODE_ACTION_TYPE.TESTING
     audit_description = "Overrode failed testing on '%s'."
