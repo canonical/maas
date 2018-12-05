@@ -111,6 +111,7 @@ from maasserver.enum import (
     BOOT_RESOURCE_TYPE,
     CACHE_MODE_TYPE_CHOICES,
     FILESYSTEM_FORMAT_TYPE_CHOICES,
+    FILESYSTEM_FORMAT_TYPE_CHOICES_DICT,
     FILESYSTEM_GROUP_RAID_TYPE_CHOICES,
     FILESYSTEM_TYPE,
     INTERFACE_TYPE,
@@ -2577,10 +2578,18 @@ class FormatBlockDeviceForm(Form):
 
         This implementation of `save` does not support the `commit` argument.
         """
-        # Remove the previous format if one already exists.
-        Filesystem.objects.filter(
+        filesystem = Filesystem.objects.filter(
             block_device=self.block_device,
-            acquired=self.node.is_in_allocated_state()).delete()
+            acquired=self.node.is_in_allocated_state()).first()
+        if (filesystem is not None and
+                filesystem.fstype not in FILESYSTEM_FORMAT_TYPE_CHOICES_DICT):
+            raise ValidationError(
+                "Cannot format a block device that has a filesystem "
+                "type of %s." % filesystem.fstype)
+
+        # Remove the previous format if one already exists.
+        if filesystem is not None:
+            filesystem.delete()
 
         # Create the new filesystem
         Filesystem.objects.create(
@@ -2640,10 +2649,18 @@ class FormatPartitionForm(Form):
 
         This implementation of `save` does not support the `commit` argument.
         """
-        # Remove the previous format if one already exists.
-        Filesystem.objects.filter(
+        filesystem = Filesystem.objects.filter(
             partition=self.partition,
-            acquired=self.node.is_in_allocated_state()).delete()
+            acquired=self.node.is_in_allocated_state()).first()
+        if (filesystem is not None and
+                filesystem.fstype not in FILESYSTEM_FORMAT_TYPE_CHOICES_DICT):
+            raise ValidationError(
+                "Cannot format a partition that has a filesystem "
+                "type of %s." % filesystem.fstype)
+
+        # Remove the previous format if one already exists.
+        if filesystem is not None:
+            filesystem.delete()
 
         # Create the new filesystem
         Filesystem.objects.create(
