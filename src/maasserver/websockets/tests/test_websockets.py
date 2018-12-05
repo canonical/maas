@@ -1,5 +1,7 @@
+# This software is licensed under the MIT license.
 #
 # Copyright (c) Twisted Matrix Laboratories.
+#               2015-2018 Canonical Ltd.
 #
 # http://twistedmatrix.com/trac/ticket/4173
 

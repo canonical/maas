@@ -1,7 +1,9 @@
-# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
-# GNU Affero General Public License version 3 (see the file LICENSE).
+# This software is licensed under the MIT license.
 #
 # Copyright (c) Twisted Matrix Laboratories.
+#               2011-2012 Oregon State University Open Source Lab
+#               2011-2012 Corbin Simpson
+#               2015-2018 Canonical Ltd.
 #
 # http://twistedmatrix.com/trac/ticket/4173
 
