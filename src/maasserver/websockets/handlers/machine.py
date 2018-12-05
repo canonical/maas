@@ -335,7 +335,7 @@ class MachineHandler(NodeHandler):
         new_params["power_parameters"] = params.get("power_parameters")
         if "zone" in params:
             new_params["zone"] = params["zone"]["name"]
-        if "pool" in params:
+        if params.get("pool"):
             new_params["pool"] = params["pool"]["name"]
         if "domain" in params:
             new_params["domain"] = params["domain"]["name"]

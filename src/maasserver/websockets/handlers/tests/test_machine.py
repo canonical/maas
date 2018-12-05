@@ -2022,6 +2022,33 @@ class TestMachineHandler(MAASServerTestCase):
             'power_address': power_address,
         }))
 
+    def test_update_no_pool(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {}, None)
+        node = factory.make_Node(interface=True)
+        node_data = self.dehydrate_node(node, handler)
+        new_zone = factory.make_Zone()
+        new_hostname = factory.make_name("hostname")
+        new_architecture = make_usable_architecture(self)
+        power_id = factory.make_name('power_id')
+        power_pass = factory.make_name('power_pass')
+        power_address = factory.make_ipv4_address()
+        node_data["hostname"] = new_hostname
+        node_data["architecture"] = new_architecture
+        node_data["zone"] = {
+            "name": new_zone.name,
+        }
+        # Entry is present but not passed
+        node_data["pool"] = None
+        node_data["power_type"] = "virsh"
+        node_data["power_parameters"] = {
+            'power_id': power_id,
+            'power_pass': power_pass,
+            'power_address': power_address,
+        }
+        updated_node = handler.update(node_data)
+        self.expectThat(updated_node["pool"]["id"], Equals(node.pool.id))
+
     def test_update_adds_tags_to_node(self):
         user = factory.make_admin()
         handler = MachineHandler(user, {}, None)
