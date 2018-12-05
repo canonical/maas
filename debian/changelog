@@ -1,8 +1,29 @@
-maas (2.5.0~rc2-0ubuntu1) UNRELEASED; urgency=medium
+maas (2.5.1-0ubuntu1) UNRELEASED; urgency=medium
 
   * UNRELEASED
 
- -- Andres Rodriguez <andreserl@ubuntu.com>  Mon, 26 Nov 2018 13:49:19 -0500
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 05 Dec 2018 14:10:00 -0500
+
+maas (2.5.0-7442-gdf68e30a5-0ubuntu1) cosmic; urgency=medium
+
+  * New upstream release. MAAS 2.5.0 introduces:
+    - Proxy MAAS communication through the rack controller.
+    - HA - Rack to region communication no longer needs VIPs.
+    - KVM (pod) - Support for networking.
+    - KVM (pod) - Re-designed WebUI.
+    - CentOS storage support.
+    - ESXi deployment support.
+    - Machine listing - Re-designed UI.
+    - Enlistment - now runs commissioning scripts.
+    - Add machines by only specifying IPMI credentials.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 05 Dec 2018 10:08:54 -0500
+
+maas (2.5.0~rc2-7433-gea48d302e-0ubuntu1~18.10.1) cosmic; urgency=medium
+
+  * New upstream release.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Fri, 30 Nov 2018 14:00:22 -0500
 
 maas (2.5.0~rc1-7419-ge0d239532-0ubuntu1~18.10.1) cosmic; urgency=medium
 
