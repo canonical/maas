@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for all forms that are used with `BlockDevice`."""
@@ -8,6 +8,7 @@ __all__ = []
 import random
 import uuid
 
+from django.core.exceptions import ValidationError
 from maasserver.enum import FILESYSTEM_TYPE
 from maasserver.forms import (
     CreatePhysicalBlockDeviceForm,
@@ -108,6 +109,16 @@ class TestFormatBlockDeviceForm(MAASServerTestCase):
             form.is_valid(),
             "Should be invalid because of an invalid uuid.")
         self.assertEqual({'uuid': ["Enter a valid value."]}, form._errors)
+
+    def test_is_not_valid_if_non_user_format_fstype(self):
+        block_device = factory.make_PhysicalBlockDevice()
+        factory.make_Filesystem(
+            fstype='bcache-backing', block_device=block_device)
+        data = {
+            'fstype': FILESYSTEM_TYPE.EXT4,
+            }
+        form = FormatBlockDeviceForm(block_device, data=data)
+        self.assertRaises(ValidationError, form.save)
 
     def test_creates_filesystem(self):
         fsuuid = "%s" % uuid.uuid4()
