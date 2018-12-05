@@ -538,4 +538,43 @@ describe("maasMachinesTable", function() {
             expect(actual).toEqual(expected);
         });
     });
+
+    describe("removeDuplicates", function() {
+
+        it("returns a unique IP object with a duplicate", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            var ipAddresses = [{
+                "ip": '172.168.1.1',
+                "is_boot": false,
+            }, {
+                "ip": '172.168.1.2',
+                "is_boot": true,
+            }, {
+                "ip": '172.168.1.2',
+                "is_boot": true,
+            }];
+
+            var actual = scope.removeDuplicates(ipAddresses, 'ip');
+            expect(actual.length).toEqual(2);
+        });
+
+        it("returns a unique IP object without a duplicate", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            var ipAddresses = [{
+                "ip": '172.168.1.1',
+                "is_boot": false,
+            }, {
+                "ip": '172.168.1.2',
+                "is_boot": true,
+            }, {
+                "ip": '172.168.1.3',
+                "is_boot": true,
+            }];
+
+            var actual = scope.removeDuplicates(ipAddresses, 'ip');
+            expect(actual.length).toEqual(3);
+        });
+    });
 });

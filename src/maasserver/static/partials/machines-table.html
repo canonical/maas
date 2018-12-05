@@ -66,12 +66,12 @@
                         </a>
                     </div>
                     <span class="p-tooltip p-tooltip--bottom-left" aria-describedby="ip-addresses-{$ node.fqdn $}">
-                        <div data-ng-if="node.ip_addresses.length" class="p-double-row__muted-row">
+                        <div data-ng-if="removeDuplicates(node.ip_addresses, 'ip').length" class="p-double-row__muted-row">
                             <span>{$ getBootIp(node.ip_addresses) || node.ip_addresses[0].ip $}</span><span data-ng-if="getBootIp(node.ip_addresses)"> (PXE)</span>
-                            <span data-ng-if="node.ip_addresses.length > 1">(+{$ node.ip_addresses.length - 1 $})</span>
-                            <span class="p-tooltip__message" style="white-space:initial" role="tooltip" data-ng-if="node.ip_addresses.length > 1" id="ip-addresses-{$ node.fqdn $}">
-                                <div><strong>{$ node.ip_addresses.length $} interfaces:</strong></div>
-                                <div data-ng-repeat="ip_address in node.ip_addresses">
+                            <span data-ng-if="removeDuplicates(node.ip_addresses, 'ip').length > 1">(+{$ removeDuplicates(node.ip_addresses, 'ip').length - 1 $})</span>
+                            <span class="p-tooltip__message" style="white-space:initial" role="tooltip" data-ng-if="removeDuplicates(node.ip_addresses, 'ip').length > 1" id="ip-addresses-{$ node.fqdn $}">
+                                <div><strong>{$ removeDuplicates(node.ip_addresses, 'ip').length $} interfaces:</strong></div>
+                                <div data-ng-repeat="ip_address in removeDuplicates(node.ip_addresses, 'ip')">
                                     <span>{$ ip_address.ip $}</span><span data-ng-if="ip_address.is_boot"> (PXE)</span>
                                 </div>
                             </span>

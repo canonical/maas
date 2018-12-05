@@ -250,6 +250,12 @@ angular.module('MAAS').directive('maasMachinesTable', [
             }
           }
           return false;
+        };
+
+        scope.removeDuplicates = function(ipArray, prop) {
+          return ipArray.filter((obj, pos, arr) => {
+            return arr.map(mapObj => mapObj[prop]).indexOf(obj[prop]) === pos;
+          });
         }
       }
     };
