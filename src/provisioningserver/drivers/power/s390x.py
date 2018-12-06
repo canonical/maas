@@ -27,6 +27,7 @@ def get_client(context):
 class S390XPowerDriver(PowerDriver):
 
     name = 's390x'
+    chassis = False
     description = "IBM Z (s390x)"
     settings = [
         make_setting_field('power_address', "HMC host", required=True),
