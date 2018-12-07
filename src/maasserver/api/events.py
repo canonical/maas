@@ -54,7 +54,8 @@ def event_to_dict(event):
 
 
 class EventsHandler(OperationsHandler):
-    """Retrieve filtered node events.
+    """
+    Retrieve filtered node events.
 
     A specific Node's events is identified by specifying one or more
     ids, hostnames, or mac addresses as a list.
@@ -85,31 +86,47 @@ class EventsHandler(OperationsHandler):
 
     @operation(idempotent=True)
     def query(self, request):
-        """List Node events, optionally filtered by various criteria via
-        URL query parameters.
+        """@description-title List node events
+        @description List node events, optionally filtered by various criteria
+        via URL query parameters.
 
-        :param hostname: An optional hostname. Only events relating to the node
-            with the matching hostname will be returned. This can be specified
-            multiple times to get events relating to more than one node.
-        :param mac_address: An optional list of MAC addresses.  Only
-            nodes with matching MAC addresses will be returned.
-        :param id: An optional list of system ids.  Only nodes with
-            matching system ids will be returned.
-        :param zone: An optional name for a physical zone. Only nodes in the
-            zone will be returned.
-        :param agent_name: An optional agent name.  Only nodes with
-            matching agent names will be returned.
-        :param level: Desired minimum log level of returned events. Returns
-            this level of events and greater. Choose from: %(log_levels)s.
-            The default is INFO.
-        :param limit: Optional number of events to return. Default 100.
-            Maximum: 1000.
-        :param before: Optional event id.  Defines where to start returning
-            older events.
-        :param after: Optional event id.  Defines where to start returning
-            newer events.
-        :param owner: If specified, filters the list to show only events
-            owned by the specified username.
+        @param (string) "hostname" [required=false] An optional hostname. Only
+        events relating to the node with the matching hostname will be
+        returned. This can be specified multiple times to get events relating
+        to more than one node.
+
+        @param (string) "mac_address" [required=false] An optional list of MAC
+        addresses.  Only nodes with matching MAC addresses will be returned.
+
+        @param (string) "id" [required=false] An optional list of system ids.
+        Only nodes with matching system ids will be returned.
+
+        @param (string) "zone" [required=false] An optional name for a physical
+        zone. Only nodes in the zone will be returned.
+
+        @param (string) "agent_name" [required=false] An optional agent name.
+        Only nodes with matching agent names will be returned.
+
+        @param (string) "level" [required=false] Desired minimum log level of
+        returned events. Returns this level of events and greater. Choose from:
+        %(log_levels)s.  The default is INFO.
+
+        @param (string) "limit" [required=false] Optional number of events to
+        return. Default 100.  Maximum: 1000.
+
+        @param (string) "before" [required=false] Optional event id.  Defines
+        where to start returning older events.
+
+        @param (string) "after" [required=false] Optional event id.  Defines
+        where to start returning newer events.
+
+        @param (string) "owner" [required=false] If specified, filters the list
+        to show only events owned by the specified username.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing a list of
+        events objects.
+        @success-example "success-json" [exkey=events-query] placeholder text
         """
         # Extract & validate optional parameters from the request.
         after = get_optional_param(request.GET, 'after', None, Int)

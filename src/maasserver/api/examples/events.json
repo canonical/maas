@@ -1,0 +1,59 @@
+{
+  "events-query": {
+    "count": 5,
+    "events": [
+      {
+        "username": "unknown",
+        "node": "7xtf67",
+        "hostname": "spence-devmaas",
+        "id": 1667,
+        "level": "WARNING",
+        "created": "Fri, 07 Dec. 2018 20:11:08",
+        "type": "Rack import warning",
+        "description": "Finished importing boot images, the region does not have any boot images available."
+      },
+      {
+        "username": "unknown",
+        "node": "7xtf67",
+        "hostname": "spence-devmaas",
+        "id": 1666,
+        "level": "INFO",
+        "created": "Fri, 07 Dec. 2018 20:11:08",
+        "type": "Rack import info",
+        "description": "Starting rack boot image import"
+      },
+      {
+        "username": "unknown",
+        "node": "7xtf67",
+        "hostname": "spence-devmaas",
+        "id": 1665,
+        "level": "INFO",
+        "created": "Fri, 07 Dec. 2018 20:11:00",
+        "type": "Starting refresh of controller hardware and networking information",
+        "description": "(MAAS)"
+      },
+      {
+        "username": "unknown",
+        "node": "7xtf67",
+        "hostname": "spence-devmaas",
+        "id": 1664,
+        "level": "INFO",
+        "created": "Fri, 07 Dec. 2018 16:37:18",
+        "type": "Starting refresh of controller hardware and networking information",
+        "description": "(MAAS)"
+      },
+      {
+        "username": "unknown",
+        "node": "7xtf67",
+        "hostname": "spence-devmaas",
+        "id": 1663,
+        "level": "INFO",
+        "created": "Fri, 07 Dec. 2018 16:36:15",
+        "type": "Starting refresh of controller hardware and networking information",
+        "description": "(MAAS)"
+      }
+    ],
+    "next_uri": "/MAAS/api/2.0/events/?op=query&limit=5&after=1667",
+    "prev_uri": "/MAAS/api/2.0/events/?op=query&limit=5&before=1663"
+  }
+}
