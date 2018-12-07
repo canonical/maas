@@ -127,7 +127,7 @@ class RBACClient(MacaroonClient):
         """
         url = (
             self._get_resource_type_url(resource_type) +
-            '/allowed-for-user?user={}&permission={}'.format(
+            '/allowed-for-user?u={}&p={}'.format(
                 quote(user), quote(permission)))
         result = self._request('GET', url)
         if result == ['']:
@@ -183,8 +183,8 @@ class FakeRBACClient(RBACClient):
         if method.upper() == 'GET':
             resource_type, action = path_parts[5:7]
             query = parse_qs(parsed.query)
-            [user] = query['user']
-            [permission] = query['permission']
+            [user] = query['u']
+            [permission] = query['p']
             user_resources = self.store.allowed.get(user, {})
             user_permissions = user_resources.get(resource_type, {})
             pool_identifiers = user_permissions.get(permission, [])

@@ -192,7 +192,7 @@ class TestRBACClient(MAASServerTestCase):
                 'GET',
                 'https://rbac.example.com/api/'
                 'service/v1/resources/maas/'
-                'allowed-for-user?user={}&permission=admin'.format(user),
+                'allowed-for-user?u={}&p=admin'.format(user),
                 auth=mock.ANY, cookies=mock.ANY, json=None))
 
     def test_allowed_for_user_resource_ids(self):
@@ -209,7 +209,7 @@ class TestRBACClient(MAASServerTestCase):
                 'GET',
                 'https://rbac.example.com/api/'
                 'service/v1/resources/maas/'
-                'allowed-for-user?user={}&permission=admin'.format(user),
+                'allowed-for-user?u={}&p=admin'.format(user),
                 auth=mock.ANY, cookies=mock.ANY, json=None))
 
 
