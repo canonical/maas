@@ -495,10 +495,9 @@ class VirshSSH(pexpect.spawn):
         output = output.splitlines()[2:]
         return [InterfaceInfo(*line.split()[1:5]) for line in output]
 
-    def get_pod_cpu_count(self):
+    def get_pod_cpu_count(self, nodeinfo):
         """Gets number of CPUs in the pod."""
-        output = self.run(['nodeinfo']).strip()
-        cpu_count = self.get_key_value(output, "CPU(s)")
+        cpu_count = self.get_key_value(nodeinfo, "CPU(s)")
         if cpu_count is None:
             maaslog.error("Failed to get pod CPU count")
             return 0
@@ -513,19 +512,17 @@ class VirshSSH(pexpect.spawn):
             return 0
         return int(cpu_count)
 
-    def get_pod_cpu_speed(self):
+    def get_pod_cpu_speed(self, nodeinfo):
         """Gets CPU speed (MHz) in the pod."""
-        output = self.run(['nodeinfo']).strip()
-        cpu_speed = self.get_key_value_unitless(output, "CPU frequency")
+        cpu_speed = self.get_key_value_unitless(nodeinfo, "CPU frequency")
         if cpu_speed is None:
             maaslog.error("Failed to get pod CPU speed")
             return 0
         return int(cpu_speed)
 
-    def get_pod_memory(self):
+    def get_pod_memory(self, nodeinfo):
         """Gets the total memory of the pod."""
-        output = self.run(['nodeinfo']).strip()
-        KiB = self.get_key_value_unitless(output, "Memory size")
+        KiB = self.get_key_value_unitless(nodeinfo, "Memory size")
         if KiB is None:
             maaslog.error("Failed to get pod memory")
             return 0
@@ -602,10 +599,13 @@ class VirshSSH(pexpect.spawn):
         except TypeError:
             return None
 
-    def get_pod_arch(self):
+    def get_pod_nodeinfo(self):
+        """Gets the general information of the node via 'nodeinfo'"""
+        return self.run(['nodeinfo']).strip()
+
+    def get_pod_arch(self, nodeinfo):
         """Gets architecture of the pod."""
-        output = self.run(['nodeinfo']).strip()
-        arch = self.get_key_value(output, "CPU model")
+        arch = self.get_key_value(nodeinfo, "CPU model")
         if arch is None:
             maaslog.error("Failed to get pod architecture")
             raise PodInvalidResources(
@@ -639,16 +639,17 @@ class VirshSSH(pexpect.spawn):
             architectures=[], cores=0, cpu_speed=0, memory=0, local_storage=0,
             hints=DiscoveredPodHints(
                 cores=0, cpu_speed=0, memory=0, local_storage=0))
-        discovered_pod.architectures = [self.get_pod_arch()]
         discovered_pod.capabilities = [
             Capabilities.COMPOSABLE,
             Capabilities.DYNAMIC_LOCAL_STORAGE,
             Capabilities.OVER_COMMIT,
             Capabilities.STORAGE_POOLS,
         ]
-        discovered_pod.cores = self.get_pod_cpu_count()
-        discovered_pod.cpu_speed = self.get_pod_cpu_speed()
-        discovered_pod.memory = self.get_pod_memory()
+        nodeinfo = self.get_pod_nodeinfo()
+        discovered_pod.architectures = [self.get_pod_arch(nodeinfo)]
+        discovered_pod.cores = self.get_pod_cpu_count(nodeinfo)
+        discovered_pod.cpu_speed = self.get_pod_cpu_speed(nodeinfo)
+        discovered_pod.memory = self.get_pod_memory(nodeinfo)
         discovered_pod.storage_pools = self.get_pod_storage_pools()
         discovered_pod.local_storage = sum(
             pool.storage for pool in discovered_pod.storage_pools)
@@ -661,9 +662,10 @@ class VirshSSH(pexpect.spawn):
         # You can always create a domain up to the size of total cores,
         # memory, and cpu_speed even if that amount is already in use.
         # Not a good idea, but possible.
-        discovered_pod_hints.cores = self.get_pod_cpu_count()
-        discovered_pod_hints.cpu_speed = self.get_pod_cpu_speed()
-        discovered_pod_hints.memory = self.get_pod_memory()
+        nodeinfo = self.get_pod_nodeinfo()
+        discovered_pod_hints.cores = self.get_pod_cpu_count(nodeinfo)
+        discovered_pod_hints.cpu_speed = self.get_pod_cpu_speed(nodeinfo)
+        discovered_pod_hints.memory = self.get_pod_memory(nodeinfo)
         discovered_pod_hints.local_storage = (
             self.get_pod_available_local_storage())
         return discovered_pod_hints

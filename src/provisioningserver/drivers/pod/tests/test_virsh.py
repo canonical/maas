@@ -672,12 +672,14 @@ class TestVirshSSH(MAASTestCase):
 
     def test_get_pod_cpu_count(self):
         conn = self.configure_virshssh(SAMPLE_NODEINFO)
-        expected = conn.get_pod_cpu_count()
+        nodeinfo = conn.get_pod_nodeinfo()
+        expected = conn.get_pod_cpu_count(nodeinfo)
         self.assertEqual(8, expected)
 
     def test_get_pod_cpu_count_returns_zero_if_info_not_available(self):
         conn = self.configure_virshssh('')
-        expected = conn.get_pod_cpu_count()
+        nodeinfo = conn.get_pod_nodeinfo()
+        expected = conn.get_pod_cpu_count(nodeinfo)
         self.assertEqual(0, expected)
 
     def test_get_machine_cpu_count(self):
@@ -692,7 +694,8 @@ class TestVirshSSH(MAASTestCase):
 
     def test_get_pod_cpu_speed(self):
         conn = self.configure_virshssh(SAMPLE_NODEINFO)
-        expected = conn.get_pod_cpu_speed()
+        nodeinfo = conn.get_pod_nodeinfo()
+        expected = conn.get_pod_cpu_speed(nodeinfo)
         self.assertEqual(2400, expected)
 
     def test_get_pod_cpu_speed_returns_zero_if_info_not_available(self):
@@ -700,17 +703,20 @@ class TestVirshSSH(MAASTestCase):
         mock_get_key_value_unitless = self.patch(
             virsh.VirshSSH, "get_key_value_unitless")
         mock_get_key_value_unitless.return_value = None
-        expected = conn.get_pod_cpu_speed()
+        nodeinfo = conn.get_pod_nodeinfo()
+        expected = conn.get_pod_cpu_speed(nodeinfo)
         self.assertEqual(0, expected)
 
     def test_get_pod_memory(self):
         conn = self.configure_virshssh(SAMPLE_NODEINFO)
-        expected = conn.get_pod_memory()
+        nodeinfo = conn.get_pod_nodeinfo()
+        expected = conn.get_pod_memory(nodeinfo)
         self.assertEqual(int(16307176 / 1024), expected)
 
     def test_get_pod_memory_returns_zero_if_info_not_available(self):
         conn = self.configure_virshssh('')
-        expected = conn.get_pod_memory()
+        nodeinfo = conn.get_pod_nodeinfo()
+        expected = conn.get_pod_memory(nodeinfo)
         self.assertEqual(0, expected)
 
     def test_get_machine_memory(self):
@@ -768,12 +774,13 @@ class TestVirshSSH(MAASTestCase):
 
     def test_get_pod_arch(self):
         conn = self.configure_virshssh(SAMPLE_NODEINFO)
-        expected = conn.get_pod_arch()
+        nodeinfo = conn.get_pod_nodeinfo()
+        expected = conn.get_pod_arch(nodeinfo)
         self.assertEqual('amd64/generic', expected)
 
     def test_get_pod_arch_raises_error_if_not_found(self):
         conn = self.configure_virshssh('')
-        self.assertRaises(PodInvalidResources, conn.get_pod_arch)
+        self.assertRaises(PodInvalidResources, conn.get_pod_arch, None)
 
     def test_get_machine_arch_returns_valid(self):
         arch = factory.make_name('arch')
@@ -806,6 +813,8 @@ class TestVirshSSH(MAASTestCase):
             for _ in range(3)
         ]
         local_storage = sum(pool.storage for pool in storage_pools)
+        mock_get_pod_nodeinfo = self.patch(
+            virsh.VirshSSH, 'get_pod_nodeinfo')
         mock_get_pod_arch = self.patch(
             virsh.VirshSSH, 'get_pod_arch')
         mock_get_pod_cpu_count = self.patch(
@@ -816,6 +825,7 @@ class TestVirshSSH(MAASTestCase):
             virsh.VirshSSH, 'get_pod_memory')
         mock_get_pod_storage_pools = self.patch(
             virsh.VirshSSH, 'get_pod_storage_pools')
+        mock_get_pod_nodeinfo.return_value = SAMPLE_NODEINFO
         mock_get_pod_arch.return_value = architecture
         mock_get_pod_cpu_count.return_value = cores
         mock_get_pod_cpu_speed.return_value = cpu_speed
@@ -841,11 +851,14 @@ class TestVirshSSH(MAASTestCase):
         memory = random.randint(4096, 8192)
         cpu_speed = random.randint(2000, 3000)
         local_storage = random.randint(4096, 8192)
+        mock_get_pod_nodeinfo = self.patch(
+            virsh.VirshSSH, 'get_pod_nodeinfo')
         mock_get_pod_cores = self.patch(
             virsh.VirshSSH, 'get_pod_cpu_count')
         mock_get_pod_cores.return_value = cores
         mock_get_pod_memory = self.patch(
             virsh.VirshSSH, 'get_pod_memory')
+        mock_get_pod_nodeinfo.return_value = SAMPLE_NODEINFO
         mock_get_pod_memory.return_value = memory
         mock_get_pod_cpu_speed = self.patch(
             virsh.VirshSSH, 'get_pod_cpu_speed')
