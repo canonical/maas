@@ -42,7 +42,8 @@ from provisioningserver.events import EVENT_TYPES
 
 
 class NodeScriptsHandler(OperationsHandler):
-    """Manage custom scripts.
+    """
+    Manage custom scripts.
 
     This functionality is only available to administrators.
     """
@@ -56,65 +57,63 @@ class NodeScriptsHandler(OperationsHandler):
 
     @admin_method
     def create(self, request):
-        """Create a new script.
+        """@description-title Create a new script
+        @description Create a new script.
 
-        :param name: The name of the script.
-        :type name: unicode
+        @param (string) "name" [required=true] The name of the script.
 
-        :param title: The title of the script.
-        :type title: unicode
+        @param (string) "title" [required=false] The title of the script.
 
-        :param description: A description of what the script does.
-        :type description: unicode
+        @param (string) "description" [required=false] A description of what
+        the script does.
 
-        :param tags: A comma seperated list of tags for this script.
-        :type tags: unicode
+        @param (string) "tags" [required=false] A comma seperated list of tags
+        for this script.
 
-        :param type: The script_type defines when the script should be used.
-            Can be testing or commissioning, defaults to testing.
-        :type script_type: unicode
+        @param (string) "type" [required=false] The script_type defines when
+        the script should be used: ``testing`` or ``commissioning``. Defaults
+        to ``testing``.
 
-        :param hardware_type: The hardware_type defines what type of hardware
-            the script is assoicated with. May be CPU, memory, storage, or
-            node.
-        :type hardware_type: unicode
+        @param (string) "hardware_type" [required=false] The hardware_type
+        defines what type of hardware the script is assoicated with. May be
+        CPU, memory, storage, or node.
 
-        :param parallel: Whether the script may be run in parallel with other
-            scripts. May be disabled to run by itself, instance to run along
-            scripts with the same name, or any to run along any script.
-        :type parallel: unicode
+        @param (int) "parallel" [required=false] Whether the script may be
+        run in parallel with other scripts. May be disabled to run by itself,
+        instance to run along scripts with the same name, or any to run along
+        any script. 1 == True, 0 == False.
 
-        :param timeout: How long the script is allowed to run before failing.
-            0 gives unlimited time, defaults to 0.
-        :type timeout: unicode
+        @param (int) "timeout" [required=false] How long the script is allowed
+        to run before failing.  0 gives unlimited time, defaults to 0.
 
-        :param destructive: Whether or not the script overwrites data on any
-            drive on the running system. Destructive scripts can not be run on
-            deployed systems. Defaults to false.
-        :type destructive: boolean
+        @param (boolean) "destructive" [required=false] Whether or not the
+        script overwrites data on any drive on the running system. Destructive
+        scripts can not be run on deployed systems. Defaults to false.
 
-        :param script: The content of the script to be uploaded in binary form.
-            note: this is not a normal parameter, but a file upload. Its
-            filename is ignored; MAAS will know it by the name you pass to the
-            request. Optionally you can ignore the name and script parameter in
-            favor of uploading a single file as part of the request.
-        :type script: unicode
+        @param (string) "script" [required=false] The content of the script to
+        be uploaded in binary form. Note: this is not a normal parameter, but
+        a file upload. Its filename is ignored; MAAS will know it by the name
+        you pass to the request. Optionally you can ignore the name and script
+        parameter in favor of uploading a single file as part of the request.
 
-        :param comment: A comment about what this change does.
-        :type comment: unicode
+        @param (string) "comment" [required=false] A comment about what this
+        change does.
 
-        :param for_hardware: A list of modalias, PCI IDs, and/or USB IDs the
-            script will automatically run on. Must start with modalias:, pci:,
-            or usb:.
-        :type for_hardware: unicode
+        @param (string) "for_hardware" [required=false] A list of modalias, PCI
+        IDs, and/or USB IDs the script will automatically run on. Must start
+        with ``modalias:``, ``pci:``, or ``usb:``.
 
-        :param may_reboot: Whether or not the script may reboot the system
-            while running.
-        :type may_reboot: boolean
+        @param (boolean) "may_reboot" [required=false] Whether or not the
+        script may reboot the system while running.
 
-        :param recommission: Whether builtin commissioning scripts should be
-            rerun after successfully running this scripts.
-        :type recommission: boolean
+        @param (string) "recommission" [required=false] Whether builtin
+        commissioning scripts should be rerun after successfully running this
+        scripts.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing information
+        about the new script.
+        @success-example "success-json" [exkey=scripts-create] placeholder text
         """
         data = request.data.copy()
         if 'script' in request.FILES:
@@ -130,22 +129,30 @@ class NodeScriptsHandler(OperationsHandler):
             raise MAASAPIValidationError(form.errors)
 
     def read(self, request):
-        """Return a list of stored scripts.
+        """@description-title List stored scripts
+        @description Return a list of stored scripts.
 
-        :param type: Only return scripts with the given type. This can be
-            testing or commissioning. Defaults to showing both.
-        :type type: unicode
+        Note that parameters should be passed in the URI. E.g.
+        ``/script/?type=testing``.
 
-        :param hardware_type: Only return scripts for the given hardware type.
-            Can be node, cpu, memory, or storage. Defaults to all.
-        :type hardware_type: unicode
+        @param (string) "type" [required=false] Only return scripts with the
+        given type. This can be ``testing`` or ``commissioning``. Defaults to
+        showing both.
 
-        :param include_script: Include the base64 encoded script content.
-        :type include_script: bool
+        @param (string) "hardware_type" [required=false] Only return scripts
+        for the given hardware type.  Can be ``node``, ``cpu``, ``memory``, or
+        ``storage``.  Defaults to all.
 
-        :param filters: A comma seperated list to show only results
-                        with a script name or tag.
-        :type filters: unicode
+        @param (string) "include_script" [required=false] Include the base64-
+        encoded script content.
+
+        @param (string) "filters" [required=false] A comma seperated list to
+        show only results with a script name or tag.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing a list of
+        script objects.
+        @success-example "success-json" [exkey=scripts-read] placeholder text
         """
         qs = Script.objects.all()
 
@@ -248,10 +255,25 @@ class NodeScriptHandler(OperationsHandler):
         return results
 
     def read(self, request, name):
-        """Return a script's metadata.
+        """@description-title Return script metadata
+        @description Return metadata belonging to the script with the given
+        name.
 
-        :param include_script: Include the base64 encoded script content.
-        :type include_script: bool
+        @param (string) "{name}" [required=true] The script's name.
+
+        @param (string) "include_script" [required=false] Include the base64
+        encoded script content if any value is given for include_script.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing information
+        about the script.
+        @success-example "success-json" [exkey=scripts-read-by-name]
+        placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested script is not found.
+        @error-example "not-found"
+            Not Found
         """
         if name.isdigit():
             script = get_object_or_404(Script, id=int(name))
@@ -263,7 +285,18 @@ class NodeScriptHandler(OperationsHandler):
 
     @admin_method
     def delete(self, request, name):
-        """Delete a script."""
+        """@description-title Delete a script
+        @description Deletes a script with the given name.
+
+        @param (string) "{name}" [required=true] The script's name.
+
+        @success (http-status-code) "server-success" 204
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested script is not found.
+        @error-example "not-found"
+            Not Found
+        """
         if name.isdigit():
             script = get_object_or_404(Script, id=int(name))
         else:
@@ -280,69 +313,68 @@ class NodeScriptHandler(OperationsHandler):
 
     @admin_method
     def update(self, request, name):
-        """Update a commissioning script.
+        """@description-title Update a script
+        @description Update a script with the given name.
 
-        :param name: The name of the script.
-        :type name: unicode
+        @param (string) "{name}" [required=true] The name of the script.
 
-        :param title: The title of the script.
-        :type title: unicode
+        @param (string) "title" [required=false] The title of the script.
 
-        :param description: A description of what the script does.
-        :type description: unicode
+        @param (string) "description" [required=false] A description of what
+        the script does.
 
-        :param tags: A comma seperated list of tags for this script.
-        :type tags: unicode
+        @param (string) "tags" [required=false] A comma seperated list of tags
+        for this script.
 
-        :param type: The type defines when the script should be used. Can be
-            testing or commissioning, defaults to testing.
-        :type script_type: unicode
+        @param (string) "type" [required=false] The type defines when the
+        script should be used. Can be ``testing`` or ``commissioning``,
+        defaults to ``testing``.
 
-        :param hardware_type: The hardware_type defines what type of hardware
-            the script is assoicated with. May be CPU, memory, storage, or
-            node.
-        :type hardware_type: unicode
+        @param (string) "hardware_type" [required=false] The hardware_type
+        defines what type of hardware the script is assoicated with. May be
+        ``cpu``, ``memory``, ``storage``, or ``node``.
 
-        :param parallel: Whether the script may be run in parallel with other
-            scripts. May be disabled to run by itself, instance to run along
-            scripts with the same name, or any to run along any script.
-        :type parallel: unicode
+        @param (int) "parallel" [required=false] Whether the script may be
+        run in parallel with other scripts. May be disabled to run by itself,
+        instance to run along scripts with the same name, or any to run along
+        any script. ``1`` == True, ``0`` == False.
 
-        :param timeout: How long the script is allowed to run before failing.
-            0 gives unlimited time, defaults to 0.
-        :type timeout: unicode
+        @param (int) "timeout" [required=false] How long the script is allowed
+        to run before failing.  0 gives unlimited time, defaults to 0.
 
-        :param timeout: How long the script is allowed to run before failing.
-            0 gives unlimited time, defaults to 0.
-        :type timeout: unicode
+        @param (boolean) "destructive" [required=false] Whether or not the
+        script overwrites data on any drive on the running system. Destructive
+        scripts can not be run on deployed systems. Defaults to false.
 
-        :param destructive: Whether or not the script overwrites data on any
-            drive on the running system. Destructive scripts can not be run on
-            deployed systems. Defaults to false.
-        :type destructive: boolean
+        @param (string) "script" [required=false] The content of the script to
+        be uploaded in binary form. Note: this is not a normal parameter, but
+        a file upload. Its filename is ignored; MAAS will know it by the name
+        you pass to the request. Optionally you can ignore the name and script
+        parameter in favor of uploading a single file as part of the request.
 
-        :param script: The content of the script to be uploaded in binary form.
-            note: this is not a normal parameter, but a file upload. Its
-            filename is ignored; MAAS will know it by the name you pass to the
-            request. Optionally you can ignore the name and script parameter in
-            favor of uploading a single file as part of the request.
+        @param (string) "comment" [required=false] A comment about what this
+        change does.
 
-        :param comment: A comment about what this change does.
-        :type comment: unicode
+        @param (string) "for_hardware" [required=false] A list of modalias, PCI
+        IDs, and/or USB IDs the script will automatically run on. Must start
+        with ``modalias:``, ``pci:``, or ``usb:``.
 
-        :param for_hardware: A list of modalias, PCI IDs, and/or USB IDs the
-            script will automatically run on. Must start with modalias:, pci:,
-            or usb:.
-        :type for_hardware: unicode
+        @param (boolean) "may_reboot" [required=false] Whether or not the
+        script may reboot the system while running.
 
-        :param may_reboot: Whether or not the script may reboot the system
-            while running.
-        :type may_reboot: boolean
+        @param (boolean) "recommission" [required=false] Whether built-in
+        commissioning scripts should be rerun after successfully running this
+        scripts.
 
-        :param recommission: Whether builtin commissioning scripts should be
-            rerun after successfully running this scripts.
-        :type recommission: boolean
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing information
+        about the updated script.
+        @success-example "success-json" [exkey=scripts-update] placeholder text
 
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested script is not found.
+        @error-example "not-found"
+            Not Found
         """
         if name.isdigit():
             script = get_object_or_404(Script, id=int(name))
@@ -365,11 +397,24 @@ class NodeScriptHandler(OperationsHandler):
 
     @operation(idempotent=True)
     def download(self, request, name):
-        """Download a script.
+        """@description-title Download a script
+        @description Download a script with the given name.
 
-        :param revision: What revision to download, latest by default. Can use
-            rev as a shortcut.
-        :type revision: integer
+        @param (string) "{name}" [required=true] The name of the script.
+
+        @param (int) "revision" [required=false] What revision to download,
+        latest by default. Can use rev as a shortcut.
+
+        @success (http-status-code) "server-success" 200
+        @success (content) "success-text" A plain-text representation of the
+        requested script.
+        @success-example "success-text" [exkey=scripts-download] placeholder
+        text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested script is not found.
+        @error-example "not-found"
+            Not Found
         """
         if name.isdigit():
             script = get_object_or_404(Script, id=int(name))
@@ -391,14 +436,24 @@ class NodeScriptHandler(OperationsHandler):
     @admin_method
     @operation(idempotent=False)
     def revert(self, request, name):
-        """Revert a script to an earlier version.
+        """@description-title Revert a script version
+        @description Revert a script with the given name to an earlier version.
 
-        :param to: What revision in the script's history to revert to. This can
-            either be an ID or a negative number representing how far back to
-            go.
-        :type to: integer
+        @param (string) "{name}" [required=true] The name of the script.
 
-        Returns 404 if the script is not found.
+        @param (int) "to" [required=false] What revision in the script's
+        history to revert to. This can either be an ID or a negative number
+        representing how far back to go.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing information
+        about the reverted script.
+        @success-example "success-json" [exkey=scripts-revert] placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested script is not found.
+        @error-example "not-found"
+            Not Found
         """
         revert_to = get_mandatory_param(request.data, 'to', Int)
 
@@ -426,12 +481,23 @@ class NodeScriptHandler(OperationsHandler):
     @admin_method
     @operation(idempotent=False)
     def add_tag(self, request, name):
-        """Add a single tag to a script.
+        """@description-title Add a tag
+        @description Add a single tag to a script with the given name.
 
-        :param tag: The tag being added.
-        :type tag: unicode
+        @param (string) "{name}" [required=true] The name of the script.
 
-        Returns 404 if the script is not found.
+        @param (string) "tag" [required=false] The tag being added.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing information
+        about the updated script.
+        @success-example "success-json" [exkey=scripts-add-tag] placeholder
+        text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested script is not found.
+        @error-example "not-found"
+            Not Found
         """
         tag = get_mandatory_param(request.data, 'tag', String)
 
@@ -454,12 +520,23 @@ class NodeScriptHandler(OperationsHandler):
     @admin_method
     @operation(idempotent=False)
     def remove_tag(self, request, name):
-        """Remove a single tag to a script.
+        """@description-title Remove a tag
+        @description Remove a tag from a script with the given name.
 
-        :param tag: The tag being removed.
-        :type tag: unicode
+        @param (string) "{name}" [required=true] The name of the script.
 
-        Returns 404 if the script is not found.
+        @param (string) "tag" [required=false] The tag being removed.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing information
+        about the updated script.
+        @success-example "success-json" [exkey=scripts-remove-tag] placeholder
+        text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested script is not found.
+        @error-example "not-found"
+            Not Found
         """
         tag = get_mandatory_param(request.data, 'tag', String)
 

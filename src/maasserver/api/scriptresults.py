@@ -84,23 +84,37 @@ class NodeScriptResultsHandler(OperationsHandler):
         return ('script_results_handler', ['system_id'])
 
     def read(self, request, system_id):
-        """Return a list of script results grouped by run.
+        """@description-title Return script results
+        @description Return a list of script results grouped by run for the
+        given system_id.
 
-        :param type: Only return scripts with the given type. This can be
-                     commissioning, testing, or installion. Defaults to showing
-                     all.
-        :type type: unicode
+        @param (string) "{system_id}" [required=true] The machine's system_id.
 
-        :param hardware_type: Only return scripts for the given hardware type.
-            Can be node, cpu, memory, or storage. Defaults to all.
-        :type script_type: unicode
+        @param (string) "type" [required=false] Only return scripts with the
+        given type. This can be ``commissioning``, ``testing``, or
+        ``installion``. Defaults to showing all.
 
-        :param include_output: Include base64 encoded output from the script.
-        :type include_output: bool
+        @param (string) "hardware_type" [required=false] Only return scripts
+        for the given hardware type.  Can be ``node``, ``cpu``, ``memory``, or
+        ``storage``.  Defaults to all.
 
-        :param filters: A comma seperated list to show only results
-                        with a script name or tag.
-        :type filters: unicode
+        @param (string) "include_output" [required=false] Include base64
+        encoded output from the script. Note that any value of include_output
+        will include the encoded output from the script.
+
+        @param (string) "filters" [required=false] A comma seperated list to
+        show only results with a script name or tag.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing a list of
+        script result objects.
+        @success-example "success-json" [exkey=script-results-read]
+        placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine is not found.
+        @error-example "not-found"
+            Not Found
         """
         node = Node.objects.get_node_or_404(
             system_id=system_id, user=request.user,
@@ -247,21 +261,38 @@ class NodeScriptResultHandler(OperationsHandler):
             return script_set
 
     def read(self, request, system_id, id):
-        """View a specific set of results.
+        """@description-title Get specific script result
+        @description View a set of test results for a given system_id and
+        script id.
 
-        id can either by the script set id, current-commissioning,
-        current-testing, or current-installation.
+        "id" can either by the script set id, ``current-commissioning``,
+        ``current-testing``, or ``current-installation``.
 
-        :param hardware_type: Only return scripts for the given hardware type.
-            Can be node, cpu, memory, or storage. Defaults to all.
-        :type script_type: unicode
+        @param (string) "{system_id}" [required=true] The machine's system_id.
+        @param (string) "{id}" [required=true] The script result id.
 
-        :param include_output: Include base64 encoded output from the script.
-        :type include_output: bool
+        @param (string) "hardware_type" [required=false] Only return scripts
+        for the given hardware type.  Can be ``node``, ``cpu``, ``memory``, or
+        ``storage``.  Defaults to all.
 
-        :param filters: A comma seperated list to show only results that ran
-                        with a script name, tag, or id.
-        :type filters: unicode
+        @param (string) "include_output" [required=false] Include the base64
+        encoded output from the script if any value for include_output is
+        given.
+
+        @param (string) "filters" [required=false] A comma seperated list to
+        show only results that ran with a script name, tag, or id.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the requested
+        script result object.
+        @success-example "success-json" [exkey=script-results-read-by-id]
+        placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine or script result is
+        not found.
+        @error-example "not-found"
+            Not Found
         """
         script_set = self._get_script_set(request, system_id, id)
         include_output = get_optional_param(
@@ -282,10 +313,23 @@ class NodeScriptResultHandler(OperationsHandler):
 
     @admin_method
     def delete(self, request, system_id, id):
-        """Delete a set of results.
+        """@description-title Delete script results
+        @description Delete script results from the given system_id with the
+        given id.
 
-        id can either by the script set id, current-commissioning,
-        current-testing, or current-installation.
+        "id" can either by the script set id, ``current-commissioning``,
+        ``current-testing``, or ``current-installation``.
+
+        @param (string) "{system_id}" [required=true] The machine's system_id.
+        @param (string) "{id}" [required=true] The script result id.
+
+        @success (http-status-code) "server-success" 204
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine or script result is
+        not found.
+        @error-example "not-found"
+            Not Found
         """
         script_set = self._get_script_set(request, system_id, id)
         script_set.delete()
@@ -305,25 +349,41 @@ class NodeScriptResultHandler(OperationsHandler):
 
     @operation(idempotent=True)
     def download(self, request, system_id, id):
-        """Download a compressed tar containing all results.
+        """@description-title Download script results
+        @description Download a compressed tar containing all results from the
+        given system_id with the given id.
 
-        id can either by the script set id, current-commissioning,
-        current-testing, or current-installation.
+        "id" can either by the script set id, ``current-commissioning``,
+        ``current-testing``, or ``current-installation``.
 
-        :param hardware_type: Only return scripts for the given hardware type.
-            Can be node, cpu, memory, or storage. Defaults to all.
-        :type script_type: unicode
+        @param (string) "{system_id}" [required=true] The machine's system_id.
+        @param (string) "{id}" [required=true] The script result id.
 
-        :param filters: A comma seperated list to show only results that ran
-                        with a script name or tag.
-        :type filters: unicode
+        @param (string) "hardware_type" [required=false] Only return scripts
+        for the given hardware type.  Can be ``node``, ``cpu``, ``memory``, or
+        ``storage``.  Defaults to all.
 
-        :param output: Can be either combined, stdout, stderr, or all. By
-                       default only the combined output is returned.
-        :type output: unicode
+        @param (string) "filters" [required=false] A comma seperated list to
+        show only results that ran with a script name or tag.
 
-        :param filetype: Filetype to output, can be txt or tar.xz
-        :type format: unicode
+        @param (string) "output" [required=false] Can be either ``combined``,
+        ``stdout``, ``stderr``, or ``all``. By default only the combined output
+        is returned.
+
+        @param (string) "filetype" [required=false] Filetype to output, can be
+        ``txt`` or ``tar.xz``.
+
+        @success (http-status-code) "server-success" 200
+        @success (content) "success-text" Plain-text output containing the
+        requested results.
+        @success-example "success-text" [exkey=script-results-download]
+        placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine or script result is
+        not found.
+        @error-example "not-found"
+            Not Found
         """
         script_set = self._get_script_set(request, system_id, id)
         filters = get_optional_param(request.GET, 'filters', None, String)

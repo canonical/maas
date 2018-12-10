@@ -1,0 +1,349 @@
+{
+  "scripts-create": {
+    "name": "foobar",
+    "title": "",
+    "description": "",
+    "tags": [
+      "node"
+    ],
+    "hardware_type": 0,
+    "parallel": 0,
+    "results": {},
+    "parameters": {},
+    "packages": {},
+    "timeout": "0:00:00",
+    "destructive": false,
+    "default": false,
+    "for_hardware": [],
+    "may_reboot": false,
+    "recommission": false,
+    "type": 2,
+    "type_name": "Testing script",
+    "id": 16,
+    "history": [
+      {
+        "id": 22,
+        "comment": null,
+        "created": "Thu, 06 Dec 2018 21:26:18 -0000"
+      }
+    ],
+    "hardware_type_name": "Node",
+    "parallel_name": "Disabled",
+    "resource_uri": "/MAAS/api/2.0/scripts/foobar"
+  },
+  "scripts-read": [
+    {
+      "name": "memtester",
+      "title": "Memory integrity",
+      "description": "Run memtester against all available userspace memory.",
+      "tags": [
+        "memory"
+      ],
+      "hardware_type": 2,
+      "parallel": 0,
+      "results": {},
+      "parameters": {},
+      "packages": {
+        "apt": [
+          "memtester"
+        ]
+      },
+      "timeout": "0:00:00",
+      "destructive": false,
+      "default": true,
+      "for_hardware": [],
+      "may_reboot": false,
+      "recommission": false,
+      "history": [
+        {
+          "id": 5,
+          "comment": "Created by maas-",
+          "created": "Thu, 06 Dec 2018 20:41:47 -0000"
+        }
+      ],
+      "id": 5,
+      "hardware_type_name": "Memory",
+      "type_name": "Testing script",
+      "parallel_name": "Disabled",
+      "type": 2,
+      "resource_uri": "/MAAS/api/2.0/scripts/memtester"
+    },
+    {
+      "name": "stress-ng-memory-long",
+      "title": "Memory integrity",
+      "description": "Run stress-ng memory tests for 12 hours.",
+      "tags": [
+        "memory"
+      ],
+      "hardware_type": 2,
+      "parallel": 0,
+      "results": {},
+      "parameters": {},
+      "packages": {
+        "apt": [
+          "stress-ng"
+        ]
+      },
+      "timeout": "12:00:00",
+      "destructive": false,
+      "default": true,
+      "for_hardware": [],
+      "may_reboot": false,
+      "recommission": false,
+      "history": [
+        {
+          "id": 9,
+          "comment": "Created by maas-",
+          "created": "Thu, 06 Dec 2018 20:41:47 -0000"
+        }
+      ],
+      "id": 9,
+      "hardware_type_name": "Memory",
+      "type_name": "Testing script",
+      "parallel_name": "Disabled",
+      "type": 2,
+      "resource_uri": "/MAAS/api/2.0/scripts/stress-ng-memory-long"
+    },
+    {
+      "name": "stress-ng-memory-short",
+      "title": "Memory integrity",
+      "description": "Run stress-ng memory tests for 5 minutes.",
+      "tags": [
+        "memory"
+      ],
+      "hardware_type": 2,
+      "parallel": 0,
+      "results": {},
+      "parameters": {},
+      "packages": {
+        "apt": [
+          "stress-ng"
+        ]
+      },
+      "timeout": "0:05:00",
+      "destructive": false,
+      "default": true,
+      "for_hardware": [],
+      "may_reboot": false,
+      "recommission": false,
+      "history": [
+        {
+          "id": 10,
+          "comment": "Created by maas-",
+          "created": "Thu, 06 Dec 2018 20:41:47 -0000"
+        }
+      ],
+      "id": 10,
+      "hardware_type_name": "Memory",
+      "type_name": "Testing script",
+      "parallel_name": "Disabled",
+      "type": 2,
+      "resource_uri": "/MAAS/api/2.0/scripts/stress-ng-memory-short"
+    }
+  ],
+  "scripts-read-by-name": {
+    "name": "fio",
+    "title": "Storage benchmark",
+    "description": "Run Fio benchmarking against selected storage devices.",
+    "tags": [
+      "storage",
+      "destructive"
+    ],
+    "hardware_type": 3,
+    "parallel": 1,
+    "results": {
+      "random_read": {
+        "description": "Read speed when reading randomly from the disk.",
+        "title": "Random read"
+      },
+      "random_read_iops": {
+        "description": "IOPS when reading randomly from the disk.",
+        "title": "Random read IOPS"
+      },
+      "random_write": {
+        "description": "Write speed when reading randomly from the disk.",
+        "title": "Random write"
+      },
+      "random_write_iops": {
+        "description": "IOPS when reading randomly from the disk.",
+        "title": "Random write IOPS"
+      },
+      "sequential_read": {
+        "description": "Read speed when reading sequentialy from the disk.",
+        "title": "Sequential read"
+      },
+      "sequential_read_iops": {
+        "description": "IOPS when reading sequentialy from the disk.",
+        "title": "Sequential read IOPS"
+      },
+      "sequential_write": {
+        "description": "Write speed when reading sequentialy from the disk.",
+        "title": "Sequential write"
+      },
+      "sequential_write_iops": {
+        "description": "IOPS when reading sequentialy from the disk.",
+        "title": "Sequential write IOPS"
+      }
+    },
+    "parameters": {
+      "storage": {
+        "argument_format": "{path}",
+        "type": "storage"
+      }
+    },
+    "packages": {
+      "apt": [
+        "fio"
+      ]
+    },
+    "timeout": "0:00:00",
+    "destructive": true,
+    "default": true,
+    "for_hardware": [],
+    "may_reboot": false,
+    "recommission": false,
+    "id": 15,
+    "history": [
+      {
+        "id": 15,
+        "comment": "Created by maas-",
+        "created": "Thu, 06 Dec 2018 20:41:47 -0000"
+      }
+    ],
+    "type_name": "Testing script",
+    "hardware_type_name": "Storage",
+    "parallel_name": "Run along other instances of this script",
+    "type": 2,
+    "resource_uri": "/MAAS/api/2.0/scripts/fio"
+  },
+  "scripts-update": {
+    "name": "foobar",
+    "title": "",
+    "description": "",
+    "tags": [
+      "node"
+    ],
+    "hardware_type": 0,
+    "parallel": 0,
+    "results": {},
+    "parameters": {},
+    "packages": {},
+    "timeout": "0:00:00",
+    "destructive": false,
+    "default": false,
+    "for_hardware": [],
+    "may_reboot": true,
+    "recommission": false,
+    "type_name": "Testing script",
+    "parallel_name": "Disabled",
+    "id": 17,
+    "type": 2,
+    "hardware_type_name": "Node",
+    "history": [
+      {
+        "id": 24,
+        "comment": null,
+        "created": "Thu, 06 Dec 2018 21:54:38 -0000"
+      }
+    ],
+    "resource_uri": "/MAAS/api/2.0/scripts/foobar"
+  },
+  "scripts-download": "#!/bin/bash\n\necho 'fake script'\n",
+  "scripts-revert": {
+    "name": "foobar",
+    "title": "",
+    "description": "",
+    "tags": [
+      "node"
+    ],
+    "hardware_type": 0,
+    "parallel": 0,
+    "results": {},
+    "parameters": {},
+    "packages": {},
+    "timeout": "0:00:00",
+    "destructive": false,
+    "default": false,
+    "for_hardware": [],
+    "may_reboot": true,
+    "recommission": false,
+    "parallel_name": "Disabled",
+    "history": [
+      {
+        "id": 24,
+        "comment": null,
+        "created": "Thu, 06 Dec 2018 21:54:38 -0000"
+      }
+    ],
+    "type": 2,
+    "hardware_type_name": "Node",
+    "type_name": "Testing script",
+    "id": 17,
+    "resource_uri": "/MAAS/api/2.0/scripts/foobar"
+  },
+  "scripts-add-tag": {
+    "name": "foobar",
+    "title": "",
+    "description": "",
+    "tags": [
+      "node",
+      "mytag"
+    ],
+    "hardware_type": 0,
+    "parallel": 0,
+    "results": {},
+    "parameters": {},
+    "packages": {},
+    "timeout": "0:00:00",
+    "destructive": false,
+    "default": false,
+    "for_hardware": [],
+    "may_reboot": true,
+    "recommission": false,
+    "type": 2,
+    "type_name": "Testing script",
+    "history": [
+      {
+        "id": 24,
+        "comment": null,
+        "created": "Thu, 06 Dec 2018 21:54:38 -0000"
+      }
+    ],
+    "id": 17,
+    "parallel_name": "Disabled",
+    "hardware_type_name": "Node",
+    "resource_uri": "/MAAS/api/2.0/scripts/foobar"
+  },
+  "scripts-remove-tag": {
+    "name": "foobar",
+    "title": "",
+    "description": "",
+    "tags": [
+      "node"
+    ],
+    "hardware_type": 0,
+    "parallel": 0,
+    "results": {},
+    "parameters": {},
+    "packages": {},
+    "timeout": "0:00:00",
+    "destructive": false,
+    "default": false,
+    "for_hardware": [],
+    "may_reboot": true,
+    "recommission": false,
+    "hardware_type_name": "Node",
+    "type": 2,
+    "parallel_name": "Disabled",
+    "type_name": "Testing script",
+    "id": 17,
+    "history": [
+      {
+        "id": 24,
+        "comment": null,
+        "created": "Thu, 06 Dec 2018 21:54:38 -0000"
+      }
+    ],
+    "resource_uri": "/MAAS/api/2.0/scripts/foobar"
+  }
+}
