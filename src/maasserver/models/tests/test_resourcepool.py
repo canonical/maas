@@ -135,3 +135,14 @@ class TestResourcePoolManagerGetResourcePools(MAASServerTestCase):
         self.assertItemsEqual(
             [pool],
             ResourcePool.objects.get_resource_pools(user))
+
+    def test__user_rbac_returns_view_all(self):
+        self.enable_rbac()
+        user = factory.make_User()
+        pool = factory.make_ResourcePool()
+        factory.make_ResourcePool()
+        self.rbac_store.add_pool(pool)
+        self.rbac_store.allow(user.username, pool, 'view-all')
+        self.assertItemsEqual(
+            [pool],
+            ResourcePool.objects.get_resource_pools(user))

@@ -96,7 +96,10 @@ from maasserver.node_constraint_filter_forms import (
     nodes_by_storage,
 )
 from maasserver.node_status import NODE_TRANSITIONS
-from maasserver.permissions import NodePermission
+from maasserver.permissions import (
+    NodePermission,
+    PodPermission,
+)
 from maasserver.preseed import get_curtin_merged_config
 from maasserver.storage_layouts import (
     StorageLayoutError,
@@ -2199,7 +2202,8 @@ class MachinesHandler(NodesHandler, PowersMixin):
                     "storage": storage,
                     "interfaces": interfaces,
                 }
-                pods = Pod.objects.all()
+                pods = Pod.objects.get_pods(
+                    request.user, PodPermission.dynamic_compose)
                 if zone is not None:
                     pods = pods.filter(zone__name=zone)
                 if pods:

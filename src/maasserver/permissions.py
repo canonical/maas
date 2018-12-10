@@ -21,6 +21,20 @@ class NodePermission(enum.Enum):
     admin = 'admin'
 
 
+class PodPermission(enum.Enum):
+    """Permissions relating to pods."""
+
+    view = 'view'
+    edit = 'edit'
+    create = 'create'
+
+    #: Composed machine will exist until deleted.
+    compose = 'compose'
+
+    #: Composed machine will be removed once released.
+    dynamic_compose = 'dynamic-compose'
+
+
 class ResourcePoolPermission(enum.Enum):
     """Permissions for `ResourcePool`."""
 

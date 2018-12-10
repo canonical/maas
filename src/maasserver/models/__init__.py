@@ -197,6 +197,7 @@ from maasserver.models.vlan import VLAN
 from maasserver.models.zone import Zone
 from maasserver.permissions import (
     NodePermission,
+    PodPermission,
     ResourcePoolPermission,
 )
 from maasserver.utils.django_urls import (
@@ -339,6 +340,7 @@ class MAASAuthorizationBackend(ModelBackend):
         return authenticated
 
     def has_perm(self, user, perm, obj=None):
+        self._sanity_checks(perm, obj=obj)
         if not user.is_active:
             # Deactivated users, and in particular the node-init user,
             # are prohibited from accessing maasserver services.
@@ -357,14 +359,6 @@ class MAASAuthorizationBackend(ModelBackend):
                 user.username, 'deploy-machines')
             admin_pools = rbac.get_resource_pool_ids(
                 user.username, 'admin-machines')
-
-        # Sanity check that a `ResourcePool` is being checked against
-        # `ResourcePoolPermission`.
-        if (obj is not None and isinstance(obj, ResourcePool) and
-                not isinstance(perm, ResourcePoolPermission)):
-            raise TypeError(
-                'obj type of ResourcePool must be checked '
-                'against a `ResourcePoolPermission`.')
 
         # Handle node permissions without objects.
         if perm == NodePermission.admin and obj is None:
@@ -392,6 +386,12 @@ class MAASAuthorizationBackend(ModelBackend):
         if isinstance(perm, ResourcePoolPermission):
             return self._perm_resource_pool(
                 user, perm, rbac, visible_pools, obj)
+
+        # Pod permissions are handled specifically.
+        if isinstance(perm, PodPermission):
+            return self._perm_pod(
+                user, perm, rbac, visible_pools, view_all_pools,
+                deploy_pools, admin_pools, obj)
 
         if isinstance(obj, (Node, BlockDevice, FilesystemGroup)):
             if isinstance(obj, BlockDevice):
@@ -474,6 +474,22 @@ class MAASAuthorizationBackend(ModelBackend):
             raise NotImplementedError(
                 'Invalid permission check (invalid object type).')
 
+    def _sanity_checks(self, perm, obj=None):
+        """Perform sanity checks to ensure that the perm matches the object."""
+        # Sanity check that a `ResourcePool` is being checked against
+        # `ResourcePoolPermission`.
+        if (obj is not None and isinstance(obj, ResourcePool) and
+                not isinstance(perm, ResourcePoolPermission)):
+            raise TypeError(
+                'obj type of ResourcePool must be checked '
+                'against a `ResourcePoolPermission`.')
+
+        # Sanity check that a `Pod` is being checked against `PodPermission`.
+        if (obj is not None and isinstance(obj, Pod) and
+                not isinstance(perm, PodPermission)):
+            raise TypeError(
+                'obj type of Pod must be checked against a `PodPermission`.')
+
     def _can_view(
             self, rbac_enabled, user, machine,
             visible_pools, view_all_pools, deploy_pools, admin_pools):
@@ -544,6 +560,44 @@ class MAASAuthorizationBackend(ModelBackend):
 
         raise ValueError(
             'unknown ResourcePoolPermission value: %s' % perm)
+
+    def _perm_pod(
+            self, user, perm, rbac,
+            visible_pools, view_all_pools,
+            deploy_pools, admin_pools, obj=None):
+        # `create` permissions is called without an `obj`.
+        rbac_enabled = rbac.is_enabled()
+        if perm == PodPermission.create:
+            return user.is_superuser
+
+        # From this point forward the `obj` must be a `ResourcePool`.
+        if not isinstance(obj, Pod):
+            raise ValueError(
+                'only `PodPermission.create` can be used without an `obj`.')
+
+        if perm == PodPermission.edit:
+            if rbac_enabled:
+                return obj.pool_id in admin_pools
+            return user.is_superuser
+        elif perm == PodPermission.compose:
+            if rbac_enabled:
+                return obj.pool_id in admin_pools
+            return user.is_superuser
+        elif perm == PodPermission.dynamic_compose:
+            if rbac_enabled:
+                return (
+                    obj.pool_id in deploy_pools or
+                    obj.pool_id in admin_pools)
+            return True
+        elif perm == PodPermission.view:
+            if rbac_enabled:
+                return (
+                    obj.pool_id in visible_pools or
+                    obj.pool_id in view_all_pools)
+            return True
+
+        raise ValueError(
+            'unknown PodPermission value: %s' % perm)
 
 
 # Ensure that all signals modules are loaded.

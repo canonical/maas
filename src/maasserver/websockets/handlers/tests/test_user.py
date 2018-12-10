@@ -10,6 +10,7 @@ from maasserver.models.event import Event
 from maasserver.models.user import SYSTEM_USERS
 from maasserver.permissions import (
     NodePermission,
+    PodPermission,
     ResourcePoolPermission,
 )
 from maasserver.testing.factory import factory
@@ -40,6 +41,8 @@ class TestUserHandler(MAASServerTestCase):
                 permissions.append('device_create')
             if user.has_perm(ResourcePoolPermission.create):
                 permissions.append('resource_pool_create')
+            if user.has_perm(PodPermission.create):
+                permissions.append('pod_create')
             data['global_permissions'] = permissions
         return data
 

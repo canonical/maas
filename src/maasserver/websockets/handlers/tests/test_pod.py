@@ -172,6 +172,14 @@ class TestPodHandler(MAASTransactionServerTestCase):
         result = handler.get({"id": pod.id})
         self.assertThat(result, Equals(expected_data))
 
+    def test_get_permissions(self):
+        admin = factory.make_admin()
+        handler = PodHandler(admin, {}, None)
+        pod = self.make_pod_with_hints()
+        result = handler.full_dehydrate(pod)
+        self.assertItemsEqual(
+            ['edit', 'delete', 'compose'], result['permissions'])
+
     def test_list(self):
         admin = factory.make_admin()
         handler = PodHandler(admin, {}, None)

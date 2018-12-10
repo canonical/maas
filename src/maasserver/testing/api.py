@@ -183,6 +183,18 @@ class APITestCaseBase(MAASTestCase, metaclass=APITestType):
         self.user.is_superuser = True
         self.user.save()
 
+    @transactional
+    def become_non_local(self):
+        """Promote `self.user` to admin."""
+        if (Config.objects.get_config('external_auth_url') or
+                Config.objects.get_config('rbac_url')):
+            # if external auth is enabled, mark the user as remote, otherwise
+            # he wouldn't be able to authenticate
+            self.user.userprofile.is_local = False
+            self.user.userprofile.save()
+        else:
+            raise ValueError("Not using external authentication or RBAC.")
+
 
 class APITestCase(APITestCaseBase, MAASServerTestCase):
     """Class for logged-in API tests within a single transaction."""

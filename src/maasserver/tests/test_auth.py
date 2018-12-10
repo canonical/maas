@@ -20,6 +20,7 @@ from maasserver.models import (
 )
 from maasserver.permissions import (
     NodePermission,
+    PodPermission,
     ResourcePoolPermission,
 )
 from maasserver.rbac import (
@@ -1206,3 +1207,165 @@ class TestMAASAuthorizationBackendResourcePool(
             backend.has_perm(user, ResourcePoolPermission.edit, pool1))
         self.assertTrue(
             backend.has_perm(user, ResourcePoolPermission.edit, pool2))
+
+
+class TestMAASAuthorizationBackendPod(
+        MAASServerTestCase, EnableRBACMixin):
+
+    def test_Pod_requires_PodPermission(self):
+        backend = MAASAuthorizationBackend()
+        pod = factory.make_Pod()
+        user = factory.make_User()
+        self.assertRaises(
+            TypeError, backend.has_perm, user, NodePermission.view, pod)
+
+    def test_create_requires_admin(self):
+        backend = MAASAuthorizationBackend()
+        user = factory.make_User()
+        admin = factory.make_admin()
+        self.assertFalse(backend.has_perm(user, PodPermission.create))
+        self.assertTrue(backend.has_perm(admin, PodPermission.create))
+
+    def test_view_requires_obj(self):
+        backend = MAASAuthorizationBackend()
+        user = factory.make_User()
+        self.assertRaises(
+            ValueError, backend.has_perm, user, PodPermission.view)
+
+    def test_edit_requires_obj(self):
+        backend = MAASAuthorizationBackend()
+        user = factory.make_User()
+        self.assertRaises(
+            ValueError, backend.has_perm, user, PodPermission.edit)
+
+    def test_compose_requires_obj(self):
+        backend = MAASAuthorizationBackend()
+        user = factory.make_User()
+        self.assertRaises(
+            ValueError, backend.has_perm, user, PodPermission.compose)
+
+    def test_dynamic_compose_requires_obj(self):
+        backend = MAASAuthorizationBackend()
+        user = factory.make_User()
+        self.assertRaises(
+            ValueError, backend.has_perm, user, PodPermission.dynamic_compose)
+
+    def test_view_always_viewable(self):
+        backend = MAASAuthorizationBackend()
+        pool = factory.make_ResourcePool()
+        pod = factory.make_Pod(pool=pool)
+        user = factory.make_User()
+        admin = factory.make_admin()
+        self.assertTrue(
+            backend.has_perm(user, PodPermission.view, pod))
+        self.assertTrue(
+            backend.has_perm(admin, PodPermission.view, pod))
+
+    def test_view_rbac_viewable(self):
+        self.enable_rbac()
+        backend = MAASAuthorizationBackend()
+        pool1 = factory.make_ResourcePool()
+        pod1 = factory.make_Pod(pool=pool1)
+        pool2 = factory.make_ResourcePool()
+        pod2 = factory.make_Pod(pool=pool2)
+        pool3 = factory.make_ResourcePool()
+        pod3 = factory.make_Pod(pool=pool3)
+        self.rbac_store.add_pool(pool1)
+        self.rbac_store.add_pool(pool2)
+        self.rbac_store.add_pool(pool3)
+        user = factory.make_User()
+        self.rbac_store.allow(user.username, pool2, 'view')
+        self.rbac_store.allow(user.username, pool3, 'view-all')
+        self.assertFalse(
+            backend.has_perm(user, PodPermission.view, pod1))
+        self.assertTrue(
+            backend.has_perm(user, PodPermission.view, pod2))
+        self.assertTrue(
+            backend.has_perm(user, PodPermission.view, pod3))
+
+    def test_edit_requires_admin(self):
+        backend = MAASAuthorizationBackend()
+        pod = factory.make_Pod()
+        user = factory.make_User()
+        admin = factory.make_admin()
+        self.assertFalse(
+            backend.has_perm(user, PodPermission.edit, pod))
+        self.assertTrue(
+            backend.has_perm(admin, PodPermission.edit, pod))
+
+    def test_edit_rbac_admin(self):
+        self.enable_rbac()
+        backend = MAASAuthorizationBackend()
+        pool1 = factory.make_ResourcePool()
+        pod1 = factory.make_Pod(pool=pool1)
+        pool2 = factory.make_ResourcePool()
+        pod2 = factory.make_Pod(pool=pool2)
+        self.rbac_store.add_pool(pool1)
+        self.rbac_store.add_pool(pool2)
+        user = factory.make_User()
+        self.rbac_store.allow(user.username, pool1, 'view')
+        self.rbac_store.allow(user.username, pool2, 'admin-machines')
+        self.assertFalse(
+            backend.has_perm(user, PodPermission.edit, pod1))
+        self.assertTrue(
+            backend.has_perm(user, PodPermission.edit, pod2))
+
+    def test_compose_requires_admin(self):
+        backend = MAASAuthorizationBackend()
+        pod = factory.make_Pod()
+        user = factory.make_User()
+        admin = factory.make_admin()
+        self.assertFalse(
+            backend.has_perm(user, PodPermission.compose, pod))
+        self.assertTrue(
+            backend.has_perm(admin, PodPermission.compose, pod))
+
+    def test_compose_rbac_admin(self):
+        self.enable_rbac()
+        backend = MAASAuthorizationBackend()
+        pool1 = factory.make_ResourcePool()
+        pod1 = factory.make_Pod(pool=pool1)
+        pool2 = factory.make_ResourcePool()
+        pod2 = factory.make_Pod(pool=pool2)
+        self.rbac_store.add_pool(pool1)
+        self.rbac_store.add_pool(pool2)
+        user = factory.make_User()
+        self.rbac_store.allow(user.username, pool1, 'view')
+        self.rbac_store.allow(user.username, pool2, 'admin-machines')
+        self.assertFalse(
+            backend.has_perm(user, PodPermission.compose, pod1))
+        self.assertTrue(
+            backend.has_perm(user, PodPermission.compose, pod2))
+
+    def test_dynamic_compose_doesnt_require_admin(self):
+        backend = MAASAuthorizationBackend()
+        pod = factory.make_Pod()
+        user = factory.make_User()
+        admin = factory.make_admin()
+        self.assertTrue(
+            backend.has_perm(user, PodPermission.dynamic_compose, pod))
+        self.assertTrue(
+            backend.has_perm(admin, PodPermission.dynamic_compose, pod))
+
+    def test_dynamic_compose_rbac_deploy_admin(self):
+        self.enable_rbac()
+        backend = MAASAuthorizationBackend()
+        pool1 = factory.make_ResourcePool()
+        pod1 = factory.make_Pod(pool=pool1)
+        pool2 = factory.make_ResourcePool()
+        pod2 = factory.make_Pod(pool=pool2)
+        pool3 = factory.make_ResourcePool()
+        pod3 = factory.make_Pod(pool=pool3)
+        self.rbac_store.add_pool(pool1)
+        self.rbac_store.add_pool(pool2)
+        self.rbac_store.add_pool(pool3)
+        user = factory.make_User()
+        self.rbac_store.allow(user.username, pool1, 'view')
+        self.rbac_store.allow(user.username, pool2, 'deploy-machines')
+        self.rbac_store.allow(user.username, pool3, 'admin-machines')
+        self.assertFalse(
+            backend.has_perm(user, PodPermission.dynamic_compose, pod1))
+        self.assertTrue(
+            backend.has_perm(user, PodPermission.dynamic_compose, pod2))
+        self.assertTrue(
+            backend.has_perm(user, PodPermission.dynamic_compose, pod3))

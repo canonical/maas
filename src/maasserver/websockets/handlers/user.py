@@ -14,6 +14,7 @@ from maasserver.enum import ENDPOINT
 from maasserver.models.user import SYSTEM_USERS
 from maasserver.permissions import (
     NodePermission,
+    PodPermission,
     ResourcePoolPermission,
 )
 from maasserver.websockets.base import (
@@ -90,6 +91,8 @@ class UserHandler(Handler):
             permissions.append('device_create')
         if self.user.has_perm(ResourcePoolPermission.create):
             permissions.append('resource_pool_create')
+        if self.user.has_perm(PodPermission.create):
+            permissions.append('pod_create')
         return permissions
 
     def auth_user(self, params):

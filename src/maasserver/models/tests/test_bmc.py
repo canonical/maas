@@ -12,8 +12,12 @@ from unittest.mock import (
 )
 
 from crochet import wait_for
-from django.core.exceptions import ValidationError
+from django.core.exceptions import (
+    PermissionDenied,
+    ValidationError,
+)
 from django.db.models.deletion import ProtectedError
+from django.http import Http404
 from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
@@ -40,7 +44,9 @@ from maasserver.models.node import Machine
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.resourcepool import ResourcePool
 from maasserver.models.staticipaddress import StaticIPAddress
+from maasserver.permissions import PodPermission
 from maasserver.testing.factory import factory
+from maasserver.testing.fixtures import RBACEnabled
 from maasserver.testing.matchers import MatchesSetwiseWithAll
 from maasserver.testing.testcase import (
     MAASServerTestCase,
@@ -580,6 +586,113 @@ class TestBMC(MAASServerTestCase):
             BMCRoutableRackControllerRelationship.objects.filter(
                 rack_controller__in=non_routable_racks, routable=False),
             HasLength(len(non_routable_racks)))
+
+
+class TestPodManager(MAASServerTestCase):
+
+    def enable_rbac(self):
+        rbac = self.useFixture(RBACEnabled())
+        self.store = rbac.store
+
+    def test_get_pods_no_rbac_always_all(self):
+        pods = [
+            factory.make_Pod()
+            for _ in range(3)
+        ]
+        for perm in PodPermission:
+            self.assertItemsEqual(
+                pods, Pod.objects.get_pods(
+                    factory.make_User(), perm))
+
+    def test_get_pods_view_rbac_returns_view_rights(self):
+        self.enable_rbac()
+        user = factory.make_User()
+        view_pool = factory.make_ResourcePool()
+        view = factory.make_Pod(pool=view_pool)
+        self.store.add_pool(view_pool)
+        self.store.allow(user.username, view_pool, 'view')
+        view_all_pool = factory.make_ResourcePool()
+        view_all = factory.make_Pod(pool=view_all_pool)
+        self.store.add_pool(view_all_pool)
+        self.store.allow(user.username, view_all_pool, 'view-all')
+
+        # others not shown
+        for _ in range(3):
+            factory.make_Pod()
+
+        self.assertItemsEqual(
+            [view, view_all], Pod.objects.get_pods(user, PodPermission.view))
+
+    def test_get_pods_edit_compose_rbac_returns_admin_rights(self):
+        self.enable_rbac()
+        user = factory.make_User()
+        view_pool = factory.make_ResourcePool()
+        factory.make_Pod(pool=view_pool)
+        self.store.add_pool(view_pool)
+        self.store.allow(user.username, view_pool, 'view')
+        deploy_pool = factory.make_ResourcePool()
+        factory.make_Pod(pool=deploy_pool)
+        self.store.add_pool(deploy_pool)
+        self.store.allow(user.username, deploy_pool, 'deploy-machines')
+        admin_pool = factory.make_ResourcePool()
+        admin_pod = factory.make_Pod(pool=admin_pool)
+        self.store.add_pool(admin_pool)
+        self.store.allow(user.username, admin_pool, 'admin-machines')
+
+        # others not shown
+        for _ in range(3):
+            factory.make_Pod()
+
+        self.assertItemsEqual(
+            [admin_pod], Pod.objects.get_pods(user, PodPermission.edit))
+        self.assertItemsEqual(
+            [admin_pod], Pod.objects.get_pods(user, PodPermission.compose))
+
+    def test_get_pods_dynamic_compose_rbac_returns_deploy_admin_rights(self):
+        self.enable_rbac()
+        user = factory.make_User()
+        view_pool = factory.make_ResourcePool()
+        factory.make_Pod(pool=view_pool)
+        self.store.add_pool(view_pool)
+        self.store.allow(user.username, view_pool, 'view')
+        deploy_pool = factory.make_ResourcePool()
+        deploy_pod = factory.make_Pod(pool=deploy_pool)
+        self.store.add_pool(deploy_pool)
+        self.store.allow(user.username, deploy_pool, 'deploy-machines')
+        admin_pool = factory.make_ResourcePool()
+        admin_pod = factory.make_Pod(pool=admin_pool)
+        self.store.add_pool(admin_pool)
+        self.store.allow(user.username, admin_pool, 'admin-machines')
+
+        # others not shown
+        for _ in range(3):
+            factory.make_Pod()
+
+        self.assertItemsEqual(
+            [deploy_pod, admin_pod],
+            Pod.objects.get_pods(user, PodPermission.dynamic_compose))
+
+    def test_get_pod_or_404_raises_404(self):
+        user = factory.make_User()
+        self.patch(user, 'has_perm').return_value = False
+        self.assertRaises(
+            Http404, Pod.objects.get_pod_or_404,
+            random.randint(10, 20), user, PodPermission.view)
+
+    def test_get_pod_or_404_checks_permissions(self):
+        pod = factory.make_Pod()
+        user = factory.make_User()
+        self.patch(user, 'has_perm').return_value = False
+        self.assertRaises(
+            PermissionDenied, Pod.objects.get_pod_or_404,
+            pod.id, user, PodPermission.view)
+
+    def test_get_pod_or_404_returns_pod(self):
+        pod = factory.make_Pod()
+        user = factory.make_User()
+        self.patch(user, 'has_perm').return_value = True
+        self.assertEqual(
+            pod, Pod.objects.get_pod_or_404(pod.id, user, PodPermission.view))
 
 
 class TestPod(MAASServerTestCase):

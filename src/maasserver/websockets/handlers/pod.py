@@ -19,12 +19,17 @@ from maasserver.forms.pods import (
 from maasserver.models.bmc import Pod
 from maasserver.models.resourcepool import ResourcePool
 from maasserver.models.zone import Zone
+from maasserver.permissions import PodPermission
+from maasserver.rbac import rbac
 from maasserver.utils.orm import (
     reload_object,
     transactional,
 )
 from maasserver.utils.threads import deferToDatabase
-from maasserver.websockets.base import HandlerValidationError
+from maasserver.websockets.base import (
+    HandlerPermissionError,
+    HandlerValidationError,
+)
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
 )
@@ -39,7 +44,7 @@ log = LegacyLogger()
 class PodHandler(TimestampedModelHandler):
 
     class Meta:
-        queryset = Pod.objects.all().select_related('hints')
+        queryset = Pod.objects.all()
         pk = 'id'
         form = PodForm
         form_requires_request = True
@@ -67,6 +72,15 @@ class PodHandler(TimestampedModelHandler):
         listen_channels = [
             "pod",
         ]
+        create_permission = PodPermission.create
+        view_permission = PodPermission.view
+        edit_permission = PodPermission.edit
+        delete_permission = PodPermission.edit
+
+    def get_queryset(self, for_list=False):
+        """Return `QuerySet` for devices only viewable by `user`."""
+        return Pod.objects.get_pods(
+            self.user, PodPermission.view).select_related('hints')
 
     def preprocess_form(self, action, params):
         """Process the `params` before passing the data to the form."""
@@ -125,6 +139,10 @@ class PodHandler(TimestampedModelHandler):
                     pools_data.append(self.dehydrate_storage_pool(pool))
                 data["storage_pools"] = pools_data
                 data["default_storage_pool"] = obj.default_storage_pool.pool_id
+
+        if self.user.has_perm(PodPermission.compose, obj):
+            data['permissions'].append('compose')
+
         return data
 
     def dehydrate_total(self, obj):
@@ -218,10 +236,15 @@ class PodHandler(TimestampedModelHandler):
     @asynchronous
     def create(self, params):
         """Create a pod."""
-        assert self.user.is_superuser, "Permission denied."
 
         @transactional
         def get_form(params):
+            # Clear rbac cache before check (this is in its own thread).
+            rbac.clear()
+
+            if not self.user.has_perm(self._meta.create_permission):
+                raise HandlerPermissionError()
+
             request = HttpRequest()
             request.user = self.user
             form = PodForm(
@@ -243,11 +266,16 @@ class PodHandler(TimestampedModelHandler):
     @asynchronous
     def update(self, params):
         """Update a pod."""
-        assert self.user.is_superuser, "Permission denied."
 
         @transactional
         def get_form(params):
+            # Clear rbac cache before check (this is in its own thread).
+            rbac.clear()
+
             obj = self.get_object(params)
+            if not self.user.has_perm(self._meta.edit_permission, obj):
+                raise HandlerPermissionError()
+
             request = HttpRequest()
             request.user = self.user
             form = PodForm(
@@ -271,9 +299,18 @@ class PodHandler(TimestampedModelHandler):
     @asynchronous
     def delete(self, params):
         """Delete the object."""
-        assert self.user.is_superuser, "Permission denied."
 
-        d = deferToDatabase(transactional(self.get_object), params)
+        @transactional
+        def get_object(params):
+            # Clear rbac cache before check (this is in its own thread).
+            rbac.clear()
+
+            obj = self.get_object(params)
+            if not self.user.has_perm(self._meta.delete_permission, obj):
+                raise HandlerPermissionError()
+            return obj
+
+        d = deferToDatabase(get_object, params)
         d.addCallback(lambda pod: pod.async_delete())
         return d
 
@@ -284,10 +321,16 @@ class PodHandler(TimestampedModelHandler):
         Performs pod discovery and updates all discovered information and
         discovered machines.
         """
-        assert self.user.is_superuser, "Permission denied."
 
         @transactional
         def get_form(obj, params):
+            # Clear rbac cache before check (this is in its own thread).
+            rbac.clear()
+
+            obj = self.get_object(params)
+            if not self.user.has_perm(self._meta.edit_permission, obj):
+                raise HandlerPermissionError()
+
             request = HttpRequest()
             request.user = self.user
             return PodForm(
@@ -307,7 +350,16 @@ class PodHandler(TimestampedModelHandler):
     @asynchronous
     def compose(self, params):
         """Compose a machine in a Pod."""
-        assert self.user.is_superuser, "Permission denied."
+
+        @transactional
+        def get_object(params):
+            # Running inside new database thread, be sure the rbac cache is
+            # cleared so accessing information will not be already cached.
+            rbac.clear()
+            obj = self.get_object(params)
+            if not self.user.has_perm(PodPermission.compose, obj):
+                raise HandlerPermissionError()
+            return obj
 
         def composable(obj):
             if Capabilities.COMPOSABLE not in obj.capabilities:
@@ -342,7 +394,7 @@ class PodHandler(TimestampedModelHandler):
             _, obj = result
             return self.full_dehydrate(reload_object(obj))
 
-        d = deferToDatabase(transactional(self.get_object), params)
+        d = deferToDatabase(get_object, params)
         d.addCallback(composable)
         d.addCallback(partial(deferToDatabase, get_form), params)
         d.addCallback(compose, params)

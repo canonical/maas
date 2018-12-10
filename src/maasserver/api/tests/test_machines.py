@@ -15,7 +15,10 @@ from maasserver import (
     eventloop,
     middleware,
 )
-from maasserver.api import machines as machines_module
+from maasserver.api import (
+    auth,
+    machines as machines_module,
+)
 from maasserver.api.machines import (
     AllocationOptions,
     get_allocation_options,
@@ -56,6 +59,7 @@ from maasserver.testing.eventloop import (
     RunningEventLoopFixture,
 )
 from maasserver.testing.factory import factory
+from maasserver.testing.fixtures import RBACEnabled
 from maasserver.testing.matchers import HasStatusCode
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testclient import MAASSensibleOAuthClient
@@ -636,6 +640,47 @@ class TestMachinesAPI(APITestCase.ForUser):
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(machine.system_id, parsed_result['system_id'])
+
+    def test_POST_allocate_returns_a_composed_machine_limit_from_rbac(self):
+        self.patch(auth, 'validate_user_external_auth').return_value = True
+        rbac = self.useFixture(RBACEnabled())
+        self.become_non_local()
+
+        # 2 pods one with only view permissions and another with
+        # dynamic_compose permission.
+        view_pool = factory.make_ResourcePool()
+        rbac.store.add_pool(view_pool)
+        rbac.store.allow(self.user.username, view_pool, 'view')
+        factory.make_Pod(
+            pool=view_pool, architectures=['amd64/generic'])
+        deploy_pool = factory.make_ResourcePool()
+        rbac.store.add_pool(deploy_pool)
+        rbac.store.allow(self.user.username, deploy_pool, 'deploy-machines')
+        deploy_pod = factory.make_Pod(
+            pool=deploy_pool, architectures=['amd64/generic'])
+
+        passed_pods = []
+
+        class FakeComposer(ComposeMachineForPodsForm):
+            """Catch the passed pods parameter and fake compose."""
+
+            def __init__(self, *args, **kwargs):
+                passed_pods.extend(kwargs['pods'])
+                super(FakeComposer, self).__init__(*args, **kwargs)
+
+            def compose(self):
+                return factory.make_Node(
+                    status=NODE_STATUS.READY, owner=None, with_boot_disk=True)
+
+        self.patch(
+            machines_module, 'ComposeMachineForPodsForm', FakeComposer)
+
+        mock_filter_nodes = self.patch(AcquireNodeForm, 'filter_nodes')
+        mock_filter_nodes.return_value = [], {}, {}
+        response = self.client.post(
+            reverse('machines_handler'), {'op': 'allocate'})
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertItemsEqual([deploy_pod], passed_pods)
 
     def test_POST_allocate_returns_a_composed_machine_no_constraints(self):
         # The "allocate" operation returns a composed machine.

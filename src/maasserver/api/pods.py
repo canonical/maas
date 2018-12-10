@@ -8,7 +8,7 @@ __all__ = [
     "PodsHandler",
     ]
 
-from django.shortcuts import get_object_or_404
+from django.core.exceptions import PermissionDenied
 from formencode.validators import String
 from maasserver.api.support import (
     admin_method,
@@ -22,6 +22,7 @@ from maasserver.forms.pods import (
     PodForm,
 )
 from maasserver.models.bmc import Pod
+from maasserver.permissions import PodPermission
 from maasserver.utils.django_urls import reverse
 from piston3.utils import rc
 from provisioningserver.drivers.pod import Capabilities
@@ -171,7 +172,7 @@ class PodHandler(OperationsHandler):
         @error (http-status-code) "403" 403 -- The current user does not have
         permission to update the pod.
         """
-        pod = get_object_or_404(Pod, id=id)
+        pod = Pod.objects.get_pod_or_404(id, request.user, PodPermission.edit)
         form = PodForm(data=request.data, instance=pod, request=request)
         if form.is_valid():
             return form.save()
@@ -198,7 +199,7 @@ class PodHandler(OperationsHandler):
         @error-example (content) "no-perms"
             This method is reserved for admin users.
         """
-        pod = get_object_or_404(Pod, id=id)
+        pod = Pod.objects.get_pod_or_404(id, request.user, PodPermission.edit)
         pod.delete_and_wait()
         return rc.DELETED
 
@@ -225,7 +226,7 @@ class PodHandler(OperationsHandler):
         @error-example (content) "no-perms"
             This method is reserved for admin users.
         """
-        pod = get_object_or_404(Pod, id=id)
+        pod = Pod.objects.get_pod_or_404(id, request.user, PodPermission.edit)
         form = PodForm(data=request.data, instance=pod, request=request)
         pod = form.discover_and_sync_pod()
         return pod
@@ -258,7 +259,7 @@ class PodHandler(OperationsHandler):
         @error-example (content) "no-perms"
             This method is reserved for admin users.
         """
-        pod = get_object_or_404(Pod, id=id)
+        pod = Pod.objects.get_pod_or_404(id, request.user, PodPermission.edit)
         return pod.power_parameters
 
     @admin_method
@@ -337,7 +338,8 @@ class PodHandler(OperationsHandler):
         @error-example (content) "no-perms"
             This method is reserved for admin users.
         """
-        pod = get_object_or_404(Pod, id=id)
+        pod = Pod.objects.get_pod_or_404(
+            id, request.user, PodPermission.compose)
         if Capabilities.COMPOSABLE not in pod.capabilities:
             raise MAASAPIValidationError("Pod does not support composability.")
         form = ComposeMachineForm(data=request.data, pod=pod, request=request)
@@ -381,7 +383,7 @@ class PodHandler(OperationsHandler):
         if ',' in tag:
             raise MAASAPIValidationError('Tag may not contain a ",".')
 
-        pod = get_object_or_404(Pod, id=id)
+        pod = Pod.objects.get_pod_or_404(id, request.user, PodPermission.edit)
         pod.add_tag(tag)
         pod.save()
         return pod
@@ -413,7 +415,7 @@ class PodHandler(OperationsHandler):
         """
         tag = get_mandatory_param(request.data, 'tag', String)
 
-        pod = get_object_or_404(Pod, id=id)
+        pod = Pod.objects.get_pod_or_404(id, request.user, PodPermission.edit)
         pod.remove_tag(tag)
         pod.save()
         return pod
@@ -450,7 +452,8 @@ class PodsHandler(OperationsHandler):
         @success-example (json) "success-json" [exkey=read-pods]
         placeholder text
         """
-        return Pod.objects.all().order_by('id')
+        return Pod.objects.get_pods(
+            request.user, PodPermission.view).order_by('id')
 
     @admin_method
     def create(self, request):
@@ -497,6 +500,8 @@ class PodsHandler(OperationsHandler):
         @error-example (content) "failed-login"
             Failed talking to pod: Failed to login to virsh console.
         """
+        if not request.user.has_perm(PodPermission.create):
+            raise PermissionDenied()
         form = PodForm(data=request.data, request=request)
         if form.is_valid():
             return form.save()

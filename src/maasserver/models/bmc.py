@@ -14,7 +14,10 @@ from django.contrib.postgres.fields import (
     ArrayField,
     JSONField,
 )
-from django.core.exceptions import ValidationError
+from django.core.exceptions import (
+    PermissionDenied,
+    ValidationError,
+)
 from django.core.validators import MinValueValidator
 from django.db import transaction
 from django.db.models import (
@@ -33,6 +36,7 @@ from django.db.models import (
     TextField,
 )
 from django.db.models.query import QuerySet
+from django.shortcuts import get_object_or_404
 from maasserver import DefaultMeta
 from maasserver.clusterrpc.pods import decompose_machine
 from maasserver.enum import (
@@ -67,6 +71,7 @@ from maasserver.models.tag import Tag
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.models.vlan import VLAN
 from maasserver.models.zone import Zone
+from maasserver.permissions import PodPermission
 from maasserver.rpc import (
     getAllClients,
     getClientFromIdentifiers,
@@ -493,6 +498,66 @@ class PodManager(BaseBMCManager):
     """Manager for `Pod` not `BMC`'s."""
 
     extra_filters = {'bmc_type': BMC_TYPE.POD}
+
+    def get_pods(self, user, perm):
+        """Fetch `ResourcePool`'s on which the User_ has the given permission.
+
+        :param user: The user that should be used in the permission check.
+        :type user: User_
+        :param user: Type of access requested.
+        :type user: `PodPermission`
+
+        .. _User: https://
+           docs.djangoproject.com/en/dev/topics/auth/
+           #django.contrib.auth.models.User
+
+        """
+        # Circular imports.
+        from maasserver.rbac import rbac
+        if rbac.is_enabled():
+            if perm == PodPermission.view:
+                pool_ids = set(
+                    rbac.get_resource_pool_ids(user.username, 'view') +
+                    rbac.get_resource_pool_ids(user.username, 'view-all'))
+                return self.filter(pool_id__in=pool_ids)
+            elif perm == PodPermission.edit or perm == PodPermission.compose:
+                return self.filter(pool_id__in=rbac.get_resource_pool_ids(
+                    user.username, 'admin-machines'))
+            elif perm == PodPermission.dynamic_compose:
+                pool_ids = set(
+                    rbac.get_resource_pool_ids(
+                        user.username, 'deploy-machines') +
+                    rbac.get_resource_pool_ids(
+                        user.username, 'admin-machines'))
+                return self.filter(pool_id__in=pool_ids)
+            else:
+                raise ValueError("Unknown perm: %s", perm)
+        return self.all()
+
+    def get_pod_or_404(self, id, user, perm, **kwargs):
+        """Fetch a `Pod` by id.  Raise exceptions if no `Pod` with
+        this system_id exist or if the provided user has not the required
+        permission on this `Pod`.
+
+        :param id: The id.
+        :type id: int
+        :param user: The user that should be used in the permission check.
+        :type user: django.contrib.auth.models.User
+        :param perm: The permission to assert that the user has on the node.
+        :type perm: `PodPermission`
+        :raises: django.http.Http404_,
+            :class:`maasserver.exceptions.PermissionDenied`.
+
+        .. _django.http.Http404: https://
+           docs.djangoproject.com/en/dev/topics/http/views/
+           #the-http404-exception
+        """
+        kwargs.update(self.extra_filters)
+        pod = get_object_or_404(self.model, id=id, **kwargs)
+        if user.has_perm(perm, pod):
+            return pod
+        else:
+            raise PermissionDenied()
 
 
 class Pod(BMC):
