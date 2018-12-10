@@ -11,12 +11,15 @@ case "$1" in
             deluser maas || true
             delgroup maas || true
         fi
+        # clean-up /var/log/maas
         rm -f /var/log/maas/maas.log
+        rm -rf /var/log/maas/rsyslog
+        # clean-up /var/lib/maas
         rm -rf /var/lib/maas/gnupg
         rm -f /var/lib/maas/secret
         rm -f /var/lib/maas/maas_id
-        rm -rf /var/log/maas/rsyslog
-        rm -f /var/log/maas/rsyslog.conf
+        rm -rf /var/lib/maas/rsyslog
+        rm -f /var/lib/maas/rsyslog.conf
 
 esac
 

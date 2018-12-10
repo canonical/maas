@@ -44,6 +44,7 @@ case "$1" in
 
         # Remove http directory
         rm -rf /var/lib/maas/http
+        rm -rf /var/log/maas/http
 
         # Remove rpc.state file
         rm -f /var/lib/maas/rpc.state
