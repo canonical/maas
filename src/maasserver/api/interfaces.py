@@ -222,8 +222,9 @@ class InterfacesHandler(OperationsHandler):
             our link partner to transmit LACPDU packets in 802.3ad mode.
             Available options are fast or slow. (Default: slow).
         :param bond_xmit_hash_policy: The transmit hash policy to use for
-            slave selection in balance-xor, 802.3ad, and tlb modes.
-            (Default: layer2)
+            slave selection in balance-xor, 802.3ad, and tlb modes. Possible
+            values are: 'layer2', 'layer2+3', 'layer3+4', 'encap2+3',
+            'encap3+4'. (Default: layer2)
         :param bond_num_grat_arp: The number of peer notifications (IPv4 ARP
             or IPv6 Neighbour Advertisements) to be issued after a failover.
             (Default: 1)
@@ -481,7 +482,9 @@ class InterfaceHandler(OperationsHandler):
             our link partner to transmit LACPDU packets in 802.3ad mode.
             Available options are fast or slow. (Default: slow).
         :param bond_xmit_hash_policy: The transmit hash policy to use for
-            slave selection in balance-xor, 802.3ad, and tlb modes.
+            slave selection in balance-xor, 802.3ad, and tlb modes. Possible
+            values are: 'layer2', 'layer2+3', 'layer3+4', 'encap2+3',
+            'encap3+4'.
 
         Supported bonding modes (bond-mode):
 
