@@ -46,7 +46,14 @@ class FabricsHandler(OperationsHandler):
         return ('fabrics_handler', [])
 
     def read(self, request):
-        """List all fabrics."""
+        """@description-title List fabrics
+        @description List all fabrics.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing a list of
+        fabric objects.
+        @success-example "success-json" [exkey=fabrics-read] placeholder text
+        """
         fabrics = prefetch_queryset(Fabric.objects.all(), FABRIC_PREFETCH)
         # Preload the fabric on each vlan as that is already known, another
         # query is not required.
@@ -57,11 +64,20 @@ class FabricsHandler(OperationsHandler):
 
     @admin_method
     def create(self, request):
-        """Create a fabric.
+        """@description-title Create a fabric
+        @description Create a fabric.
 
-        :param name: Name of the fabric.
-        :param description: Description of the fabric.
-        :param class_type: Class type of the fabric.
+        @param (string) "name" [required=false] Name of the fabric.
+
+        @param (string) "description" [required=false] Description of the
+        fabric.
+
+        @param (string) "class_type" [required=false] Class type of the fabric.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the new fabric
+        object.
+        @success-example "success-json" [exkey=fabrics-create] placeholder text
         """
         form = FabricForm(data=request.data)
         if form.is_valid():
@@ -96,21 +112,48 @@ class FabricHandler(OperationsHandler):
         return fabric.vlan_set.all()
 
     def read(self, request, id):
-        """Read fabric.
+        """@description-title Read a fabric
+        @description Read a fabric with the given id.
 
-        Returns 404 if the fabric is not found.
+        @param (int) "{id}" [required=true] A fabric id.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the requested
+        fabric object.
+        @success-example "success-json" [exkey=fabrics-read-by-id] placeholder
+        text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested fabric is not found.
+        @error-example "not-found"
+            Not Found
         """
         return Fabric.objects.get_fabric_or_404(
             id, request.user, NodePermission.view)
 
     def update(self, request, id):
-        """Update fabric.
+        """@description-title Update fabric
+        @description Update a fabric with the given id.
 
-        :param name: Name of the fabric.
-        :param description: Description of the fabric.
-        :param class_type: Class type of the fabric.
+        @param (int) "{id}" [required=true] A fabric id.
 
-        Returns 404 if the fabric is not found.
+        @param (string) "name" [required=false] Name of the fabric.
+
+        @param (string) "description" [required=false] Description of the
+        fabric.
+
+        @param (string) "class_type" [required=false] Class type of the fabric.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the updated
+        fabric object.
+        @success-example "success-json" [exkey=fabrics-update] placeholder
+        text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested fabric is not found.
+        @error-example "not-found"
+            Not Found
         """
         fabric = Fabric.objects.get_fabric_or_404(
             id, request.user, NodePermission.admin)
@@ -121,9 +164,17 @@ class FabricHandler(OperationsHandler):
             raise MAASAPIValidationError(form.errors)
 
     def delete(self, request, id):
-        """Delete fabric.
+        """@description-title Delete a fabric
+        @description Delete a fabric with the given id.
 
-        Returns 404 if the fabric is not found.
+        @param (int) "{id}" [required=true] A fabric id.
+
+        @success (http-status-code) "server-success" 204
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested fabric is not found.
+        @error-example "not-found"
+            Not Found
         """
         fabric = Fabric.objects.get_fabric_or_404(
             id, request.user, NodePermission.admin)
