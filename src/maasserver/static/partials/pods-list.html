@@ -9,7 +9,7 @@
                 <div data-ng-if="pods.length > 0 && !selectedItems.length">
                     <button class="p-button--neutral" data-ng-click="addPod()" data-ng-if="!add.open && canAddPod()">Add pod</button>
                 </div>
-                <ul class="p-inline-list u-no-margin--top" data-ng-if="isSuperUser() && selectedItems.length">
+                <ul class="p-inline-list u-no-margin--top" data-ng-if="showActions() && selectedItems.length">
                     <li class="p-inline-list__item">{$ selectedItems.length $} Selected</li>
                     <li class="p-inline-list__item">
                         <div
@@ -122,7 +122,7 @@
                 <thead data-ng-if="windowWidth >= 768" offset="88" media-query="min-width: 768px">
                     <tr class="p-table__row">
                         <th class="p-table__cell" role="columnheader" data-ng-click="sortTable('name')" data-ng-class="{'is-sorted': predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="Name">
-                            <div data-ng-if="isSuperUser()" class="u-float--left">
+                            <div data-ng-if="showActions()" class="u-float--left">
                                 <input type="checkbox" class="checkbox" data-ng-click="toggleCheckAll()" data-ng-checked="allViewableChecked" id="check-all-pods" data-ng-disabled="add.open || hasActionsInProgress()" />
                                 <label for="check-all-pods" class="checkbox-label"></label>
                             </div>
@@ -139,7 +139,7 @@
                 <tbody vs-repeat vs-scroll-parent="window">
                     <tr class="p-table__row" data-ng-repeat="pod in filteredItems = (pods | nodesFilter:search | orderBy:predicate:reverse) track by pod.id" data-ng-class="{ selected: pod.$selected, 'is-active': pod.$selected && pod.action_failed }">
                         <td class="p-table__cell" aria-label="Name" title="{$ pod.name $}">
-                            <div class="u-float--left" data-ng-if="isSuperUser()">
+                            <div class="u-float--left" data-ng-if="showActions()">
                                 <input type="checkbox" class="checkbox" data-ng-click="toggleChecked(pod)" data-ng-checked="pod.$selected" id="{$ pod.id $}" data-ng-disabled="add.open || hasActionsInProgress()"/>
                                 <label for="{$ pod.id $}" class="checkbox-label"></label>
                             </div>

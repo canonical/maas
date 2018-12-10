@@ -70,7 +70,8 @@ describe("PodDetailsController", function() {
             id: podId++,
             default_pool: 0,
             $selected: false,
-            capabilities: []
+            capabilities: [],
+            permissions: []
         };
         PodsManager._items.push(pod);
         return pod;
@@ -209,22 +210,6 @@ describe("PodDetailsController", function() {
         expect($scope.title).toBe('Pod ' + pod.name);
     });
 
-    describe("isSuperUser", function() {
-        it("returns true if the user is a superuser", function() {
-            var controller = makeController();
-            spyOn(UsersManager, "getAuthUser").and.returnValue(
-                { is_superuser: true });
-            expect($scope.isSuperUser()).toBe(true);
-        });
-
-        it("returns false if the user is not a superuser", function() {
-            var controller = makeController();
-            spyOn(UsersManager, "getAuthUser").and.returnValue(
-                { is_superuser: false });
-            expect($scope.isSuperUser()).toBe(false);
-        });
-    });
-
     describe("isRackControllerConnected", function() {
         it("returns false no power_types", function() {
             var controller = makeController();
@@ -240,9 +225,9 @@ describe("PodDetailsController", function() {
     });
 
     describe("canEdit", function() {
-        it("returns false if not super user", function() {
+        it("returns false if no edit permission", function() {
             var controller = makeController();
-            spyOn($scope, "isSuperUser").and.returnValue(false);
+            $scope.pod = makePod();
             spyOn(
                 $scope,
                 "isRackControllerConnected").and.returnValue(true);
@@ -251,6 +236,8 @@ describe("PodDetailsController", function() {
 
         it("returns false if rack disconnected", function() {
             var controller = makeController();
+            $scope.pod = makePod();
+            $scope.pod.permissions.push('edit');
             spyOn(
                 $scope,
                 "isRackControllerConnected").and.returnValue(false);
@@ -259,7 +246,8 @@ describe("PodDetailsController", function() {
 
         it("returns true if super user, rack connected", function() {
             var controller = makeController();
-            spyOn($scope, "isSuperUser").and.returnValue(true);
+            $scope.pod = makePod();
+            $scope.pod.permissions.push('edit');
             spyOn(
                 $scope,
                 "isRackControllerConnected").and.returnValue(true);
@@ -601,21 +589,20 @@ describe("PodDetailsController", function() {
             expect($scope.canCompose()).toBe(false);
         });
 
-        it("returns false when not users", function() {
+        it("returns false when no compose permission", function() {
             var controller = makeControllerResolveSetActiveItem();
-            spyOn($scope, 'isSuperUser').and.returnValue(false);
             expect($scope.canCompose()).toBe(false);
         });
 
         it("returns false when not composable", function() {
             var controller = makeControllerResolveSetActiveItem();
-            spyOn($scope, 'isSuperUser').and.returnValue(true);
+            $scope.pod.permissions.push('compose');
             expect($scope.canCompose()).toBe(false);
         });
 
         it("returns true when composable", function() {
             var controller = makeControllerResolveSetActiveItem();
-            spyOn($scope, 'isSuperUser').and.returnValue(true);
+            $scope.pod.permissions.push('compose');
             $scope.pod.capabilities.push('composable');
             expect($scope.canCompose()).toBe(true);
         });

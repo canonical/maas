@@ -12,7 +12,6 @@
                 <h1 class="page-header__title">
                     <span contenteditable="true"
                         data-ng-class="{ editable: canEdit(), 'is-error': editNameInvalid(), editmode: name.editing }"
-                        data-ng-show="canEdit()"
                         data-ng-model="name.value"
                         data-ng-disabled="!canEdit()"
                         data-ng-keydown="$event.keyCode == 13 && $event.preventDefault()"
@@ -28,7 +27,7 @@
                     data-ng-click="saveEditName()">Save</button>
             </div>
             <div class="tablet-col-2 col-4">
-                <div class="page-header__controls" data-ng-if="isSuperUser()">
+                <div class="page-header__controls" data-ng-if="canEdit()">
                     <div data-maas-cta="action.options"
                         data-ng-click="updateAvailableActions('pods')"
                         data-ng-model="action.option"
@@ -511,7 +510,7 @@
                             <a href="" role="tab" class="p-tabs__link" data-ng-class="{ 'is-active': section.area === 'summary'}" data-ng-click="section.area = 'summary'">{$ pod.composed_machines_count $} composed machines</a>
                         </li>
                         <li class="p-tabs__item" role="presentation">
-                            <a href="" role="tab" class="p-tabs__link" data-ng-if="isSuperUser()" data-ng-class="{ 'is-active': section.area === 'configuration'}" data-ng-click="section.area= 'configuration'">Configuration</a>
+                            <a href="" role="tab" class="p-tabs__link" data-ng-if="canEdit()" data-ng-class="{ 'is-active': section.area === 'configuration'}" data-ng-click="section.area= 'configuration'">Configuration</a>
                         </li>
                     </ul>
                 </div>
@@ -521,7 +520,7 @@
 
     <section data-ng-if="section.area === 'summary'">
         <div class="row">
-            <section class="p-strip">
+            <section class="p-strip" ng-if="canEdit()">
                 <div class="p-pod-edit">
                     <label class="p-pod-edit__label" for="virsh">Virsh:</label>
                     <div class="p-code-snippet-wrapper">

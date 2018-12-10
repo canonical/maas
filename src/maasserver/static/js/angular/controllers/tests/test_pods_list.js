@@ -84,7 +84,8 @@ describe("PodsListController", function() {
     function makePod() {
         var pod = {
             id: podId++,
-            $selected: false
+            $selected: false,
+            permissions: []
         };
         PodsManager._items.push(pod);
         return pod;
@@ -129,22 +130,6 @@ describe("PodsListController", function() {
         expect($scope.loading).toBe(false);
     });
 
-    describe("isSuperUser", function() {
-        it("returns true if the user is a superuser", function() {
-            var controller = makeController();
-            spyOn(UsersManager, "getAuthUser").and.returnValue(
-                { is_superuser: true });
-            expect($scope.isSuperUser()).toBe(true);
-        });
-
-        it("returns false if the user is not a superuser", function() {
-            var controller = makeController();
-            spyOn(UsersManager, "getAuthUser").and.returnValue(
-                { is_superuser: false });
-            expect($scope.isSuperUser()).toBe(false);
-        });
-    });
-
     describe("isRackControllerConnected", function() {
         it("returns false no powerTypes", function() {
             var controller = makeController();
@@ -160,17 +145,20 @@ describe("PodsListController", function() {
     });
 
     describe("canAddPod", function() {
-        it("returns false if not super user", function() {
+        it("returns false if not global permission", function() {
             var controller = makeController();
-            spyOn($scope, "isSuperUser").and.returnValue(false);
+            spyOn(UsersManager, "hasGlobalPermission").and.returnValue(false);
             spyOn(
                 $scope,
                 "isRackControllerConnected").and.returnValue(true);
             expect($scope.canAddPod()).toBe(false);
+            expect(UsersManager.hasGlobalPermission).toHaveBeenCalledWith(
+                'pod_create');
         });
 
         it("returns false if rack disconnected", function() {
             var controller = makeController();
+            spyOn(UsersManager, "hasGlobalPermission").and.returnValue(true);
             spyOn(
                 $scope,
                 "isRackControllerConnected").and.returnValue(false);
@@ -179,11 +167,38 @@ describe("PodsListController", function() {
 
         it("returns true if super user, rack connected", function() {
             var controller = makeController();
-            spyOn($scope, "isSuperUser").and.returnValue(true);
+            spyOn(UsersManager, "hasGlobalPermission").and.returnValue(true);
             spyOn(
                 $scope,
                 "isRackControllerConnected").and.returnValue(true);
             expect($scope.canAddPod()).toBe(true);
+            expect(UsersManager.hasGlobalPermission).toHaveBeenCalledWith(
+                'pod_create');
+        });
+    });
+
+    describe("showActions", function() {
+        it("returns false if no permissions on pods", function() {
+            var controller = makeController();
+            var pod = makePod();
+            PodsManager._items.push(pod);
+            expect($scope.showActions()).toBe(false);
+        });
+
+        it("returns false if compose permissions on pods", function() {
+            var controller = makeController();
+            var pod = makePod();
+            pod.permissions.push('compose');
+            PodsManager._items.push(pod);
+            expect($scope.showActions()).toBe(false);
+        });
+
+        it("returns true if edit permissions on pods", function() {
+            var controller = makeController();
+            var pod = makePod();
+            pod.permissions.push('edit');
+            PodsManager._items.push(pod);
+            expect($scope.showActions()).toBe(true);
         });
     });
 

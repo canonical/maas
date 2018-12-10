@@ -82,11 +82,6 @@ angular.module('MAAS').controller('PodDetailsController', [
             value: "",
         };
 
-        // Return true if the authenticated user is super user.
-        $scope.isSuperUser = function() {
-            return UsersManager.isSuperUser();
-        };
-
         // Return true if at least a rack controller is connected to the
         // region controller.
         $scope.isRackControllerConnected = function() {
@@ -98,7 +93,7 @@ angular.module('MAAS').controller('PodDetailsController', [
         $scope.canEdit = function() {
             return (
                 $scope.isRackControllerConnected() &&
-                    $scope.isSuperUser());
+                $scope.pod.permissions.indexOf('edit') !== -1);
         };
 
         // Called to edit the pod configuration.
@@ -361,7 +356,7 @@ angular.module('MAAS').controller('PodDetailsController', [
         // Returns true if the pod is composable.
         $scope.canCompose = function() {
             if(angular.isObject($scope.pod)) {
-                return ($scope.isSuperUser() &&
+                return ($scope.pod.permissions.indexOf('compose') >= 0 &&
                     $scope.pod.capabilities.indexOf('composable') >= 0);
             } else {
                 return false;

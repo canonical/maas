@@ -215,11 +215,6 @@ angular.module('MAAS').controller('PodsListController', [
             $scope.add.obj = {};
         };
 
-        // Return true if the authenticated user is super user.
-        $scope.isSuperUser = function() {
-            return UsersManager.isSuperUser();
-        };
-
         // Return true if at least a rack controller is connected to the
         // region controller.
         $scope.isRackControllerConnected = function() {
@@ -231,7 +226,18 @@ angular.module('MAAS').controller('PodsListController', [
         $scope.canAddPod = function() {
             return (
                 $scope.isRackControllerConnected() &&
-                    $scope.isSuperUser());
+                UsersManager.hasGlobalPermission('pod_create'));
+        };
+
+        // Return true if the actions should be shown.
+        $scope.showActions = function() {
+            for(var i = 0; i < $scope.pods.length; i++) {
+                if($scope.pods[i].permissions &&
+                    $scope.pods[i].permissions.indexOf('edit') >= 0) {
+                    return true;
+                }
+            }
+            return false;
         };
 
         // Return the title of the power type.
