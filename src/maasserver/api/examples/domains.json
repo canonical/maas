@@ -1,0 +1,67 @@
+{
+  "domains-read": [
+    {
+      "authoritative": true,
+      "ttl": null,
+      "id": 0,
+      "name": "maas",
+      "is_default": true,
+      "resource_record_count": 0,
+      "resource_uri": "/MAAS/api/2.0/domains/0/"
+    },
+    {
+      "authoritative": true,
+      "ttl": null,
+      "id": 1,
+      "name": "sample",
+      "is_default": false,
+      "resource_record_count": 0,
+      "resource_uri": "/MAAS/api/2.0/domains/1/"
+    },
+    {
+      "authoritative": true,
+      "ttl": null,
+      "id": 2,
+      "name": "ubnt",
+      "is_default": false,
+      "resource_record_count": 0,
+      "resource_uri": "/MAAS/api/2.0/domains/2/"
+    }
+  ],
+  "domains-create": {
+    "authoritative": true,
+    "ttl": null,
+    "name": "newdomain",
+    "resource_record_count": 0,
+    "is_default": false,
+    "id": 3,
+    "resource_uri": "/MAAS/api/2.0/domains/3/"
+  },
+  "domains-read-by-id": {
+    "authoritative": true,
+    "ttl": null,
+    "resource_record_count": 0,
+    "name": "newdomain",
+    "id": 3,
+    "is_default": false,
+    "resource_uri": "/MAAS/api/2.0/domains/3/"
+  },
+  "domains-update": {
+    "authoritative": true,
+    "ttl": null,
+    "is_default": false,
+    "id": 3,
+    "name": "newdomain",
+    "resource_record_count": 0,
+    "resource_uri": "/MAAS/api/2.0/domains/3/"
+  },
+  "domains-set-default": {
+    "authoritative": true,
+    "ttl": null,
+    "resource_record_count": 0,
+    "name": "newdomain",
+    "id": 3,
+    "is_default": true,
+    "resource_uri": "/MAAS/api/2.0/domains/3/"
+  }
+}

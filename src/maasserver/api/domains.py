@@ -44,15 +44,30 @@ class DomainsHandler(OperationsHandler):
         return ('domains_handler', [])
 
     def read(self, request):
-        """List all domains."""
+        """@description-title List all domains
+        @description List all domains.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing a list of
+        domain objects.
+        @success-example "success-json" [exkey=domains-read] placeholder text
+        """
         return Domain.objects.all().prefetch_related('globaldefault_set')
 
     @admin_method
     def create(self, request):
-        """Create a domain.
+        """@description-title Create a domain
+        @description Create a domain.
 
-        :param name: Name of the domain.
-        :param authoritative: Class type of the domain.
+        @param (string) "name" [required=true] Name of the domain.
+
+        @param (string) "authoritative" [required=false] Class type of the
+        domain.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the new domain
+        object.
+        @success-example "success-json" [exkey=domains-create] placeholder text
         """
         form = DomainForm(data=request.data)
         if form.is_valid():
@@ -63,9 +78,13 @@ class DomainsHandler(OperationsHandler):
     @admin_method
     @operation(idempotent=False)
     def set_serial(self, request):
-        """Set the SOA serial number (for all DNS zones.)
+        """@description-title Set the SOA serial number
+        @description Set the SOA serial number for all DNS zones.
 
-        :param serial: serial number to use next.
+        @param (int) "serial" [required=true] Serial number to use next.
+
+        @success (http-status-code) "server-success" 200
+        @success (content) "success-text" No content returned.
         """
         try:
             serial = int(request.data['serial'])
@@ -121,23 +140,50 @@ class DomainHandler(OperationsHandler):
         return domain.dnsresource_set.all()
 
     def read(self, request, id):
-        """Read domain.
+        """@description-title Read domain
+        @description Read a domain with the given id.
 
-        Returns 404 if the domain is not found.
+        @param (int) "{id}" [required=true] A domain id.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing
+        information about the requsted domain.
+        @success-example "success-json" [exkey=domains-read] placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested domain is not found.
+        @error-example "not-found"
+            Not Found
         """
         return Domain.objects.get_domain_or_404(
             id, request.user, NodePermission.view)
 
     def update(self, request, id):
-        """Update domain.
+        """@description-title Update a domain
+        @description Update a domain with the given id.
 
-        :param name: Name of the domain.
-        :param authoritative: True if we are authoritative for this domain.
-        :param ttl: The default TTL for this domain.
+        @param (int) "{id}" [required=true] A domain id.
 
-        Returns 403 if the user does not have permission to update the
-        dnsresource.
-        Returns 404 if the domain is not found.
+        @param (string) "name" [required=true] Name of the domain.
+
+        @param (string) "authoritative" [required=false] True if we are
+        authoritative for this domain.
+
+        @param (string) "ttl" [required=false] The default TTL for this domain.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing
+        information about the updated domain.
+        @success-example "success-json" [exkey=domains-update] placeholder text
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have the permissions
+        required to update the domain.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested domain name is not found.
+        @error-example "not-found"
+            Not Found
         """
         domain = Domain.objects.get_domain_or_404(
             id, request.user, NodePermission.admin)
@@ -149,14 +195,28 @@ class DomainHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def set_default(self, request, id):
-        """Set the specified domain to be the default.
+        """@description-title Set domain as default
+        @description Set the specified domain to be the default.
+
+        @param (int) "{id}" [required=true] A domain id.
 
         If any unallocated nodes are using the previous default domain,
         changes them to use the new default domain.
 
-        Returns 403 if the user does not have permission to update the
-        default domain.
-        Returns 404 if the domain is not found.
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing
+        information about the updated domain.
+        @success-example "success-json" [exkey=domains-set-default] placeholder
+        text
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have the permissions
+        required to update the domain.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested domain name is not found.
+        @error-example "not-found"
+            Not Found
         """
         domain = Domain.objects.get_domain_or_404(
             id, request.user, NodePermission.admin)
@@ -166,11 +226,21 @@ class DomainHandler(OperationsHandler):
         return domain
 
     def delete(self, request, id):
-        """Delete domain.
+        """@description-title Delete domain
+        @description Delete a domain with the given id.
 
-        Returns 403 if the user does not have permission to update the
-        domain.
-        Returns 404 if the domain is not found.
+        @param (int) "{id}" [required=true] A domain id.
+
+        @success (http-status-code) "server-success" 204
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have the permissions
+        required to update the domain.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested domain name is not found.
+        @error-example "not-found"
+            Not Found
         """
         domain = Domain.objects.get_domain_or_404(
             id, request.user, NodePermission.admin)
