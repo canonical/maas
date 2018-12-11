@@ -43,12 +43,23 @@ class DNSResourceRecordsHandler(OperationsHandler):
         return ('dnsresourcerecords_handler', [])
 
     def read(self, request):
-        """List all dnsresourcerecords.
+        """@description-title List all DNS resource records
+        @description List all DNS resource records.
 
-        :param domain: restrict the listing to entries for the domain.
-        :param name: restrict the listing to entries of the given name.
-        :param rrtype: restrict the listing to entries which have
-            records of the given rrtype.
+        @param (string) "domain" [required=false] Restricts the listing to
+        entries for the domain.
+
+        @param (string) "name" [required=false] Restricts the listing to
+        entries of the given name.
+
+        @param (string) "rrtype" [required=false] Restricts the listing to
+        entries which have records of the given rrtype.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing a list of the
+        requested DNS resource record objects.
+        @success-example "success-json" [exkey=dnsresourcerecords-read]
+        placeholder text
         """
         data = request.GET
         fqdn = data.get('fqdn', None)
@@ -82,19 +93,31 @@ class DNSResourceRecordsHandler(OperationsHandler):
 
     @admin_method
     def create(self, request):
-        """Create a DNS resource record.
+        """@description-title Create a DNS resource record
+        @description Create a new DNS resource record.
 
-        :param fqdn: Hostname (with domain) for the dnsresource.  Either fqdn
-            or (name, domain) must be specified.  Fqdn is ignored if either
-            name or domain is given (e.g. www.your-maas.maas).
-        :param name: The name (or hostname without a domain) of the DNS
-            resource record (e.g. www.your-maas)
-        :param domain: The domain (name or id) where to create the DNS
-            resource record (Domain (e.g. 'maas')
-        :param rrtype: The resource record type (e.g 'cname', 'mx', 'ns',
-            'srv', 'sshfp', 'txt')
-        :param rrdata: The resource record data (e.g. 'your-maas',
-            '10 mail.your-maas.maas')
+        @param (string) "fqdn" [required=false] Hostname (with domain) for the
+        dnsresource.  Either ``fqdn`` or ``name`` and  ``domain`` must be
+        specified.  ``fqdn`` is ignored if either name or domain is given (e.g.
+        www.your-maas.maas).
+
+        @param (string) "name" [required=false] The name (or hostname without a
+        domain) of the DNS resource record (e.g. www.your-maas)
+
+        @param (string) "domain" [required=false] The domain (name or id) where
+        to create the DNS resource record (Domain (e.g. 'maas')
+
+        @param (string) "rrtype" [required=false] The resource record type (e.g
+        ``cname``, ``mx``, ``ns``, ``srv``, ``sshfp``, ``txt``).
+
+        @param (string) "rrdata" [required=false] The resource record data
+        (e.g. 'your-maas', '10 mail.your-maas.maas')
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the new DNS
+        resource record object.
+        @success-example "success-json" [exkey=dnsresourcerecords-create]
+        placeholder text
         """
         data = request.data.copy()
         domain = None
@@ -167,22 +190,52 @@ class DNSResourceRecordHandler(OperationsHandler):
         return dnsresourcerecord.fqdn()
 
     def read(self, request, id):
-        """Read dnsresourcerecord.
+        """@description-title Read a DNS resource record
+        description Read a DNS resource record with the given id.
 
-        Returns 404 if the dnsresourcerecord is not found.
+        @param (int) "{id}" [required=true] The DNS resource record id.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the requested
+        DNS resource object.
+        @success-example "success-json" [exkey=dnsresourcerecords-read-by-id]
+        placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested DNS resource record was not
+        found.
+        @error-example "not-found"
+            Not Found
         """
         return DNSData.objects.get_dnsdata_or_404(
             id, request.user, NodePermission.view)
 
     def update(self, request, id):
-        """Update dnsresourcerecord.
+        """@description-title Update a DNS resource record
+        @description Update a DNS resource record with the given id.
 
-        :param rrtype: Resource Type
-        :param rrdata: Resource Data (everything to the right of Type.)
+        @param (int) "{id}" [required=true] The DNS resource record id.
 
-        Returns 403 if the user does not have permission to update the
-        dnsresourcerecord.
-        Returns 404 if the dnsresourcerecord is not found.
+        @param (string) "rrtype" [required=false] Resource type.
+
+        @param (string) "rrdata" [required=false] Resource data (everything to
+        the right of type.)
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the updated DNS
+        resource record object.
+        @success-example "success-json" [exkey=dnsresourcerecords-update]
+        placeholder text
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permission to update
+        the requested DNS resource record.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested DNS resource record is not
+        found.
+        @error-example "not-found"
+            Not Found
         """
         dnsdata = DNSData.objects.get_dnsdata_or_404(
             id, request.user, NodePermission.admin)
@@ -195,11 +248,22 @@ class DNSResourceRecordHandler(OperationsHandler):
             raise MAASAPIValidationError(form.errors)
 
     def delete(self, request, id):
-        """Delete dnsresourcerecord.
+        """@description-title Delete a DNS resource record
+        @description Delete a DNS resource record with the given id.
 
-        Returns 403 if the user does not have permission to delete the
-        dnsresourcerecord.
-        Returns 404 if the dnsresourcerecord is not found.
+        @param (int) "{id}" [required=true] The DNS resource record id.
+
+        @success (http-status-code) "server-success" 204
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permission to delete
+        the requested DNS resource record.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested DNS resource record is not
+        found.
+        @error-example "not-found"
+            Not Found
         """
         dnsdata = DNSData.objects.get_dnsdata_or_404(
             id, request.user, NodePermission.admin)

@@ -1,0 +1,47 @@
+{
+  "dnsresources-read": [
+    {
+      "address_ttl": null,
+      "id": -1,
+      "ip_addresses": null,
+      "resource_records": [
+        {
+          "system_id": "ydpcwh",
+          "node_type": 0,
+          "user_id": null,
+          "dnsresource_id": null,
+          "ttl": null,
+          "rrtype": "A",
+          "rrdata": "172.16.2.111",
+          "dnsdata_id": null
+        }
+      ],
+      "fqdn": "divine-buck.ubnt",
+      "resource_uri": "/MAAS/api/2.0/dnsresources/-1/"
+    }
+  ],
+  "dnsresources-create": {
+    "address_ttl": null,
+    "fqdn": "sample-machine.ubnt",
+    "resource_records": [],
+    "id": 1,
+    "ip_addresses": [],
+    "resource_uri": "/MAAS/api/2.0/dnsresources/1/"
+  },
+  "dnsresources-read-by-id": {
+    "address_ttl": null,
+    "fqdn": "sample-machine.ubnt",
+    "resource_records": [],
+    "ip_addresses": [],
+    "id": 1,
+    "resource_uri": "/MAAS/api/2.0/dnsresources/1/"
+  },
+  "dnsresources-update": {
+    "address_ttl": null,
+    "fqdn": "sample-machine.ubnt",
+    "resource_records": [],
+    "ip_addresses": [],
+    "id": 1,
+    "resource_uri": "/MAAS/api/2.0/dnsresources/1/"
+  }
+}

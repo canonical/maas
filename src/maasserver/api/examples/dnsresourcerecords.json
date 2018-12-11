@@ -1,0 +1,36 @@
+{
+  "dnsresourcerecords-read": [
+    {
+      "ttl": null,
+      "rrtype": "CNAME",
+      "rrdata": "172.16.0.0",
+      "fqdn": "sample-machine-new.ubnt",
+      "id": 1,
+      "resource_uri": "/MAAS/api/2.0/dnsresourcerecords/1/"
+    }
+  ],
+  "dnsresourcerecords-create": {
+    "ttl": null,
+    "rrtype": "TXT",
+    "rrdata": "172.16.0.0",
+    "fqdn": "sample-machine-new.ubnt",
+    "id": 1,
+    "resource_uri": "/MAAS/api/2.0/dnsresourcerecords/1/"
+  },
+  "dnsresourcerecords-read-by-id": {
+    "ttl": null,
+    "rrtype": "CNAME",
+    "rrdata": "172.16.0.0",
+    "fqdn": "sample-machine-new.ubnt",
+    "id": 1,
+    "resource_uri": "/MAAS/api/2.0/dnsresourcerecords/1/"
+  },
+  "dnsresourcerecords-update": {
+    "ttl": null,
+    "rrtype": "TXT",
+    "rrdata": "172.16.0.0",
+    "fqdn": "sample-machine-new.ubnt",
+    "id": 1,
+    "resource_uri": "/MAAS/api/2.0/dnsresourcerecords/1/"
+  }
+}

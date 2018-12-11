@@ -123,14 +123,31 @@ class DNSResourcesHandler(OperationsHandler):
         return ('dnsresources_handler', [])
 
     def read(self, request):
-        """List all resources for the specified criteria.
+        """@description-title List resources
+        @description List all resources for the specified criteria.
 
-        :param domain: restrict the listing to entries for the domain.
-        :param name: restrict the listing to entries of the given name.
-        :param rrtype: restrict the listing to entries which have
-            records of the given rrtype.
-        :param all: if True, also include implicit DNS records created for
-            nodes registered in MAAS.
+        @param (string) "domain" [required=false] Restricts the listing to
+        entries for the domain.
+
+        @param (string) "name" [required=false] Restricts the listing to
+        entries of the given name.
+
+        @param (string) "rrtype" [required=false] Restricts the listing to
+        entries which have records of the given rrtype.
+
+        @param (boolean) "all" [required=false] Include implicit DNS records
+        created for nodes registered in MAAS if true.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing a list of the
+        requested DNS resource objects.
+        @success-example "success-json" [exkey=dnsresources-read] placeholder
+        text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested DNS resources are not found.
+        @error-example "not-found"
+            Not Found
         """
         data = request.GET
         fqdn = data.get('fqdn', None)
@@ -151,16 +168,29 @@ class DNSResourcesHandler(OperationsHandler):
 
     @admin_method
     def create(self, request):
-        """Create a dnsresource.
+        """@description-title Create a DNS resource
+        @description Create a DNS resource.
 
-        :param fqdn: Hostname (with domain) for the dnsresource.  Either fqdn
-            or (name, domain) must be specified.  Fqdn is ignored if either
-            name or domain is given.
-        :param name: Hostname (without domain)
-        :param domain: Domain (name or id)
-        :param address_ttl: Default ttl for entries in this zone.
-        :param ip_addresses: (optional) Address (ip or id) to assign to the
-            dnsresource.
+        @param (string) "fqdn" [required=false] Hostname (with domain) for the
+        dnsresource.  Either ``fqdn`` or ``name`` and ``domain`` must be
+        specified.  ``fqdn`` is ignored if either ``name`` or ``domain`` is
+        given.
+
+        @param (string) "name" [required=true] Hostname (without domain).
+
+        @param (string) "domain" [required=true] Domain (name or id).
+
+        @param (string) "address_ttl" [required=false] Default TTL for entries
+        in this zone.
+
+        @param (string) "ip_addresses" [required=false] Address (ip or id) to
+        assign to the dnsresource.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the new DNS
+        resource object.
+        @success-example "success-json" [exkey=dnsresources-create] placeholder
+        text
         """
         data = request.data.copy()
         fqdn = data.get('fqdn', None)
@@ -232,22 +262,51 @@ class DNSResourceHandler(OperationsHandler):
             return dnsresource.dnsdata_set.all().order_by('rrtype')
 
     def read(self, request, id):
-        """Read dnsresource.
+        """@description-title Read a DNS resource
+        @description Read a DNS resource by id.
 
-        Returns 404 if the dnsresource is not found.
+        @param (int) "{id}" [required=true] The DNS resource id.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the requested
+        DNS resource object.
+        @success-example "success-json" [exkey=dnsresources-read-by-id]
+        placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested DNS resource is not found.
+        @error-example "not-found"
+            Not Found
         """
         return DNSResource.objects.get_dnsresource_or_404(
             id, request.user, NodePermission.view)
 
     def update(self, request, id):
-        """Update dnsresource.
+        """@description-title Update a DNS resource
+        @description Update a DNS resource with the given id.
 
-        :param fqdn: Hostname (with domain) for the dnsresource.
-        :param ip_address: Address to assign to the dnsresource.
+        @param (int) "{id}" [required=true] The DNS resource id.
 
-        Returns 403 if the user does not have permission to update the
+        @param (string) "fqdn" [required=false] Hostname (with domain) for the
         dnsresource.
-        Returns 404 if the dnsresource is not found.
+
+        @param (string) "ip_address" [required=false] Address to assign to the
+        dnsresource.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the updated DNS
+        resource object.
+        @success-example "success-json" [exkey=dnsresources-update] placeholder
+        text
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permission to update
+        the requested DNS resource.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested DNS resource is not found.
+        @error-example "not-found"
+            Not Found
         """
         dnsresource = DNSResource.objects.get_dnsresource_or_404(
             id, request.user, NodePermission.admin)
@@ -259,11 +318,21 @@ class DNSResourceHandler(OperationsHandler):
             raise MAASAPIValidationError(form.errors)
 
     def delete(self, request, id):
-        """Delete dnsresource.
+        """@description-title Delete a DNS resource
+        @description Delete a DNS resource with the given id.
 
-        Returns 403 if the user does not have permission to delete the
-        dnsresource.
-        Returns 404 if the dnsresource is not found.
+        @param (int) "{id}" [required=true] The DNS resource id.
+
+        @success (http-status-code) "server-success" 204
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permission to update
+        the requested DNS resource.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested DNS resource is not found.
+        @error-example "not-found"
+            Not Found
         """
         dnsresource = DNSResource.objects.get_dnsresource_or_404(
             id, request.user, NodePermission.admin)
