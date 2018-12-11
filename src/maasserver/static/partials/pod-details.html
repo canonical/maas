@@ -138,7 +138,7 @@
                                                 </div>
                                             </div>
                                         </td>
-                                        <td class="u-vertically-center">
+                                        <td class="p-table--action-cell">
                                             <div data-ng-if="iface.name !== 'default'">
                                                 <div data-ng-if="spaces.length == 0">
                                                     (undefined)
@@ -154,7 +154,7 @@
                                                 </select>
                                             </div>
                                         </td>
-                                        <td style="overflow: visible">
+                                        <td class="p-table--action-cell">
                                             <div data-ng-if="iface.name !== 'default'" class="form__group-input">
                                                 <div class="form__group-input">
                                                     <div class="p-option-selector" tabindex="0"
@@ -239,36 +239,32 @@
                                             </div>
                                         </td>
                                         <td>
-                                            <div data-ng-if="iface.name !== 'default'">
+                                            <p class="u-min-margin--bottom" data-ng-if="iface.name !== 'default'">
                                                 {$ iface.fabric.name $}
-                                            </div>
+                                            </p>
                                         </td>
                                         <td>
-                                            <div data-ng-if="iface.name !== 'default'">
-                                                <div ng-switch on="iface.vlan.vid">
-                                                    <div ng-switch-when="0">untagged</div>
-                                                    <div ng-switch-default>
-                                                        <span>{$ iface.vlan.vid $}</span>
-                                                        <span data-ng-if="iface.vlan.name">({$ iface.vlan.name $})</span>
-                                                    </div>
-                                                </div>
-                                            </div>
+                                            <p class="u-min-margin--bottom" ng-switch on="iface.vlan.vid" data-ng-if="iface.name !== 'default'">
+                                                <span ng-switch-when="0">untagged</span>
+                                                <span ng-switch-default>
+                                                    <span>{$ iface.vlan.vid $}</span>
+                                                    <span data-ng-if="iface.vlan.name">({$ iface.vlan.name $})</span>
+                                                </span>
+                                            </p>
                                         </td>
-                                        <td class="u-vertically-center">
-                                            <div data-ng-if="iface.name !== 'default'">
-                                                <div ng-switch on="iface.pxe">
-                                                    <div ng-switch-when="true">
-                                                        <i class="p-icon--success"></i>
-                                                    </div>
-                                                    <div ng-switch-when="false">
-                                                        <i class="p-icon--error"></i>
-                                                    </div>
-                                                </div>
-                                            </div>
+                                        <td>
+                                            <p class="u-min-margin--bottom" data-ng-if="iface.name !== 'default'" ng-switch on="iface.pxe">
+                                                <span ng-switch-when="true">
+                                                    <i class="p-icon--success"></i>
+                                                </span>
+                                                <span ng-switch-when="false">
+                                                    <i class="p-icon--error"></i>
+                                                </span>
+                                            </p>
                                         </td>
                                     </tr>
                                     <tr data-ng-show="availableSubnets.length > 0">
-                                        <td colspan="7">
+                                        <td colspan="8">
                                             <button class="p-button--base u-td-outdent-focusable--left p-button--narrow" data-ng-click="composeAddInterface()">
                                                 <i class="p-icon--plus"></i>
                                                 <span class="u-off-screen">Add another interface</span>
@@ -278,6 +274,7 @@
                                     </tr>
                                 </tbody>
                             </table>
+
                         </div>
                     </div>
                 </div>

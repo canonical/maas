@@ -1,4 +1,14 @@
 @mixin maas-tables {
+
+  %ellipse-text {
+    @media (min-width: $breakpoint-small) {
+      text-overflow: ellipsis;
+      overflow-x: hidden;
+      overflow-y: visible;
+      white-space: nowrap;
+    }
+  }
+
   table {
     overflow-x: visible;
     input[type="radio"],
@@ -25,17 +35,12 @@
 
     th,
     td {
+      @extend %ellipse-text;
       display: table-cell !important;
       flex-basis: auto !important;
       flex-grow: 0;
       vertical-align: top;
-
-      @media (min-width: $breakpoint-small) {
-        text-overflow: ellipsis;
-        overflow-x: hidden;
-        overflow-y: visible;
-        white-space: nowrap;
-      }
+      padding-bottom: 0.05rem;
 
       &:first-of-type {
         padding-left: $sph-intra--condensed;
@@ -44,6 +49,10 @@
       &:not(:last-child) {
         padding-right: $sph-intra--condensed;
       }
+    }
+
+    p {
+      @extend %ellipse-text;
     }
   }
 

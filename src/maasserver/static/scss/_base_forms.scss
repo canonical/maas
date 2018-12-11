@@ -30,7 +30,10 @@
       margin-bottom: $spv-inter--scaleable + $sp-unit - $spv-nudge * 2;
       padding-bottom: $spv-nudge - $px;
       padding-top: $spv-nudge - $px;
+      min-height: 2.3rem;
+      min-width: auto;
     }
+
     .is-small & {
       margin-bottom: $spv-nudge-compensation;
       padding-bottom: $spv-nudge - $sp-unit * .5 - $px;
@@ -40,6 +43,10 @@
     &.u-min-margin--bottom {
       @extend %u-input-min-margin--bottom;
     }
+  }
+
+  p.u-min-margin--bottom {
+    margin-bottom: map-get($sp-after, default-text) - map-get($nudges, nudge--p);
   }
 
   // fix checkbox so it doesn't get misaligned when next to a label with a different padding-top than the default label
