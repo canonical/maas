@@ -3,6 +3,7 @@ from functools import partial
 import http.client
 import threading
 from typing import (
+    Mapping,
     Sequence,
     Union,
 )
@@ -45,6 +46,8 @@ class AllResourcesType:
 
 # Represents access to all resources of the requested resource type.
 ALL_RESOURCES = AllResourcesType()
+
+ResourcesResultType = Union[AllResourcesType, Sequence[int]]
 
 
 class RBACClient(MacaroonClient):
@@ -113,26 +116,28 @@ class RBACClient(MacaroonClient):
             self,
             resource_type: str,
             user: str,
-            permission: str) -> Union[AllResourcesType, Sequence[int]]:
-        """Return the list of resource identifiers that `user` can access with
-        `permission`.
+            *permissions: Sequence[str]) -> ResourcesResultType:
+        """Return the resource identifiers that `user` can access with
+        `permissions`.
 
-        A list with a single item of empty string means the user has access to
-        all resources of the `resource_type`.
-
-        >>> client.allowed_for_user('maas', 'username', 'admin')
-        [""]  # User is an administrator
-        >>> client.allowed_for_user('maas', 'username', 'admin')
-        []  # User is not an administrator
+        Returns a dictionary mapping the permissions to the resources of
+        `resource_type` that the user can access. An object of `ALL_RESOURCES`
+        means the user can access all resources of that type.
         """
         url = (
             self._get_resource_type_url(resource_type) +
-            '/allowed-for-user?u={}&p={}'.format(
-                quote(user), quote(permission)))
+            '/allowed-for-user?u={}&{}'.format(
+                quote(user), '&'.join([
+                    'p=%s' % quote(permission)
+                    for permission in permissions
+                ])))
         result = self._request('GET', url)
-        if result == ['']:
-            return ALL_RESOURCES
-        return [int(res) for res in result]
+        for permission, res in result.items():
+            if res == ['']:
+                result[permission] = ALL_RESOURCES
+            else:
+                result[permission] = [int(idnt) for idnt in res]
+        return result
 
 
 class FakeResourceStore:
@@ -184,11 +189,15 @@ class FakeRBACClient(RBACClient):
             resource_type, action = path_parts[5:7]
             query = parse_qs(parsed.query)
             [user] = query['u']
-            [permission] = query['p']
+            permissions = query['p']
             user_resources = self.store.allowed.get(user, {})
             user_permissions = user_resources.get(resource_type, {})
-            pool_identifiers = user_permissions.get(permission, [])
-            return [''] if '' in pool_identifiers else pool_identifiers
+            result = {}
+            for permission in permissions:
+                pool_identifiers = user_permissions.get(permission, [])
+                result[permission] = (
+                    [''] if '' in pool_identifiers else pool_identifiers)
+            return result
 
 
 # Set when their is no client for the current request.
@@ -283,7 +292,9 @@ class RBACWrapper:
         if hasattr(self._store, 'cache'):
             delattr(self._store, 'cache')
 
-    def get_resource_pool_ids(self, user, permission):
+    def get_resource_pool_ids(
+            self, user: str,
+            *permissions: Sequence[str]) -> Mapping[str, ResourcesResultType]:
         """Get the resource pools ids that given user has the given
         permission on.
 
@@ -291,16 +302,17 @@ class RBACWrapper:
         @param permission: A permission that the user should
             have on the resource pool.
         """
-        pool_identifiers = self._get_resource_pool_identifiers(
-            user, permission)
-        if pool_identifiers is ALL_RESOURCES:
-            pool_ids = list(
-                ResourcePool.objects.all().values_list('id', flat=True))
-        else:
-            pool_ids = [int(identifier) for identifier in pool_identifiers]
-        return pool_ids
+        results = self._get_resource_pool_identifiers(
+            user, *permissions)
+        for permission, result in results.items():
+            if result is ALL_RESOURCES:
+                results[permission] = list(
+                    ResourcePool.objects.all().values_list('id', flat=True))
+            else:
+                results[permission] = [int(idnt) for idnt in result]
+        return results
 
-    def can_create_resource_pool(self, user):
+    def can_create_resource_pool(self, user: str) -> bool:
         """Return True if the `user` can create a resource pool.
 
         A user can create a resource pool if they have edit on all resource
@@ -308,11 +320,12 @@ class RBACWrapper:
 
         @param user: The user name of the user.
         """
-        pool_identifiers = self._get_resource_pool_identifiers(
-            user, 'edit')
-        return pool_identifiers is ALL_RESOURCES
+        pool_identifiers = self._get_resource_pool_identifiers(user, 'edit')
+        return pool_identifiers['edit'] is ALL_RESOURCES
 
-    def _get_resource_pool_identifiers(self, user, permission):
+    def _get_resource_pool_identifiers(
+            self, user: str,
+            *permissions: Sequence[str]) -> Mapping[str, ResourcesResultType]:
         """Get the resource pool identifiers from RBAC.
 
         Uses the thread-local cache so only one request is made to RBAC per
@@ -323,12 +336,22 @@ class RBACWrapper:
             have on the resource pool.
         """
         cache = self.get_cache('resource-pool', user)
-        pool_identifiers = cache.get(permission, None)
-        if pool_identifiers is None:
-            pool_identifiers = self.client.allowed_for_user(
-                'resource-pool', user, permission)
-            cache[permission] = pool_identifiers
-        return pool_identifiers
+        results, missing = {}, []
+        for permission in permissions:
+            identifiers = cache.get(permission, None)
+            if identifiers is None:
+                missing.append(permission)
+            else:
+                results[permission] = identifiers
+
+        if missing:
+            fetched = self.client.allowed_for_user(
+                'resource-pool', user, *missing)
+            for permission in missing:
+                identifiers = fetched[permission]
+                cache[permission] = results[permission] = identifiers
+
+        return results
 
 
 rbac = RBACWrapper()

@@ -472,17 +472,25 @@ class BaseNodeManager(Manager, NodeQueriesMixin):
                 NODE_TYPE.REGION_CONTROLLER,
                 NODE_TYPE.REGION_AND_RACK_CONTROLLER,
                 ]))
+
+        visible_pools, view_all_pools = [], []
+        deploy_pools, admin_pools = [], []
+        if rbac.is_enabled():
+            fetched_pools = rbac.get_resource_pool_ids(
+                user.username,
+                'view', 'view-all', 'deploy-machines', 'admin-machines')
+            visible_pools = fetched_pools['view']
+            view_all_pools = fetched_pools['view-all']
+            deploy_pools = fetched_pools['deploy-machines']
+            admin_pools = fetched_pools['admin-machines']
+
         if perm == NodePermission.view:
             condition = Q(Q(owner__isnull=True) | Q(owner=user))
             if rbac.is_enabled():
-                view_all_pools = rbac.get_resource_pool_ids(
-                    user.username, 'view-all')
                 condition |= Q(pool_id__in=view_all_pools)
         elif perm == NodePermission.edit:
             condition = Q(Q(owner__isnull=True) | Q(owner=user))
             if rbac.is_enabled():
-                deploy_pools = rbac.get_resource_pool_ids(
-                    user.username, 'deploy-machines')
                 condition = Q(Q(pool_id__in=deploy_pools) & Q(condition))
         elif perm == NodePermission.admin:
             # There is no built-in Q object that represents False, but
@@ -493,11 +501,6 @@ class BaseNodeManager(Manager, NodeQueriesMixin):
                 "Invalid permission check (invalid permission name: %s)." %
                 perm)
         if rbac.is_enabled():
-            visible_pools = rbac.get_resource_pool_ids(user.username, 'view')
-            view_all_pools = rbac.get_resource_pool_ids(
-                user.username, 'view-all')
-            admin_pools = rbac.get_resource_pool_ids(
-                user.username, 'admin-machines')
             condition |= Q(pool_id__in=admin_pools)
             nodes = nodes.filter(
                 pool_id__in=set(visible_pools).union(view_all_pools))

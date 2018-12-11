@@ -516,19 +516,18 @@ class PodManager(BaseBMCManager):
         from maasserver.rbac import rbac
         if rbac.is_enabled():
             if perm == PodPermission.view:
-                pool_ids = set(
-                    rbac.get_resource_pool_ids(user.username, 'view') +
-                    rbac.get_resource_pool_ids(user.username, 'view-all'))
+                fetched = rbac.get_resource_pool_ids(
+                    user.username, 'view', 'view-all')
+                pool_ids = set(fetched['view'] + fetched['view-all'])
                 return self.filter(pool_id__in=pool_ids)
             elif perm == PodPermission.edit or perm == PodPermission.compose:
                 return self.filter(pool_id__in=rbac.get_resource_pool_ids(
-                    user.username, 'admin-machines'))
+                    user.username, 'admin-machines')['admin-machines'])
             elif perm == PodPermission.dynamic_compose:
+                fetched = rbac.get_resource_pool_ids(
+                    user.username, 'deploy-machines', 'admin-machines')
                 pool_ids = set(
-                    rbac.get_resource_pool_ids(
-                        user.username, 'deploy-machines') +
-                    rbac.get_resource_pool_ids(
-                        user.username, 'admin-machines'))
+                    fetched['deploy-machines'] + fetched['admin-machines'])
                 return self.filter(pool_id__in=pool_ids)
             else:
                 raise ValueError("Unknown perm: %s", perm)

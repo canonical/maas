@@ -351,14 +351,13 @@ class MAASAuthorizationBackend(ModelBackend):
         visible_pools, view_all_pools = [], []
         deploy_pools, admin_pools = [], []
         if rbac_enabled:
-            visible_pools = rbac.get_resource_pool_ids(
-                user.username, 'view')
-            view_all_pools = rbac.get_resource_pool_ids(
-                user.username, 'view-all')
-            deploy_pools = rbac.get_resource_pool_ids(
-                user.username, 'deploy-machines')
-            admin_pools = rbac.get_resource_pool_ids(
-                user.username, 'admin-machines')
+            fetched_pools = rbac.get_resource_pool_ids(
+                user.username,
+                'view', 'view-all', 'deploy-machines', 'admin-machines')
+            visible_pools = fetched_pools['view']
+            view_all_pools = fetched_pools['view-all']
+            deploy_pools = fetched_pools['deploy-machines']
+            admin_pools = fetched_pools['admin-machines']
 
         # Handle node permissions without objects.
         if perm == NodePermission.admin and obj is None:
@@ -551,7 +550,7 @@ class MAASAuthorizationBackend(ModelBackend):
         if perm == ResourcePoolPermission.edit:
             if rbac_enabled:
                 return obj.id in rbac.get_resource_pool_ids(
-                    user.username, 'edit')
+                    user.username, 'edit')['edit']
             return user.is_superuser
         elif perm == ResourcePoolPermission.view:
             if rbac_enabled:

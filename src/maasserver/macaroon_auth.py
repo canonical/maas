@@ -370,17 +370,15 @@ def _validate_user_rbac(auth_info, username, client=None):
         client = RBACClient()
 
     try:
-        admin_resource = client.allowed_for_user(
-            'maas', username, 'admin')
-        pool_resources = client.allowed_for_user(
-            'maas', username, 'resource-pool')
+        resources = client.allowed_for_user(
+            'maas', username, 'admin', 'resource-pool')
     except APIError:
         raise UserValidationFailed()
 
     # and is active if it has access to any resource
-    active = any([admin_resource, pool_resources])
+    active = any(resources.values())
     # and is superuser if the admin resource is returned
-    superuser = bool(admin_resource)
+    superuser = bool(resources['admin'])
     return active, superuser
 
 

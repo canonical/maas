@@ -240,7 +240,10 @@ class TestValidateUserExternalAuthWithRBAC(MAASServerTestCase):
 
     def test_valid_user_check_has_pools_access(self):
         # not an admin, but has permission on pools
-        self.client.allowed_for_user.side_effect = [[], ['pool1', 'pool2']]
+        self.client.allowed_for_user.return_value = {
+            'admin': [],
+            'resource-pool': ['pool1', 'pool2'],
+        }
         valid = validate_user_external_auth(
             self.user, self.auth_info, now=lambda: self.now,
             rbac_client=self.client)
@@ -249,8 +252,11 @@ class TestValidateUserExternalAuthWithRBAC(MAASServerTestCase):
         self.assertFalse(self.user.is_superuser)
 
     def test_valid_user_check_has_admin_access(self):
-        # not an admin, but has permission on pools
-        self.client.allowed_for_user.side_effect = [[''], []]
+        # admin, but no permissions on pools
+        self.client.allowed_for_user.return_value = {
+            'admin': [''],
+            'resource-pool': [],
+        }
         valid = validate_user_external_auth(
             self.user, self.auth_info, now=lambda: self.now,
             rbac_client=self.client)
@@ -260,7 +266,10 @@ class TestValidateUserExternalAuthWithRBAC(MAASServerTestCase):
 
     def test_valid_user_no_permission(self):
         # user has no permission on resources
-        self.client.allowed_for_user.return_value = []
+        self.client.allowed_for_user.return_value = {
+            'admin': [],
+            'resource-pool': [],
+        }
         valid = validate_user_external_auth(
             self.user, self.auth_info, now=lambda: self.now,
             rbac_client=self.client)
@@ -281,28 +290,18 @@ class TestValidateUserExternalAuthWithRBAC(MAASServerTestCase):
 
     def test_valid_inactive_user_is_active(self):
         self.user.is_active = False
-        self.client.allowed_for_user.side_effect = [[], ['pool1', 'pool2']]
+        self.client.allowed_for_user.return_value = {
+            'admin': [],
+            'resource-pool': ['pool1', 'pool2'],
+        }
         valid = validate_user_external_auth(
             self.user, self.auth_info, now=lambda: self.now,
             rbac_client=self.client)
         self.assertTrue(valid)
         self.assertTrue(self.user.is_active)
 
-    def test_failed_admin_permission_check(self):
-        self.client.allowed_for_user.side_effect = [
-            APIError(500, 'fail!'), ['pool1']]
-        valid = validate_user_external_auth(
-            self.user, self.auth_info, now=lambda: self.now,
-            rbac_client=self.client)
-        self.assertFalse(valid)
-        # user is checked again, last check time is updated
-        self.client.allowed_for_user.assert_called()
-        self.assertEqual(self.user.userprofile.auth_last_check, self.now)
-        # user is still enabled
-        self.assertTrue(self.user.is_active)
-
-    def test_failed_pools_permission_check(self):
-        self.client.allowed_for_user.side_effect = [[], APIError(500, 'fail!')]
+    def test_failed_permissions_check(self):
+        self.client.allowed_for_user.side_effect = APIError(500, 'fail!')
         valid = validate_user_external_auth(
             self.user, self.auth_info, now=lambda: self.now,
             rbac_client=self.client)
