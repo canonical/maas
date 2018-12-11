@@ -72,6 +72,22 @@ class DiscoveryHandler(OperationsHandler):
         return ('discovery_handler', (discovery_id,))
 
     def read(self, request, **kwargs):
+        """@description-title Read a discovery
+        @description Read a discovery with the given discovery_id.
+
+        @param (string) "{discovery_id"} [required=true] A discovery_id.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the requested
+        discovery.
+        @success-example "success-json" [exkey=discovery-read-by-id]
+        placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested discovery is not found.
+        @error-example "not-found"
+            Not Found
+        """
         discovery_id = kwargs.get('discovery_id', None)
         discovery = Discovery.objects.get_discovery_or_404(discovery_id)
         return discovery
@@ -97,60 +113,93 @@ class DiscoveriesHandler(OperationsHandler):
         return ('discoveries_handler', [])
 
     def read(self, request, **kwargs):
-        """Lists all the devices MAAS has discovered.
+        """@description-title List all discovered devices
+        @description Lists all the devices MAAS has discovered. Discoveries are
+        listed in the order they were last observed on the network (most recent
+        first).
 
-        Discoveries are listed in the order they were last observed on the
-        network (most recent first).
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing a list of all
+        previously discovered devices.
+        @success-example "success-json" [exkey=discovery-read] placeholder text
         """
         return Discovery.objects.all().order_by("-last_seen")
 
     @operation(idempotent=True)
     def by_unknown_mac(self, request, **kwargs):
-        """Lists all discovered devices which have an unknown IP address.
-
-        Filters the list of discovered devices by excluding any discoveries
-        where an interface known to MAAS is configured with MAC address of the
-        discovery.
+        """@description-title List all discovered devices with unknown MAC
+        @description Filters the list of discovered devices by excluding any
+        discoveries where an interface known to MAAS is configured with a
+        discovered MAC address.
 
         Discoveries are listed in the order they were last observed on the
         network (most recent first).
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing a list of all
+        previously discovered devices with unknown MAC addresses.
+        @success-example "success-json" [exkey=discovery-unknown-mac]
+        placeholder text
         """
         return Discovery.objects.by_unknown_mac().order_by("-last_seen")
 
     @operation(idempotent=True)
     def by_unknown_ip(self, request, **kwargs):
-        """Lists all discovered devices which have an unknown IP address.
+        """@description-title List all discovered devices with an unknown IP address
+        @description Lists all discovered devices with an unknown IP address.
 
         Filters the list of discovered devices by excluding any discoveries
-        where a known MAAS node is configured with the IP address of the
-        discovery, or has been observed using it after it was assigned by
-        a MAAS-managed DHCP server.
+        where a known MAAS node is configured with the IP address of a
+        discovery, or has been observed using it after it was assigned by a
+        MAAS-managed DHCP server.
 
         Discoveries are listed in the order they were last observed on the
         network (most recent first).
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing a list of all
+        previously discovered devices with unknown IP addresses.
+        @success-example "success-json" [exkey=discovery-unknown-ip]
+        placeholder text
         """
         return Discovery.objects.by_unknown_ip().order_by("-last_seen")
 
     @operation(idempotent=True)
     def by_unknown_ip_and_mac(self, request, **kwargs):
-        """Lists all discovered devices which are completely unknown to MAAS.
+        """@description-title Lists all discovered devices completely unknown to MAAS
+        @description Lists all discovered devices completely unknown to MAAS.
 
         Filters the list of discovered devices by excluding any discoveries
         where a known MAAS node is configured with either the MAC address or
-        the IP address of the discovery.
+        the IP address of a discovery.
 
         Discoveries are listed in the order they were last observed on the
         network (most recent first).
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing a list of all
+        previously discovered devices with unknown MAC and IP addresses.
+        @success-example "success-json" [exkey=discovery-unknown-ip-mac]
+        placeholder text
         """
         return Discovery.objects.by_unknown_ip_and_mac().order_by("-last_seen")
 
     @operation(idempotent=False)
     def clear(self, request, **kwargs):
-        """Deletes all discovered neighbours and/or mDNS entries.
+        """@description-title Delete all discovered neighbours
+        @description Deletes all discovered neighbours and/or mDNS entries.
 
-        :param mdns: if True, deletes all mDNS entries.
-        :param neighbours: if True, deletes all neighbour entries.
-        :param all: if True, deletes all discovery data.
+        Note: One of ``mdns``, ``neighbours``, or ``all`` parameters must be
+        supplied.
+
+        @param (boolean) "mdns" [required=false] Delete all mDNS entries.
+
+        @param (boolean) "neighbours" [required=false] Delete all neighbour
+        entries.
+
+        @param (boolean) "all" [required=false] Delete all discovery data.
+
+        @success (http-status-code) "server-success" 204
         """
         all = get_optional_param(
             request.POST, 'all', default=False, validator=StringBool)
@@ -177,7 +226,9 @@ class DiscoveriesHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def scan(self, request, **kwargs):
-        """Immediately run a neighbour discovery scan on all rack networks.
+        """@description-title Run discovery scan on rack networks
+        @description Immediately run a neighbour discovery scan on all rack
+        networks.
 
         This command causes each connected rack controller to execute the
         'maas-rack scan-network' command, which will scan all CIDRs configured
@@ -191,41 +242,54 @@ class DiscoveriesHandler(OperationsHandler):
         to large networks.
 
         If the call is a success, this method will return a dictionary of
-        results as follows:
+        results with the following keys:
 
-        result: A human-readable string summarizing the results.
-        scan_attempted_on: A list of rack 'system_id' values where a scan
+        ``result``: A human-readable string summarizing the results.
+
+        ``scan_attempted_on``: A list of rack system_id values where a scan
         was attempted. (That is, an RPC connection was successful and a
         subsequent call was intended.)
 
-        failed_to_connect_to: A list of rack 'system_id' values where the RPC
-        connection failed.
+        ``failed_to_connect_to``: A list of rack system_id values where the
+        RPC connection failed.
 
-        scan_started_on: A list of rack 'system_id' values where a scan was
+        ``scan_started_on``: A list of rack system_id values where a scan was
         successfully started.
 
-        scan_failed_on: A list of rack 'system_id' values where
-        a scan was attempted, but failed because a scan was already in
-        progress.
+        ``scan_failed_on``: A list of rack system_id values where a scan was
+        attempted, but failed because a scan was already in progress.
 
-        rpc_call_timed_out_on: A list of rack 'system_id' values where the
+        ``rpc_call_timed_out_on``: A list of rack system_id values where the
         RPC connection was made, but the call timed out before a ten second
         timeout elapsed.
 
-        :param cidr: The subnet CIDR(s) to scan (can be specified multiple
-            times). If not specified, defaults to all networks.
-        :param force: If True, will force the scan, even if all networks are
-            specified. (This may not be the best idea, depending on acceptable
-            use agreements, and the politics of the organization that owns the
-            network.) Default: False.
-        :param always_use_ping: If True, will force the scan to use 'ping' even
-            if 'nmap' is installed. Default: False.
-        :param slow: If True, and 'nmap' is being used, will limit the scan
-            to nine packets per second. If the scanner is 'ping', this option
-            has no effect. Default: False.
-        :param threads: The number of threads to use during scanning. If 'nmap'
-            is the scanner, the default is one thread per 'nmap' process. If
-            'ping' is the scanner, the default is four threads per CPU.
+        @param (string) "cidr" [required=false] The subnet CIDR(s) to scan (can
+        be specified multiple times). If not specified, defaults to all
+        networks.
+
+        @param (boolean) "force" [required=false] If True, will force the scan,
+        even if all networks are specified. (This may not be the best idea,
+        depending on acceptable use agreements, and the politics of the
+        organization that owns the network.) Note that this parameter is
+        required if all networks are specified. Default: False.
+
+        @param (string) "always_use_ping" [required=false] If True, will force
+        the scan to use 'ping' even if 'nmap' is installed. Default: False.
+
+        @param (string) "slow" [required=false] If True, and 'nmap' is being
+        used, will limit the scan to nine packets per second. If the scanner is
+        'ping', this option has no effect. Default: False.
+
+        @param (string) "threads" [required=false] The number of threads to use
+        during scanning. If 'nmap' is the scanner, the default is one thread
+        per 'nmap' process. If 'ping' is the scanner, the default is four
+        threads per CPU.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing a dictionary of
+        results.
+        @success-example "success-json" [exkey=discovery-scan]
+        placeholder text
         """
         cidrs = get_optional_list(
             request.POST, 'cidr', default=[], validator=CIDR)
@@ -324,17 +388,17 @@ def scan_all_rack_networks(
 
     Interprets the results and returns a dict with the following keys:
         result: A human-readable string summarizing the results.
-        scan_attempted_on: A list of rack `system_id` values where a scan
+        scan_attempted_on: A list of rack system_id values where a scan
             was attempted. (That is, an RPC connection was successful and
             a subsequent call was intended.)
-        failed_to_connect_to: A list of rack `system_id values where the
+        failed_to_connect_to: A list of rack system_id values where the
             RPC connection failed.
-        scan_started_on: A list of rack `system_id` values where a scan
+        scan_started_on: A list of rack system_id values where a scan
             was successfully started.
-        scan_failed_on: A list of rack `system_id` values where
+        scan_failed_on: A list of rack system_id values where
             a scan was attempted, but failed because a scan was already in
             progress.
-        rpc_call_timed_out_on: A list of rack `system_id` values where the
+        rpc_call_timed_out_on: A list of rack system_id values where the
             RPC connection was made, but the call timed out before the
             ten second timeout elapsed.
 

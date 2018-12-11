@@ -1,0 +1,182 @@
+{
+  "discovery-read": [
+    {
+      "discovery_id": "MTcyLjE2LjIuNzAsMjk6ZTU6Mjc6OWQ6YmY6OGQ=",
+      "ip": "172.16.2.70",
+      "mac_address": "29:e5:27:9d:bf:8d",
+      "last_seen": "2018-12-10T19:56:34.299",
+      "hostname": null,
+      "fabric_name": "fabric-1",
+      "vid": 1844,
+      "observer": {
+        "system_id": "76y7pg",
+        "hostname": "happy-rack",
+        "interface_id": 8,
+        "interface_name": "eth2"
+      },
+      "mac_organization": null,
+      "resource_uri": "/MAAS/api/2.0/discovery/MTcyLjE2LjIuNzAsMjk6ZTU6Mjc6OWQ6YmY6OGQ=/"
+    },
+    {
+      "discovery_id": "MTcyLjE2LjIuMzUsMjA6NDk6Mzc6OGE6YTk6MGY=",
+      "ip": "172.16.2.35",
+      "mac_address": "20:49:37:8a:a9:0f",
+      "last_seen": "2018-12-10T19:56:34.212",
+      "hostname": null,
+      "fabric_name": "fabric-1",
+      "vid": 1100,
+      "observer": {
+        "system_id": "76y7pg",
+        "hostname": "happy-rack",
+        "interface_id": 8,
+        "interface_name": "eth2"
+      },
+      "mac_organization": null,
+      "resource_uri": "/MAAS/api/2.0/discovery/MTcyLjE2LjIuMzUsMjA6NDk6Mzc6OGE6YTk6MGY=/"
+    }
+  ],
+  "discovery-unknown-mac": [
+    {
+      "discovery_id": "MTcyLjE2LjEuNCw2YjoyMTphYzoxYjowMjpkOQ==",
+      "ip": "172.16.1.43",
+      "mac_address": "6b:21:ac:1b:02:d9",
+      "last_seen": "2018-12-10T19:56:27.225",
+      "hostname": null,
+      "fabric_name": "fabric-0",
+      "vid": 1214,
+      "observer": {
+        "system_id": "76y7pg",
+        "hostname": "happy-rack",
+        "interface_id": 6,
+        "interface_name": "eth0"
+      },
+      "mac_organization": null,
+      "resource_uri": "/MAAS/api/2.0/discovery/MTcyLjE2LjEuNCw2YjoyMTphYzoxYjowMjpkOQ==/"
+    },
+    {
+      "discovery_id": "MTcyLjE2LjQuMjEsODY6NjE6ZTQ6ZWY6ZmY6YmQ=",
+      "ip": "172.16.4.212",
+      "mac_address": "86:61:e4:ef:ff:bd",
+      "last_seen": "2018-12-10T19:56:27.162",
+      "hostname": "host-n1b7n1",
+      "fabric_name": "fabric-0",
+      "vid": 480,
+      "observer": {
+        "system_id": "76y7pg",
+        "hostname": "happy-rack",
+        "interface_id": 10,
+        "interface_name": "vlan10"
+      },
+      "mac_organization": null,
+      "resource_uri": "/MAAS/api/2.0/discovery/MTcyLjE2LjQuMjEsODY6NjE6ZTQ6ZWY6ZmY6YmQ=/"
+    }
+  ],
+  "discovery-unknown-ip": [
+    {
+      "discovery_id": "MTcyLjE2LjIuMTgwLDk1Ojg2OjY4OjhiOjdhOjVk",
+      "ip": "172.16.2.180",
+      "mac_address": "95:86:68:8b:7a:5d",
+      "last_seen": "2018-12-10T19:56:28.440",
+      "hostname": "host-cyp092",
+      "fabric_name": "fabric-1",
+      "vid": 1641,
+      "mac_organization": null,
+      "observer": {
+        "system_id": "76y7pg",
+        "hostname": "happy-rack",
+        "interface_id": 8,
+        "interface_name": "eth2"
+      },
+      "resource_uri": "/MAAS/api/2.0/discovery/MTcyLjE2LjIuMTgwLDk1Ojg2OjY4OjhiOjdhOjVk/"
+    },
+    {
+      "discovery_id": "MTcyLjE2LjEuMTM1LGUwOmQ3OjVmOjBiOmM4OjMx",
+      "ip": "172.16.1.135",
+      "mac_address": "e0:d7:5f:0b:c8:31",
+      "last_seen": "2018-12-10T19:56:28.280",
+      "hostname": null,
+      "fabric_name": "fabric-0",
+      "vid": 3883,
+      "mac_organization": null,
+      "observer": {
+        "system_id": "76y7pg",
+        "hostname": "happy-rack",
+        "interface_id": 7,
+        "interface_name": "eth1"
+      },
+      "resource_uri": "/MAAS/api/2.0/discovery/MTcyLjE2LjEuMTM1LGUwOmQ3OjVmOjBiOmM4OjMx/"
+    }
+  ],
+  "discovery-unknown-ip-mac": [
+    {
+      "discovery_id": "MTcyLjE2LjIuMTgwLDk1Ojg2OjY4OjhiOjdhOjVk",
+      "ip": "172.16.2.180",
+      "mac_address": "95:86:68:8b:7a:5d",
+      "last_seen": "2018-12-10T19:56:28.440",
+      "hostname": "host-cyp092",
+      "fabric_name": "fabric-1",
+      "vid": 1641,
+      "observer": {
+        "system_id": "76y7pg",
+        "hostname": "happy-rack",
+        "interface_id": 8,
+        "interface_name": "eth2"
+      },
+      "mac_organization": null,
+      "resource_uri": "/MAAS/api/2.0/discovery/MTcyLjE2LjIuMTgwLDk1Ojg2OjY4OjhiOjdhOjVk/"
+    },
+    {
+      "discovery_id": "MTcyLjE2LjEuMTM1LGUwOmQ3OjVmOjBiOmM4OjMx",
+      "ip": "172.16.1.135",
+      "mac_address": "e0:d7:5f:0b:c8:31",
+      "last_seen": "2018-12-10T19:56:28.280",
+      "hostname": null,
+      "fabric_name": "fabric-0",
+      "vid": 3883,
+      "observer": {
+        "system_id": "76y7pg",
+        "hostname": "happy-rack",
+        "interface_id": 7,
+        "interface_name": "eth1"
+      },
+      "mac_organization": null,
+      "resource_uri": "/MAAS/api/2.0/discovery/MTcyLjE2LjEuMTM1LGUwOmQ3OjVmOjBiOmM4OjMx/"
+    }
+  ],
+  "discovery-scan": {
+    "result": "Scanning is in-progress on all rack controllers.",
+    "scan_started_on": [
+      {
+        "system_id": "6gsym8",
+        "hostname": "dev-runmaas"
+      }
+    ],
+    "scan_failed_on": [],
+    "scan_attempted_on": [
+      {
+        "system_id": "6gsym8",
+        "hostname": "dev-runmaas"
+      }
+    ],
+    "failed_to_connect_to": [],
+    "rpc_call_timed_out_on": [],
+    "failures": []
+  },
+  "discovery-read-by-id": {
+    "discovery_id": "MTcyLjE2LjEuNCw2YjoyMTphYzoxYjowMjpkOQ==",
+    "ip": "172.16.1.43",
+    "mac_address": "6b:21:ac:1b:02:d9",
+    "last_seen": "2018-12-10T19:56:27.225",
+    "hostname": null,
+    "fabric_name": "fabric-0",
+    "vid": 1214,
+    "mac_organization": null,
+    "observer": {
+      "system_id": "76y7pg",
+      "hostname": "happy-rack",
+      "interface_id": 6,
+      "interface_name": "eth0"
+    },
+    "resource_uri": "/MAAS/api/2.0/discovery/MTcyLjE2LjEuNCw2YjoyMTphYzoxYjowMjpkOQ==/"
+  }
+}
