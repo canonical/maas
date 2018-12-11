@@ -1912,6 +1912,24 @@ class UpdateIpAddressesTest(MAASServerTestCase):
         self.assertEqual(0, iface.ip_addresses.count())
         self.assertEqual(1, Subnet.objects.filter(cidr=network.cidr).count())
 
+    def test__does_not_add_addresses_from_duplicate_subnet(self):
+        # See also LP#1803188.
+        mac_address = factory.make_MAC()
+        vlan = factory.make_VLAN()
+        factory.make_Subnet(cidr="10.0.0.0/8", vlan=vlan)
+        factory.make_Subnet(cidr="2001::/64", vlan=vlan)
+        node = factory.make_Node()
+        iface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, mac_address=mac_address, vlan=vlan,
+            node=node)
+        iface.update_ip_addresses([
+            "10.0.0.1/8",
+            "10.0.0.2/8",
+            "2001::1/64",
+            "2001::2/64",
+        ])
+        self.assertEqual(2, iface.ip_addresses.count())
+
     def test__finds_ipv6_subnet_regardless_of_order(self):
         iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         network = factory.make_ipv6_network()

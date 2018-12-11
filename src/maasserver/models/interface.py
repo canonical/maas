@@ -724,6 +724,10 @@ class Interface(CleanSave, TimestampedModel):
         StaticIPAddress.objects.filter(
             interface=self, alloc_type=IPADDRESS_TYPE.DISCOVERED).delete()
 
+        # Keep track of which subnets were found, in order to avoid linking
+        # duplicates.
+        created_on_subnets = set()
+
         # Sort the cidr list by prefixlen.
         for ip in sorted(cidr_list, key=lambda x: int(x.split('/')[1])):
             network = IPNetwork(ip)
@@ -822,20 +826,41 @@ class Interface(CleanSave, TimestampedModel):
                             " on " + node.fqdn if node is not None else '')
                         prev_address.delete()
 
-            # XXX lamont 2016-11-03 Bug#1639090
             # At the moment, IPv6 autoconf (SLAAC) is required so that we get
             # the correct subnet block created above.  However, if we add SLAAC
             # addresses to the DB, then we wind up creating 2 autoassigned
             # addresses on the interface.  We need to discuss how to model them
             # and incorporate the change for 2.2.  For now, just drop them with
             # prejudice. (Bug#1639288)
-            if address != str(self._eui64_address(subnet.cidr)):
-                # Create the newly discovered IP address.
-                new_address = StaticIPAddress(
-                    alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=address,
-                    subnet=subnet)
-                new_address.save()
-                self.ip_addresses.add(new_address)
+            if address == str(self._eui64_address(subnet.cidr)):
+                maaslog.warning(
+                    "IP address (%s)%s was skipped because "
+                    "it is an EUI-64 (SLAAC) address.",
+                    address,
+                    " on " + self.node.fqdn if self.node is not None else '')
+                continue
+
+            # Remember which subnets we created addresses on; we don't want to
+            # link more than one address per subnet in case of a duplicate.
+            # Duplicates could happen, in theory, if the IP address configured
+            # in the preboot environment differs from the IP address acquired
+            # by the DHCP client. See bug #1803188.
+            if subnet in created_on_subnets:
+                maaslog.warning(
+                    "IP address (%s)%s was skipped because it was found on "
+                    "the same subnet as a previous address: %s.",
+                    address,
+                    " on " + self.node.fqdn if self.node is not None else '',
+                    network)
+                continue
+
+            # Create the newly discovered IP address.
+            new_address = StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=address,
+                subnet=subnet)
+            new_address.save()
+            self.ip_addresses.add(new_address)
+            created_on_subnets.add(subnet)
 
     def _eui64_address(self, net_cidr):
         """Return the SLAAC address for this interface."""
