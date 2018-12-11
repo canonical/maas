@@ -17,7 +17,7 @@ maas (2.5.0-7442-gdf68e30a5-0ubuntu1) cosmic; urgency=medium
     - Enlistment - now runs commissioning scripts.
     - Add machines by only specifying IPMI credentials.
 
- -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 05 Dec 2018 10:08:54 -0500
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Tue, 11 Dec 2018 15:15:30 -0500
 
 maas (2.5.0~rc2-7433-gea48d302e-0ubuntu1~18.10.1) cosmic; urgency=medium
 
