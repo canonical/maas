@@ -38,20 +38,44 @@ class FanNetworksHandler(OperationsHandler):
         return ('fannetworks_handler', [])
 
     def read(self, request):
-        """List all fannetworks."""
+        """@description-title List fan networks
+        @description List all fan networks.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing a list of all
+        fan networks.
+        @success-example "success-json" [exkey=fannetworks-read] placeholder
+        text
+        """
         return FanNetwork.objects.all()
 
     @admin_method
     def create(self, request):
-        """Create a fannetwork.
+        """@description Create a fan network
+        @description-title Create a fan network.
 
-        :param name: Name of the fannetwork.
-        :param overlay: Overlay network
-        :param underlay: Underlay network
-        :param dhcp: confiugre dhcp server for overlay net
-        :param host_reserve: number of IP addresses to reserve for host
-        :param bridge: override bridge name
-        :param off: put this int he config, but disable it.
+        @param (string) "name" [required=true] Name of the fan network.
+
+        @param (string) "overlay" [required=true] The overlay network.
+
+        @param (string) "underlay" [required=true] The underlay network.
+
+        @param (boolean) "dhcp" [required=false] Configure DHCP server for
+        overlay network.
+
+        @param (int) "host_reserve" [required=false] The number of IP addresses
+        to reserve for host.
+
+        @param (string) "bridge" [required=false] Override bridge name.
+
+        @param (boolean) "off" [required=false] Put this fan network in the
+        configuration, but disable it.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the new fan
+        network.
+        @success-example "success-json" [exkey=fannetworks-read] placeholder
+        text
         """
         form = FanNetworkForm(data=request.data)
         if form.is_valid():
@@ -76,25 +100,58 @@ class FanNetworkHandler(OperationsHandler):
         return ('fannetwork_handler', (fannetwork_id,))
 
     def read(self, request, id):
-        """Read fannetwork.
+        """@description-title Read a fan network
+        @description Read a fan network with the given id.
 
-        Returns 404 if the fannetwork is not found.
+        @param (int) "{id}" [required=true] The fan network id.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the requested
+        fan network.
+        @success-example "success-json" [exkey=fannetworks-read-by-id]
+        placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested fan network is not found.
+        @error-example "not-found"
+            Not Found
         """
         return FanNetwork.objects.get_fannetwork_or_404(
             id, request.user, NodePermission.view)
 
     def update(self, request, id):
-        """Update fannetwork.
+        """@description-title Update a fan network
+        @description Update a fan network with the given id.
 
-        :param name: Name of the fannetwork.
-        :param overlay: Overlay network
-        :param underlay: Underlay network
-        :param dhcp: confiugre dhcp server for overlay net
-        :param host_reserve: number of IP addresses to reserve for host
-        :param bridge: override bridge name
-        :param off: put this int he config, but disable it.
+        @param (int) "{id}" [required=true] The fan network id.
 
-        Returns 404 if the fannetwork is not found.
+        @param (string) "name" [required=false] Name of the fan network.
+
+        @param (string) "overlay" [required=false] The overlay network.
+
+        @param (string) "underlay" [required=false] The underlay network.
+
+        @param (boolean) "dhcp" [required=false] Configure DHCP server for
+        overlay network.
+
+        @param (int) "host_reserve" [required=false] The number of IP addresses
+        to reserve for host.
+
+        @param (string) "bridge" [required=false] Override bridge name.
+
+        @param (boolean) "off" [required=false] Put this fan network in the
+        configuration, but disable it.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the updated
+        fan network.
+        @success-example "success-json" [exkey=fannetworks-update] placeholder
+        text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested fan network is not found.
+        @error-example "not-found"
+            Not Found
         """
         fannetwork = FanNetwork.objects.get_fannetwork_or_404(
             id, request.user, NodePermission.admin)
@@ -105,9 +162,17 @@ class FanNetworkHandler(OperationsHandler):
             raise MAASAPIValidationError(form.errors)
 
     def delete(self, request, id):
-        """Delete fannetwork.
+        """@description-title Delete a fan network
+        @description Deletes a fan network with the given id.
 
-        Returns 404 if the fannetwork is not found.
+        @param (int) "{id}" [required=true] The fan network id.
+
+        @success (http-status-code) "server-success" 204
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested fan network is not found.
+        @error-example "not-found"
+            Not Found
         """
         fannetwork = FanNetwork.objects.get_fannetwork_or_404(
             id, request.user, NodePermission.admin)
