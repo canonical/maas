@@ -465,13 +465,15 @@ class BaseNodeManager(Manager, NodeQueriesMixin):
         if user.is_superuser and not rbac.is_enabled():
             # Admin is allowed to see all nodes.
             return nodes
+
         # Non-admins aren't allowed to see controllers.
-        nodes = nodes.exclude(
-            Q(node_type__in=[
-                NODE_TYPE.RACK_CONTROLLER,
-                NODE_TYPE.REGION_CONTROLLER,
-                NODE_TYPE.REGION_AND_RACK_CONTROLLER,
-                ]))
+        if not user.is_superuser:
+            nodes = nodes.exclude(
+                Q(node_type__in=[
+                    NODE_TYPE.RACK_CONTROLLER,
+                    NODE_TYPE.REGION_CONTROLLER,
+                    NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+                    ]))
 
         visible_pools, view_all_pools = [], []
         deploy_pools, admin_pools = [], []
@@ -501,9 +503,34 @@ class BaseNodeManager(Manager, NodeQueriesMixin):
                 "Invalid permission check (invalid permission name: %s)." %
                 perm)
         if rbac.is_enabled():
+            # XXX blake_r 2018-12-12 - This should be cleaned up to only use
+            # the `condition` instead of using both `nodes.filter` and
+            # `condition`. The RBAC unit tests cover the expected result.
             condition |= Q(pool_id__in=admin_pools)
-            nodes = nodes.filter(
-                pool_id__in=set(visible_pools).union(view_all_pools))
+            condition = Q(
+                Q(node_type=NODE_TYPE.MACHINE) & condition)
+            if user.is_superuser:
+                condition |= Q(node_type__in=[
+                    NODE_TYPE.DEVICE,
+                    NODE_TYPE.RACK_CONTROLLER,
+                    NODE_TYPE.REGION_CONTROLLER,
+                    NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+                    ])
+                nodes = nodes.filter(
+                    Q(node_type=NODE_TYPE.MACHINE,
+                      pool_id__in=set(visible_pools).union(view_all_pools)) |
+                    Q(node_type__in=[
+                        NODE_TYPE.DEVICE,
+                        NODE_TYPE.RACK_CONTROLLER,
+                        NODE_TYPE.REGION_CONTROLLER,
+                        NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+                        ]))
+            else:
+                condition |= Q(node_type=NODE_TYPE.DEVICE, owner=user)
+                nodes = nodes.filter(
+                    Q(node_type=NODE_TYPE.MACHINE,
+                      pool_id__in=set(visible_pools).union(view_all_pools)) |
+                    Q(node_type=NODE_TYPE.DEVICE, owner=user))
 
         return nodes.filter(condition)
 
