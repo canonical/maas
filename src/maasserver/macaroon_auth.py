@@ -77,7 +77,8 @@ class MacaroonAuthorizationBackend(MAASAuthorizationBackend):
             user.is_active = True
             user.save()
 
-        if not validate_user_external_auth(user, external_auth_info):
+        if not validate_user_external_auth(
+                user, external_auth_info, force_check=True):
             return
 
         return user
@@ -304,7 +305,8 @@ class UserValidationFailed(Exception):
 
 
 def validate_user_external_auth(user, auth_info, now=datetime.utcnow,
-                                candid_client=None, rbac_client=None):
+                                candid_client=None, rbac_client=None, *,
+                                force_check=False):
     """Check if a user is authenticated with external auth.
 
     If the EXTERNAL_USER_CHECK_INTERVAL has passed since the last check, the
@@ -321,7 +323,7 @@ def validate_user_external_auth(user, auth_info, now=datetime.utcnow,
     no_check = (
         profile.auth_last_check and
         profile.auth_last_check + EXTERNAL_USER_CHECK_INTERVAL > now)
-    if no_check:
+    if no_check and not force_check:
         return True
 
     profile.auth_last_check = now
@@ -370,16 +372,17 @@ def _validate_user_rbac(auth_info, username, client=None):
         client = RBACClient()
 
     try:
-        resources = client.allowed_for_user(
-            'maas', username, 'admin', 'resource-pool')
+        is_admin = bool(
+            client.allowed_for_user('maas', username, 'admin')['admin'])
+        access_to_pools = any(
+            client.allowed_for_user(
+                'resource-pool', username,
+                'view', 'view-all',
+                'deploy-machines', 'admin-machines').values())
     except APIError:
         raise UserValidationFailed()
 
-    # and is active if it has access to any resource
-    active = any(resources.values())
-    # and is superuser if the admin resource is returned
-    superuser = bool(resources['admin'])
-    return active, superuser
+    return is_admin or access_to_pools, is_admin
 
 
 class _IDClient(bakery.IdentityClient):

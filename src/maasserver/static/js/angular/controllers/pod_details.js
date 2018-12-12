@@ -91,9 +91,13 @@ angular.module('MAAS').controller('PodDetailsController', [
 
         // Return true when the edit buttons can be clicked.
         $scope.canEdit = function() {
-            return (
-                $scope.isRackControllerConnected() &&
-                $scope.pod.permissions.indexOf('edit') !== -1);
+            if ($scope.isRackControllerConnected() && $scope.pod &&
+                $scope.pod.permissions &&
+                $scope.pod.permissions.indexOf('edit') !== -1) {
+                return true;
+            } else {
+                return false;
+            }
         };
 
         // Called to edit the pod configuration.

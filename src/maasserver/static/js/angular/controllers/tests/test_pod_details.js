@@ -225,6 +225,24 @@ describe("PodDetailsController", function() {
     });
 
     describe("canEdit", function() {
+        it("returns false if no pod", function() {
+            var controller = makeController();
+            spyOn(
+                $scope,
+                "isRackControllerConnected").and.returnValue(true);
+            expect($scope.canEdit()).toBe(false);
+        });
+
+        it("returns false if no pod permissions", function() {
+            var controller = makeController();
+            $scope.pod = makePod();
+            delete $scope.pod.permissions;
+            spyOn(
+                $scope,
+                "isRackControllerConnected").and.returnValue(true);
+            expect($scope.canEdit()).toBe(false);
+        });
+
         it("returns false if no edit permission", function() {
             var controller = makeController();
             $scope.pod = makePod();

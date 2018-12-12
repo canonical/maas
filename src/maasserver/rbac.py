@@ -190,7 +190,9 @@ class FakeRBACClient(RBACClient):
             query = parse_qs(parsed.query)
             [user] = query['u']
             permissions = query['p']
-            user_resources = self.store.allowed.get(user, {})
+            user_resources = self.store.allowed.get(user, None)
+            if user_resources is None:
+                return {}
             user_permissions = user_resources.get(resource_type, {})
             result = {}
             for permission in permissions:
@@ -348,7 +350,7 @@ class RBACWrapper:
             fetched = self.client.allowed_for_user(
                 'resource-pool', user, *missing)
             for permission in missing:
-                identifiers = fetched[permission]
+                identifiers = fetched.get(permission, {})
                 cache[permission] = results[permission] = identifiers
 
         return results

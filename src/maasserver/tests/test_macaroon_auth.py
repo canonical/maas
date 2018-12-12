@@ -240,10 +240,17 @@ class TestValidateUserExternalAuthWithRBAC(MAASServerTestCase):
 
     def test_valid_user_check_has_pools_access(self):
         # not an admin, but has permission on pools
-        self.client.allowed_for_user.return_value = {
-            'admin': [],
-            'resource-pool': ['pool1', 'pool2'],
-        }
+        self.client.allowed_for_user.side_effect = [
+            {
+                'admin': [],
+            },
+            {
+                'view': ['pool1', 'pool2'],
+                'view-all': [],
+                'deploy-machines': [],
+                'admin-machines': [],
+            }
+        ]
         valid = validate_user_external_auth(
             self.user, self.auth_info, now=lambda: self.now,
             rbac_client=self.client)
@@ -253,10 +260,17 @@ class TestValidateUserExternalAuthWithRBAC(MAASServerTestCase):
 
     def test_valid_user_check_has_admin_access(self):
         # admin, but no permissions on pools
-        self.client.allowed_for_user.return_value = {
-            'admin': [''],
-            'resource-pool': [],
-        }
+        self.client.allowed_for_user.side_effect = [
+            {
+                'admin': [''],
+            },
+            {
+                'view': [],
+                'view-all': [],
+                'deploy-machines': [],
+                'admin-machines': [],
+            }
+        ]
         valid = validate_user_external_auth(
             self.user, self.auth_info, now=lambda: self.now,
             rbac_client=self.client)
@@ -266,10 +280,17 @@ class TestValidateUserExternalAuthWithRBAC(MAASServerTestCase):
 
     def test_valid_user_no_permission(self):
         # user has no permission on resources
-        self.client.allowed_for_user.return_value = {
-            'admin': [],
-            'resource-pool': [],
-        }
+        self.client.allowed_for_user.side_effect = [
+            {
+                'admin': [],
+            },
+            {
+                'view': [],
+                'view-all': [],
+                'deploy-machines': [],
+                'admin-machines': [],
+            }
+        ]
         valid = validate_user_external_auth(
             self.user, self.auth_info, now=lambda: self.now,
             rbac_client=self.client)
@@ -290,10 +311,17 @@ class TestValidateUserExternalAuthWithRBAC(MAASServerTestCase):
 
     def test_valid_inactive_user_is_active(self):
         self.user.is_active = False
-        self.client.allowed_for_user.return_value = {
-            'admin': [],
-            'resource-pool': ['pool1', 'pool2'],
-        }
+        self.client.allowed_for_user.side_effect = [
+            {
+                'admin': [],
+            },
+            {
+                'view': ['pool1', 'pool2'],
+                'view-all': [],
+                'deploy-machines': [],
+                'admin-machines': [],
+            }
+        ]
         valid = validate_user_external_auth(
             self.user, self.auth_info, now=lambda: self.now,
             rbac_client=self.client)
@@ -476,7 +504,8 @@ class TestMacaroonAuthorizationBackend(MAASServerTestCase):
             user,
             ExternalAuthInfo(
                 type='candid', url='https://auth.example.com',
-                domain='', admin_group='admins'))
+                domain='', admin_group='admins'),
+            force_check=True)
 
     def test_authenticate_deactived_user_activate(self):
         user = factory.make_User()
@@ -514,7 +543,8 @@ class TestMacaroonAuthorizationBackend(MAASServerTestCase):
             user,
             ExternalAuthInfo(
                 type='candid', url='https://auth.example.com',
-                domain='', admin_group='admins'))
+                domain='', admin_group='admins'),
+            force_check=True)
 
 
 class TestMacaroonOvenKey(MAASServerTestCase):

@@ -5355,6 +5355,15 @@ class NodeManagerGetNodesRBACTest(MAASServerTestCase):
             [owned_node, other_node],
             Node.objects.get_nodes(user, NodePermission.view))
 
+    def test_get_nodes_view_admin_returns_none_when_no_pools(self):
+        admin = factory.make_admin()
+        pool1 = self.make_ResourcePool()
+        pool2 = self.make_ResourcePool()
+        factory.make_Node(pool=pool1)
+        factory.make_Node(pool=pool2)
+        self.assertCountEqual(
+            [], Node.objects.get_nodes(admin, NodePermission.view))
+
     def test_get_nodes_view_admin_permissions_unowned(self):
         user = factory.make_User()
         pool1 = self.make_ResourcePool()

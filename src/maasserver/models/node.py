@@ -462,7 +462,7 @@ class BaseNodeManager(Manager, NodeQueriesMixin):
         # Nonetheless, the code should not crash with corrupt data.
         if user is None:
             return nodes.none()
-        if user.is_superuser:
+        if user.is_superuser and not rbac.is_enabled():
             # Admin is allowed to see all nodes.
             return nodes
         # Non-admins aren't allowed to see controllers.
