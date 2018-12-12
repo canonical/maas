@@ -2242,7 +2242,7 @@ class TestNode(MAASServerTestCase):
         mock_stop = self.patch(node, "_stop")
         mock_finalize_release = self.patch(node, "_finalize_release")
         node.power_state = POWER_STATE.ON
-        node.release()
+        node.release(owner)
         self.expectThat(Node._set_status_expires, MockNotCalled())
         self.expectThat(node.status, Equals(NODE_STATUS.RELEASING))
         self.expectThat(node.owner, Equals(owner))
@@ -2484,7 +2484,20 @@ class TestNode(MAASServerTestCase):
         self.patch(Node, '_set_status_expires')
         node_stop = self.patch(node, '_stop')
         with post_commit_hooks:
-            node.release()
+            node.release(user)
+        self.assertThat(
+            node_stop, MockCalledOnceWith(user))
+
+    def test_release_calls_stop_with_user_call_not_owner(self):
+        user = factory.make_User()
+        owner = factory.make_User()
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=owner, power_type='virsh',
+            power_state=POWER_STATE.ON)
+        self.patch(Node, '_set_status_expires')
+        node_stop = self.patch(node, '_stop')
+        with post_commit_hooks:
+            node.release(user)
         self.assertThat(
             node_stop, MockCalledOnceWith(user))
 
@@ -2557,16 +2570,17 @@ class TestNode(MAASServerTestCase):
     def test_release_reverts_to_sane_state_on_error(self):
         # If release() encounters an error when stopping the node, it
         # will leave the node in its previous state (i.e. DEPLOYED).
+        owner = factory.make_User()
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYED, power_type="virsh",
             power_state=POWER_STATE.ON,
-            owner=factory.make_User())
+            owner=owner)
         node_stop = self.patch(node, '_stop')
         node_stop.side_effect = factory.make_exception()
 
         try:
             with post_commit_hooks:
-                node.release()
+                node.release(owner)
         except node_stop.side_effect.__class__:
             # We don't care about the error here, so suppress it. It
             # exists only to cause the transaction to abort.

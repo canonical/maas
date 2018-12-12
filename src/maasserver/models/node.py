@@ -2942,7 +2942,7 @@ class Node(CleanSave, TimestampedModel):
                 # Node.stop() has synchronous and asynchronous parts, so catch
                 # exceptions arising synchronously, and chain callbacks to the
                 # Deferred it returns for the asynchronous (post-commit) bits.
-                stopping = self._stop(self.owner)
+                stopping = self._stop(user)
                 # If there's an error, reset the node's status.
                 # Check for None (_stop returns None for manual power type).
                 if stopping is not None:
