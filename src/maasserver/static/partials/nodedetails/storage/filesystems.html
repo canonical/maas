@@ -70,7 +70,7 @@
                 </td>
             </tr>
 
-            <tr class="is-active" data-ng-if="dropdown" data-ng-switch="dropdown">
+            <tr class="is-active p-table__row" data-ng-if="dropdown" data-ng-switch="dropdown">
                 <!-- Adding a new TMPFS or RAMFPS filesystem -->
                 <td class="p-table-expanding__panel" data-ng-controller="NodeAddSpecialFilesystemController" data-ng-switch-when="special">
                     <maas-obj-form obj="newFilesystem" manager="machineManager" manager-method="mountSpecialFilesystem" inline="false"

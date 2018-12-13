@@ -4,13 +4,17 @@
     {% for script in commissioning_scripts %}
         <tr id="{{ script.name }}">
             <td class="p-script-expander">
-                <a href="#" class="p-script-expander__trigger">{{ script.name }}</a>
+                <div class="u-space-between">
+                    <div>
+                        <a href="#" class="p-script-expander__trigger">{{ script.name }}</a>
+                    </div>
+                    <div>
+                        <a title="Delete commissioning script {{ script.name }}" class="p-icon--delete" href="{% url 'commissioning-script-delete' script.id %}">Delete</a>
+                    </div>
+                </div>
                 <div class="p-script-expander__content u-hide">
                     <pre>{{ script.script.data }}</pre>
                 </div>
-            </td>
-            <td class="p-script-expander__controls u-align--right">
-                <a title="Delete commissioning script {{ script.name }}" class="p-icon--delete" href="{% url 'commissioning-script-delete' script.id %}">Delete</a>
             </td>
         </tr>
     </tbody>

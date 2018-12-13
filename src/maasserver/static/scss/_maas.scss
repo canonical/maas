@@ -198,7 +198,7 @@
   // Bespoke styling for script reveal functionality
   .p-script-expander {
     border-color: $color-mid-light;
-    border-bottom-style: dotted;
+    border-bottom-style: solid;
     border-bottom-width: 1px;
 
     &__content {
