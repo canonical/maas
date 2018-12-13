@@ -664,7 +664,7 @@ angular.module('MAAS').controller('PodDetailsController', [
                         $scope.compose.obj.domain = (
                             DomainsManager.getDefaultDomain().id);
                         $scope.compose.obj.zone = (
-                            ZonesManager.getDefaultZone().id);
+                            ZonesManager.getDefaultZone($scope.pod).id);
                         $scope.compose.obj.pool = $scope.pod.default_pool;
                     }
                 }

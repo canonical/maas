@@ -50,8 +50,10 @@
                         <maas-obj-field type="text" key="hostname" label="Hostname" subtle="false" placeholder="Hostname (optional)" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
                         <maas-obj-field type="options" key="domain" label="Domain" subtle="false" placeholder="Choose a domain"
                             options="domain.id as domain.name for domain in domains" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
-                        <maas-obj-field type="options" key="zone" label="Zone" subtle="false" placeholder="Choose a zone"
-                            options="zone.id as zone.name for zone in zones" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
+                        <maas-obj-field type="options" key="zone"
+                            label="Zone" subtle="false" placeholder="Choose a zone"
+                            options="zone.id as zone.name for zone in zones"
+                            label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4" disabled></maas-obj-field>
                         <maas-obj-field type="options" key="pool" label="Pool" subtle="false" placeholder="Choose a pool"
                             options="pool.id as pool.name for pool in pools" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
                     </div>

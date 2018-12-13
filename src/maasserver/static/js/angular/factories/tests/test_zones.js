@@ -54,5 +54,18 @@ describe("ZonesManager", function() {
             expect(ZonesManager.getDefaultZone()).toBe(
                 ZonesManager._items[0]);
         });
+
+        it("returns correct zone if optional pod is passed", function() {
+            var i;
+            for(i=0;i<3;i++) {
+                ZonesManager._items.push(makeZone());
+            }
+
+            expect(ZonesManager.getDefaultZone({
+                zone: ZonesManager._items[2].id
+            })).toBe(
+                ZonesManager._items[2]
+            );
+        });
     });
 });

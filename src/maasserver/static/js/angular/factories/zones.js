@@ -30,17 +30,26 @@ angular.module('MAAS').factory(
         ZonesManager.prototype = new Manager();
 
         // Return the default zone.
-        ZonesManager.prototype.getDefaultZone = function() {
-            if(this._items.length === 0) {
+        ZonesManager.prototype.getDefaultZone = function(pod) {
+            var zoneId = 0;
+            var i;
+            var itemsLength = this._items.length;
+
+            if (pod) {
+                zoneId = pod.zone;
+            }
+
+            if(itemsLength === 0) {
                 return null;
-            } else {
-                var i;
-                for(i=0;i<this._items.length;i++) {
-                    if(this._items[i].id === 0) {
-                        return this._items[i];
-                    }
+            }
+
+            for(i=0; i < itemsLength; i++) {
+                if (this._items[i].id === zoneId) {
+                    return this._items[i];
                 }
             }
+
+
             return this._items[0];
         };
 
