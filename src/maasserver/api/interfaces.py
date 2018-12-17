@@ -137,10 +137,22 @@ class InterfacesHandler(OperationsHandler):
         return ('interfaces_handler', ["system_id"])
 
     def read(self, request, system_id):
-        """List all interfaces belonging to a machine, device, or
+        """@description-title List interfaces
+        @description List all interfaces belonging to a machine, device, or
         rack controller.
 
-        Returns 404 if the node is not found.
+        @param (string) "{system_id}" [required=true] A system_id.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing a list of
+        interface objects.
+        @success-example "success-json" [exkey=interfaces-read] placeholder
+        text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine is not found.
+        @error-example "not-found"
+            Not Found
         """
         node = Node.objects.get_node_or_404(
             system_id, request.user, NodePermission.view)
@@ -153,21 +165,40 @@ class InterfacesHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def create_physical(self, request, system_id):
-        """Create a physical interface on a machine and device.
+        """@description-title Create a physical interface
+        @description Create a physical interface on a machine and device.
 
-        :param name: Name of the interface.
-        :param mac_address: MAC address of the interface.
-        :param tags: Tags for the interface.
-        :param vlan: Untagged VLAN the interface is connected to.  If not
-            provided then the interface is considered disconnected.
+        @param (string) "{system_id}" [required=true] A system_id.
 
-        Following are extra parameters that can be set on the interface:
+        @param (string) "name" [required=false] Name of the interface.
 
-        :param mtu: Maximum transmission unit.
-        :param accept_ra: Accept router advertisements. (IPv6 only)
-        :param autoconf: Perform stateless autoconfiguration. (IPv6 only)
+        @param (string) "mac_address" [required=true] MAC address of the
+        interface.
 
-        Returns 404 if the node is not found.
+        @param (string) "tags" [required=false] Tags for the interface.
+
+        @param (string) "vlan" [required=false] Untagged VLAN the interface is
+        connected to. If not provided then the interface is considered
+        disconnected.
+
+        @param (int) "mtu" [required=false] Maximum transmission unit.
+
+        @param (boolean) "accept_ra" [required=false] Accept router
+        advertisements. (IPv6 only)
+
+        @param (boolean) "autoconf" [required=false] Perform stateless
+        autoconfiguration. (IPv6 only)
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the new
+        interface object.
+        @success-example "success-json" [exkey=interfaces-create-physical]
+        placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine is not found.
+        @error-example "not-found"
+            Not Found
         """
         node = Node.objects.get_node_or_404(
             system_id, request.user, NodePermission.edit)
@@ -199,72 +230,101 @@ class InterfacesHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def create_bond(self, request, system_id):
-        """Create a bond interface on a machine.
+        """@description-title Create a bond inteface
+        @description Create a bond interface on a machine.
 
-        :param name: Name of the interface.
-        :param mac_address: MAC address of the interface.
-        :param tags: Tags for the interface.
-        :param vlan: VLAN the interface is connected to.  If not
-            provided then the interface is considered disconnected.
-        :param parents: Parent interfaces that make this bond.
+        @param (string) "{system_id}" [required=true] A system_id.
 
-        Following are parameters specific to bonds:
+        @param (string) "name" [required=true] Name of the interface.
 
-        :param bond_mode: The operating mode of the bond.
-            (Default: active-backup).
-        :param bond_miimon: The link monitoring freqeuncy in milliseconds.
-            (Default: 100).
-        :param bond_downdelay: Specifies the time, in milliseconds, to wait
-            before disabling a slave after a link failure has been detected.
-        :param bond_updelay: Specifies the time, in milliseconds, to wait
-            before enabling a slave after a link recovery has been detected.
-        :param bond_lacp_rate: Option specifying the rate in which we'll ask
-            our link partner to transmit LACPDU packets in 802.3ad mode.
-            Available options are fast or slow. (Default: slow).
-        :param bond_xmit_hash_policy: The transmit hash policy to use for
-            slave selection in balance-xor, 802.3ad, and tlb modes. Possible
-            values are: 'layer2', 'layer2+3', 'layer3+4', 'encap2+3',
-            'encap3+4'. (Default: layer2)
-        :param bond_num_grat_arp: The number of peer notifications (IPv4 ARP
-            or IPv6 Neighbour Advertisements) to be issued after a failover.
-            (Default: 1)
+        @param (string) "mac_address" [required=false] MAC address of the
+        interface.
 
-        Supported bonding modes (bond-mode):
-        balance-rr - Transmit packets in sequential order from the first
-        available slave through the last.  This mode provides load balancing
-        and fault tolerance.
+        @param (string) "tags" [required=false] Tags for the interface.
 
-        active-backup - Only one slave in the bond is active.  A different
-        slave becomes active if, and only if, the active slave fails.  The
-        bond's MAC address is externally visible on only one port (network
-        adapter) to avoid confusing the switch.
+        @param (string) "vlan" [required=false] VLAN the interface is connected
+        to. If not provided then the interface is considered disconnected.
 
-        balance-xor - Transmit based on the selected transmit hash policy.
-        The default policy is a simple [(source MAC address XOR'd with
-        destination MAC address XOR packet type ID) modulo slave count].
+        @param (int) "parents" [required=true] Parent interface ids that make
+        this bond.
 
-        broadcast - Transmits everything on all slave interfaces. This mode
-        provides fault tolerance.
+        @param (string) "bond_mode" [required=false,formatting=true] The
+        operating mode of the bond.  (Default: active-backup).
 
-        802.3ad - IEEE 802.3ad Dynamic link aggregation.  Creates aggregation
-        groups that share the same speed and duplex settings.  Utilizes all
-        slaves in the active aggregator according to the 802.3ad specification.
+        Supported bonding modes:
 
-        balance-tlb - Adaptive transmit load balancing: channel bonding that
-        does not require any special switch support.
+        - ``balance-rr``: Transmit packets in sequential order from the first
+          available slave through the last. This mode provides load balancing
+          and fault tolerance.
 
-        balance-alb - Adaptive load balancing: includes balance-tlb plus
-        receive load balancing (rlb) for IPV4 traffic, and does not require any
-        special switch support.  The receive load balancing is achieved by
-        ARP negotiation.
+        - ``active-backup``: Only one slave in the bond is active. A different
+          slave becomes active if, and only if, the active slave fails. The
+          bond's MAC address is externally visible on only one port (network
+          adapter) to avoid confusing the switch.
 
-        Following are extra parameters that can be set on the interface:
+        - ``balance-xor``: Transmit based on the selected transmit hash policy.
+          The default policy is a simple [(source MAC address XOR'd with
+          destination MAC address XOR packet type ID) modulo slave count].
 
-        :param mtu: Maximum transmission unit.
-        :param accept_ra: Accept router advertisements. (IPv6 only)
-        :param autoconf: Perform stateless autoconfiguration. (IPv6 only)
+        - ``broadcast``: Transmits everything on all slave interfaces. This
+          mode provides fault tolerance.
 
-        Returns 404 if the node is not found.
+        - ``802.3ad``: IEEE 802.3ad dynamic link aggregation. Creates
+          aggregation groups that share the same speed and duplex settings.
+          Uses all slaves in the active aggregator according to the 802.3ad
+          specification.
+
+        - ``balance-tlb``: Adaptive transmit load balancing: channel bonding
+          that does not require any special switch support.
+
+        - ``balance-alb``: Adaptive load balancing: includes balance-tlb plus
+          receive load balancing (rlb) for IPV4 traffic, and does not require
+          any special switch support. The receive load balancing is achieved by
+          ARP negotiation.
+
+        @param (int) "bond_miimon" [required=false] The link monitoring
+        freqeuncy in milliseconds.  (Default: 100).
+
+        @param (int) "bond_downdelay" [required=false] Specifies the time, in
+        milliseconds, to wait before disabling a slave after a link failure has
+        been detected.
+
+        @param (int) "bond_updelay" [required=false] Specifies the time, in
+        milliseconds, to wait before enabling a slave after a link recovery has
+        been detected.
+
+        @param (string) "bond_lacp_rate" [required=false] Option specifying the
+        rate at which to ask the link partner to transmit LACPDU packets in
+        802.3ad mode. Available options are ``fast`` or ``slow``. (Default:
+        ``slow``).
+
+        @param (string) "bond_xmit_hash_policy" [required=false] The transmit
+        hash policy to use for slave selection in balance-xor, 802.3ad, and tlb
+        modes. Possible values are: ``layer2``, ``layer2+3``, ``layer3+4``,
+        ``encap2+3``, ``encap3+4``. (Default: ``layer2``)
+
+        @param (int) "bond_num_grat_arp" [required=false] The number of peer
+        notifications (IPv4 ARP or IPv6 Neighbour Advertisements) to be issued
+        after a failover. (Default: 1)
+
+        @param (int) "mtu" [required=false] Maximum transmission unit.
+
+        @param (boolean) "accept_ra" [required=false] Accept router
+        advertisements. (IPv6 only)
+
+        @param (boolean) "autoconf" [required=false] Perform stateless
+        autoconfiguration. (IPv6 only)
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the new
+        bond interface object.
+        @success-example "success-json" [exkey=interfaces-create-bond]
+        placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine is not found.
+        @error-example "not-found"
+            Not Found
         """
         machine = Machine.objects.get_node_or_404(
             system_id, request.user, NodePermission.admin)
@@ -278,19 +338,37 @@ class InterfacesHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def create_vlan(self, request, system_id):
-        """Create a VLAN interface on a machine.
+        """@description-title Create a VLAN interface
+        @description Create a VLAN interface on a machine.
 
-        :param tags: Tags for the interface.
-        :param vlan: Tagged VLAN the interface is connected to.
-        :param parent: Parent interface for this VLAN interface.
+        @param (string) "{system_id}" [required=true] A system_id.
 
-        Following are extra parameters that can be set on the interface:
+        @param (string) "tags" [required=false] Tags for the interface.
 
-        :param mtu: Maximum transmission unit.
-        :param accept_ra: Accept router advertisements. (IPv6 only)
-        :param autoconf: Perform stateless autoconfiguration. (IPv6 only)
+        @param (string) "vlan" [required=true] Tagged VLAN the interface is
+        connected to.
 
-        Returns 404 if the node is not found.
+        @param (int) "parent" [required=true] Parent interface id for this VLAN
+        interface.
+
+        @param (int) "mtu" [required=false] Maximum transmission unit.
+
+        @param (boolean) "accept_ra" [required=false] Accept router
+        advertisements. (IPv6 only)
+
+        @param (boolean) "autoconf" [required=false] Perform stateless
+        autoconfiguration. (IPv6 only)
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the new
+        VLAN interface object.
+        @success-example "success-json" [exkey=interfaces-placeholder]
+        placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine is not found.
+        @error-example "not-found"
+            Not Found
         """
         machine = Machine.objects.get_node_or_404(
             system_id, request.user, NodePermission.admin)
@@ -312,28 +390,48 @@ class InterfacesHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def create_bridge(self, request, system_id):
-        """Create a bridge interface on a machine.
+        """@description-title Create a bridge interface
+        @description Create a bridge interface on a machine.
 
-        :param name: Name of the interface.
-        :param mac_address: MAC address of the interface.
-        :param tags: Tags for the interface.
-        :param vlan: VLAN the interface is connected to.
-        :param parent: Parent interface for this bridge interface.
+        @param (string) "{system_id}" [required=true] A system_id.
 
-        Following are parameters specific to bridges:
+        @param (string) "name" [required=false] Name of the interface.
 
-        :param bridge_stp: Turn spanning tree protocol on or off.
-            (Default: False).
-        :param bridge_fd: Set bridge forward delay to time seconds.
-            (Default: 15).
+        @param (string) "mac_address" [required=false] MAC address of the
+        interface.
 
-        Following are extra parameters that can be set on the interface:
+        @param (string) "tags" [required=false] Tags for the interface.
 
-        :param mtu: Maximum transmission unit.
-        :param accept_ra: Accept router advertisements. (IPv6 only)
-        :param autoconf: Perform stateless autoconfiguration. (IPv6 only)
+        @param (string) "vlan" [required=false] VLAN the interface is connected
+        to.
 
-        Returns 404 if the node is not found.
+        @param (int) "parent" [required=false] Parent interface id for this
+        bridge interface.
+
+        @param (boolean) "bridge_stp" [required=false] Turn spanning tree
+        protocol on or off. (Default: False).
+
+        @param (int) "bridge_fd" [required=false] Set bridge forward delay
+        to time seconds. (Default: 15).
+
+        @param (int) "mtu" [required=false] Maximum transmission unit.
+
+        @param (boolean) "accept_ra" [required=false] Accept router
+        advertisements. (IPv6 only)
+
+        @param (boolean) "autoconf" [required=false] Perform stateless
+        autoconfiguration. (IPv6 only)
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the new
+        bridge interface object.
+        @success-example "success-json" [exkey=interfaces-create-bridge]
+        placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine is not found.
+        @error-example "not-found"
+            Not Found
         """
         machine = Machine.objects.get_node_or_404(
             system_id, request.user, NodePermission.admin)
@@ -416,114 +514,176 @@ class InterfaceHandler(OperationsHandler):
         return interface.get_effective_mtu()
 
     def read(self, request, system_id, id):
-        """Read interface on node.
+        """@description-title Read an interface
+        @description Read an interface with the given system_id and interface
+        id.
 
-        Returns 404 if the node or interface is not found.
+        @param (string) "{system_id}" [required=true] A system_id.
+
+        @param (int) "{id}" [required=true] An interface id.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the new
+        requested interface object.
+        @success-example "success-json" [exkey=interfaces-read-by-id]
+        placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine or interface is not
+        found.
+        @error-example "not-found"
+            Not Found
         """
         return Interface.objects.get_interface_or_404(
             system_id, id, request.user, NodePermission.view)
 
     def update(self, request, system_id, id):
-        """Update interface on node.
+        """@description-title Update an interface
+        @description Update an interface with the given system_id and interface
+        id.
 
-        Machines must have a status of Ready or Broken to have access to all
-        options. Machines with Deployed status can only have the name and/or
-        mac_address updated for an interface. This is intented to allow a bad
-        interface to be replaced while the machine remains deployed.
+        Note: machines must have a status of Ready or Broken to have access to
+        all options. Machines with Deployed status can only have the name
+        and/or mac_address updated for an interface. This is intented to allow
+        a bad interface to be replaced while the machine remains deployed.
 
-        Fields for physical interface:
+        @param (string) "{system_id}" [required=true] A system_id.
 
-        :param name: Name of the interface.
-        :param mac_address: MAC address of the interface.
-        :param tags: Tags for the interface.
-        :param vlan: Untagged VLAN the interface is connected to.  If not set
-            then the interface is considered disconnected.
+        @param (int) "{id}" [required=true] An interface id.
 
-        Fields for bond interface:
+        @param (string) "name" [required=false] (Physical interfaces) Name of
+        the interface.
 
-        :param name: Name of the interface.
-        :param mac_address: MAC address of the interface.
-        :param tags: Tags for the interface.
-        :param vlan: Untagged VLAN the interface is connected to.  If not set
-            then the interface is considered disconnected.
-        :param parents: Parent interfaces that make this bond.
+        @param (string) "mac_address" [required=false] (Physical interfaces)
+        MAC address of the interface.
 
-        Fields for VLAN interface:
+        @param (string) "tags" [required=false] (Physical interfaces) Tags for
+        the interface.
 
-        :param tags: Tags for the interface.
-        :param vlan: Tagged VLAN the interface is connected to.
-        :param parent: Parent interface for this VLAN interface.
+        @param (int) "vlan" [required=false] (Physical interfaces) Untagged
+        VLAN id the interface is connected to.  If not set then the interface
+        is considered disconnected.
 
-        Fields for bridge interface:
+        @param (string) "name" [required=false] (Bond interfaces) Name of the
+        interface.
 
-        :param name: Name of the interface.
-        :param mac_address: MAC address of the interface.
-        :param tags: Tags for the interface.
-        :param vlan: VLAN the interface is connected to.
-        :param parent: Parent interface for this bridge interface.
+        @param (string) "mac_address" [required=false] (Bond interfaces) MAC
+        address of the interface.
 
-        Following are extra parameters that can be set on all interface types:
+        @param (string) "tags" [required=false] (Bond interfaces) Tags for the
+        interface.
 
-        :param mtu: Maximum transmission unit.
-        :param accept_ra: Accept router advertisements. (IPv6 only)
-        :param autoconf: Perform stateless autoconfiguration. (IPv6 only)
+        @param (int) "vlan" [required=false] (Bond interfaces) Untagged VLAN id
+        the interface is connected to. If not set then the interface is
+        considered disconnected.
 
-        Following are parameters specific to bonds:
+        @param (int) "parents" [required=false] (Bond interfaces) Parent
+        interface ids that make this bond.
 
-        :param bond_mode: The operating mode of the bond.
-            (Default: active-backup).
-        :param bond_miimon: The link monitoring freqeuncy in milliseconds.
-            (Default: 100).
-        :param bond_downdelay: Specifies the time, in milliseconds, to wait
-            before disabling a slave after a link failure has been detected.
-        :param bond_updelay: Specifies the time, in milliseconds, to wait
-            before enabling a slave after a link recovery has been detected.
-        :param bond_lacp_rate: Option specifying the rate in which we'll ask
-            our link partner to transmit LACPDU packets in 802.3ad mode.
-            Available options are fast or slow. (Default: slow).
-        :param bond_xmit_hash_policy: The transmit hash policy to use for
-            slave selection in balance-xor, 802.3ad, and tlb modes. Possible
-            values are: 'layer2', 'layer2+3', 'layer3+4', 'encap2+3',
-            'encap3+4'.
+        @param (string) "tags" [required=false] (VLAN interfaces) Tags for the
+        interface.
+
+        @param (int) "vlan" [required=false] (VLAN interfaces) Tagged VLAN id
+        the interface is connected to.
+
+        @param (int) "parent" [required=false] (VLAN interfaces) Parent
+        interface ids for the VLAN interface.
+
+        @param (string) "name" [required=false] (Bridge interfaces) Name of the
+        interface.
+
+        @param (string) "mac_address" [required=false] (Bridge interfaces) MAC
+        address of the interface.
+
+        @param (string) "tags" [required=false] (Bridge interfaces) Tags for
+        the interface.
+
+        @param (int) "vlan" [required=false] (Bridge interfaces) VLAN id the
+        interface is connected to.
+
+        @param (int) "parent" [required=false] (Bridge interfaces) Parent
+        interface ids for this bridge interface.
+
+        @param (boolean) "bridge_stp" [required=false] (Bridge interfaces) Turn
+        spanning tree protocol on or off.  (Default: False).
+
+        @param (int) "bridge_fd" [required=false] (Bridge interfaces) Set
+        bridge forward delay to time seconds.  (Default: 15).
+
+        @param (int) "bond_miimon" [required=false] (Bonds) The link monitoring
+        freqeuncy in milliseconds.  (Default: 100).
+
+        @param (int) "bond_downdelay" [required=false] (Bonds) Specifies the
+        time, in milliseconds, to wait before disabling a slave after a link
+        failure has been detected.
+
+        @param (int) "bond_updelay" [required=false] (Bonds) Specifies the
+        time, in milliseconds, to wait before enabling a slave after a link
+        recovery has been detected.
+
+        @param (string) "bond_lacp_rate" [required=false] (Bonds) Option
+        specifying the rate in which we'll ask our link partner to transmit
+        LACPDU packets in 802.3ad mode.  Available options are ``fast`` or
+        ``slow``.  (Default: ``slow``).
+
+        @param (string) "bond_xmit_hash_policy" [required=false] (Bonds) The
+        transmit hash policy to use for slave selection in balance-xor,
+        802.3ad, and tlb modes.  Possible values are: ``layer2``, ``layer2+3``,
+        ``layer3+4``, ``encap2+3``, ``encap3+4``.
+
+        @param (string) "bond_mode" [required=false,formatting=true] (Bonds)
+        The operating mode of the bond.  (Default: ``active-backup``).
 
         Supported bonding modes (bond-mode):
 
-        balance-rr - Transmit packets in sequential order from the first
-        available slave through the last.  This mode provides load balancing
-        and fault tolerance.
+        - ``balance-rr``: Transmit packets in sequential order from the first
+          available slave through the last. This mode provides load balancing
+          and fault tolerance.
 
-        active-backup - Only one slave in the bond is active.  A different
-        slave becomes active if, and only if, the active slave fails.  The
-        bond's MAC address is externally visible on only one port (network
-        adapter) to avoid confusing the switch.
+        - ``active-backup``: Only one slave in the bond is active. A different
+          slave becomes active if, and only if, the active slave fails. The
+          bond's MAC address is externally visible on only one port (network
+          adapter) to avoid confusing the switch.
 
-        balance-xor - Transmit based on the selected transmit hash policy.
-        The default policy is a simple [(source MAC address XOR'd with
-        destination MAC address XOR packet type ID) modulo slave count].
+        - ``balance-xor``: Transmit based on the selected transmit hash policy.
+          The default policy is a simple [(source MAC address XOR'd with
+          destination MAC address XOR packet type ID) modulo slave count].
 
-        broadcast - Transmits everything on all slave interfaces. This mode
-        provides fault tolerance.
+        - ``broadcast``: Transmits everything on all slave interfaces. This
+          mode provides fault tolerance.
 
-        802.3ad - IEEE 802.3ad Dynamic link aggregation.  Creates aggregation
-        groups that share the same speed and duplex settings.  Utilizes all
-        slaves in the active aggregator according to the 802.3ad specification.
+        - ``802.3ad``: IEEE 802.3ad Dynamic link aggregation. Creates
+          aggregation groups that share the same speed and duplex settings.
+          Utilizes all slaves in the active aggregator according to the 802.3ad
+          specification.
 
-        balance-tlb - Adaptive transmit load balancing: channel bonding that
-        does not require any special switch support.
+        - ``balance-tlb``: Adaptive transmit load balancing: channel bonding
+          that does not require any special switch support.
 
-        balance-alb - Adaptive load balancing: includes balance-tlb plus
-        receive load balancing (rlb) for IPV4 traffic, and does not require any
-        special switch support.  The receive load balancing is achieved by
-        ARP negotiation.
+        - ``balance-alb``: Adaptive load balancing: includes balance-tlb plus
+          receive load balancing (rlb) for IPV4 traffic, and does not require
+          any special switch support. The receive load balancing is achieved by
+          ARP negotiation.
 
-        Following are parameters specific to bridges:
+        @param (string) "mtu" [required=false] Maximum transmission unit.
 
-        :param bridge_stp: Turn spanning tree protocol on or off.
-            (Default: False).
-        :param bridge_fd: Set bridge forward delay to time seconds.
-            (Default: 15).
+        @param (string) "accept_ra" [required=false] Accept router
+        advertisements. (IPv6 only)
 
-        Returns 404 if the node or interface is not found.
+        @param (string) "autoconf" [required=false] Perform stateless
+        autoconfiguration. (IPv6 only)
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the new
+        requested interface object.
+        @success-example "success-json" [exkey=interfaces-update] placeholder
+        text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine or interface is not
+        found.
+        @error-example "not-found"
+            Not Found
         """
         interface = Interface.objects.get_interface_or_404(
             system_id, id, request.user,
@@ -562,9 +722,21 @@ class InterfaceHandler(OperationsHandler):
             raise MAASAPIValidationError(form.errors)
 
     def delete(self, request, system_id, id):
-        """Delete interface on node.
+        """@description-title Delete an interface
+        @description Delete an interface with the given system_id and interface
+        id.
 
-        Returns 404 if the node or interface is not found.
+        @param (string) "{system_id}" [required=true] A system_id.
+
+        @param (int) "{id}" [required=true] An interface id.
+
+        @success (http-status-code) "server-success" 204
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine or interface is not
+        found.
+        @error-example "not-found"
+            Not Found
         """
         interface = Interface.objects.get_interface_or_404(
             system_id, id, request.user,
@@ -581,39 +753,62 @@ class InterfaceHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def link_subnet(self, request, system_id, id):
-        """Link interface to a subnet.
+        """@description-title Link interface to a subnet
+        @description Link an interface with the given system_id and interface
+        id to a subnet.
 
-        :param mode: AUTO, DHCP, STATIC or LINK_UP connection to subnet.
-        :param subnet: Subnet linked to interface.
-        :param ip_address: IP address for the interface in subnet. Only used
-            when mode is STATIC. If not provided an IP address from subnet
-            will be auto selected.
-        :param force: If True, allows LINK_UP to be set on the interface
-            even if other links already exist. Also allows the selection of any
-            VLAN, even a VLAN MAAS does not believe the interface to currently
-            be on. Using this option will cause all other links on the
-            interface to be deleted. (Defaults to False.)
-        :param default_gateway: True sets the gateway IP address for the subnet
-            as the default gateway for the node this interface belongs to.
-            Option can only be used with the AUTO and STATIC modes.
+        @param (string) "{system_id}" [required=true] A system_id.
+
+        @param (int) "{id}" [required=true] An interface id.
+
+        @param (string) "mode" [required=true,formatting=true] ``AUTO``,
+        ``DHCP``, ``STATIC`` or ``LINK_UP`` connection to subnet.
 
         Mode definitions:
-        AUTO - Assign this interface a static IP address from the provided
-        subnet. The subnet must be a managed subnet. The IP address will
-        not be assigned until the node goes to be deployed.
 
-        DHCP - Bring this interface up with DHCP on the given subnet. Only
-        one subnet can be set to DHCP. If the subnet is managed this
-        interface will pull from the dynamic IP range.
+        - ``AUTO``: Assign this interface a static IP address from the provided
+          subnet. The subnet must be a managed subnet. The IP address will not
+          be assigned until the node goes to be deployed.
 
-        STATIC - Bring this interface up with a STATIC IP address on the
-        given subnet. Any number of STATIC links can exist on an interface.
+        - ``DHCP``: Bring this interface up with DHCP on the given subnet. Only
+          one subnet can be set to ``DHCP``. If the subnet is managed this
+          interface will pull from the dynamic IP range.
 
-        LINK_UP - Bring this interface up only on the given subnet. No IP
-        address will be assigned to this interface. The interface cannot
-        have any current AUTO, DHCP or STATIC links.
+        - ``STATIC``: Bring this interface up with a static IP address on the
+          given subnet. Any number of static links can exist on an interface.
 
-        Returns 404 if the node or interface is not found.
+        - ``LINK_UP``: Bring this interface up only on the given subnet. No IP
+          address will be assigned to this interface. The interface cannot have
+          any current ``AUTO``, ``DHCP`` or ``STATIC`` links.
+
+        @param (int) "subnet" [required=true] Subnet id linked to interface.
+
+        @param (string) "ip_address" [required=false] IP address for the
+        interface in subnet. Only used when mode is ``STATIC``. If not provided
+        an IP address from subnet will be auto selected.
+
+        @param (boolean) "force" [required=false] If True, allows ``LINK_UP``
+        to be set on the interface even if other links already exist. Also
+        allows the selection of any VLAN, even a VLAN MAAS does not believe the
+        interface to currently be on. Using this option will cause all other
+        links on the interface to be deleted. (Defaults to False.)
+
+        @param (string) "default_gateway" [required=false] True sets the
+        gateway IP address for the subnet as the default gateway for the node
+        this interface belongs to. Option can only be used with the ``AUTO``
+        and ``STATIC`` modes.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the new update
+        interface object.
+        @success-example "success-json" [exkey=interfaces-link-subnet]
+        placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine or interface is not
+        found.
+        @error-example "not-found"
+            Not Found
         """
         force = get_optional_param(
             request.POST, 'force', default=False, validator=StringBool)
@@ -646,12 +841,24 @@ class InterfaceHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def disconnect(self, request, system_id, id):
-        """Disconnect an interface.
+        """@description-title Disconnect an interface
+        @description Disconnect an interface with the given system_id and
+        interface id.
 
         Deletes any linked subnets and IP addresses, and disconnects the
         interface from any associated VLAN.
 
-        Returns 404 if the node or interface is not found.
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the updated
+        interface object.
+        @success-example "success-json" [exkey=interfaces-disconnect]
+        placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine or interface is not
+        found.
+        @error-example "not-found"
+            Not Found
         """
         interface = Interface.objects.get_interface_or_404(
             system_id, id, request.user,
@@ -670,11 +877,28 @@ class InterfaceHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def unlink_subnet(self, request, system_id, id):
-        """Unlink interface to a subnet.
+        """@description-title Unlink interface from subnet
+        @description Unlink an interface with the given system_id and interface
+        id from a subnet.
 
-        :param id: ID of the link on the interface to remove.
+        @param (string) "{system_id}" [required=true] A system_id.
 
-        Returns 404 if the node or interface is not found.
+        @param (int) "{id}" [required=true] An interface id.
+
+        @param (int) "id" [required=false] ID of the subnet link on the
+        interface to remove.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the updated
+        interface object.
+        @success-example "success-json" [exkey=interfaces-unlink-subnet]
+        placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine or interface is not
+        found.
+        @error-example "not-found"
+            Not Found
         """
         interface = Interface.objects.get_interface_or_404(
             system_id, id, request.user,
@@ -694,17 +918,36 @@ class InterfaceHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def set_default_gateway(self, request, system_id, id):
-        """Set the node to use this interface as the default gateway.
+        """@description-title Set the default gateway on a machine
+        @description Set the given interface id on the given system_id as the
+        default gateway.
 
         If this interface has more than one subnet with a gateway IP in the
         same IP address family then specifying the ID of the link on
         this interface is required.
 
-        :param link_id: ID of the link on this interface to select the
-            default gateway IP address from.
+        @param (string) "{system_id}" [required=true] A system_id.
 
-        Returns 400 if the interface has not AUTO or STATIC links.
-        Returns 404 if the node or interface is not found.
+        @param (int) "{id}" [required=true] An interface id.
+
+        @param (int) "link_id" [required=false] ID of the link on this
+        interface to select the default gateway IP address from.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the updated
+        interface object.
+        @success-example "success-json" [exkey=interfaces-set-def-gateway]
+        placeholder text
+
+        @error (http-status-code) "400" 400
+        @error (content) "400" If the interface has no ``AUTO`` or ``STATIC``
+        links.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine or interface is not
+        found.
+        @error-example "not-found"
+            Not Found
         """
         interface = Interface.objects.get_interface_or_404(
             system_id, id, request.user,
@@ -725,12 +968,31 @@ class InterfaceHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def add_tag(self, request, system_id, id):
-        """Add a tag to interface on a node.
+        """@description-title Add a tag to an interface
+        @description Add a tag to an interface with the given system_id and
+        interface id.
 
-        :param tag: The tag being added.
+        @param (string) "{system_id}" [required=true] A system_id.
 
-        Returns 404 if the node or interface is not found.
-        Returns 403 if the user is not allowed to update the interface.
+        @param (int) "{id}" [required=true] An interface id.
+
+        @param (string) "tag" [required=false] The tag to add.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the updated
+        interface object.
+        @success-example "success-json" [exkey=interfaces-add-tag] placeholder
+        text
+
+        @error (http-status-code) "403" 403
+        @error (content) "403" If the user does not have the permission to add
+        a tag.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine or interface is not
+        found.
+        @error-example "not-found"
+            Not Found
         """
         interface = Interface.objects.get_interface_or_404(
             system_id, id, request.user,
@@ -741,12 +1003,31 @@ class InterfaceHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def remove_tag(self, request, system_id, id):
-        """Remove a tag from interface on a node.
+        """@description-title Remove a tag from an interface
+        @description Remove a tag from an interface with the given system_id
+        and interface id.
 
-        :param tag: The tag being removed.
+        @param (string) "{system_id}" [required=true] A system_id.
 
-        Returns 404 if the node or interface is not found.
-        Returns 403 if the user is not allowed to update the interface.
+        @param (int) "{id}" [required=true] An interface id.
+
+        @param (string) "tag" [required=false] The tag to remove.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the updated
+        interface object.
+        @success-example "success-json" [exkey=interfaces-remove-tag]
+        placeholder text
+
+        @error (http-status-code) "403" 403
+        @error (content) "403" If the user does not have the permission to add
+        a tag.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine or interface is not
+        found.
+        @error-example "not-found"
+            Not Found
         """
         interface = Interface.objects.get_interface_or_404(
             system_id, id, request.user,
