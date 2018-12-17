@@ -43,19 +43,43 @@ class IPRangesHandler(OperationsHandler):
         return ('ipranges_handler', [])
 
     def read(self, request):
-        """List all IP ranges."""
+        """@description-title List all IP ranges
+        @description List all available IP ranges.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing a list of IP
+        ranges.
+        @success-example "success-json" [exkey=ipranges-read] placeholder text
+        """
         return IPRange.objects.all()
 
     def create(self, request):
-        """Create an IP range.
+        """@description-title Create an IP range
+        @description Create a new IP range.
 
-        :param type: Type of this range. (`dynamic` or `reserved`)
-        :param start_ip: Start IP address of this range (inclusive).
-        :param end_ip: End IP address of this range (inclusive).
-        :param subnet: Subnet this range is associated with. (optional)
-        :param comment: A description of this range. (optional)
+        @param (string) "type" [required=true] Type of this range. (``dynamic``
+        or ``reserved``)
 
-        Returns 403 if standard users tries to create a dynamic IP range.
+        @param (string) "start_ip" [required=true] Start IP address of this
+        range (inclusive).
+
+        @param (string) "end_ip" [required=true] End IP address of this range
+        (inclusive).
+
+        @param (string) "subnet" [required=true] Subnet associated with this
+        range.
+
+        @param (string) "comment" [required=false] A description of this range.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the new IP
+        range.
+        @success-example "success-json" [exkey=ipranges-create] placeholder
+        text
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have the permissions
+        required to create an IP range.
         """
         if ('type' in request.data and
                 request.data['type'] == IPRANGE_TYPE.DYNAMIC and
@@ -87,22 +111,54 @@ class IPRangeHandler(OperationsHandler):
         return ('iprange_handler', (iprange_id,))
 
     def read(self, request, id):
-        """Read IP range.
+        """@description-title Read an IP range
+        @description Read an IP range with the given id.
 
-        Returns 404 if the IP range is not found.
+        @param (int) "{id}" [required=true] An IP range id.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the requested
+        IP range.
+        @success-example "success-json" [exkey=ipranges-read-by-id] placeholder
+        text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested IP range is not found.
+        @error-example "not-found"
+            Not Found
         """
         iprange = IPRange.objects.get_iprange_or_404(id)
         return iprange
 
     def update(self, request, id):
-        """Update IP range.
+        """@description-title Update an IP range
+        @description Update an IP range with the given id.
 
-        :param start_ip: Start IP address of this range (inclusive).
-        :param end_ip: End IP address of this range (inclusive).
-        :param comment: A description of this range. (optional)
+        @param (int) "{id}" [required=true] An IP range id.
 
-        Returns 403 if not owner of IP range.
-        Returns 404 if the IP Range is not found.
+        @param (string) "start_ip" [required=false] Start IP address of this
+        range (inclusive).
+
+        @param (string) "end_ip" [required=false] End IP address of this range
+        (inclusive).
+
+        @param (string) "comment" [required=false] A description of this range.
+        (optional)
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the requested
+        IP range.
+        @success-example "success-json" [exkey=ipranges-update] placeholder
+        text
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have the permissions
+        required to update the IP range.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested IP range is not found.
+        @error-example "not-found"
+            Not Found
         """
         iprange = IPRange.objects.get_iprange_or_404(id)
         raise_error_if_not_owner(iprange, request.user)
@@ -113,10 +169,21 @@ class IPRangeHandler(OperationsHandler):
             raise MAASAPIValidationError(form.errors)
 
     def delete(self, request, id):
-        """Delete IP range.
+        """@description-title Delete an IP range
+        @description Delete an IP range with the given id.
 
-        Returns 403 if not owner of IP range.
-        Returns 404 if the IP range is not found.
+        @param (int) "{id}" [required=true] An IP range id.
+
+        @success (http-status-code) "server-success" 204
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have the permissions
+        required to delete the IP range.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested IP range is not found.
+        @error-example "not-found"
+            Not Found
         """
         iprange = IPRange.objects.get_iprange_or_404(id)
         raise_error_if_not_owner(iprange, request.user)
