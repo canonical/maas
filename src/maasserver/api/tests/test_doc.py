@@ -225,9 +225,9 @@ class TestHandlers(MAASTestCase):
             # Doc for a method.
             "Manage custom commissioning scripts.",
             # Doc for a method parameter.
-            "GET a FileStorage object as a json object.",
+            "Reads a stored file",
             # Doc for a method parameter (:param: doc).
-            "Optional prefix used to filter out the returned files.",
+            "Prefix used to filter returned files.",
             # Doc for a rendered docstring containing annotations
             "\"resource_uri\": \"/MAAS/api",
             # Doc for a rendered docstring containing annotations

@@ -34,11 +34,19 @@ from piston3.utils import rc
 
 
 def get_file_by_name(handler, request):
-    """Get a named file from the file storage.
+    """@description-title Get a named file
+    @description Get a named file from the file storage.
 
-    :param filename: The exact name of the file you want to get.
-    :type filename: string
-    :return: The file is returned in the response content.
+    @param (string) "filename" [required=true] The name of the file.
+
+    @success (http-status-code) "server-success" 200
+    @success (json) "success-json" A JSON object containing the requested file.
+    @success-example "success-json" [exkey=files-placeholder] placeholder text
+
+    @error (http-status-code) "404" 404
+    @error (content) "not-found" The requested file is not found.
+    @error-example "not-found"
+        Not Found
     """
     filename = get_mandatory_param(request.GET, 'filename')
     try:
@@ -50,11 +58,19 @@ def get_file_by_name(handler, request):
 
 
 def get_file_by_key(handler, request):
-    """Get a file from the file storage using its key.
+    """@description-title Get a file by key
+    @description Get a file from the file storage with the given key.
 
-    :param key: The exact key of the file you want to get.
-    :type key: string
-    :return: The file is returned in the response content.
+    @param (string) "key" [required=true] The file's key.
+
+    @success (http-status-code) "server-success" 200
+    @success (json) "success-json" A JSON object containing the requested file.
+    @success-example "success-json" [exkey=files-placeholder] placeholder text
+
+    @error (http-status-code) "404" 404
+    @error (content) "not-found" The requested file is not found.
+    @error-example "not-found"
+        Not Found
     """
     key = get_mandatory_param(request.GET, 'key')
     db_file = get_object_or_404(FileStorage, key=key)
@@ -110,7 +126,8 @@ def json_file_storage(stored_file, request):
 
 
 class FileHandler(OperationsHandler):
-    """Manage a FileStorage object.
+    """
+    Manage a FileStorage object.
 
     The file is identified by its filename and owner.
     """
@@ -120,9 +137,24 @@ class FileHandler(OperationsHandler):
     create = update = None
 
     def read(self, request, filename):
-        """GET a FileStorage object as a json object.
+        """@description-title Read a stored file
+        @description Reads a stored file with the given file name.
 
-        The 'content' of the file is base64-encoded."""
+        The content of the file is base64-encoded.
+
+        @param (string) "{filename}" [required=true] The name of the file.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the requested
+        file.
+        @success-example "success-json" [exkey=files-placeholder] placeholder
+        text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested file is not found.
+        @error-example "not-found"
+            Not Found
+        """
         try:
             stored_file = get_object_or_404(
                 FileStorage, filename=filename, owner=request.user)
@@ -140,7 +172,18 @@ class FileHandler(OperationsHandler):
             status=int(http.client.OK))
 
     def delete(self, request, filename):
-        """Delete a FileStorage object."""
+        """@description-title Delete a file
+        @description Delete a file with the given file name.
+
+        @param (string) "{filename}" [required=true] The name of the file.
+
+        @success (http-status-code) "server-success" 204
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested file is not found.
+        @error-example "not-found"
+            Not Found
+       """
         stored_file = get_object_or_404(
             FileStorage, filename=filename, owner=request.user)
         stored_file.delete()
@@ -166,17 +209,23 @@ class FilesHandler(OperationsHandler):
         idempotent=True, exported_as='get_by_key')(get_file_by_key)
 
     def create(self, request):
-        """Add a new file to the file storage.
+        """@description-title Add a new file
+        @description Add a new file to the file storage.
 
-        :param filename: The file name to use in the storage.
-        :type filename: string
-        :param file: Actual file data with content type
-            application/octet-stream
+        @param (string) "filename" [required=true] The file name to use in
+        storage.
 
-        Returns 400 if any of these conditions apply:
-         - The filename is missing from the parameters
-         - The file data is missing
-         - More than one file is supplied
+        @param (string) "file" [required=true] File data. Content type must be
+        ``application/octet-stream``.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the new file.
+        @success-example "success-json" [exkey=files-placeholder] placeholder
+        text
+
+        @error (http-status-code) "400" 400
+        @error (content) "arg-prob" The filename is missing, the file data is
+        missing or more than one file is supplied.
         """
         filename = request.data.get("filename", None)
         if not filename:
@@ -195,13 +244,20 @@ class FilesHandler(OperationsHandler):
         return HttpResponse('', status=int(http.client.CREATED))
 
     def read(self, request):
-        """List the files from the file storage.
+        """@description-title List files
+        @description List the files from the file storage.
 
         The returned files are ordered by file name and the content is
         excluded.
 
-        :param prefix: Optional prefix used to filter out the returned files.
-        :type prefix: string
+        @param (string) "prefix" [required=false] Prefix used to filter
+        returned files.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing a list of the
+        reqeusted file names.
+        @success-example "success-json" [exkey=files-placeholder] placeholder
+        text
         """
         prefix = request.GET.get("prefix", None)
         files = FileStorage.objects.filter(owner=request.user)
@@ -211,10 +267,18 @@ class FilesHandler(OperationsHandler):
         return files
 
     def delete(self, request, **kwargs):
-        """Delete a FileStorage object.
+        """@description-title Delete a file
+        @description Delete a stored file.
 
-        :param filename: The filename of the object to be deleted.
-        :type filename: unicode
+        @param (string) "filename" [required=true] The filename of the object
+        to be deleted.
+
+        @success (http-status-code) "server-success" 204
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested file is not found.
+        @error-example "not-found"
+            Not Found
         """
         # It is valid for a path in a POST, PUT, or DELETE (or any other HTTP
         # method) to contain a query string. However, Django only makes
