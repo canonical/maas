@@ -1,21 +1,17 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `provisioningserver.drivers.pod.rsd`."""
 
 __all__ = []
 
-from base64 import b64encode
 from copy import deepcopy
 from http import HTTPStatus
 from io import BytesIO
 import json
 from os.path import join
 import random
-from unittest.mock import (
-    call,
-    Mock,
-)
+from unittest.mock import call
 
 from maastesting.factory import factory
 from maastesting.matchers import (
@@ -45,7 +41,6 @@ from provisioningserver.drivers.pod.rsd import (
     RSD_NODE_POWER_STATE,
     RSD_SYSTEM_POWER_STATE,
     RSDPodDriver,
-    WebClientContextFactory,
 )
 import provisioningserver.drivers.pod.rsd as rsd_module
 from provisioningserver.rpc.exceptions import PodInvalidResources
@@ -57,12 +52,7 @@ from testtools.matchers import (
     MatchesListwise,
     MatchesStructure,
 )
-from twisted.internet._sslverify import ClientTLSOptions
-from twisted.internet.defer import (
-    fail,
-    inlineCallbacks,
-    succeed,
-)
+from twisted.internet.defer import inlineCallbacks
 from twisted.web.client import (
     FileBodyProducer,
     PartialDownloadError,
@@ -790,16 +780,6 @@ def make_discovered_pod(
     return discovered_pod
 
 
-class TestWebClientContextFactory(MAASTestCase):
-
-    def test_creatorForNetloc_returns_tls_options(self):
-        hostname = factory.make_name('hostname').encode('utf-8')
-        port = random.randint(1000, 2000)
-        contextFactory = WebClientContextFactory()
-        opts = contextFactory.creatorForNetloc(hostname, port)
-        self.assertIsInstance(opts, ClientTLSOptions)
-
-
 class TestRSDPodDriver(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
@@ -809,116 +789,6 @@ class TestRSDPodDriver(MAASTestCase):
         driver = RSDPodDriver()
         missing = driver.detect_missing_packages()
         self.assertItemsEqual([], missing)
-
-    def test_get_url_with_ip(self):
-        driver = RSDPodDriver()
-        context = make_context()
-        ip = context.get('power_address').encode('utf-8')
-        expected_url = b"https://%s" % ip
-        url = driver.get_url(context)
-        self.assertEqual(expected_url, url)
-
-    def test_get_url_with_https(self):
-        driver = RSDPodDriver()
-        context = make_context()
-        context['power_address'] = join(
-            "https://", context['power_address'])
-        expected_url = context.get('power_address').encode('utf-8')
-        url = driver.get_url(context)
-        self.assertEqual(expected_url, url)
-
-    def test_get_url_with_http(self):
-        driver = RSDPodDriver()
-        context = make_context()
-        context['power_address'] = join(
-            "http://", context['power_address'])
-        expected_url = context.get('power_address').encode('utf-8')
-        url = driver.get_url(context)
-        self.assertEqual(expected_url, url)
-
-    def test__make_auth_headers(self):
-        power_user = factory.make_name('power_user')
-        power_pass = factory.make_name('power_pass')
-        creds = "%s:%s" % (power_user, power_pass)
-        authorization = b64encode(creds.encode('utf-8'))
-        attributes = {
-            b"User-Agent": [b"MAAS"],
-            b"Authorization": [b"Basic " + authorization],
-            b"Content-Type": [b"application/json; charset=utf-8"],
-        }
-        driver = RSDPodDriver()
-        headers = driver.make_auth_headers(power_user, power_pass)
-        self.assertEquals(headers, Headers(attributes))
-
-    @inlineCallbacks
-    def test_redfish_request_renders_response(self):
-        driver = RSDPodDriver()
-        context = make_context()
-        url = driver.get_url(context)
-        uri = join(url, b"redfish/v1/Systems")
-        headers = driver.make_auth_headers(**context)
-        mock_agent = self.patch(rsd_module, 'Agent')
-        mock_agent.return_value.request = Mock()
-        expected_headers = Mock()
-        expected_headers.headers = "Testing Headers"
-        mock_agent.return_value.request.return_value = succeed(
-            expected_headers)
-        mock_readBody = self.patch(rsd_module, 'readBody')
-        mock_readBody.return_value = succeed(
-            json.dumps(SAMPLE_JSON_SYSTEMS).encode('utf-8'))
-        expected_response = SAMPLE_JSON_SYSTEMS
-
-        response, headers = yield driver.redfish_request(b"GET", uri, headers)
-        self.assertEquals(expected_response, response)
-        self.assertEquals(expected_headers.headers, headers)
-
-    @inlineCallbacks
-    def test_redfish_request_continues_partial_download_error(self):
-        driver = RSDPodDriver()
-        context = make_context()
-        url = driver.get_url(context)
-        uri = join(url, b"redfish/v1/Systems")
-        headers = driver.make_auth_headers(**context)
-        mock_agent = self.patch(rsd_module, 'Agent')
-        mock_agent.return_value.request = Mock()
-        expected_headers = Mock()
-        expected_headers.headers = "Testing Headers"
-        mock_agent.return_value.request.return_value = succeed(
-            expected_headers)
-        mock_readBody = self.patch(rsd_module, 'readBody')
-        error = PartialDownloadError(
-            response=json.dumps(SAMPLE_JSON_SYSTEMS).encode('utf-8'),
-            code=HTTPStatus.OK)
-        mock_readBody.return_value = fail(error)
-        expected_response = SAMPLE_JSON_SYSTEMS
-
-        response, headers = yield driver.redfish_request(b"GET", uri, headers)
-        self.assertEquals(expected_response, response)
-        self.assertEquals(expected_headers.headers, headers)
-
-    @inlineCallbacks
-    def test_redfish_request_raises_failures(self):
-        driver = RSDPodDriver()
-        context = make_context()
-        url = driver.get_url(context)
-        uri = join(url, b"redfish/v1/Systems")
-        headers = driver.make_auth_headers(**context)
-        mock_agent = self.patch(rsd_module, 'Agent')
-        mock_agent.return_value.request = Mock()
-        expected_headers = Mock()
-        expected_headers.headers = "Testing Headers"
-        mock_agent.return_value.request.return_value = succeed(
-            expected_headers)
-        mock_readBody = self.patch(rsd_module, 'readBody')
-        error = PartialDownloadError(
-            response=json.dumps(SAMPLE_JSON_SYSTEMS).encode('utf-8'),
-            code=HTTPStatus.NOT_FOUND)
-        mock_readBody.return_value = fail(error)
-
-        with ExpectedException(PartialDownloadError):
-            yield driver.redfish_request(b"GET", uri, headers)
-        self.assertThat(mock_readBody, MockCalledOnceWith(
-            expected_headers))
 
     @inlineCallbacks
     def test__list_resources(self):
@@ -2088,32 +1958,6 @@ class TestRSDPodDriver(MAASTestCase):
             discovered_pod))
 
     @inlineCallbacks
-    def test__set_pxe_boot(self):
-        driver = RSDPodDriver()
-        context = make_context()
-        url = driver.get_url(context)
-        node_id = context.get('node_id').encode('utf-8')
-        headers = driver.make_auth_headers(**context)
-        mock_file_body_producer = self.patch(
-            rsd_module, 'FileBodyProducer')
-        payload = FileBodyProducer(
-            BytesIO(
-                json.dumps(
-                    {
-                        'Boot': {
-                            'BootSourceOverrideEnabled': "Once",
-                            'BootSourceOverrideTarget': "Pxe"
-                        }
-                    }).encode('utf-8')))
-        mock_file_body_producer.return_value = payload
-        mock_redfish_request = self.patch(driver, 'redfish_request')
-
-        yield driver.set_pxe_boot(url, node_id, headers)
-        self.assertThat(mock_redfish_request, MockCalledOnceWith(
-            b"PATCH", join(url, b"redfish/v1/Nodes/%s" % node_id),
-            headers, payload))
-
-    @inlineCallbacks
     def test__get_composed_node_state(self):
         driver = RSDPodDriver()
         context = make_context()
@@ -2220,10 +2064,9 @@ class TestRSDPodDriver(MAASTestCase):
             url, node_id, headers))
 
     @inlineCallbacks
-    def test_power_issues_power_reset(self):
+    def test__set_pxe_boot(self):
         driver = RSDPodDriver()
         context = make_context()
-        power_change = factory.make_name('power_change')
         url = driver.get_url(context)
         node_id = context.get('node_id').encode('utf-8')
         headers = driver.make_auth_headers(**context)
@@ -2233,15 +2076,18 @@ class TestRSDPodDriver(MAASTestCase):
             BytesIO(
                 json.dumps(
                     {
-                        'ResetType': "%s" % power_change
+                        'Boot': {
+                            'BootSourceOverrideEnabled': "Once",
+                            'BootSourceOverrideTarget': "Pxe"
+                        }
                     }).encode('utf-8')))
         mock_file_body_producer.return_value = payload
         mock_redfish_request = self.patch(driver, 'redfish_request')
-        expected_uri = join(
-            url, b"redfish/v1/Nodes/%s/Actions/ComposedNode.Reset" % node_id)
-        yield driver.power(power_change, url, node_id, headers)
+
+        yield driver.set_pxe_boot(url, node_id, headers)
         self.assertThat(mock_redfish_request, MockCalledOnceWith(
-            b"POST", expected_uri, headers, payload))
+            b"PATCH", join(url, b"redfish/v1/Nodes/%s" % node_id),
+            headers, payload))
 
     @inlineCallbacks
     def test__power_on(self):

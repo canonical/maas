@@ -1,4 +1,4 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Rack Scale Design pod driver."""
@@ -7,7 +7,6 @@ __all__ = [
     'RSDPodDriver',
     ]
 
-from base64 import b64encode
 from http import HTTPStatus
 from io import BytesIO
 import json
@@ -27,8 +26,12 @@ from provisioningserver.drivers.pod import (
     DiscoveredPod,
     DiscoveredPodHints,
     PodActionError,
-    PodDriver,
+    PodDriverBase,
     PodFatalError,
+)
+from provisioningserver.drivers.power.redfish import (
+    RedfishPowerDriverBase,
+    WebClientContextFactory,
 )
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.exceptions import PodInvalidResources
@@ -37,22 +40,18 @@ from provisioningserver.utils.twisted import (
     pause,
 )
 from twisted.internet import reactor
-from twisted.internet._sslverify import (
-    ClientTLSOptions,
-    OpenSSLCertificateOptions,
-)
 from twisted.internet.defer import inlineCallbacks
 from twisted.web.client import (
     Agent,
-    BrowserLikePolicyForHTTPS,
     FileBodyProducer,
     PartialDownloadError,
     readBody,
 )
-from twisted.web.http_headers import Headers
 
 
 maaslog = get_maas_logger("drivers.pod.rsd")
+
+RSD_POWER_CONTROL_ENDPOINT = b"redfish/v1/Nodes/%s/Actions/ComposedNode.Reset"
 
 # RSD stores the architecture with a different
 # label then MAAS. This maps RSD architecture to
@@ -76,19 +75,12 @@ RSD_NODE_POWER_STATE = {
     }
 
 
-class WebClientContextFactory(BrowserLikePolicyForHTTPS):
+class RSDPodDriver(RedfishPowerDriverBase, PodDriverBase):
 
-    def creatorForNetloc(self, hostname, port):
-        opts = ClientTLSOptions(
-            hostname.decode("ascii"),
-            OpenSSLCertificateOptions(verify=False).getContext())
-        # This forces Twisted to not validate the hostname of the certificate.
-        opts._ctx.set_info_callback(lambda *args: None)
-        return opts
+    chassis = True  # Pods are always a chassis
 
-
-class RSDPodDriver(PodDriver):
-
+    # RSDPodDriver inherits from RedfishPowerDriver.
+    # Power parameters will need to be changed to reflect this.
     name = 'rsd'
     description = "Rack Scale Design"
     settings = [
@@ -108,26 +100,6 @@ class RSDPodDriver(PodDriver):
         # no required packages
         return []
 
-    def get_url(self, context):
-        """Return url for the pod."""
-        url = context.get('power_address')
-        if "https" not in url and "http" not in url:
-            # Prepend https
-            url = join("https://", url)
-        return url.encode('utf-8')
-
-    def make_auth_headers(self, power_user, power_pass, **kwargs):
-        """Return authentication headers."""
-        creds = "%s:%s" % (power_user, power_pass)
-        authorization = b64encode(creds.encode('utf-8'))
-        return Headers(
-            {
-                b"User-Agent": [b"MAAS"],
-                b"Authorization": [b"Basic " + authorization],
-                b"Content-Type": [b"application/json; charset=utf-8"],
-            }
-        )
-
     @asynchronous
     def redfish_request(self, method, uri, headers=None, bodyProducer=None):
         """Send the redfish request and return the response."""
@@ -140,7 +112,7 @@ class RSDPodDriver(PodDriver):
 
             def eb_catch_partial(failure):
                 # Twisted is raising PartialDownloadError because the responses
-                # do not contains a Content-Length header. Since every response
+                # do not contain a Content-Length header. Since every response
                 # holds the whole body we just take the result.
                 failure.trap(PartialDownloadError)
                 if int(failure.value.status) == HTTPStatus.OK:
@@ -150,7 +122,7 @@ class RSDPodDriver(PodDriver):
 
             def cb_json_decode(data):
                 data = data.decode('utf-8')
-                # Only decode non-empty responses.
+                # Only decode non-empty response bodies.
                 if data:
                     response = json.loads(data)
                     if "error" in response:
@@ -1084,22 +1056,6 @@ class RSDPodDriver(PodDriver):
         return discovered_pod.hints
 
     @inlineCallbacks
-    def set_pxe_boot(self, url, node_id, headers):
-        """Set the composed machine with node_id to PXE boot."""
-        endpoint = b"redfish/v1/Nodes/%s" % node_id
-        payload = FileBodyProducer(
-            BytesIO(
-                json.dumps(
-                    {
-                        'Boot': {
-                            'BootSourceOverrideEnabled': "Once",
-                            'BootSourceOverrideTarget': "Pxe"
-                        }
-                    }).encode('utf-8')))
-        yield self.redfish_request(
-            b"PATCH", join(url, endpoint), headers, payload)
-
-    @inlineCallbacks
     def get_composed_node_state(self, url, node_id, headers):
         """Return the `ComposedNodeState` of the composed machine."""
         endpoint = b"redfish/v1/Nodes/%s" % node_id
@@ -1149,8 +1105,24 @@ class RSDPodDriver(PodDriver):
                 " of Failed." % node_id)
 
     @inlineCallbacks
+    def set_pxe_boot(self, url, node_id, headers):
+        """Set the composed machine with node_id to PXE boot."""
+        endpoint = b"redfish/v1/Nodes/%s" % node_id
+        payload = FileBodyProducer(
+            BytesIO(
+                json.dumps(
+                    {
+                        'Boot': {
+                            'BootSourceOverrideEnabled': "Once",
+                            'BootSourceOverrideTarget': "Pxe"
+                        }
+                    }).encode('utf-8')))
+        yield self.redfish_request(
+            b"PATCH", join(url, endpoint), headers, payload)
+
+    @inlineCallbacks
     def power(self, power_change, url, node_id, headers):
-        endpoint = b"redfish/v1/Nodes/%s/Actions/ComposedNode.Reset" % node_id
+        endpoint = RSD_POWER_CONTROL_ENDPOINT % node_id
         payload = FileBodyProducer(
             BytesIO(
                 json.dumps(

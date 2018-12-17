@@ -22,6 +22,7 @@ from provisioningserver.drivers.power.mscm import MSCMPowerDriver
 from provisioningserver.drivers.power.msftocs import MicrosoftOCSPowerDriver
 from provisioningserver.drivers.power.nova import NovaPowerDriver
 from provisioningserver.drivers.power.recs import RECSPowerDriver
+from provisioningserver.drivers.power.redfish import RedfishPowerDriver
 from provisioningserver.drivers.power.seamicro import SeaMicroPowerDriver
 from provisioningserver.drivers.power.ucsm import UCSMPowerDriver
 from provisioningserver.drivers.power.virsh import VirshPowerDriver
@@ -61,6 +62,7 @@ power_drivers = [
     MicrosoftOCSPowerDriver(),
     NovaPowerDriver(),
     RECSPowerDriver(),
+    RedfishPowerDriver(),
     SeaMicroPowerDriver(),
     UCSMPowerDriver(),
     VirshPowerDriver(),
