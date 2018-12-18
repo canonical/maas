@@ -25,15 +25,35 @@ class LicenseKeysHandler(OperationsHandler):
     update = delete = None
 
     def read(self, request):
-        """List license keys."""
+        """@description-title List license keys
+        @description List all available license keys.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing a list of
+        available license keys.
+        @success-example "success-json" [exkey=license-keys-placeholder]
+        placeholder text
+        """
         return LicenseKey.objects.all().order_by('osystem', 'distro_series')
 
     def create(self, request):
-        """Define a license key.
+        """@description-title Define a license key
+        @description Define a license key.
 
-        :param osystem: Operating system that the key belongs to.
-        :param distro_series: OS release that the key belongs to.
-        :param license_key: License key for osystem/distro_series combo.
+        @param (string) "osystem" [required=true] Operating system that the key
+        belongs to.
+
+        @param (string) "distro_series" [required=true] OS release that the key
+        belongs to.
+
+        @param (string) "license_key" [required=true] License key for
+        osystem/distro_series combo.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the new license
+        key.
+        @success-example "success-json" [exkey=license-keys-placeholder]
+        placeholder text
         """
         # If the user provides no parametes to the create command, then
         # django will make the request.data=None. This will cause the form
@@ -77,16 +97,56 @@ class LicenseKeyHandler(OperationsHandler):
     create = None
 
     def read(self, request, osystem, distro_series):
-        """Read license key."""
+        """@description-title Read license key
+        @description Read a license key for the given operating sytem and
+        distro series.
+
+        @param (string) "{osystem}" [required=true] Operating system that the
+        key belongs to.
+
+        @param (string) "{distro_series}" [required=true] OS release that the
+        key belongs to.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the requested
+        license key.
+        @success-example "success-json" [exkey=license-keys-placeholder]
+        placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested operating system and distro
+        series combination is not found.
+        @error-example "not-found"
+            Unknown API endpoint: /MAAS/api/2.0/license-key/windows/win2012/.
+        """
         return get_object_or_404(
             LicenseKey, osystem=osystem, distro_series=distro_series)
 
     def update(self, request, osystem, distro_series):
-        """Update license key.
+        """@description-title Update license key
+        @description Update a license key for the given operating system and
+        distro series.
 
-        :param osystem: Operating system that the key belongs to.
-        :param distro_series: OS release that the key belongs to.
-        :param license_key: License key for osystem/distro_series combo.
+        @param (string) "{osystem}" [required=true] Operating system that the
+        key belongs to.
+
+        @param (string) "{distro_series}" [required=true] OS release that the
+        key belongs to.
+
+        @param (string) "license_key" [required=false] License key for
+        osystem/distro_series combo.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the updated
+        license key.
+        @success-example "success-json" [exkey=license-keys-placeholder]
+        placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested operating system and distro
+        series combination is not found.
+        @error-example "not-found"
+            Unknown API endpoint: /MAAS/api/2.0/license-key/windows/win2012/.
         """
         license_key = get_object_or_404(
             LicenseKey, osystem=osystem, distro_series=distro_series)
@@ -99,7 +159,24 @@ class LicenseKeyHandler(OperationsHandler):
         return form.save()
 
     def delete(self, request, osystem, distro_series):
-        """Delete license key."""
+        """@description-title Delete license key
+        @description Delete license key for the given operation system and
+        distro series.
+
+        @param (string) "{osystem}" [required=false] Operating system that the
+        key belongs to.
+
+        @param (string) "{distro_series}" [required=false] OS release that the
+        key belongs to.
+
+        @success (http-status-code) "server-success" 204
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested operating system and distro
+        series combination is not found.
+        @error-example "not-found"
+            Unknown API endpoint: /MAAS/api/2.0/license-key/windows/win2012/.
+        """
         license_key = get_one(
             LicenseKey.objects.filter(
                 osystem=osystem, distro_series=distro_series))
