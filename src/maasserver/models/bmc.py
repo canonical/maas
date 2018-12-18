@@ -113,6 +113,22 @@ def get_requested_ips(requested_machine):
     return requested_ips
 
 
+def get_ip_modes(requested_machine):
+    """Creates a map of requested IP modes, given a RequestedMachine."""
+    if requested_machine is not None:
+        ip_modes = {
+            interface.ifname: interface.ip_mode
+            for interface in requested_machine.interfaces
+            if (
+                interface.ifname is not None and
+                interface.ip_mode is not None
+            )
+        }
+    else:
+        ip_modes = {}
+    return ip_modes
+
+
 class BaseBMCManager(Manager):
     """A utility to manage the collection of BMCs."""
 
@@ -780,6 +796,7 @@ class Pod(BMC):
             assert isinstance(interfaces, LabeledConstraintMap)
 
         requested_ips = get_requested_ips(requested_machine)
+        ip_modes = get_ip_modes(requested_machine)
 
         # Create the machine.
         machine = Machine(
@@ -804,7 +821,7 @@ class Pod(BMC):
         created_interfaces = self._assign_interfaces(
             machine, discovered_machine, interfaces, skip_commissioning)
         self._assign_ip_addresses(
-            discovered_machine, created_interfaces, requested_ips)
+            discovered_machine, created_interfaces, requested_ips, ip_modes)
 
         # New machines get commission started immediately unless skipped.
         if not skip_commissioning:
@@ -820,7 +837,8 @@ class Pod(BMC):
         return machine
 
     def _assign_ip_addresses(
-            self, discovered_machine, created_interfaces, allocated_ips):
+            self, discovered_machine, created_interfaces, allocated_ips,
+            ip_modes):
         # We need a second pass here to configure interfaces that the above
         # function call would otherwise change.
         if self.host is not None:
@@ -844,6 +862,16 @@ class Pod(BMC):
                         interface.save()
                     ip_address.save()
                     interface.ip_addresses.add(ip_address)
+            if interface.name in ip_modes:
+                mode = ip_modes[interface.name]
+                if mode == 'unconfigured':
+                    for address in interface.ip_addresses.all():
+                        # User requested an unconfigured interface; change
+                        # the AUTO that was created to a STICKY and ensure
+                        # the IP address is cleared out.
+                        address.alloc_type = IPADDRESS_TYPE.STICKY
+                        address.ip = None
+                        address.save()
 
     def _assign_interfaces(
             self, machine, discovered_machine, interface_constraints,

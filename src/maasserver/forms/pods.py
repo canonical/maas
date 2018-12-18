@@ -556,6 +556,7 @@ class ComposeMachineForm(forms.Form):
             # Set the requested interface name and IP addresses.
             rmi.ifname = get_ifname_for_label(label)
             rmi.requested_ips = result.allocated_ips.get(label, [])
+            rmi.ip_mode = result.ip_modes.get(label, None)
             requested_machine_interfaces.append(rmi)
         if not has_bootable_vlan:
             raise ValidationError(

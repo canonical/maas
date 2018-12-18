@@ -325,6 +325,8 @@ class RequestedMachineInterface(AttrHelperMixin):
         converter=converter_obj(str, optional=True), default=None)
     requested_ips = attr.ib(
         converter=converter_list(str), default=attr.Factory(list))
+    ip_mode = attr.ib(
+        converter=converter_obj(str, optional=True), default=None)
 
 
 @attr.s

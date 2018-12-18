@@ -28,6 +28,7 @@ from maasserver.node_constraint_filter_forms import (
     get_architecture_wildcards,
     get_storage_constraints_from_string,
     JUJU_ACQUIRE_FORM_FIELDS_MAPPING,
+    nodes_by_interface,
     nodes_by_storage,
     parse_legacy_tags,
     RenamableFieldsForm,
@@ -46,6 +47,7 @@ from testtools.matchers import (
     Equals,
     MatchesDict,
     MatchesListwise,
+    Not,
     StartsWith,
 )
 
@@ -1410,6 +1412,18 @@ class TestAcquireNodeForm(MAASServerTestCase):
             'interfaces': LabeledConstraintMap(
                 'eth0:ip=%s' % str(ip.ip))})
         self.assertTrue(form.is_valid(), dict(form.errors))
+
+    def test_not_preconfig_interfaces_constraint_works_for_unconfigured(self):
+        subnet = factory.make_Subnet()
+        node = factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
+        iface = node.get_boot_interface()
+        ip = factory.make_StaticIPAddress(interface=iface)
+        lcm = LabeledConstraintMap('eth0:ip=%s,mode=unconfigured' % str(ip.ip))
+        result = nodes_by_interface(
+            lcm, preconfigured=False)
+        self.assertThat(result.ip_modes['eth0'], Equals('unconfigured'))
+        # The mode should have been removed after being placed in the result.
+        self.assertThat(lcm, Not(Contains("mode")))
 
     def test_interfaces_constraint_with_multiple_labels_and_values_validated(
             self):

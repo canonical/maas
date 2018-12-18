@@ -1169,6 +1169,58 @@ class TestPod(MAASServerTestCase):
         sip3 = StaticIPAddress.objects.filter(ip=ip3).first()
         self.assertThat(sip3.get_interface().node, Equals(machine))
 
+    def test_create_machine_unconfigures_ips_upon_request(self):
+        discovered_machine = self.make_discovered_machine()
+        self.patch(Machine, "set_default_storage_layout")
+        self.patch(Machine, "set_initial_networking_configuration")
+        self.patch(Machine, "start_commissioning")
+        fabric = factory.make_Fabric()
+        vlan = factory.make_VLAN(
+            fabric=fabric, dhcp_on=True,
+            primary_rack=factory.make_RackController())
+        subnet = factory.make_Subnet(vlan=vlan)
+        ip = factory.pick_ip_in_Subnet(subnet)
+        vlan2 = factory.make_VLAN(
+            fabric=fabric, dhcp_on=False,
+            primary_rack=factory.make_RackController())
+        subnet2 = factory.make_Subnet(vlan=vlan2)
+        ip2 = factory.pick_ip_in_Subnet(subnet2)
+        vlan3 = factory.make_VLAN(
+            fabric=fabric, dhcp_on=False,
+            primary_rack=factory.make_RackController())
+        subnet3 = factory.make_Subnet(vlan=vlan3)
+        ip3 = factory.pick_ip_in_Subnet(subnet3)
+        pod = factory.make_Pod()
+        rmi = RequestedMachineInterface(
+            ifname='maas0', requested_ips=[ip], ip_mode='unconfigured')
+        rmi2 = RequestedMachineInterface(
+            ifname='maas1', requested_ips=[ip2], ip_mode='unconfigured')
+        rmi3 = RequestedMachineInterface(
+            ifname='maas2', requested_ips=[ip3], ip_mode='unconfigured')
+        requested_machine = RequestedMachine(
+            hostname='foo', architecture='amd64', cores=1, memory=1024,
+            block_devices=[], interfaces=[rmi, rmi2, rmi3])
+        machine = pod.create_machine(
+            discovered_machine, factory.make_User(),
+            interfaces=LabeledConstraintMap(
+                'maas0:vlan=id:%d,mode=unconfigured;'
+                'maas1:vlan=id:%d,mode=unconfigured;'
+                'maas2:ip=%s,mode=unconfigured' % (
+                    vlan.id, vlan2.id, ip3)),
+            requested_machine=requested_machine)
+        sip = StaticIPAddress.objects.filter(
+            interface__name=rmi.ifname).first()
+        self.assertThat(sip.get_interface().node, Equals(machine))
+        self.assertThat(sip.ip, Is(None))
+        sip2 = StaticIPAddress.objects.filter(
+            interface__name=rmi2.ifname).first()
+        self.assertThat(sip2.get_interface().node, Equals(machine))
+        self.assertThat(sip2.ip, Is(None))
+        sip3 = StaticIPAddress.objects.filter(
+            interface__name=rmi3.ifname).first()
+        self.assertThat(sip3.get_interface().node, Equals(machine))
+        self.assertThat(sip3.ip, Is(None))
+
     def test_create_machine_sets_up_interface_vlans_correctly(self):
         discovered_machine = self.make_discovered_machine()
         self.patch(Machine, "set_default_storage_layout")

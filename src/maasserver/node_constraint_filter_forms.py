@@ -148,6 +148,9 @@ class NodesByInterfaceResult:
     # Dictionary of IP address allocations by label.
     allocated_ips = attr.ib(default=None)
 
+    # Dictionary of IP modes by label
+    ip_modes = attr.ib(default=None)
+
 
 def interfaces_validator(constraint_map):
     """Validate the given LabeledConstraintMap object."""
@@ -523,6 +526,7 @@ def nodes_by_interface(
     node_ids = None
     label_map = {}
     allocated_ips = {}
+    ip_modes = {}
     for label in interfaces_label_map:
         constraints = interfaces_label_map[label]
         if not preconfigured:
@@ -543,6 +547,11 @@ def nodes_by_interface(
                     # machine.
                     vlan_constraints.append('id:%d' % subnet.vlan.id)
                 constraints['vlan'] = vlan_constraints
+            if 'mode' in constraints:
+                mode_constraints = constraints.pop('mode')
+                for mode in mode_constraints:
+                    # This will be used later when a subnet is selected.
+                    ip_modes[label] = mode
         if node_ids is None:
             # The first time through the filter, build the list
             # of candidate nodes.
@@ -562,7 +571,8 @@ def nodes_by_interface(
             label_map[label] = node_map
             node_ids &= new_node_ids
     return NodesByInterfaceResult(
-        node_ids=node_ids, label_map=label_map, allocated_ips=allocated_ips)
+        node_ids=node_ids, label_map=label_map, allocated_ips=allocated_ips,
+        ip_modes=ip_modes)
 
 
 class LabeledConstraintMapField(Field):

@@ -630,6 +630,7 @@ class TestRequestClasses(MAASTestCase):
                 MatchesDict({
                     "ifname": Is(None),
                     "requested_ips": Equals([]),
+                    "ip_mode": Is(None),
                     "attach_name": Equals(
                         interface.attach_name),
                     "attach_type": Equals(
