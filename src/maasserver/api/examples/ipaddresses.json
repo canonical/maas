@@ -1,0 +1,96 @@
+{
+  "ipaddresses-reserve": {
+    "created": "2018-12-14T20:01:45.856",
+    "ip": "172.16.1.234",
+    "alloc_type": 4,
+    "subnet": {
+      "name": "name-rLI3eq",
+      "vlan": {
+        "vid": 0,
+        "mtu": 1500,
+        "dhcp_on": false,
+        "external_dhcp": null,
+        "relay_vlan": null,
+        "fabric": "fabric-0",
+        "space": "management",
+        "name": "untagged",
+        "fabric_id": 0,
+        "id": 5001,
+        "secondary_rack": "76y7pg",
+        "primary_rack": "7xtf67",
+        "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+      },
+      "cidr": "172.16.1.0/24",
+      "rdns_mode": 2,
+      "gateway_ip": "172.16.1.1",
+      "dns_servers": [
+        "fd89:8724:81f1:5512:557f:99c3:6967:8d63"
+      ],
+      "allow_dns": true,
+      "allow_proxy": true,
+      "active_discovery": false,
+      "managed": true,
+      "space": "management",
+      "id": 1,
+      "resource_uri": "/MAAS/api/2.0/subnets/1/"
+    },
+    "alloc_type_name": "User reserved",
+    "owner": {
+      "is_superuser": true,
+      "username": "admin",
+      "email": "NN7ER2rH6x@example.com",
+      "is_local": true,
+      "resource_uri": "/MAAS/api/2.0/users/admin/"
+    },
+    "interface_set": [],
+    "resource_uri": "/MAAS/api/2.0/ipaddresses/"
+  },
+  "ipaddresses-read": [
+    {
+      "created": "2018-12-14T20:11:27.187",
+      "ip": "172.16.1.234",
+      "alloc_type": 4,
+      "subnet": {
+        "name": "name-rLI3eq",
+        "vlan": {
+          "vid": 0,
+          "mtu": 1500,
+          "dhcp_on": false,
+          "external_dhcp": null,
+          "relay_vlan": null,
+          "fabric": "fabric-0",
+          "name": "untagged",
+          "secondary_rack": "76y7pg",
+          "primary_rack": "7xtf67",
+          "space": "management",
+          "fabric_id": 0,
+          "id": 5001,
+          "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+        },
+        "cidr": "172.16.1.0/24",
+        "rdns_mode": 2,
+        "gateway_ip": "172.16.1.1",
+        "dns_servers": [
+          "fd89:8724:81f1:5512:557f:99c3:6967:8d63"
+        ],
+        "allow_dns": true,
+        "allow_proxy": true,
+        "active_discovery": false,
+        "managed": true,
+        "space": "management",
+        "id": 1,
+        "resource_uri": "/MAAS/api/2.0/subnets/1/"
+      },
+      "alloc_type_name": "User reserved",
+      "owner": {
+        "is_superuser": true,
+        "username": "admin",
+        "email": "NN7ER2rH6x@example.com",
+        "is_local": true,
+        "resource_uri": "/MAAS/api/2.0/users/admin/"
+      },
+      "interface_set": [],
+      "resource_uri": "/MAAS/api/2.0/ipaddresses/"
+    }
+  ]
+}

@@ -154,29 +154,45 @@ class IPAddressesHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def reserve(self, request):
-        """Reserve an IP address for use outside of MAAS.
+        """@description-title Reserve an IP address
+        @description Reserve an IP address for use outside of MAAS.
 
-        Returns an IP adddress, which MAAS will not allow any of its known
-        nodes to use; it is free for use by the requesting user until released
-        by the user.
+        Returns an IP adddress that MAAS will not allow any of its known nodes
+        to use; it is free for use by the requesting user until released by the
+        user.
 
-        The user may supply either a subnet or a specific IP address within a
+        The user must supply either a subnet or a specific IP address within a
         subnet.
 
-        :param subnet: CIDR representation of the subnet on which the IP
-            reservation is required. e.g. 10.1.2.0/24
-        :param ip: The IP address, which must be within
-            a known subnet.
-        :param ip_address: (Deprecated.) Alias for 'ip' parameter. Provided
-            for backward compatibility.
-        :param hostname: The hostname to use for the specified IP address.  If
-            no domain component is given, the default domain will be used.
-        :param mac: The MAC address that should be linked to this reservation.
+        @param (string) "subnet" [required=false] CIDR representation of the
+        subnet on which the IP reservation is required. E.g. 10.1.2.0/24
 
-        Returns 400 if there is no subnet in MAAS matching the provided one,
-        or a ip_address is supplied, but a corresponding subnet
-        could not be found.
-        Returns 503 if there are no more IP addresses available.
+        @param (string) "ip" [required=false] The IP address, which must be
+        within a known subnet.
+
+        @param (string) "ip_address" [required=false] (Deprecated.) Alias for
+        'ip' parameter. Provided for backward compatibility.
+
+        @param (string) "hostname" [required=false] The hostname to use for the
+        specified IP address.  If no domain component is given, the default
+        domain will be used.
+
+        @param (string) "mac" [required=false] The MAC address that should be
+        linked to this reservation.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing information
+        about the reserved IP.
+        @success-example "success-json" [exkey=ipaddresses-reserve] placeholder
+        text
+
+        @error (http-status-code) "400" 400
+        @error (content) "not-found" No subnet in MAAS matching the provided
+        one, or an ip_address was supplied, but a corresponding subnet could
+        not be found.
+
+        @error (http-status-code) "503" 503
+        @error (content) "no-more" No more IP addresses are available.
         """
         subnet = get_optional_param(request.POST, "subnet")
         ip = get_optional_param(request.POST, "ip")
@@ -220,23 +236,28 @@ class IPAddressesHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def release(self, request):
-        """Release an IP address that was previously reserved by the user.
+        """@description-title Release an IP address
+        @description Release an IP address that was previously reserved by the
+        user.
 
-        :param ip: The IP address to release.
-        :type ip: unicode
+        @param (string) "ip" [required=true] The IP address to release.
 
-        :param force: If True, allows a MAAS administrator to force an IP
-            address to be released, even if it is not a user-reserved IP
-            address or does not belong to the requesting user. Use with
-            caution.
-        :type force: bool
+        @param (boolean) "force" [required=false] If True, allows a MAAS
+        administrator to force an IP address to be released, even if it is not
+        a user-reserved IP address or does not belong to the requesting user.
+        Use with caution.
 
-        :param discovered: If True, allows a MAAS administrator to release
-            a discovered address. Only valid if 'force' is specified. If not
-            specified, MAAS will attempt to release any type of address except
-            for discovered addresses.
+        @param (boolean) "discovered" [required=false] If True, allows a MAAS
+        administrator to release a discovered address. Only valid if 'force' is
+        specified. If not specified, MAAS will attempt to release any type of
+        address except for discovered addresses.
 
-        Returns 404 if the provided IP address is not found.
+        @success (http-status-code) "204" 204
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested IP address is not found.
+        @error-example "not-found"
+            Not Found
         """
         ip = get_mandatory_param(request.POST, "ip")
         force = get_optional_param(
@@ -300,26 +321,29 @@ class IPAddressesHandler(OperationsHandler):
         return rc.DELETED
 
     def read(self, request):
-        """List IP addresses known to MAAS.
+        """@description-title List IP addresses
+        @description List all IP addresses known to MAAS.
 
         By default, gets a listing of all IP addresses allocated to the
         requesting user.
 
-        :param ip: If specified, will only display information for the
-            specified IP address.
-        :type ip: unicode (must be an IPv4 or IPv6 address)
+        @param (string) "ip" [required=false] If specified, will only display
+        information for the specified IP address.
 
-        If the requesting user is a MAAS administrator, the following options
-        may also be supplied:
+        @param (boolean) "all" [required=false] (Admin users only) If True, all
+        reserved IP addresses will be shown. (By default, only addresses of
+        type 'User reserved' that are assigned to the requesting user are
+        shown.)
 
-        :param all: If True, all reserved IP addresses will be shown. (By
-            default, only addresses of type 'User reserved' that are assigned
-            to the requesting user are shown.)
-        :type all: bool
+        @param (string) "owner" [required=false] (Admin users only) If
+        specified, filters the list to show only IP addresses owned by the
+        specified username.
 
-        :param owner: If specified, filters the list to show only IP addresses
-            owned by the specified username.
-        :type user: unicode
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing a list of IP
+        address objects.
+        @success-example "success-json" [exkey=ipaddresses-read] placeholder
+        text
         """
         _all = get_optional_param(
             request.GET, 'all', default=False, validator=StringBool)
