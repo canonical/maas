@@ -1,0 +1,132 @@
+{
+  "notifications-read": [
+    {
+      "ident": "dhcp_disabled_all_vlans",
+      "user": null,
+      "users": false,
+      "admins": true,
+      "message": "DHCP is not enabled on any VLAN.  This will prevent machines from being able to PXE boot, unless an external DHCP server is being used.",
+      "context": {},
+      "category": "warning",
+      "id": 1,
+      "resource_uri": "/MAAS/api/2.0/notifications/1/"
+    },
+    {
+      "ident": null,
+      "user": null,
+      "users": false,
+      "admins": true,
+      "message": "Attention admins! Core critical! Meltdown imminent! Evacuate habitat immediately!",
+      "context": {
+        "name-oeIkwE": "value-cY9eNX"
+      },
+      "category": "error",
+      "id": 2,
+      "resource_uri": "/MAAS/api/2.0/notifications/2/"
+    },
+    {
+      "ident": null,
+      "user": {
+        "is_superuser": true,
+        "username": "admin",
+        "email": "NN7ER2rH6x@example.com",
+        "is_local": true,
+        "resource_uri": "/MAAS/api/2.0/users/admin/"
+      },
+      "users": false,
+      "admins": false,
+      "message": "Greetings, {name}! Get away from the habitat for the weekend and visit the Mare Nubium with MAAS Tours. Use the code METAL to claim a special gift!",
+      "context": {
+        "name": "Admin"
+      },
+      "category": "info",
+      "id": 5,
+      "resource_uri": "/MAAS/api/2.0/notifications/5/"
+    },
+    {
+      "ident": "maas-import-pxe-files script",
+      "user": null,
+      "users": false,
+      "admins": true,
+      "message": "Boot image import process not started. Machines will not be able to\nprovision without boot images. Visit the\n<a href=\"http://localhost:5240/MAAS/#/images\">boot images</a> page to start the import.\n",
+      "context": {},
+      "category": "error",
+      "id": 1409,
+      "resource_uri": "/MAAS/api/2.0/notifications/1409/"
+    },
+    {
+      "ident": "clusters",
+      "user": null,
+      "users": false,
+      "admins": true,
+      "message": "One rack controller is not yet connected to the region. Visit the <a href=\"/MAAS/#/controllers\">rack controllers page</a> for more information.",
+      "context": {},
+      "category": "error",
+      "id": 1410,
+      "resource_uri": "/MAAS/api/2.0/notifications/1410/"
+    },
+    {
+      "ident": "controller_out_of_date_mfhrw8",
+      "user": null,
+      "users": false,
+      "admins": true,
+      "message": "Controller <a href='#/node/controller/{system_id}'>{hostname}</a> is running an older version of MAAS (less than 2.3.0).",
+      "context": {
+        "hostname": "happy-region",
+        "latest_version": "",
+        "system_id": "mfhrw8"
+      },
+      "category": "warning",
+      "id": 1411,
+      "resource_uri": "/MAAS/api/2.0/notifications/1411/"
+    },
+    {
+      "ident": "controller_out_of_date_ekf6cn",
+      "user": null,
+      "users": false,
+      "admins": true,
+      "message": "Controller <a href='#/node/controller/{system_id}'>{hostname}</a> is running an older version of MAAS (less than 2.3.0).",
+      "context": {
+        "hostname": "happy-rack",
+        "latest_version": "",
+        "system_id": "ekf6cn"
+      },
+      "category": "warning",
+      "id": 1412,
+      "resource_uri": "/MAAS/api/2.0/notifications/1412/"
+    }
+  ],
+  "notifications-create": {
+    "ident": null,
+    "user": null,
+    "users": true,
+    "admins": false,
+    "message": "This is a test message.",
+    "context": {},
+    "category": "info",
+    "id": 1413,
+    "resource_uri": "/MAAS/api/2.0/notifications/1413/"
+  },
+  "notifications-read-by-id": {
+    "ident": null,
+    "user": null,
+    "users": true,
+    "admins": false,
+    "message": "This is a test message.",
+    "context": {},
+    "category": "info",
+    "id": 1414,
+    "resource_uri": "/MAAS/api/2.0/notifications/1414/"
+  },
+  "notifications-update": {
+    "ident": null,
+    "user": null,
+    "users": true,
+    "admins": false,
+    "message": "This is an updated test message.",
+    "context": {},
+    "category": "info",
+    "id": 1414,
+    "resource_uri": "/MAAS/api/2.0/notifications/1414/"
+  }
+}
