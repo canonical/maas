@@ -705,7 +705,9 @@ tagsInput.directive('autoComplete', ["$document","$timeout","$sce","$q","tagsInp
                 })
                 .on('input-focus', function() {
                     var value = tagsInput.getCurrentTagText();
-                    if (options.loadOnFocus && shouldLoadSuggestions(value)) {
+                    scope.hasFocus = true;
+                    scope.shouldLoadSuggestions = shouldLoadSuggestions(value);
+                    if (options.loadOnFocus && scope.shouldLoadSuggestions) {
                         suggestionList.load(value, tagsInput.getTags());
                     }
                 })
@@ -747,6 +749,9 @@ tagsInput.directive('autoComplete', ["$document","$timeout","$sce","$q","tagsInp
                         event.stopImmediatePropagation();
                         return false;
                     }
+                })
+                .on('input-blur', function() {
+                    scope.hasFocus = false;
                 });
 
             events.on('suggestion-selected', function(index) {
@@ -1127,7 +1132,7 @@ tagsInput.run(["$templateCache", function($templateCache) {
   );
 
   $templateCache.put('ngTagsInput/auto-complete.html',
-    "<div class=\"autocomplete\" data-ng-if=\"suggestionList.visible\"><ul class=\"p-list suggestion-list\"><li class=\"suggestion-item\" data-ng-repeat=\"item in suggestionList.items track by track(item)\" data-ng-class=\"{selected: item == suggestionList.selected}\" data-ng-click=\"addSuggestionByIndex($index)\" data-ng-mouseenter=\"suggestionList.select($index)\"><ti-autocomplete-match data=\"item\"></ti-autocomplete-match></li></ul></div>"
+    "<div class=\"autocomplete\" data-ng-if=\"suggestionList.visible\"><ul class=\"p-list suggestion-list\"><li class=\"suggestion-item\" data-ng-repeat=\"item in suggestionList.items track by track(item)\" data-ng-class=\"{selected: item == suggestionList.selected}\" data-ng-click=\"addSuggestionByIndex($index)\" data-ng-mouseenter=\"suggestionList.select($index)\"><ti-autocomplete-match data=\"item\"></ti-autocomplete-match></li></ul></div><div class=\"autocomplete no-suggestion\" data-ng-if=\"!suggestionList.visible && hasFocus && shouldLoadSuggestions\"><ul class=\"p-list suggestion-list\"><li class=\"suggestion-item\">No scripts available</li></ul></div>"
   );
 
   $templateCache.put('ngTagsInput/auto-complete-match.html',

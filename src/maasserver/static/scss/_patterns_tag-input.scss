@@ -20,6 +20,10 @@
       overflow-y: scroll;
       overflow-x: visible;
 
+      &.no-suggestion {
+        overflow-y: visible;
+      }
+
       .suggestion-list {
         margin: 0;
         clear: both;
@@ -43,6 +47,14 @@
           }
         }
       }
+    }
+  }
+
+  .autocomplete.no-suggestion .suggestion-list .suggestion-item {
+    color: $color-mid-dark;
+
+    &:hover {
+      background-color: $color-x-light;
     }
   }
 
