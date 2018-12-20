@@ -377,11 +377,19 @@ angular.module('MAAS').controller('PodDetailsController', [
         $scope.availableWithOvercommit = function(
             total, used, overcommitRatio, precisionValue) {
             if (precisionValue) {
-                return (
-                    (total * overcommitRatio) - used
-                ).toPrecision(precisionValue);
+
+                return (total * overcommitRatio - used)
+                  .toFixed(precisionValue)
+                  .replace(/[.,]0$/, '');
             } else {
                 return ((total * overcommitRatio) - used);
+            }
+        };
+
+        // Strip trailing zero
+        $scope.stripTrailingZero = function(value) {
+            if (value) {
+                return value.toString().replace(/[.,]0$/, "");
             }
         };
 

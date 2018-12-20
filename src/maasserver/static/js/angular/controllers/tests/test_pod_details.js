@@ -210,6 +210,18 @@ describe("PodDetailsController", function() {
         expect($scope.title).toBe('Pod ' + pod.name);
     });
 
+    describe("stripTrailingZero", function() {
+        it("removes decimal point if zero", function() {
+            var controller = makeController();
+            expect($scope.stripTrailingZero(41.0)).toBe('41');
+        });
+
+        it("doesn't strip decimal point if not zero", function() {
+            var controller = makeController();
+            expect($scope.stripTrailingZero(42.2)).toBe('42.2');
+        });
+    });
+
     describe("isRackControllerConnected", function() {
         it("returns false no power_types", function() {
             var controller = makeController();

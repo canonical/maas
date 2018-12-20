@@ -532,6 +532,7 @@
             </section>
             <div class="p-card--highlighted">
                 <div class="p-pod-summary">
+
                     <div class="p-pod-summary__aside">
                         <div class="p-pod-summary__cpu">
                             <div class="row">
@@ -548,7 +549,7 @@
                             </div>
                             <p class="u-no-max-width">
                                 <span>{$ pod.used.cores $} used</span>
-                                <span class="u-float--right">{$ availableWithOvercommit(pod.total.cores, pod.used.cores, pod.cpu_over_commit_ratio, 2) $} available</span>
+                                <span class="u-float--right">{$ availableWithOvercommit(pod.total.cores, pod.used.cores, pod.cpu_over_commit_ratio, 1) $} available</span>
                             </p>
                         </div>
                         <div class="p-pod-summary__ram">
@@ -562,8 +563,8 @@
                                 <meter class="p-meter" max="{$ pod.total.memory * pod.memory_over_commit_ratio $}" value="{$ pod.used.memory $}"></meter>
                             </div>
                             <p class="u-no-max-width">
-                                <span>{$ pod.used.memory_gb $} GiB used</span>
-                                <span class="u-float--right">{$ availableWithOvercommit(pod.total.memory_gb, pod.used.memory_gb, pod.memory_over_commit_ratio, 2) $} GiB available</span>
+                                <span>{$ stripTrailingZero(pod.used.memory_gb) $} GiB used</span>
+                                <span class="u-float--right">{$ availableWithOvercommit(pod.total.memory_gb, pod.used.memory_gb, pod.memory_over_commit_ratio, 1) $} GiB available</span>
                             </p>
                         </div>
                     </div>
