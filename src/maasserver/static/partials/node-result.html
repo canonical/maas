@@ -27,7 +27,7 @@
                         <strong>Status</strong>
                     </div>
                     <div class="p-form__control">
-                        <p class="ng-binding">
+                        <p class="ng-binding u-no-padding--top">
                             <span data-maas-script-status="script-status" data-script-status="result.status" class="ng-isolate-scope"></span> {$ result.status_name $}
                         </p>
                     </div>
@@ -37,8 +37,8 @@
                         <strong>Exit Status</strong>
                     </div>
                     <div class="p-form__control">
-                        <p class="ng-binding" data-ng-if="result.exit_status || result.exit_status === 0">{$ result.exit_status $}</p>
-                        <p class="ng-binding" data-ng-if="!result.exit_status && result.exit_status !== 0">&nbsp;</p>
+                        <p class="ng-binding u-no-padding--top" data-ng-if="result.exit_status || result.exit_status === 0">{$ result.exit_status $}</p>
+                        <p class="ng-binding u-no-padding--top" data-ng-if="!result.exit_status && result.exit_status !== 0">&nbsp;</p>
                     </div>
                 </div>
                 <div class="p-form__group">
@@ -46,8 +46,8 @@
                         <strong>Tags</strong>
                     </div>
                     <div class="p-form__control">
-                        <p class="ng-binding" data-ng-if="result.tags">{$ result.tags $}</p>
-                        <p class="ng-binding" data-ng-if="!result.tags">&nbsp;</p>
+                        <p class="ng-binding u-no-padding--top" data-ng-if="result.tags">{$ result.tags $}</p>
+                        <p class="ng-binding u-no-padding--top" data-ng-if="!result.tags">&nbsp;</p>
                     </div>
                 </div>
             </div>
@@ -57,8 +57,8 @@
                         <strong>Start Time</strong>
                     </div>
                     <div class="p-form__control">
-                        <p class="ng-binding" data-ng-if="result.started">{$ result.started $}</p>
-                        <p class="ng-binding" data-ng-if="!result.started">&nbsp;</p>
+                        <p class="ng-binding u-no-padding--top" data-ng-if="result.started">{$ result.started $}</p>
+                        <p class="ng-binding u-no-padding--top" data-ng-if="!result.started">&nbsp;</p>
                     </div>
                 </div>
                 <div class="p-form__group">
@@ -66,8 +66,8 @@
                         <strong>End Time</strong>
                     </div>
                     <div class="p-form__control">
-                        <p class="ng-binding" data-ng-if="result.ended">{$ result.ended $}</p>
-                        <p class="ng-binding" data-ng-if="!result.ended">&nbsp;</p>
+                        <p class="ng-binding u-no-padding--top" data-ng-if="result.ended">{$ result.ended $}</p>
+                        <p class="ng-binding u-no-padding--top" data-ng-if="!result.ended">&nbsp;</p>
                     </div>
                 </div>
                 <div class="p-form__group">
@@ -75,8 +75,8 @@
                         <strong>Runtime</strong>
                     </div>
                     <div class="p-form__control">
-                        <p class="ng-binding" data-ng-if="result.runtime">{$ result.runtime $}</p>
-                        <p class="ng-binding" data-ng-if="!result.runtime">&nbsp;</p>
+                        <p class="ng-binding u-no-padding--top" data-ng-if="result.runtime">{$ result.runtime $}</p>
+                        <p class="ng-binding u-no-padding--top" data-ng-if="!result.runtime">&nbsp;</p>
                     </div>
                 </div1>
             </div>
@@ -84,8 +84,8 @@
         <p class="col-12" data-ng-if="result.results.length !== 0">
             <h2 class="p-heading--four">Metrics</h2>
             <div class="col-6 row u-equal-height u-margin--none p-tooltip p-tooltip--top-center" data-ng-repeat="item in result.results">
-                <strong class="col-3 tooltip">{$ item.title $}</strong>
-                <span class="col-3 last-col">{$ item.value $}</span>
+                <strong class="col-2 tooltip">{$ item.title $}</strong>
+                <span class="col-4 last-col">{$ item.value $}</span>
                 <span class="p-tooltip__message" role="tooltip">{$ item.description $}</span>
             </div>
         </p>
