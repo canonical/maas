@@ -5,7 +5,7 @@
 </header>
 <div>
   <ul class="p-list">
-    <li class="p-list__item" data-ng-repeat="gs in node.grouped_storages">
+    <li class="p-list__item u-no-margin--top" data-ng-repeat="gs in node.grouped_storages">
       <span data-ng-if="gs.count > 0">{$ gs.count $}x{$ (gs.size / 1000 / 1000 / 1000).toFixed(0) $}GB ({$ gs.disk_type $})</span>
     </li>
   </ul>

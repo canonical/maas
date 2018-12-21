@@ -7,11 +7,11 @@
   <div data-ng-repeat="test_result in testing_results">
     <div data-ng-if="test_result.hardware_type === 1">
       <div data-ng-repeat="result in test_result.results['null']">
-        <div data-ng-if="(result.results | json) != '{}'">
-          <div data-ng-repeat="final_result in result.results" data-ng-if="final_result.surfaced">
-            <p>{$ final_result.title $}: {$ final_result.value $}</p>
-          </div>
-        </div>
+        <ul class="p-list" data-ng-if="(result.results | json) != '{}'">
+          <li class="p-list__item u-no-margin--top" data-ng-repeat="final_result in result.results" data-ng-if="final_result.surfaced">
+            {$ final_result.title $}: {$ final_result.value $}
+          </li>
+        </ul>
       </div>
     </div>
   </div>
