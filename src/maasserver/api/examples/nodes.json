@@ -5223,5 +5223,8 @@
     "system_id": "thr3am",
     "type": "physical",
     "resource_uri": "/MAAS/api/2.0/nodes/thr3am/interfaces/37/"
+  },
+  "raids-placeholder": {
+    "message": "Information about this object is not available at this time."
   }
 }
