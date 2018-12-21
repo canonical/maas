@@ -379,12 +379,12 @@ angular.module('MAAS').controller('AddHardwareController', [
 
         // Called by the parent scope when this controller is viewable.
         $scope.show = function(mode) {
+            $scope.mode = mode;
+
             // Exit early if already viewable.
             if($scope.viewable) {
                 return;
             }
-
-            $scope.mode = mode;
 
             var loadedItems = false, loadedManagers = false;
             var defer = $q.defer();
