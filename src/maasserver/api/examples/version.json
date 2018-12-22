@@ -1,0 +1,17 @@
+{
+  "version": {
+    "capabilities": [
+      "networks-management",
+      "static-ipaddresses",
+      "ipv6-deployment-ubuntu",
+      "devices-management",
+      "storage-deployment-ubuntu",
+      "network-deployment-ubuntu",
+      "bridging-interface-ubuntu",
+      "bridging-automatic-ubuntu",
+      "authenticate-api"
+    ],
+    "version": "2.5.0 from source",
+    "subversion": "git+2f25a2cc0930c0e411106f119bc455c161d75b1a"
+  }
+}

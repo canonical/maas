@@ -76,12 +76,21 @@ class MaasHandler(OperationsHandler):
     @admin_method
     @operation(idempotent=False)
     def set_config(self, request):
-        """Set a config value.
+        """@description-title Set a configuration value
+        @description Set a configuration value.
 
-        :param name: The name of the config item to be set.
-        :param value: The value of the config item to be set.
+        @param (string) "value" [required=false] The value of the configuration
+        item to be set.
+
+        @param (string) "name" [required=true,formatting=true] The name of the
+        configuration item to be set.
 
         %s
+
+        @success (http-status-code) "server-success" 200
+        @success (content) "set-success" A plain-text string
+        @success-example "set-success"
+            OK
         """
         name = get_mandatory_param(
             request.data, 'name', validators.String(min=1))
@@ -99,11 +108,19 @@ class MaasHandler(OperationsHandler):
 
     @operation(idempotent=True)
     def get_config(self, request):
-        """Get a config value.
+        """@description-title Get a configuration value
+        @description Get a configuration value.
 
-        :param name: The name of the config item to be retrieved.
+        @param (string) "name" [required=true,formatting=true] The name of the
+        configuration item to be retrieved.
 
         %s
+
+        @success (http-status-code) "server-success" 200
+        @success (content) "default_distro_series" A plain-text string
+        containing the requested value, e.g. ``default_distro_series``.
+        @success-example "default_distro_series"
+            "bionic"
         """
         name = get_mandatory_param(request.GET, 'name')
         name = rewrite_config_name(name)

@@ -1,0 +1,56 @@
+{
+  "installation-results": [
+    {
+      "created": "2018-12-20T18:26:14.285",
+      "updated": "2018-12-20T18:26:14.779",
+      "id": 241,
+      "name": "stress-ng-memory-short",
+      "script_result": 0,
+      "result_type": 2,
+      "node": {
+        "system_id": "p3nbg8"
+      },
+      "data": "d2Y5SUZFb1RUYg==",
+      "resource_uri": "/MAAS/api/2.0/commissioning-scripts/"
+    },
+    {
+      "created": "2018-12-20T18:26:14.285",
+      "updated": "2018-12-20T18:26:14.779",
+      "id": 241,
+      "name": "stress-ng-memory-short.err",
+      "script_result": 0,
+      "result_type": 2,
+      "node": {
+        "system_id": "p3nbg8"
+      },
+      "data": "RzJqWU5kakhYZQ==",
+      "resource_uri": "/MAAS/api/2.0/commissioning-scripts/"
+    },
+    {
+      "created": "2018-12-20T18:26:14.287",
+      "updated": "2018-12-20T18:26:14.778",
+      "id": 242,
+      "name": "7z",
+      "script_result": 0,
+      "result_type": 2,
+      "node": {
+        "system_id": "p3nbg8"
+      },
+      "data": "UHZCYzNxSlowVw==",
+      "resource_uri": "/MAAS/api/2.0/commissioning-scripts/"
+    },
+    {
+      "created": "2018-12-20T18:26:14.287",
+      "updated": "2018-12-20T18:26:14.778",
+      "id": 242,
+      "name": "7z.err",
+      "script_result": 0,
+      "result_type": 2,
+      "node": {
+        "system_id": "p3nbg8"
+      },
+      "data": "Q1k0bXFRek4yMA==",
+      "resource_uri": "/MAAS/api/2.0/commissioning-scripts/"
+    }
+  ]
+}

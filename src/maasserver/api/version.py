@@ -39,22 +39,19 @@ API_CAPABILITIES_LIST = [
 
 
 class VersionHandler(AnonymousOperationsHandler):
-    """Information about this MAAS instance.
-
-    This returns a JSON dictionary with information about this
-    MAAS instance::
-
-        {
-            'version': '1.8.0',
-            'subversion': 'alpha10+bzr3750',
-            'capabilities': ['capability1', 'capability2', ...]
-        }
-    """
+    """Information about this MAAS instance."""
     api_doc_section_name = "MAAS version"
     create = update = delete = None
 
     def read(self, request):
-        """Version and capabilities of this MAAS instance."""
+        """@description-title MAAS version information
+        @description Read version and capabilities of this MAAS instance.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing MAAS version
+        and capabilities information.
+        @success-example "success-json" [exkey=version] placeholder text
+        """
         version, subversion = get_maas_version_subversion()
         version_info = {
             'capabilities': API_CAPABILITIES_LIST,

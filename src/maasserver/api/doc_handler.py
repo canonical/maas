@@ -26,10 +26,11 @@ HTTP methods and parameter-passing
 ``````````````````````````````````
 
 The following HTTP methods are available for accessing the API:
- * GET (for information retrieval and queries),
- * POST (for asking the system to do things),
- * PUT (for updating objects), and
- * DELETE (for deleting objects).
+
+* GET (for information retrieval and queries),
+* POST (for asking the system to do things),
+* PUT (for updating objects), and
+* DELETE (for deleting objects).
 
 All methods except DELETE may take parameters, but they are not all passed in
 the same way.  GET parameters are passed in the URL, as is normal with a GET:

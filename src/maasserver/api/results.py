@@ -23,7 +23,7 @@ from metadataserver.models import ScriptResult
 
 
 class NodeResultsHandler(OperationsHandler):
-    """Read the collection of NodeResult in the MAAS."""
+    """Read the collection of commissioning script results."""
     api_doc_section_name = "Commissioning results"
     create = update = delete = None
 
@@ -33,18 +33,25 @@ class NodeResultsHandler(OperationsHandler):
         'node', 'data', 'resource_uri')
 
     def read(self, request):
-        """List NodeResult visible to the user, optionally filtered.
+        """@description-title Read commissioning results
+        @description Read the commissioning results per node visible to the
+        user, optionally filtered.
 
-        :param system_id: An optional list of system ids.  Only the
-            results related to the nodes with these system ids
-            will be returned.
-        :type system_id: iterable
-        :param name: An optional list of names.  Only the results
-            with the specified names will be returned.
-        :type name: iterable
-        :param result_type: An optional result_type.  Only the results
-            with the specified result_type will be returned.
-        :type name: iterable
+        @param (string) "system_id" [required=false] An optional list of system
+        ids. Only the results related to the nodes with these system ids will
+        be returned.
+
+        @param (string) "name" [required=false] An optional list of names.
+        Only the results with the specified names will be returned.
+
+        @param (string) "result_type" [required=false] An optional result_type.
+        Only the results with the specified result_type will be returned.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing a list of the
+        requested installation-result objects.
+        @success-example "success-json" [exkey=installation-results]
+        placeholder text
         """
         # Get filters from request.
         system_ids = get_optional_list(request.GET, 'system_id')
