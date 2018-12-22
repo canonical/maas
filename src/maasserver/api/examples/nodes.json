@@ -5224,6 +5224,203 @@
     "type": "physical",
     "resource_uri": "/MAAS/api/2.0/nodes/thr3am/interfaces/37/"
   },
+  "partitions-read": [
+    {
+      "id_path": "/dev/vda",
+      "size": 8000000000,
+      "block_size": 4096,
+      "tags": [
+        "rotary"
+      ],
+      "path": "/dev/disk/by-dname/vda",
+      "system_id": "ccrfnk",
+      "uuid": null,
+      "used_size": 7999586304,
+      "used_for": "MBR partitioned with 1 partition",
+      "partitions": [
+        {
+          "uuid": "95f5d47d-0abd-408b-b3f1-c3f4df152609",
+          "size": 7994343424,
+          "bootable": false,
+          "tags": [],
+          "path": "/dev/disk/by-dname/vda-part1",
+          "system_id": "ccrfnk",
+          "used_for": "ext4 formatted filesystem mounted at /",
+          "filesystem": {
+            "fstype": "ext4",
+            "label": "root",
+            "uuid": "f698b5ee-d53c-4538-86cf-ee4b23d37db6",
+            "mount_point": "/",
+            "mount_options": null
+          },
+          "id": 1,
+          "type": "partition",
+          "device_id": 1,
+          "resource_uri": "/MAAS/api/2.0/nodes/ccrfnk/blockdevices/1/partition/1"
+        }
+      ],
+      "filesystem": null,
+      "id": 1,
+      "partition_table_type": "MBR",
+      "storage_pool": "18afd485-1491-43c9-a876-7af737d03698",
+      "type": "physical",
+      "name": "vda",
+      "serial": "",
+      "available_size": 0,
+      "model": "",
+      "resource_uri": "/MAAS/api/2.0/nodes/ccrfnk/blockdevices/1/"
+    }
+  ],
+  "partitions-read-by-id": {
+    "uuid": "95f5d47d-0abd-408b-b3f1-c3f4df152609",
+    "size": 7994343424,
+    "bootable": false,
+    "tags": [],
+    "path": "/dev/disk/by-dname/vda-part1",
+    "system_id": "ccrfnk",
+    "used_for": "ext4 formatted filesystem mounted at /",
+    "filesystem": {
+      "fstype": "ext4",
+      "label": "root",
+      "uuid": "f698b5ee-d53c-4538-86cf-ee4b23d37db6",
+      "mount_point": "/",
+      "mount_options": null
+    },
+    "id": 1,
+    "type": "partition",
+    "device_id": 1,
+    "resource_uri": "/MAAS/api/2.0/nodes/ccrfnk/blockdevices/1/partition/1"
+  },
+  "partitions-format": {
+    "uuid": "95f5d47d-0abd-408b-b3f1-c3f4df152609",
+    "size": 7994343424,
+    "bootable": false,
+    "tags": [],
+    "device_id": 1,
+    "system_id": "ccrfnk",
+    "filesystem": {
+      "fstype": "ext4",
+      "label": "",
+      "uuid": "ad185012-fa9e-486d-8869-16bf297272c8",
+      "mount_point": null,
+      "mount_options": null
+    },
+    "used_for": "Unmounted ext4 formatted filesystem",
+    "type": "partition",
+    "id": 1,
+    "path": "/dev/disk/by-dname/vda-part1",
+    "resource_uri": "/MAAS/api/2.0/nodes/ccrfnk/blockdevices/1/partition/1"
+  },
+  "partitions-unformat": {
+    "uuid": "95f5d47d-0abd-408b-b3f1-c3f4df152609",
+    "size": 7994343424,
+    "bootable": false,
+    "tags": [],
+    "used_for": "Unused",
+    "filesystem": null,
+    "system_id": "ccrfnk",
+    "path": "/dev/disk/by-dname/vda-part1",
+    "type": "partition",
+    "id": 1,
+    "device_id": 1,
+    "resource_uri": "/MAAS/api/2.0/nodes/ccrfnk/blockdevices/1/partition/1"
+  },
+  "partitions-mount": {
+    "uuid": "95f5d47d-0abd-408b-b3f1-c3f4df152609",
+    "size": 7994343424,
+    "bootable": false,
+    "tags": [],
+    "device_id": 1,
+    "system_id": "ccrfnk",
+    "filesystem": {
+      "fstype": "ext4",
+      "label": "",
+      "uuid": "a73c0701-9216-40ca-857f-63c65b4e7059",
+      "mount_point": "/",
+      "mount_options": ""
+    },
+    "used_for": "ext4 formatted filesystem mounted at /",
+    "type": "partition",
+    "id": 1,
+    "path": "/dev/disk/by-dname/vda-part1",
+    "resource_uri": "/MAAS/api/2.0/nodes/ccrfnk/blockdevices/1/partition/1"
+  },
+  "partitions-unmount": {
+    "uuid": "95f5d47d-0abd-408b-b3f1-c3f4df152609",
+    "size": 7994343424,
+    "bootable": false,
+    "tags": [],
+    "device_id": 1,
+    "system_id": "ccrfnk",
+    "filesystem": {
+      "fstype": "ext4",
+      "label": "",
+      "uuid": "a73c0701-9216-40ca-857f-63c65b4e7059",
+      "mount_point": null,
+      "mount_options": null
+    },
+    "used_for": "Unmounted ext4 formatted filesystem",
+    "type": "partition",
+    "id": 1,
+    "path": "/dev/disk/by-dname/vda-part1",
+    "resource_uri": "/MAAS/api/2.0/nodes/ccrfnk/blockdevices/1/partition/1"
+  },
+  "partitions-add-tag": {
+    "uuid": "95f5d47d-0abd-408b-b3f1-c3f4df152609",
+    "size": 7994343424,
+    "bootable": false,
+    "tags": [
+      "mytag"
+    ],
+    "device_id": 1,
+    "system_id": "ccrfnk",
+    "filesystem": {
+      "fstype": "ext4",
+      "label": "",
+      "uuid": "a73c0701-9216-40ca-857f-63c65b4e7059",
+      "mount_point": null,
+      "mount_options": null
+    },
+    "used_for": "Unmounted ext4 formatted filesystem",
+    "type": "partition",
+    "id": 1,
+    "path": "/dev/disk/by-dname/vda-part1",
+    "resource_uri": "/MAAS/api/2.0/nodes/ccrfnk/blockdevices/1/partition/1"
+  },
+  "partitions-rem-tag": {
+    "uuid": "95f5d47d-0abd-408b-b3f1-c3f4df152609",
+    "size": 7994343424,
+    "bootable": false,
+    "tags": [],
+    "device_id": 1,
+    "system_id": "ccrfnk",
+    "filesystem": {
+      "fstype": "ext4",
+      "label": "",
+      "uuid": "a73c0701-9216-40ca-857f-63c65b4e7059",
+      "mount_point": null,
+      "mount_options": null
+    },
+    "used_for": "Unmounted ext4 formatted filesystem",
+    "type": "partition",
+    "id": 1,
+    "path": "/dev/disk/by-dname/vda-part1",
+    "resource_uri": "/MAAS/api/2.0/nodes/ccrfnk/blockdevices/1/partition/1"
+  },
+  "partitions-create": {
+    "uuid": "ecfa7d5b-bb76-4443-83ab-ad600c23b4de",
+    "size": 7994343424,
+    "bootable": false,
+    "tags": [],
+    "device_id": 1,
+    "system_id": "ccrfnk",
+    "filesystem": null,
+    "used_for": "Unused",
+    "type": "partition",
+    "id": 2,
+    "path": "/dev/disk/by-dname/vda-part1",
+    "resource_uri": "/MAAS/api/2.0/nodes/ccrfnk/blockdevices/1/partition/2"
+  },
   "raids-placeholder": {
     "message": "Information about this object is not available at this time."
   }

@@ -83,9 +83,24 @@ class PartitionsHandler(OperationsHandler):
             'partitions_handler', ["system_id", "device_id"])
 
     def read(self, request, system_id, device_id):
-        """List all partitions on the block device.
+        """@description-title List partitions
+        @description List partitions on a device with the given system_id and
+        device_id.
 
-        Returns 404 if the node or the block device are not found.
+        @param (string) "{system_id}" [required=true] The system_id.
+        @param (int) "{device_id}" [required=true] The block device_id.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing a list of
+        partition objects.
+        @success-example "success-json" [exkey=partitions-read]
+        placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine or device is not
+        found.
+        @error-example "not-found"
+            Not Found
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NodePermission.view)
@@ -96,15 +111,32 @@ class PartitionsHandler(OperationsHandler):
             return partition_table.partitions.all()
 
     def create(self, request, system_id, device_id):
-        """Create a partition on the block device.
+        """@description-title Create a partition
+        @description Create a partition on a block device.
 
-        :param size: The size of the partition. If not specified, all
-            available space will be used.
-        :param uuid: UUID for the partition. Only used if the partition table
-            type for the block device is GPT.
-        :param bootable: If the partition should be marked bootable.
+        @param (string) "{system_id}" [required=true] The system_id.
+        @param (int) "{device_id}" [required=true] The block device_id.
 
-        Returns 404 if the node or the block device are not found.
+        @param (int) "size" [required=false] The size of the partition. If not
+        specified, all available space will be used.
+
+        @param (string) "uuid" [required=false] UUID for the partition. Only
+        used if the partition table type for the block device is GPT.
+
+        @param (boolean) "bootable" [required=false] If the partition should be
+        marked bootable.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the new
+        partition object.
+        @success-example "success-json" [exkey=partitions-create]
+        placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine or device is not
+        found.
+        @error-example "not-found"
+            Not Found
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NodePermission.admin)
@@ -167,9 +199,25 @@ class PartitionHandler(OperationsHandler):
         return partition.partition_table.block_device.id
 
     def read(self, request, system_id, device_id, id):
-        """Read partition.
+        """@description-title Read a partition
+        @description Read the partition from machine system_id and device
+        device_id with the given partition id.
 
-        Returns 404 if the node, block device, or partition are not found.
+        @param (string) "{system_id}" [required=true] The system_id.
+        @param (int) "{device_id}" [required=true] The block device_id.
+        @param (int) "{id}" [required=true] The partition id.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the requested
+        partition object.
+        @success-example "success-json" [exkey=partitions-read]
+        placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine, device or partition
+        is not found.
+        @error-example "not-found"
+            Not Found
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NodePermission.view)
@@ -179,9 +227,21 @@ class PartitionHandler(OperationsHandler):
             id, partition_table)
 
     def delete(self, request, system_id, device_id, id):
-        """Delete partition.
+        """@description-title Delete a partition
+        @description Delete the partition from machine system_id and device
+        device_id with the given partition id.
 
-        Returns 404 if the node, block device, or partition are not found.
+        @param (string) "{system_id}" [required=true] The system_id.
+        @param (int) "{device_id}" [required=true] The block device_id.
+        @param (int) "{id}" [required=true] The partition id.
+
+        @success (http-status-code) "server-success" 204
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine, device or partition
+        is not found.
+        @error-example "not-found"
+            Not Found
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NodePermission.admin)
@@ -198,15 +258,35 @@ class PartitionHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def format(self, request, system_id, device_id, id):
-        """Format a partition.
+        """@description-title Format a partition
+        @description Format the partition on machine system_id and device
+        device_id with the given partition id.
 
-        :param fstype: Type of filesystem.
-        :param uuid: The UUID for the filesystem.
-        :param label: The label for the filesystem.
+        @param (string) "{system_id}" [required=true] The system_id.
+        @param (int) "{device_id}" [required=true] The block device_id.
+        @param (int) "{id}" [required=true] The partition id.
 
-        Returns 403 when the user doesn't have the ability to format the \
-            partition.
-        Returns 404 if the node, block device, or partition is not found.
+        @param (string) "fstype" [required=true] Type of filesystem.
+
+        @param (string) "uuid" [required=false] The UUID for the filesystem.
+
+        @param (string) "label" [required=false] The label for the filesystem.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the updated
+        partition object.
+        @success-example "success-json" [exkey=partitions-format]
+        placeholder text
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permissions to
+        format the partition.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine, device or partition
+        is not found.
+        @error-example "not-found"
+            Not Found
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NodePermission.edit)
@@ -225,7 +305,26 @@ class PartitionHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def unformat(self, request, system_id, device_id, id):
-        """Unformat a partition."""
+        """@description-title Unformat a partition
+        @description Unformat the partition on machine system_id and device
+        device_id with the given partition id.
+
+        @param (string) "{system_id}" [required=true] The system_id.
+        @param (int) "{device_id}" [required=true] The block device_id.
+        @param (int) "{id}" [required=true] The partition id.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the updated
+        partition object.
+        @success-example "success-json" [exkey=partitions-unformat]
+        placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine, device or partition
+        is not found.
+        @error-example "not-found"
+            Not Found
+        """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NodePermission.edit)
         partition_table = get_object_or_404(
@@ -253,14 +352,35 @@ class PartitionHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def mount(self, request, system_id, device_id, id):
-        """Mount the filesystem on partition.
+        """@description-title Mount a filesystem
+        @description Mount a filesystem on machine system_id, device device_id
+        and partition id.
 
-        :param mount_point: Path on the filesystem to mount.
-        :param mount_options: Options to pass to mount(8).
+        @param (string) "{system_id}" [required=true] The system_id.
+        @param (int) "{device_id}" [required=true] The block device_id.
+        @param (int) "{id}" [required=true] The partition id.
 
-        Returns 403 when the user doesn't have the ability to mount the \
-            partition.
-        Returns 404 if the node, block device, or partition is not found.
+        @param (string) "mount_point" [required=true] Path on the filesystem to
+        mount.
+
+        @param (string) "mount_options" [required=false] Options to pass to
+        mount(8).
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the updated
+        partition object.
+        @success-example "success-json" [exkey=partitions-mount] placeholder
+        text
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permissions to mount
+        the filesystem.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine, device or partition
+        is not found.
+        @error-example "not-found"
+            Not Found
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NodePermission.edit)
@@ -280,13 +400,33 @@ class PartitionHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def unmount(self, request, system_id, device_id, id):
-        """Unmount the filesystem on partition.
+        """@description-title Unmount a filesystem
+        @description Unmount a filesystem on machine system_id, device
+        device_id and partition id.
 
-        Returns 400 if the partition is not formatted or not currently \
-            mounted.
-        Returns 403 when the user doesn't have the ability to unmount the \
-            partition.
-        Returns 404 if the node, block device, or partition is not found.
+        @param (string) "{system_id}" [required=true] The system_id.
+        @param (int) "{device_id}" [required=true] The block device_id.
+        @param (int) "{id}" [required=true] The partition id.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the updated
+        partition object.
+        @success-example "success-json" [exkey=partitions-unmount] placeholder
+        text
+
+        @error (http-status-code) "400" 400
+        @error (content) "part-prob" The partition is not formatted or not
+        currently mounted.
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permissions to
+        unmount the filesystem.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine, device or partition
+        is not found.
+        @error-example "not-found"
+            Not Found
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NodePermission.edit)
@@ -309,12 +449,31 @@ class PartitionHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def add_tag(self, request, system_id, device_id, id):
-        """Add a tag to partition.
+        """@description-title Add a tag
+        @description Add a tag to a partition on machine system_id, device
+        device_id and partition id.
 
-        :param tag: The tag being added.
+        @param (string) "{system_id}" [required=true] The system_id.
+        @param (int) "{device_id}" [required=true] The block device_id.
+        @param (int) "{id}" [required=true] The partition id.
 
-        Returns 403 when the user doesn't have the ability to add tag.
-        Returns 404 if the node, block device, or partition is not found.
+        @param (string) "tag" [required=true] The tag being added.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the updated
+        partition object.
+        @success-example "success-json" [exkey=partitions-add-tag] placeholder
+        text
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permissions to
+        add a tag.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine, device or partition
+        is not found.
+        @error-example "not-found"
+            Not Found
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NodePermission.admin)
@@ -328,12 +487,31 @@ class PartitionHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def remove_tag(self, request, system_id, device_id, id):
-        """Remove a tag from partition.
+        """@description-title Remove a tag
+        @description Remove a tag from a partition on machine system_id, device
+        device_id and partition id.
 
-        :param tag: The tag being removed.
+        @param (string) "{system_id}" [required=true] The system_id.
+        @param (int) "{device_id}" [required=true] The block device_id.
+        @param (int) "{id}" [required=true] The partition id.
 
-        Returns 403 when the user doesn't have the ability to add tag.
-        Returns 404 if the node, block device, or partition is not found.
+        @param (string) "tag" [required=true] The tag being removed.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the updated
+        partition object.
+        @success-example "success-json" [exkey=partitions-rem-tag] placeholder
+        text
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permissions to
+        remove a tag.
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine, device or partition
+        is not found.
+        @error-example "not-found"
+            Not Found
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NodePermission.admin)
