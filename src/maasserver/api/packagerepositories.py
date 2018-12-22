@@ -35,9 +35,10 @@ DISPLAYED_PACKAGE_REPOSITORY_FIELDS = (
 
 
 class PackageRepositoryHandler(OperationsHandler):
-    """Manage an individual Package Repository.
+    """
+    Manage an individual package repository.
 
-    The Package Repository is identified by its id.
+    A package repository is identified by its id.
     """
     api_doc_section_name = "Package Repository"
     create = None
@@ -54,44 +55,74 @@ class PackageRepositoryHandler(OperationsHandler):
         return ('package_repository_handler', (package_repository_id,))
 
     def read(self, request, id):
-        """Read Package Repository.
+        """@description-title Read a package repository
+        @description Read a package repository with the given id.
 
-        Returns 404 if the repository is not found.
+        @param (int) "{id}" [required=true] A package repository id.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing information
+        about the requested package repository.
+        @success-example "success-json" [exkey=pkg-repos-read-by-id]
+        placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested package repository is not
+        found.
+        @error-example "not-found"
+            Not Found
         """
         return PackageRepository.objects.get_object_or_404(id)
 
     @admin_method
     def update(self, request, id):
-        """Update a Package Repository.
+        """@description-title Update a package repository
+        @description Update the package repository with the given id.
 
-        :param name: The name of the Package Repository.
-        :type name: unicode
+        @param (int) "{id}" [required=true] A package repository id.
 
-        :param url: The url of the Package Repository.
-        :type url: unicode
+        @param (string) "name" [required=false] The name of the package
+        repository.
 
-        :param distributions: Which package distributions to include.
-        :type distributions: unicode
+        @param (string) "url" [required=false] The url of the package
+        repository.
 
-        :param disabled_pockets: The list of pockets to disable.
+        @param (string) "distributions" [required=false] Which package
+        distributions to include.
 
-        :param disabled_components: The list of components to disable. Only
-            applicable to the default Ubuntu repositories.
+        @param (string) "disabled_pockets" [required=false] The list of pockets
+        to disable.
 
-        :param disable_sources: Disable deb-src lines.
+        @param (string) "disabled_components" [required=false] The list of
+        components to disable. Only applicable to the default Ubuntu
+        repositories.
 
-        :param components: The list of components to enable. Only applicable
-            to custom repositories.
+        @param (string) "disable_sources" [required=false] Disable deb-src
+        lines.
 
-        :param arches: The list of supported architectures.
+        @param (string) "components" [required=false] The list of components to
+        enable. Only applicable to custom repositories.
 
-        :param key: The authentication key to use with the repository.
-        :type key: unicode
+        @param (string) "arches" [required=false] The list of supported
+        architectures.
 
-        :param enabled: Whether or not the repository is enabled.
-        :type enabled: boolean
+        @param (string) "key" [required=false] The authentication key to use
+        with the repository.
 
-        Returns 404 if the Package Repository is not found.
+        @param (boolean) "enabled" [required=false] Whether or not the
+        repository is enabled.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing information
+        about the updated package repository.
+        @success-example "success-json" [exkey=pkg-repos-update] placeholder
+        text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested package repository is not
+        found.
+        @error-example "not-found"
+            Not Found
         """
         package_repository = PackageRepository.objects.get_object_or_404(id)
         form = PackageRepositoryForm(
@@ -103,9 +134,18 @@ class PackageRepositoryHandler(OperationsHandler):
 
     @admin_method
     def delete(self, request, id):
-        """Delete a Package Repository.
+        """@description-title Delete a package repository
+        @description Delete a package repository with the given id.
 
-        Returns 404 if the Package Repository is not found.
+        @param (int) "{id}" [required=true] A package repository id.
+
+        @success (http-status-code) "server-success" 204
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested package repository is not
+        found.
+        @error-example "not-found"
+            Not Found
         """
         package_repository = PackageRepository.objects.get_object_or_404(id)
         package_repository.delete()
@@ -125,37 +165,55 @@ class PackageRepositoriesHandler(OperationsHandler):
         return ('package_repositories_handler', [])
 
     def read(self, request):
-        """List all Package Repositories."""
+        """@description-title List package repositories
+        @description List all available package repositories.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing information
+        about the updated package repository.
+        @success-example "success-json" [exkey=pkg-repos-update] placeholder
+        text
+        """
         return PackageRepository.objects.all()
 
     @admin_method
     def create(Self, request):
-        """Create a Package Repository.
+        """@description-title Create a package repository
+        @description Create a new package repository.
 
-        :param name: The name of the Package Repository.
-        :type name: unicode
+        @param (string) "name" [required=true] The name of the package
+        repository.
 
-        :param url: The url of the Package Repository.
-        :type url: unicode
+        @param (string) "url" [required=true] The url of the package
+        repository.
 
-        :param distributions: Which package distributions to include.
-        :type distributions: unicode
+        @param (string) "distributions" [required=false] Which package
+        distributions to include.
 
-        :param disabled_pockets: The list of pockets to disable.
+        @param (string) "disabled_pockets" [required=false] The list of pockets
+        to disable.
 
-        :param disabled_components: The list of components to disable. Only
-            applicable to the default Ubuntu repositories.
+        @param (string) "disabled_components" [required=false] The list of
+        components to disable. Only applicable to the default Ubuntu
+        repositories.
 
-        :param components: The list of components to enable. Only applicable
-            to custom repositories.
+        @param (string) "components" [required=false] The list of components to
+        enable. Only applicable to custom repositories.
 
-        :param arches: The list of supported architectures.
+        @param (string) "arches" [required=false] The list of supported
+        architectures.
 
-        :param key: The authentication key to use with the repository.
-        :type key: unicode
+        @param (string) "key" [required=false] The authentication key to use
+        with the repository.
 
-        :param enabled: Whether or not the repository is enabled.
-        :type enabled: boolean
+        @param (boolean) "enabled" [required=false] Whether or not the
+        repository is enabled.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing information
+        about the new package repository.
+        @success-example "success-json" [exkey=pkg-repos-update] placeholder
+        text
         """
         form = PackageRepositoryForm(data=request.data)
         if form.is_valid():

@@ -1,0 +1,95 @@
+{
+  "pkg-repos-read": [
+    {
+      "name": "main_archive",
+      "url": "http://archive.ubuntu.com/ubuntu",
+      "distributions": [],
+      "disabled_pockets": [],
+      "disabled_components": [],
+      "disable_sources": true,
+      "components": [],
+      "arches": [
+        "amd64",
+        "i386"
+      ],
+      "key": "",
+      "enabled": true,
+      "id": 1,
+      "resource_uri": "/MAAS/api/2.0/package-repositories/1/"
+    },
+    {
+      "name": "ports_archive",
+      "url": "http://ports.ubuntu.com/ubuntu-ports",
+      "distributions": [],
+      "disabled_pockets": [],
+      "disabled_components": [],
+      "disable_sources": true,
+      "components": [],
+      "arches": [
+        "armhf",
+        "arm64",
+        "ppc64el",
+        "s390x"
+      ],
+      "key": "",
+      "enabled": true,
+      "id": 2,
+      "resource_uri": "/MAAS/api/2.0/package-repositories/2/"
+    }
+  ],
+  "pkg-repos-read-by-id": {
+    "name": "ports_archive",
+    "url": "http://ports.ubuntu.com/ubuntu-ports",
+    "distributions": [],
+    "disabled_pockets": [],
+    "disabled_components": [],
+    "disable_sources": true,
+    "components": [],
+    "arches": [
+      "armhf",
+      "arm64",
+      "ppc64el",
+      "s390x"
+    ],
+    "key": "",
+    "enabled": true,
+    "id": 2,
+    "resource_uri": "/MAAS/api/2.0/package-repositories/2/"
+  },
+  "pkg-repos-update": {
+    "name": "ports_archive",
+    "url": "http://ports.ubuntu.com/ubuntu-ports",
+    "distributions": [],
+    "disabled_pockets": [],
+    "disabled_components": [],
+    "disable_sources": true,
+    "components": [],
+    "arches": [
+      "armhf",
+      "arm64",
+      "ppc64el",
+      "s390x"
+    ],
+    "key": "",
+    "enabled": true,
+    "id": 2,
+    "resource_uri": "/MAAS/api/2.0/package-repositories/2/"
+  },
+  "pkg-repos-create": {
+    "name": "new_repo",
+    "url": "http://ports.ubuntu.com/ubuntu-ports-2",
+    "distributions": [],
+    "disabled_pockets": [],
+    "disabled_components": [],
+    "disable_sources": false,
+    "components": [],
+    "arches": [
+      "amd64",
+      "i386"
+    ],
+    "key": "",
+    "enabled": true,
+    "id": 3,
+    "resource_uri": "/MAAS/api/2.0/package-repositories/3/"
+  }
+}
