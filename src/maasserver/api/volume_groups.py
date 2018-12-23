@@ -56,24 +56,62 @@ class VolumeGroupsHandler(OperationsHandler):
         return ('volume_groups_handler', ["system_id"])
 
     def read(self, request, system_id):
-        """List all volume groups belonging to a machine.
+        """@description-title List all volume groups
+        @description List all volume groups belonging to a machine with the
+        given system_id.
 
-        Returns 404 if the machine is not found.
+        @param (string) "{system_id}" [required=true] The machine system_id
+        containing the volume groups.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing a list of
+        volume-group objects.
+        @success-example "success-json" [exkey=vol-groups-read] placeholder
+        text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine is not found.
+        @error-example "not-found"
+            Not Found
         """
         machine = Machine.objects.get_node_or_404(
             system_id, request.user, NodePermission.view)
         return VolumeGroup.objects.filter_by_node(machine)
 
     def create(self, request, system_id):
-        """Create a volume group belonging to machine.
+        """@description-title Create a volume group
+        @description Create a volume group belonging to a machine with the
+        given system_id.
 
-        :param name: Name of the volume group.
-        :param uuid: (optional) UUID of the volume group.
-        :param block_devices: Block devices to add to the volume group.
-        :param partitions: Partitions to add to the volume group.
+        Note that at least one valid block device or partition is required.
 
-        Returns 404 if the machine is not found.
-        Returns 409 if the machine is not Ready.
+        @param (string) "{system_id}" [required=true] The machine system_id on
+        which to create the volume group.
+
+        @param (string) "name" [required=true] Name of the volume group.
+
+        @param (string) "uuid" [required=false] (optional) UUID of the volume
+        group.
+
+        @param (string) "block_devices" [required=false] Block devices to add
+        to the volume group.
+
+        @param (string) "partitions" [required=false] Partitions to add to the
+        volume group.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the new volume
+        group.
+        @success-example "success-json" [exkey=vol-groups-create] placeholder
+        text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine is not found.
+        @error-example "not-found"
+            Not Found
+
+        @error (http-status-code) "409" 409
+        @error (content) "not-ready" The requested machine is not ready.
         """
         machine = Machine.objects.get_node_or_404(
             system_id, request.user, NodePermission.admin)
@@ -150,26 +188,66 @@ class VolumeGroupHandler(OperationsHandler):
         ]
 
     def read(self, request, system_id, id):
-        """Read volume group on a machine.
+        """@description-title Read a volume group
+        @description Read a volume group with the given id on the machine with
+        the given system_id.
 
-        Returns 404 if the machine or volume group is not found.
+        @param (string) "{system_id}" [required=true] The machine system_id on
+        which to create the volume group.
+        @param (int) "{id}" [required=true] The id of the volume group.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the requested
+        volume group.
+        @success-example "success-json" [exkey=vol-groups-read-by-id]
+        placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine is not found.
+        @error-example "not-found"
+            Not Found
         """
         return VolumeGroup.objects.get_object_or_404(
             system_id, id, request.user, NodePermission.view)
 
     def update(self, request, system_id, id):
-        """Read volume group on a machine.
+        """@description-title Update a volume group
+        @description Update a volume group with the given id on the machine
+        with the given system_id.
 
-        :param name: Name of the volume group.
-        :param uuid: UUID of the volume group.
-        :param add_block_devices: Block devices to add to the volume group.
-        :param remove_block_devices: Block devices to remove from the
-            volume group.
-        :param add_partitions: Partitions to add to the volume group.
-        :param remove_partitions: Partitions to remove from the volume group.
+        @param (string) "{system_id}" [required=true] The machine system_id
+        containing the volume group.
+        @param (int) "{id}" [required=true] The id of the volume group.
 
-        Returns 404 if the machine or volume group is not found.
-        Returns 409 if the machine is not Ready.
+        @param (string) "name" [required=false] Name of the volume group.
+
+        @param (string) "uuid" [required=false] UUID of the volume group.
+
+        @param (string) "add_block_devices" [required=false] Block devices to
+        add to the volume group.
+
+        @param (string) "remove_block_devices" [required=false] Block devices
+        to remove from the volume group.
+
+        @param (string) "add_partitions" [required=false] Partitions to add to
+        the volume group.
+
+        @param (string) "remove_partitions" [required=false] Partitions to
+        remove from the volume group.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the requested
+        volume group.
+        @success-example "success-json" [exkey=vol-groups-update]
+        placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine is not found.
+        @error-example "not-found"
+            Not Found
+
+        @error (http-status-code) "409" 409
+        @error (content) "not-ready" The requested machine is not ready.
         """
         volume_group = VolumeGroup.objects.get_object_or_404(
             system_id, id, request.user, NodePermission.admin)
@@ -184,10 +262,23 @@ class VolumeGroupHandler(OperationsHandler):
             return form.save()
 
     def delete(self, request, system_id, id):
-        """Delete volume group on a machine.
+        """@description-title Delete volume group
+        @description Delete a volume group with the given id from the machine
+        with the given system_id.
 
-        Returns 404 if the machine or volume group is not found.
-        Returns 409 if the machine is not Ready.
+        @param (string) "{system_id}" [required=true] The machine system_id
+        containing the volume group.
+        @param (int) "{id}" [required=true] The id of the volume group.
+
+        @success (http-status-code) "server-success" 204
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine is not found.
+        @error-example "not-found"
+            Not Found
+
+        @error (http-status-code) "409" 409
+        @error (content) "not-ready" The requested machine is not ready.
         """
         volume_group = VolumeGroup.objects.get_object_or_404(
             system_id, id, request.user, NodePermission.admin)
@@ -200,14 +291,35 @@ class VolumeGroupHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def create_logical_volume(self, request, system_id, id):
-        """Create a logical volume in the volume group.
+        """@description-title Create a logical volume
+        @description Create a logical volume in the volume group with the given
+        id on the machine with the given system_id.
 
-        :param name: Name of the logical volume.
-        :param uuid: (optional) UUID of the logical volume.
-        :param size: Size of the logical volume.
+        @param (string) "{system_id}" [required=true] The machine system_id
+        containing the volume group.
+        @param (int) "{id}" [required=true] The id of the volume group.
 
-        Returns 404 if the machine or volume group is not found.
-        Returns 409 if the machine is not Ready.
+        @param (string) "name" [required=true] Name of the logical volume.
+
+        @param (string) "uuid" [required=false] (optional) UUID of the logical
+        volume.
+
+        @param (string) "size" [required=true] Size of the logical volume. Must
+        be larger than or equal to 4,194,304 bytes. E.g. ``4194304``.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the requested
+        volume group.
+        @success-example "success-json" [exkey=vol-groups-create-log-vol]
+        placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine is not found.
+        @error-example "not-found"
+            Not Found
+
+        @error (http-status-code) "409" 409
+        @error (content) "not-ready" The requested machine is not ready.
         """
         volume_group = VolumeGroup.objects.get_object_or_404(
             system_id, id, request.user, NodePermission.admin)
@@ -224,13 +336,28 @@ class VolumeGroupHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def delete_logical_volume(self, request, system_id, id):
-        """Delete a logical volume in the volume group.
+        """@description-title Delete a logical volume
+        @description Delete a logical volume in the volume group with the given
+        id on the machine with the given system_id.
 
-        :param id: ID of the logical volume.
+        Note: this operation returns HTTP status code 204 even if the logical
+        volume id does not exist.
 
-        Returns 403 if no logical volume with id.
-        Returns 404 if the machine or volume group is not found.
-        Returns 409 if the machine is not Ready.
+        @param (string) "{system_id}" [required=true] The machine system_id
+        containing the volume group.
+        @param (int) "{id}" [required=true] The id of the volume group.
+
+        @param (int) "id" [required=true] The logical volume id.
+
+        @success (http-status-code) "server-success" 204
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine is not found.
+        @error-example "not-found"
+            Not Found
+
+        @error (http-status-code) "409" 409
+        @error (content) "not-ready" The requested machine is not ready.
         """
         volume_group = VolumeGroup.objects.get_object_or_404(
             system_id, id, request.user, NodePermission.admin)

@@ -5224,6 +5224,162 @@
     "type": "physical",
     "resource_uri": "/MAAS/api/2.0/nodes/thr3am/interfaces/37/"
   },
+  "vol-groups-read": [
+    {
+      "logical_volumes": [],
+      "system_id": "ccrfnk",
+      "human_size": "8.0 GB",
+      "human_used_size": "0 bytes",
+      "uuid": "36f9585d-3ae0-429c-abb7-9d584bc6f941",
+      "human_available_size": "8.0 GB",
+      "used_size": 0,
+      "name": "my_volume_group",
+      "size": 7990149120,
+      "devices": [
+        {
+          "uuid": "ecfa7d5b-bb76-4443-83ab-ad600c23b4de",
+          "size": 7994343424,
+          "bootable": false,
+          "tags": [],
+          "system_id": "ccrfnk",
+          "filesystem": {
+            "fstype": "lvm-pv",
+            "label": null,
+            "uuid": "cad18fde-2fc7-4aa5-a15b-739f88c3b671",
+            "mount_point": null,
+            "mount_options": null
+          },
+          "used_for": "LVM volume for my_volume_group",
+          "type": "partition",
+          "path": "/dev/disk/by-dname/vda-part1",
+          "id": 2,
+          "device_id": 1,
+          "resource_uri": "/MAAS/api/2.0/nodes/ccrfnk/blockdevices/1/partition/2"
+        }
+      ],
+      "available_size": 7990149120,
+      "id": 1,
+      "resource_uri": "/MAAS/api/2.0/nodes/ccrfnk/volume-group/1/"
+    }
+  ],
+  "vol-groups-create": {
+    "available_size": 7990149120,
+    "size": 7990149120,
+    "human_used_size": "0 bytes",
+    "devices": [
+      {
+        "uuid": "ecfa7d5b-bb76-4443-83ab-ad600c23b4de",
+        "size": 7994343424,
+        "bootable": false,
+        "tags": [],
+        "used_for": "LVM volume for my_volume_group",
+        "device_id": 1,
+        "path": "/dev/disk/by-dname/vda-part1",
+        "id": 2,
+        "filesystem": {
+          "fstype": "lvm-pv",
+          "label": null,
+          "uuid": "cad18fde-2fc7-4aa5-a15b-739f88c3b671",
+          "mount_point": null,
+          "mount_options": null
+        },
+        "type": "partition",
+        "system_id": "ccrfnk",
+        "resource_uri": "/MAAS/api/2.0/nodes/ccrfnk/blockdevices/1/partition/2"
+      }
+    ],
+    "logical_volumes": [],
+    "id": 1,
+    "used_size": 0,
+    "human_size": "8.0 GB",
+    "human_available_size": "8.0 GB",
+    "system_id": "ccrfnk",
+    "uuid": "36f9585d-3ae0-429c-abb7-9d584bc6f941",
+    "name": "my_volume_group",
+    "resource_uri": "/MAAS/api/2.0/nodes/ccrfnk/volume-group/1/"
+  },
+  "vol-groups-read-by-id": {
+    "human_used_size": "0 bytes",
+    "uuid": "36f9585d-3ae0-429c-abb7-9d584bc6f941",
+    "human_available_size": "8.0 GB",
+    "system_id": "ccrfnk",
+    "id": 1,
+    "logical_volumes": [],
+    "size": 7990149120,
+    "devices": [
+      {
+        "uuid": "ecfa7d5b-bb76-4443-83ab-ad600c23b4de",
+        "size": 7994343424,
+        "bootable": false,
+        "tags": [],
+        "system_id": "ccrfnk",
+        "id": 2,
+        "used_for": "LVM volume for my_volume_group",
+        "type": "partition",
+        "path": "/dev/disk/by-dname/vda-part1",
+        "device_id": 1,
+        "filesystem": {
+          "fstype": "lvm-pv",
+          "label": null,
+          "uuid": "cad18fde-2fc7-4aa5-a15b-739f88c3b671",
+          "mount_point": null,
+          "mount_options": null
+        },
+        "resource_uri": "/MAAS/api/2.0/nodes/ccrfnk/blockdevices/1/partition/2"
+      }
+    ],
+    "available_size": 7990149120,
+    "used_size": 0,
+    "human_size": "8.0 GB",
+    "name": "my_volume_group",
+    "resource_uri": "/MAAS/api/2.0/nodes/ccrfnk/volume-group/1/"
+  },
+  "vol-groups-update": {
+    "human_used_size": "0 bytes",
+    "uuid": "36f9585d-3ae0-429c-abb7-9d584bc6f941",
+    "human_available_size": "8.0 GB",
+    "system_id": "ccrfnk",
+    "id": 1,
+    "logical_volumes": [],
+    "size": 7990149120,
+    "devices": [
+      {
+        "uuid": "ecfa7d5b-bb76-4443-83ab-ad600c23b4de",
+        "size": 7994343424,
+        "bootable": false,
+        "tags": [],
+        "system_id": "ccrfnk",
+        "id": 2,
+        "used_for": "LVM volume for my_volume_group",
+        "type": "partition",
+        "path": "/dev/disk/by-dname/vda-part1",
+        "device_id": 1,
+        "filesystem": {
+          "fstype": "lvm-pv",
+          "label": null,
+          "uuid": "cad18fde-2fc7-4aa5-a15b-739f88c3b671",
+          "mount_point": null,
+          "mount_options": null
+        },
+        "resource_uri": "/MAAS/api/2.0/nodes/ccrfnk/blockdevices/1/partition/2"
+      }
+    ],
+    "available_size": 7990149120,
+    "used_size": 0,
+    "human_size": "8.0 GB",
+    "name": "my_volume_group",
+    "resource_uri": "/MAAS/api/2.0/nodes/ccrfnk/volume-group/1/"
+  },
+  "vol-groups-create-log-vol": {
+    "system_id": "ccrfnk",
+    "uuid": "5b805aa2-3614-4b70-b99c-9c3ff65df4c3",
+    "used_size": 0,
+    "name": "my_volume_group-my_logical_volume",
+    "size": 4194304,
+    "available_size": 4194304,
+    "id": 2,
+    "resource_uri": "/MAAS/api/2.0/nodes/ccrfnk/blockdevices/2/"
+  },
   "partitions-read": [
     {
       "id_path": "/dev/vda",
