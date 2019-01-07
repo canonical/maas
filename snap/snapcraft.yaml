@@ -140,7 +140,7 @@ parts:
       '*': usr/share/maas/web/static/
   snap:
     plugin: dump
-    source: snap/local
+    source: snap-data
     organize:
       bind: usr/share/maas/bind
       conf/chrony.conf: usr/share/maas/chrony.conf
