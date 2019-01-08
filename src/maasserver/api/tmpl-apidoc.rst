@@ -39,7 +39,11 @@ THERE ARE PROBLEMS WITH THE DOCSTRING:
 {{for p in params}}
 {{py:
 options_dict = p['options']
-required = 'Required.' if options_dict['required'] == "true" else 'Optional.'
+
+required = "Optional."
+if 'required' in options_dict and options_dict['required'] == "true":
+    required = "Required."
+
 format = False
 if 'formatting' in options_dict and options_dict['formatting'] == 'true':
     format = True
