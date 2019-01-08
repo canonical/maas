@@ -18,6 +18,7 @@ from maasserver.enum import (
     IPADDRESS_FAMILY,
     IPADDRESS_TYPE,
 )
+from maasserver.models import Domain
 from maasserver.preseed_network import (
     compose_curtin_network_config,
     NodeNetworkConfiguration,
@@ -512,7 +513,8 @@ class TestNetplan(MAASServerTestCase):
             node=node, name='eth1', mac_address="02:01:02:03:04:05")
         factory.make_Interface(
             INTERFACE_TYPE.BOND,
-            node=node, name='bond0', parents=[eth0, eth1])
+            node=node, name='bond0', parents=[eth0, eth1],
+            mac_address=eth0.mac_address)
         netplan = self._render_netplan_dict(node)
         expected_netplan = {
             'network': {
@@ -532,7 +534,8 @@ class TestNetplan(MAASServerTestCase):
                 'bonds': {
                     'bond0': {
                         'interfaces': ['eth0', 'eth1'],
-                        'mtu': 1500
+                        'mtu': 1500,
+                        'macaddress': '00:01:02:03:04:05'
                     },
                 },
             }
@@ -547,7 +550,9 @@ class TestNetplan(MAASServerTestCase):
             node=node, name='eth1', mac_address="02:01:02:03:04:05")
         factory.make_Interface(
             INTERFACE_TYPE.BOND,
-            node=node, name='bond0', parents=[eth0, eth1], params={
+            node=node, name='bond0', parents=[eth0, eth1],
+            mac_address="03:01:02:03:04:05",
+            params={
                 "bond_mode": "active-backup",
                 "bond_lacp_rate": "fast",
                 "bond_xmit_hash_policy": "layer2",
@@ -578,6 +583,7 @@ class TestNetplan(MAASServerTestCase):
                             "transmit-hash-policy": "layer2",
                             "gratuitous-arp": 3,
                         },
+                        'macaddress': '03:01:02:03:04:05'
                     },
                 },
             }
@@ -592,7 +598,9 @@ class TestNetplan(MAASServerTestCase):
             node=node, name='eth1', mac_address="02:01:02:03:04:05")
         factory.make_Interface(
             INTERFACE_TYPE.BOND,
-            node=node, name='bond0', parents=[eth0, eth1], params={
+            node=node, name='bond0', parents=[eth0, eth1],
+            mac_address="03:01:02:03:04:05",
+            params={
                 "bond_mode": "802.3ad",
                 "bond_lacp_rate": "fast",
                 "bond_xmit_hash_policy": "layer2",
@@ -623,6 +631,7 @@ class TestNetplan(MAASServerTestCase):
                             "lacp-rate": "fast",
                             "transmit-hash-policy": "layer2",
                         },
+                        'macaddress': '03:01:02:03:04:05'
                     },
                 },
             }
@@ -635,7 +644,7 @@ class TestNetplan(MAASServerTestCase):
             node=node, name='eth0', mac_address="00:01:02:03:04:05")
         eth1 = factory.make_Interface(
             node=node, name='eth1', mac_address="02:01:02:03:04:05")
-        factory.make_Interface(
+        bond0 = factory.make_Interface(
             INTERFACE_TYPE.BOND,
             node=node, name='bond0', parents=[eth0, eth1], params={
                 "bond_mode": "active-backup",
@@ -663,6 +672,7 @@ class TestNetplan(MAASServerTestCase):
                     'bond0': {
                         'interfaces': ['eth0', 'eth1'],
                         'mtu': 1500,
+                        'macaddress': bond0.mac_address,
                         'parameters': {
                             "mode": "active-backup",
                             "transmit-hash-policy": "layer2",
@@ -680,7 +690,7 @@ class TestNetplan(MAASServerTestCase):
             node=node, name='eth0', mac_address="00:01:02:03:04:05")
         eth1 = factory.make_Interface(
             node=node, name='eth1', mac_address="02:01:02:03:04:05")
-        factory.make_Interface(
+        br0 = factory.make_Interface(
             INTERFACE_TYPE.BRIDGE,
             node=node, name='br0', parents=[eth0, eth1])
         netplan = self._render_netplan_dict(node)
@@ -702,7 +712,8 @@ class TestNetplan(MAASServerTestCase):
                 'bridges': {
                     'br0': {
                         'interfaces': ['eth0', 'eth1'],
-                        'mtu': 1500
+                        'mtu': 1500,
+                        'macaddress': br0.mac_address
                     },
                 },
             }
@@ -715,7 +726,7 @@ class TestNetplan(MAASServerTestCase):
             node=node, name='eth0', mac_address="00:01:02:03:04:05")
         eth1 = factory.make_Interface(
             node=node, name='eth1', mac_address="02:01:02:03:04:05")
-        factory.make_Interface(
+        br0 = factory.make_Interface(
             INTERFACE_TYPE.BRIDGE,
             node=node, name='br0', parents=[eth0, eth1], params={
                 "bridge_stp": False,
@@ -741,6 +752,7 @@ class TestNetplan(MAASServerTestCase):
                     'br0': {
                         'interfaces': ['eth0', 'eth1'],
                         'mtu': 1500,
+                        'macaddress': br0.mac_address,
                         'parameters': {
                             'forward-delay': 15,
                             'stp': False,
@@ -760,7 +772,7 @@ class TestNetplan(MAASServerTestCase):
         bond0 = factory.make_Interface(
             INTERFACE_TYPE.BOND,
             node=node, name='bond0', parents=[eth0, eth1])
-        factory.make_Interface(
+        br0 = factory.make_Interface(
             INTERFACE_TYPE.BRIDGE,
             node=node, name='br0', parents=[bond0])
         netplan = self._render_netplan_dict(node)
@@ -782,12 +794,14 @@ class TestNetplan(MAASServerTestCase):
                 'bonds': {
                     'bond0': {
                         'interfaces': ['eth0', 'eth1'],
+                        'macaddress': bond0.mac_address,
                         'mtu': 1500
                     },
                 },
                 'bridges': {
                     'br0': {
                         'interfaces': ['bond0'],
+                        'macaddress': br0.mac_address,
                         'mtu': 1500
                     },
                 },
@@ -826,7 +840,9 @@ class TestNetplan(MAASServerTestCase):
         # Make sure we know when and where the default DNS server will be used.
         get_default_dns_servers_mock = self.patch(
             node, 'get_default_dns_servers')
-        get_default_dns_servers_mock.return_value = ['127.0.0.2']
+        nameserver_addresses = ['127.0.0.2']
+        get_default_dns_servers_mock.return_value = nameserver_addresses
+        domain = Domain.objects.first()
         netplan = self._render_netplan_dict(node)
         expected_netplan = {
             'network': {
@@ -843,6 +859,10 @@ class TestNetplan(MAASServerTestCase):
                             'via': '10.0.0.3',
                             'metric': 42,
                         }],
+                        'nameservers': {
+                            'addresses': nameserver_addresses,
+                            'search': [domain.name]
+                        },
                     },
                     'eth1': {
                         'match': {'macaddress': '02:01:02:03:04:05'},
@@ -854,6 +874,10 @@ class TestNetplan(MAASServerTestCase):
                             'via': '10.0.1.3',
                             'metric': 43,
                         }],
+                        'nameservers': {
+                            'addresses': nameserver_addresses,
+                            'search': [domain.name]
+                        },
                     },
                 },
             },
@@ -932,6 +956,11 @@ class TestNetplan(MAASServerTestCase):
         get_default_dns_servers_mock = self.patch(
             node, 'get_default_dns_servers')
         get_default_dns_servers_mock.return_value = ['127.0.0.2']
+        domain = Domain.objects.first()
+        domain.name = "ubuntu.com"
+        domain.save()
+        domain2 = factory.make_Domain()
+        expected_search_list = [domain.name, domain2.name]
         netplan = self._render_netplan_dict(node)
         expected_netplan = {
             'network': {
@@ -940,7 +969,8 @@ class TestNetplan(MAASServerTestCase):
                     'eth0': {
                         'gateway': '10.0.0.1',
                         'nameservers': {
-                            'addresses': ['10.0.0.2']
+                            'addresses': ['10.0.0.2'],
+                            'search': expected_search_list
                         },
                         'match': {'macaddress': '00:01:02:03:04:05'},
                         'mtu': 1500,
@@ -950,7 +980,8 @@ class TestNetplan(MAASServerTestCase):
                     'eth1': {
                         'match': {'macaddress': '02:01:02:03:04:05'},
                         'nameservers': {
-                            'addresses': ['10.0.1.2']
+                            'addresses': ['10.0.1.2'],
+                            'search': expected_search_list
                         },
                         'mtu': 1500,
                         'set-name': 'eth1',
@@ -973,7 +1004,7 @@ class TestNetplan(MAASServerTestCase):
                         'subnets': [{
                             'address': '10.0.0.4/24',
                             'dns_nameservers': ['10.0.0.2'],
-                            'dns_search': ['maas'],
+                            'dns_search': expected_search_list,
                             'gateway': '10.0.0.1',
                             'type': 'static',
                         }],
@@ -987,14 +1018,14 @@ class TestNetplan(MAASServerTestCase):
                         'subnets': [{
                             'address': '10.0.1.4/24',
                             'dns_nameservers': ['10.0.1.2'],
-                            'dns_search': ['maas'],
+                            'dns_search': expected_search_list,
                             'type': 'static',
                         }],
                         'type': 'physical'
                     },
                     {
                         'address': ['127.0.0.2'],
-                        'search': ['maas'],
+                        'search': expected_search_list,
                         'type': 'nameserver'
                     }
                 ],

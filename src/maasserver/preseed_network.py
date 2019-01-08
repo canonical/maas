@@ -261,7 +261,9 @@ class InterfaceConfiguration:
                             self.node_config.default_search_list)
                         if "nameservers" not in v2_config:
                             v2_config["nameservers"] = v2_nameservers
-                            # XXX should also support search paths.
+                            v2_config["nameservers"]["search"] = (
+                                self.node_config.default_search_list
+                            )
                             if "addresses" not in v2_nameservers:
                                 v2_nameservers["addresses"] = []
                         v2_nameservers["addresses"].extend(
@@ -342,10 +344,7 @@ class InterfaceConfiguration:
                 bond_operation["subnets"] = addrs
         else:
             bond_operation.update({
-                # XXX mpontillo 2017-02-17: netplan does not yet support
-                # specifying the MAC that should be used for a bond.
-                # See launchpad bug #1664698.
-                # "macaddress": str(self.iface.mac_address),
+                "macaddress": str(self.iface.mac_address),
                 "interfaces": [
                     parent.get_name()
                     for parent in self.iface.parents.order_by('name')
@@ -375,10 +374,7 @@ class InterfaceConfiguration:
                 bridge_operation["subnets"] = addrs
         elif version == 2:
             bridge_operation.update({
-                # XXX mpontillo 2017-02-17: netplan does not yet support
-                # specifying the MAC that should be used for a bond.
-                # See launchpad bug #1664698.
-                # "macaddress": str(self.iface.mac_address),
+                "macaddress": str(self.iface.mac_address),
                 "interfaces": [
                     parent.get_name()
                     for parent in self.iface.parents.order_by('name')
@@ -513,12 +509,12 @@ class NodeNetworkConfiguration:
         # that we at least get some address.
         if not self.addr_family_present[6]:
             self.addr_family_present[4] = True
-        default_dns_servers = self.node.get_default_dns_servers(
+        self.default_dns_servers = self.node.get_default_dns_servers(
             ipv4=self.addr_family_present[4], ipv6=self.addr_family_present[6],
             default_region_ip=default_source_ip)
         self.v1_config.append({
             "type": "nameserver",
-            "address": default_dns_servers,
+            "address": self.default_dns_servers,
             "search": self.default_search_list,
         })
         if version == 1:
@@ -541,17 +537,45 @@ class NodeNetworkConfiguration:
                 v2_config.update({"bonds": self.v2_bonds})
             if len(self.v2_bridges) > 0:
                 v2_config.update({"bridges": self.v2_bridges})
-            # XXX mpontillo 2017-02-17: netplan has no concept of "default"
-            # DNS servers. Need to define how to convey this.
-            # See launchpad bug #1664806.
-            # if len(default_dns_servers) > 0 or len(search_list) > 0:
-            #     nameservers = {}
-            #     if len(search_list) > 0:
-            #         nameservers.update({"search": search_list})
-            #     if len(default_dns_servers) > 0:
-            #         nameservers.update({"addresses": default_dns_servers})
-            #     v2_config.update({"nameservers": nameservers})
+            self.set_v2_default_dns()
         self.config = network_config
+
+    def set_v2_default_dns(self):
+        """Define default nameservers on each interface.
+
+        Define nameservers consistent with how cloud-init does it.
+        (See also bug #1664806.)
+        """
+        # See also:
+        # https://git.launchpad.net/cloud-init/commit/?id=d29eeccd
+        if (len(self.default_dns_servers) > 0 or
+                len(self.default_search_list) > 0):
+            v2_default_nameservers = {}
+            if len(self.default_search_list) > 0:
+                v2_default_nameservers.update({
+                    "search": self.default_search_list
+                })
+            if len(self.default_dns_servers) > 0:
+                v2_default_nameservers.update({
+                    "addresses": self.default_dns_servers
+                })
+            sections = [
+                self.v2_ethernets,
+                self.v2_vlans,
+                self.v2_bonds,
+                self.v2_bridges
+            ]
+            for section in sections:
+                for ifname, config in section.items():
+                    if 'nameservers' in config:
+                        # Skip interfaces that already have nameservers.
+                        continue
+                    if 'addresses' not in config:
+                        # Skip interfaces with no manual addresses.
+                        continue
+                    config.update({
+                        'nameservers': v2_default_nameservers
+                    })
 
 
 def compose_curtin_network_config(node, version=1):
