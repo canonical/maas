@@ -189,12 +189,7 @@ angular.module('MAAS').directive('maasOsSelect', ['KVMDeployOSBlacklist',
                 $scope.ngModel.hwe_kernel = null;
                 if($scope.releases.length > 0) {
                     var firstRelease = $scope.releases[0][0];
-                    if (firstRelease.includes('ubuntu') &&
-                        KVMDeployOSBlacklist.includes(firstRelease)) {
-                            setDefault();
-                    } else {
-                        $scope.ngModel.release = firstRelease;
-                    }
+                    $scope.ngModel.release = firstRelease;
                 }
 
                 $scope.hwe_kernels = getSelectableKernels();

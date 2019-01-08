@@ -203,6 +203,29 @@ describe("maasOsSelect", function() {
                 $scope.osinfo.osystems[0][0], $scope.osinfo.releases));
     });
 
+    it("selectedOSChanged works on non-ubuntu os", function() {
+        var directive = compileDirective("osinfo", "selected");
+        $scope.osinfo = {
+            osystems: [["centos", "CentOS"], ["ubuntu", "Ubuntu"]],
+            releases: [
+                ["centos/centos66", "CentOS 6"],
+                ["centos/centos70", "CentOS 7"],
+                ["ubuntu/xenial", "16.04 LTS \"Xenial Xerus\""],
+                ["ubuntu/bionic", "18.04 LTS \"Bionic Beaver\""]
+            ],
+            default_osystem: "centos",
+            default_release: "centos66"
+        };
+        $scope.selected = {
+            osystem: "ubuntu",
+            release: ""
+        };
+        $scope.$digest();
+        directive.isolateScope().selectedOSChanged();
+        expect(directive.isolateScope().releases[0][0])
+            .toEqual('ubuntu/xenial');
+    });
+
     it("selectedOSChanged updates releases", function() {
         var directive = compileDirective("osinfo", "selected");
         $scope.selected = {
