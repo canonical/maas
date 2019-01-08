@@ -6,8 +6,15 @@
 __all__ = []
 
 
+import os
+
 from maasserver.api.annotations import APIDocstringParser
+from maasserver.api.templates import APITemplateRenderer
 from maasserver.testing.api import APITestCase
+from testtools.matchers import (
+    Contains,
+    Not,
+)
 
 
 class TestAPIAnnotations(APITestCase.ForUser):
@@ -29,6 +36,9 @@ class TestAPIAnnotations(APITestCase.ForUser):
     # that the sample_api_annotated_docstring is referencing.
     test_uri_singular = "/MAAS/api/2.0/for-test/{foobar}/"
     test_uri_plural = "/MAAS/api/2.0/for-tests/{foobar}/"
+
+    # This is the name of the template file used to render API
+    api_tempita_template = "tmpl-apidoc.rst"
 
     # Use this sample and modify it in various ways
     # inline to perform tests. Note that all allowed
@@ -631,3 +641,21 @@ class TestAPIAnnotations(APITestCase.ForUser):
         # that the 'read-node' key has picked up the JSON object and
         # converted it to a string for output in API docs.
         self.assertTrue(s['example'].find("resource_uri") != -1)
+
+    def test_template_renders_with_no_warnings(self):
+        """The Tempita tmpl-api.rst template should render for the sample
+        annotated API docstring with no errors.
+        """
+        ds = self.sample_api_annotated_docstring
+        template = APITemplateRenderer()
+        template_path = ("%s/../%s" %
+                         (os.path.dirname(__file__),
+                          self.api_tempita_template))
+
+        api_docstring_parser = APIDocstringParser()
+        api_docstring_parser.parse(ds, uri=self.test_uri_plural)
+
+        result = template.apply_template(template_path,
+                                         api_docstring_parser)
+
+        self.assertThat(result, Not(Contains("API_WARNING")))
