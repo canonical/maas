@@ -509,9 +509,9 @@ class VersionIndexHandler(MetadataViewHandler):
                     script_result.save(update_fields=['status'])
 
     def _process_new(self, node, request, status):
-        # MAAS only cares if a NEW node is trying to commission itself. Ignore
-        # other signals.
         if status != SIGNAL_STATUS.COMMISSIONING:
+            # MAAS only cares if a NEW node is trying to commission itself.
+            # Ignore other signals.
             return None
 
         # Check if the node currently has a pending or running commissioning
@@ -524,9 +524,6 @@ class VersionIndexHandler(MetadataViewHandler):
             script_set = ScriptSet.objects.create_commissioning_script_set(
                 node, ['none'])
             node.current_commissioning_script_set = script_set
-
-        node.min_hwe_kernel = Config.objects.get_config(
-            'default_min_hwe_kernel')
 
         return NODE_STATUS.COMMISSIONING
 
@@ -1155,7 +1152,10 @@ class EnlistUserDataHandler(OperationsHandler):
         return HttpResponse(
             generate_user_data_for_status(
                 None, NODE_STATUS.NEW, rack_controller=rack_controller,
-                request=request),
+                request=request, extra_content={
+                    'enlist_commissioning': Config.objects.get_config(
+                        'enlist_commissioning'),
+                }),
             content_type="text/plain")
 
 

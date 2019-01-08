@@ -6,7 +6,10 @@
 __all__ = []
 
 from django.http import QueryDict
-from maasserver.enum import INTERFACE_TYPE
+from maasserver.enum import (
+    INTERFACE_TYPE,
+    NODE_STATUS,
+)
 from maasserver.forms import MachineWithMACAddressesForm
 from maasserver.testing.architecture import (
     make_usable_architecture,
@@ -160,15 +163,18 @@ class MachineWithMACAddressesFormTest(MAASServerTestCase):
         macs = ['aa:bb:cc:dd:ee:ff', '9a:bb:c3:33:e5:7f']
         form = MachineWithMACAddressesForm(
             data=self.make_params(mac_addresses=macs))
+        self.assertTrue(form.is_valid())
         node = form.save()
 
         self.assertIsNotNone(node.id)  # The node is persisted.
+        self.assertEquals(NODE_STATUS.NEW, node.status)
         self.assertItemsEqual(
             macs,
             [nic.mac_address for nic in node.interface_set.all()])
 
     def test_form_without_hostname_generates_hostname(self):
         form = MachineWithMACAddressesForm(data=self.make_params(hostname=''))
+        self.assertTrue(form.is_valid())
         node = form.save()
         self.assertTrue(len(node.hostname) > 0)
 
@@ -176,6 +182,7 @@ class MachineWithMACAddressesFormTest(MAASServerTestCase):
         ip_based_hostname = '192-168-12-10.maas'
         form = MachineWithMACAddressesForm(
             data=self.make_params(hostname=ip_based_hostname))
+        self.assertTrue(form.is_valid())
         node = form.save()
         self.assertNotEqual('192-168-12-10', node.hostname)
 
@@ -183,5 +190,14 @@ class MachineWithMACAddressesFormTest(MAASServerTestCase):
         ip_prefixed_hostname = '192-168-12-10-extra.maas'
         form = MachineWithMACAddressesForm(
             data=self.make_params(hostname=ip_prefixed_hostname))
+        self.assertTrue(form.is_valid())
         node = form.save()
         self.assertEqual('192-168-12-10-extra', node.hostname)
+
+    def test_form_with_commissioning(self):
+        form = MachineWithMACAddressesForm(data={
+            'commission': True, **self.make_params()})
+        self.assertTrue(form.is_valid())
+        machine = form.save()
+        self.assertEquals(NODE_STATUS.COMMISSIONING, machine.status)
+        self.assertIsNotNone(machine.current_commissioning_script_set)

@@ -113,6 +113,7 @@ from maasserver.enum import (
     FILESYSTEM_GROUP_RAID_TYPE_CHOICES,
     FILESYSTEM_TYPE,
     INTERFACE_TYPE,
+    NODE_STATUS,
     NODE_TYPE,
 )
 from maasserver.exceptions import NodeActionError
@@ -893,6 +894,27 @@ class MachineForm(NodeForm):
         self.is_bound = True
         self.data['install_kvm'] = install_kvm
 
+    def save(self, *args, **kwargs):
+        # Prevent circular imports
+        from metadataserver.models import ScriptSet
+        # LP:1807991 - If requested when creating a new Machine, set the status
+        # to COMMISSIONING when the object is created.
+        commission = not self.instance.id and self.cleaned_data['commission']
+        if commission:
+            self.instance.status = NODE_STATUS.COMMISSIONING
+        machine = super(MachineForm, self).save(*args, **kwargs)
+        # For a ScriptSet to be created it must be associated with a Node
+        # object in the database.
+        if commission:
+            script_set = ScriptSet.objects.create_commissioning_script_set(
+                machine, ['none'])
+            machine.current_commissioning_script_set = script_set
+            machine.save(update_fields=['current_commissioning_script_set'])
+
+        return machine
+
+    commission = forms.BooleanField(required=False, widget=forms.HiddenInput())
+
     class Meta:
         model = Machine
 
@@ -905,6 +927,7 @@ class MachineForm(NodeForm):
             'hwe_kernel',
             'install_rackd',
             'install_kvm',
+            'commission'
         )
 
 

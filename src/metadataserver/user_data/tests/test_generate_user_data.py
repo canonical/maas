@@ -26,7 +26,8 @@ class TestGenerateUserData(MAASServerTestCase):
         # both definitions and use of various commands in python.
         rack = factory.make_RackController()
         user_data = generate_user_data_for_status(
-            None, NODE_STATUS.NEW, rack_controller=rack)
+            None, NODE_STATUS.NEW, rack_controller=rack,
+            extra_content={'enlist_commissioning': True})
         parsed_data = email.message_from_string(user_data.decode("utf-8"))
         self.assertTrue(parsed_data.is_multipart())
 

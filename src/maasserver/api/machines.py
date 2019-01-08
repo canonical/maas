@@ -1611,6 +1611,12 @@ class AnonMachinesHandler(AnonNodesHandler):
         power_type. `Power types`_ section for a list of the available power
         parameters for each power type.
 
+        @param (boolean) "commission" [required=false,formatting=true] Request
+        the newly created machine to be created with status set to
+        COMMISSIONING. Machines will wait for COMMISSIONING results and not
+        time out. After commissioning is complete machines will still have to
+        be accepted by an administrator.
+
         @success (http-status-code) "200" 200
         @success (json) "success-json" A JSON object containing the machine
         information.
@@ -1621,6 +1627,8 @@ class AnonMachinesHandler(AnonNodesHandler):
         power_type = request.data.get('power_type')
         power_parameters = request.data.get('power_parameters')
         mac_addresses = request.data.getlist('mac_addresses')
+        commission = get_optional_param(
+            request.data, 'commission', default=False, validator=StringBool)
         machine = None
 
         # BMC enlistment - Check if there is a pre-existing machine within MAAS
@@ -1667,12 +1675,12 @@ class AnonMachinesHandler(AnonNodesHandler):
         if machine is None:
             machine = create_machine(request, requires_arch=True)
 
-        if machine.status == NODE_STATUS.NEW:
-            # Make sure an enlisting NodeMetadata object exists if the machine
-            # is NEW. When commissioning finishes this is how MAAS knows to
-            # set the status to NEW instead of READY.
-            NodeMetadata.objects.update_or_create(
-                node=machine, key='enlisting', defaults={'value': 'True'})
+            if commission:
+                # Make sure an enlisting NodeMetadata object exists if the
+                # machine is NEW. When commissioning finishes this is how
+                # MAAS knows to set the status to NEW instead of READY.
+                NodeMetadata.objects.update_or_create(
+                    node=machine, key='enlisting', defaults={'value': 'True'})
 
         return machine
 
@@ -1742,6 +1750,11 @@ class MachinesHandler(NodesHandler, PowersMixin):
         available parameters depend on the selected value of the Machine's
         power_type. `Power types`_ section for a list of the available power
         parameters for each power type.
+
+        @param (boolean) "commission" [required=false,formatting=true] Request
+        the newly created machine to be created with status set to
+        COMMISSIONING. Machines will wait for COMMISSIONING results and not
+        time out.
 
         @success (http-status-code) "200" 200
         @success (json) "success-json" A JSON object containing the machine

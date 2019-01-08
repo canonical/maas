@@ -766,6 +766,17 @@ CONFIG_ITEMS = {
                 "in minutes.")
         }
     },
+    'enlist_commissioning': {
+        'default': True,
+        'form': forms.BooleanField,
+        'form_kwargs': {
+            'label': 'Whether to run commissioning during enlistment.',
+            'required': False,
+            'help_text': (
+                'Enables running all built-in commissioning scripts during '
+                'enlistment.'),
+        }
+    },
 }
 
 

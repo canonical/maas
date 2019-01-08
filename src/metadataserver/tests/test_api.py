@@ -47,7 +47,6 @@ from maasserver.exceptions import (
     Unauthorized,
 )
 from maasserver.models import (
-    Config,
     NodeMetadata,
     Event,
     SSHKey,
@@ -2546,8 +2545,6 @@ class TestNewAPI(MAASServerTestCase):
         factory.make_Script(script_type=SCRIPT_TYPE.COMMISSIONING)
         factory.make_Script(
             script_type=SCRIPT_TYPE.TESTING, tags=['commissioning'])
-        min_hwe_kernel = factory.make_name('hwe_kernel')
-        Config.objects.set_config('default_min_hwe_kernel', min_hwe_kernel)
 
         client = make_node_client(node)
         response = call_signal(client, status=SIGNAL_STATUS.COMMISSIONING)
@@ -2560,7 +2557,6 @@ class TestNewAPI(MAASServerTestCase):
             [script.name for script in node.current_commissioning_script_set])
         self.assertIsNone(node.current_testing_script_set)
         self.assertEqual(NODE_STATUS.COMMISSIONING, node.status)
-        self.assertEqual(min_hwe_kernel, node.min_hwe_kernel)
 
     def test_signal_commissioning_only_creates_scriptsets_when_needed(self):
         # This happens when commissioning is started by the user with correct

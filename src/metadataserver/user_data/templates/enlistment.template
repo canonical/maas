@@ -48,7 +48,7 @@ main() {
     # already exists and is not in a NEW state this will fail.
     output=$(maas-enlist --quite --serverurl "{{server_url}}" \
         ${power_params:+--power-params "${power_params}" \
-        --power-type "${power_type}"})
+        --power-type "${power_type}"}{{if enlist_commissioning}} --commission{{endif}})
     ret=$?
     echo $output | jq .
     if [ $ret -ne 0 ]; then
@@ -57,6 +57,7 @@ main() {
 	exit 1
     fi
 
+    {{if enlist_commissioning}}
     # Reload cloud-init preseed using the system_id to get OAUTH credentials.
     system_id=$(echo $output | jq -r .system_id)
     mv ${CRED_CFG} ${CRED_CFG}.orig
@@ -65,6 +66,7 @@ main() {
     signal COMMISSIONING "Enlistment complete, starting commissioning"
 
     maas-run-remote-scripts "--config=${CRED_CFG}" "${TEMP_D}"
+    {{endif}}
 }
 
 ### begin writing files ###
@@ -85,6 +87,7 @@ add_bin "maas-wedge-autodetect" <<"END_MAAS_WEDGE_AUTODETECT"
 {{maas_wedge_autodetect_sh}}
 END_MAAS_WEDGE_AUTODETECT
 
+{{if enlist_commissioning}}
 add_bin "maas_api_helper.py" <<"END_MAAS_API_HELPER"
 {{maas_api_helper_py}}
 END_MAAS_API_HELPER
@@ -96,6 +99,7 @@ END_MAAS_SIGNAL
 add_bin "maas-run-remote-scripts" <<"END_MAAS_RUN_REMOTE_SCRIPTS"
 {{maas_run_remote_scripts_py}}
 END_MAAS_RUN_REMOTE_SCRIPTS
+{{endif}}
 
 add_bin "maas-enlist" <<"END_MAAS_ENLIST"
 {{maas_enlist_sh}}
