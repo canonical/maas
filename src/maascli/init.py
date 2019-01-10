@@ -130,6 +130,7 @@ def create_admin_account(options):
 def create_account_external_auth(auth_config, maas_config,
                                  bakery_client=None):
     """Make the user login via external auth to create the first admin."""
+    print_msg('Please login with MAAS to ensure authentication is set up')
     if bakery_client is None:
         bakery_client = httpbakery.Client()
 
@@ -153,18 +154,23 @@ def create_account_external_auth(auth_config, maas_config,
 
     result = resp.json()
     username = result['username']
-    if result['is_superuser']:
-        print_msg("Administrator user '{}' created".format(username))
+    if auth_config['rbac_url']:
+        message = 'Authentication is working.'
+        if result['is_superuser']:
+            message += " User '{}' is an Administrator".format(username)
     else:
-        admin_group = auth_config['external_auth_admin_group']
-        message = dedent(
-            """\
-            A user with username '{username}' has been created, but it's not
-            a superuser. Please log in to MAAS with a user that belongs to
-            the '{admin_group}' group to create an administrator user.
-            """)
-        print_msg(
-            message.format(username=username, admin_group=admin_group))
+        if result['is_superuser']:
+            message = "Administrator user '{}' created".format(username)
+        else:
+            admin_group = auth_config['external_auth_admin_group']
+            message = dedent(
+                """\
+                A user with username '{username}' has been created, but it's
+                not a superuser. Please log in to MAAS with a user that
+                belongs to the '{admin_group}' group to create an
+                administrator user.
+                """).format(username=username, admin_group=admin_group)
+    print_msg(message)
 
 
 def configure_authentication(options):

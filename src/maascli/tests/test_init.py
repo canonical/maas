@@ -296,7 +296,9 @@ class TestCreateAccountExternalAuth(MAASTestCase):
     def setUp(self):
         super().setUp()
         self.mock_print_msg = self.patch(init, 'print_msg')
-        self.auth_config = {'external_auth_admin_group': 'admins'}
+        self.auth_config = {
+            'rbac_url': '',
+            'external_auth_admin_group': 'admins'}
         self.maas_config = {'maas_url': 'http://example.com/MAAS'}
 
     def mock_bakery_client(self, status_code=200, user_is_admin=True):
@@ -310,32 +312,48 @@ class TestCreateAccountExternalAuth(MAASTestCase):
         mock_client.request.return_value = mock_response
         return mock_client
 
-    def assert_message_printed(self, message):
-        [call] = self.mock_print_msg.mock_calls
-        self.assertIn(message, call[1][0])
-
-    def test_create_admin(self):
+    def test_create_admin_no_rbac(self):
         mock_client = self.mock_bakery_client()
         init.create_account_external_auth(
             self.auth_config, self.maas_config, bakery_client=mock_client)
         mock_client.request.assert_called()
-        self.assert_message_printed("Administrator user 'user' created")
+        self.mock_print_msg.assert_called_with(
+            "Administrator user 'user' created")
 
-    def test_create_not_admin(self):
+    def test_create_no_rbac_not_admin(self):
         mock_client = self.mock_bakery_client(user_is_admin=False)
         init.create_account_external_auth(
             self.auth_config, self.maas_config, bakery_client=mock_client)
         mock_client.request.assert_called()
-        self.assert_message_printed(
-            "A user with username 'user' has been created, but it's not\n"
-            "a superuser")
+        self.mock_print_msg.assert_called_with(
+            "A user with username 'user' has been created, but it's\n"
+            "not a superuser. Please log in to MAAS with a user that\n"
+            "belongs to the 'admins' group to create an\nadministrator "
+            "user.\n")
+
+    def test_create_admin_rbac(self):
+        self.auth_config['rbac_url'] = 'http://rbac'
+        mock_client = self.mock_bakery_client()
+        init.create_account_external_auth(
+            self.auth_config, self.maas_config, bakery_client=mock_client)
+        mock_client.request.assert_called()
+        self.mock_print_msg.assert_called_with(
+            "Authentication is working. User 'user' is an Administrator")
+
+    def test_create_rbac_not_admin(self):
+        self.auth_config['rbac_url'] = 'http://rbac'
+        mock_client = self.mock_bakery_client(user_is_admin=False)
+        init.create_account_external_auth(
+            self.auth_config, self.maas_config, bakery_client=mock_client)
+        mock_client.request.assert_called()
+        self.mock_print_msg.assert_called_with('Authentication is working.')
 
     def test_request_error_code(self):
         mock_client = self.mock_bakery_client(status_code=500)
         init.create_account_external_auth(
             self.auth_config, self.maas_config, bakery_client=mock_client)
         mock_client.request.assert_called()
-        self.assert_message_printed(
+        self.mock_print_msg.assert_called_with(
             "An error occurred while waiting for the first user creation: "
             "request failed with code 500")
 
@@ -345,7 +363,7 @@ class TestCreateAccountExternalAuth(MAASTestCase):
         init.create_account_external_auth(
             self.auth_config, self.maas_config, bakery_client=mock_client)
         mock_client.request.assert_called()
-        self.assert_message_printed(
+        self.mock_print_msg.assert_called_with(
             "An error occurred while waiting for the first user creation: "
             "something wrong happened")
 

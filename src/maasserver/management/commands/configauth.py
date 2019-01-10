@@ -70,6 +70,7 @@ def update_auth_details_from_agent_file(agent_file_name, auth_details):
 
 def update_auth_details_from_rbac_registration(
         auth_details, service_name):
+    print('Please authenticate with the RBAC service to register this MAAS')
     client = RBACUserClient(auth_details.rbac_url)
     services = {
         service['name']: service
