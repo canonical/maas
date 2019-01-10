@@ -130,6 +130,8 @@ def get_default_config():
         'prometheus_enabled': False,
         'prometheus_push_gateway': None,
         'prometheus_push_interval': 60,
+        # Enlistment options
+        'enlist_commissioning': True,
     }
 
 

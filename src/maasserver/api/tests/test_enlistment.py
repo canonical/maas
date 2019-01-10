@@ -452,8 +452,6 @@ class AnonymousEnlistmentAPITest(APITestCase.ForAnonymous):
         self.assertEqual(architecture, machine.architecture)
         self.assertDictContainsSubset(
             machine.bmc.power_parameters, power_parameters)
-        node_metadata = NodeMetadata.objects.get(node=machine, key='enlisting')
-        self.assertEqual(node_metadata.value, 'True')
         self.assertThat(mock_create_machine, MockNotCalled())
         self.assertEqual(
             machine.system_id, json_load_bytes(response.content)['system_id'])
@@ -501,11 +499,32 @@ class AnonymousEnlistmentAPITest(APITestCase.ForAnonymous):
             })
         self.assertEqual(http.client.OK, response.status_code)
         node_metadata = NodeMetadata.objects.get(key='enlisting')
-        self.assertEqual(node_metadata.value, 'True')
+        self.assertIsNone(node_metadata)
         [machine] = Machine.objects.filter(hostname=hostname)
         self.assertEqual(architecture, machine.architecture)
         self.assertEqual(
             machine.system_id, json_load_bytes(response.content)['system_id'])
+
+    def test_POST_create_creates_machine_commission(self):
+        hostname = factory.make_name("hostname")
+        architecture = make_usable_architecture(self)
+        response = self.client.post(
+            reverse('machines_handler'),
+            {
+                'hostname': hostname,
+                'architecture': architecture,
+                'power_type': 'manual',
+                'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
+                'commission': True,
+            })
+        self.assertEqual(http.client.OK, response.status_code)
+        node_metadata = NodeMetadata.objects.get(key='enlisting')
+        self.assertEqual('True', node_metadata.value)
+        [machine] = Machine.objects.filter(hostname=hostname)
+        self.assertEqual(architecture, machine.architecture)
+        self.assertEqual(
+            machine.system_id, json_load_bytes(response.content)['system_id'])
+        self.assertEqual(NODE_STATUS.COMMISSIONING, machine.status)
 
     def test_POST_create_requires_architecture(self):
         hostname = factory.make_name("hostname")

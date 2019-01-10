@@ -51,6 +51,7 @@ class TestMachineForm(MAASServerTestCase):
                 'hwe_kernel',
                 'install_rackd',
                 'install_kvm',
+                'commission',
             ], list(form.fields))
 
     def test_accepts_usable_architecture(self):
@@ -374,6 +375,7 @@ class TestAdminMachineForm(MAASServerTestCase):
                 'power_parameters',
                 'power_type',
                 'pool',
+                'commission',
             ],
             list(form.fields))
 

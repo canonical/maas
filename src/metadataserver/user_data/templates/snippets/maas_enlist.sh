@@ -2,7 +2,7 @@
 #
 #    maas-enlist: MAAS Enlistment Tool
 #
-#    Copyright (C) 2014-2016 Canonical Ltd.
+#    Copyright (C) 2014-2018 Canonical Ltd.
 #
 #    Authors: Andres Rodriguez <andres.rodriguez@canonical.com>
 #
@@ -107,6 +107,7 @@ enlist_node() {
 	hostname="${5}"
 	power_type="${6}"
 	power_params="${7}"
+	commission="${8}"
 
 	local macparms=""
 	macparms=$(get_mac_address_curl_parms "$mac")
@@ -119,6 +120,7 @@ enlist_node() {
 	    --data-urlencode "subarchitecture=${subarch}" \
 	    --data-urlencode "power_type=${power_type}" \
 	    --data-urlencode "power_parameters=${power_params}" \
+	    --data-urlencode "commission=${commission}" \
 	    ${macparms} \
 	    "${serverurl}"
 
@@ -171,6 +173,8 @@ Usage: ${0##*/} [ options ]
       -e | --exists           checks if the machine already exists in MAAS
       -w | --in-action        checks if the machine already exists in MAAS in a 'in-progress'
                               action like 'deploying' or 'commissioning'.
+      -c | --commission       tell MAAS when creating a new machine to set the status to
+                              'commissioning'.
       --subarch               subarchitecture of the node to register
 
    Example:
@@ -181,8 +185,8 @@ EOF
 
 bad_Usage() { Usage 1>&2; [ $# -eq 0 ] || Error "$@"; exit 1; }
 
-short_opts="hs:n:i:a:t:p:ewq"
-long_opts="help,serverurl:,hostname:,interface:,arch:,subarch:,power-type:,power-params:,exists,in-action,quite"
+short_opts="hs:n:i:a:t:p:ewqc"
+long_opts="help,serverurl:,hostname:,interface:,arch:,subarch:,power-type:,power-params:,exists,in-action,quite,commission"
 getopt_out=$(getopt --name "${0##*/}" \
 	--options "${short_opts}" --long "${long_opts}" -- "$@") &&
 	eval set -- "${getopt_out}" ||
@@ -202,6 +206,7 @@ while [ $# -ne 0 ]; do
 		-e|--exists) check_exists=true;;
 		-w|--in-action) check_action_in_progress=true;;
 		-q|--quite) quite=true;;
+		-c|--commission) commission=true;;
 		--) shift; break;;
 	esac
 	shift;
@@ -268,5 +273,5 @@ elif [ "$check_action_in_progress" = true ]; then
   check_node "$protocol://$servername/$api_url" "${mac_addrs}" "is_action_in_progress"
   exit $?
 else
-  enlist_node "$protocol://$servername/$api_url" "${mac_addrs}" "$arch" "$subarch" "$hostname" "$power_type" "$power_parameters"
+  enlist_node "$protocol://$servername/$api_url" "${mac_addrs}" "$arch" "$subarch" "$hostname" "$power_type" "$power_parameters" "$commission"
 fi
