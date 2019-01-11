@@ -300,6 +300,7 @@ class TestMachineHandler(MAASServerTestCase):
             "spaces": handler.get_all_space_names(subnets),
             "swap_size": node.swap_size,
             "system_id": node.system_id,
+            "hardware_uuid": node.hardware_uuid,
             "tags": [
                 tag.name
                 for tag in node.tags.all()

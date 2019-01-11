@@ -33,6 +33,7 @@ from piston3.utils import rc
 DISPLAYED_RACK_CONTROLLER_FIELDS = (
     'system_id',
     'hostname',
+    'hardware_uuid',
     'domain',
     'fqdn',
     'architecture',

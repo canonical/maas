@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """RPC implementation for regions."""
@@ -179,7 +179,7 @@ class Region(RPCProtocol):
     @region.GetBootConfig.responder
     def get_boot_config(
             self, system_id, local_ip, remote_ip, arch=None, subarch=None,
-            mac=None, bios_boot_method=None):
+            mac=None, hardware_uuid=None, bios_boot_method=None):
         """get_boot_config()
 
         Implementation of
@@ -187,7 +187,7 @@ class Region(RPCProtocol):
         """
         return deferToDatabase(
             boot.get_config, system_id, local_ip, remote_ip,
-            arch=arch, subarch=subarch, mac=mac,
+            arch=arch, subarch=subarch, mac=mac, hardware_uuid=hardware_uuid,
             bios_boot_method=bios_boot_method)
 
     @region.GetBootSources.responder

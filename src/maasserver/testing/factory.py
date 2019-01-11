@@ -400,7 +400,8 @@ class Factory(maastesting.factory.Factory):
             power_type=None, power_parameters=None, power_state=None,
             power_state_updated=undefined, with_boot_disk=True, vlan=None,
             fabric=None, bmc_connected_to=None, owner_data={},
-            with_empty_script_sets=False, bmc=None, **kwargs):
+            hardware_uuid=None, with_empty_script_sets=False, bmc=None,
+            **kwargs):
         """Make a :class:`Node`.
 
         :param sortable_name: If `True`, use a that will sort consistently
@@ -430,12 +431,14 @@ class Factory(maastesting.factory.Factory):
         if power_state_updated is undefined:
             power_state_updated = (
                 timezone.now() - timedelta(minutes=random.randint(0, 15)))
+        if hardware_uuid is None:
+            hardware_uuid = factory.make_UUID()
         node = Node(
             hostname=hostname, status=status, architecture=architecture,
             min_hwe_kernel=min_hwe_kernel, hwe_kernel=hwe_kernel,
             node_type=node_type, zone=zone,
             power_state=power_state, power_state_updated=power_state_updated,
-            domain=domain, bmc=bmc, **kwargs)
+            domain=domain, bmc=bmc, hardware_uuid=hardware_uuid, **kwargs)
         if bmc is None:
             # These setters will overwrite the BMC, so don't use them if the
             # BMC was specified.

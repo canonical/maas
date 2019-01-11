@@ -118,6 +118,7 @@ import yaml
 DISPLAYED_MACHINE_FIELDS = (
     'system_id',
     'hostname',
+    'hardware_uuid',
     'domain',
     'fqdn',
     'owner',

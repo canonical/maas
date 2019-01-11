@@ -941,6 +941,10 @@ class Node(CleanSave, TimestampedModel):
         max_length=41, unique=True, default=generate_node_system_id,
         editable=False)
 
+    # The UUID of the node as defined by its hardware.
+    hardware_uuid = CharField(
+        max_length=36, default=None, null=True, blank=True, unique=True)
+
     hostname = CharField(
         max_length=255, default='', blank=True, unique=True,
         validators=[validate_hostname])

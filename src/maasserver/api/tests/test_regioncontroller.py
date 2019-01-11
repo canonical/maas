@@ -126,6 +126,7 @@ class TestRegionControllersAPI(APITestCase.ForUser):
             [
                 'system_id',
                 'hostname',
+                'hardware_uuid',
                 'domain',
                 'fqdn',
                 'architecture',

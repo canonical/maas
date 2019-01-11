@@ -700,6 +700,20 @@ class TestUpdateHardwareDetails(MAASServerTestCase):
         expected = (4294967296 + 3221225472 + 536879812) // mega
         self.assertEqual(expected, node.memory)
 
+    def test_hardware_updates_hardware_uuid(self):
+        node = factory.make_Node()
+        hardware_uuid = factory.make_UUID()
+        xmlbytes = dedent("""\
+        <node>
+            <configuration>
+                <setting id="uuid" value="%s" />
+            </configuration>
+        </node>
+        """ % hardware_uuid).encode()
+        update_hardware_details(node, xmlbytes, 0)
+        node = reload_object(node)
+        self.assertEquals(hardware_uuid, node.hardware_uuid)
+
     def test_hardware_updates_ignores_empty_tags(self):
         # Tags with empty definitions are ignored when
         # update_hardware_details gets called.
@@ -1819,3 +1833,20 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         node_interfaces = Interface.objects.filter(node=node)
         all_macs = [interface.mac_address for interface in node_interfaces]
         self.assertNotIn(SWITCH_OPENBMC_MAC, all_macs)
+
+    def test__sets_boot_interface(self):
+        """Test a node will have its boot_interface set if none are defined."""
+        subnet = factory.make_Subnet(cidr='192.168.0.3/24')
+        node = factory.make_Node()
+
+        # Delete all Interfaces created by factory attached to this node.
+        Interface.objects.filter(node_id=node.id).delete()
+        node.boot_interface = None
+        node.boot_cluster_ip = '192.168.0.1'
+        node.save()
+
+        update_node_network_information(node, self.IP_ADDR_OUTPUT, 0)
+        node = reload_object(node)
+
+        self.assertIsNotNone(
+            node.boot_interface.vlan.subnet_set.filter(id=subnet.id).first())

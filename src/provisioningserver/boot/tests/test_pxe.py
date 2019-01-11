@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the pxe boot method."""
@@ -579,6 +579,7 @@ class TestPXEBootMethodRegex(MAASTestCase):
         mac = factory.make_mac_address("-")
         components = {
             "mac": mac.encode("ascii"),
+            "hardware_uuid": None,
             "arch": None,
             "subarch": None,
         }
@@ -622,15 +623,37 @@ class TestPXEBootMethodRegex(MAASTestCase):
         mac = b'aa-bb-cc-dd-ee-ff'
         match = re_config_file.match(b'pxelinux.cfg/01-%s' % mac)
         self.assertIsNotNone(match)
-        self.assertEqual({'mac': mac, 'arch': None, 'subarch': None},
-                         match.groupdict())
+        self.assertDictEqual(
+            {
+                'mac': mac,
+                'hardware_uuid': None,
+                'arch': None,
+                'subarch': None,
+            }, match.groupdict())
 
     def test_re_config_file_matches_pxelinux_cfg_with_leading_slash(self):
         mac = b'aa-bb-cc-dd-ee-ff'
         match = re_config_file.match(b'/pxelinux.cfg/01-%s' % mac)
         self.assertIsNotNone(match)
-        self.assertEqual({'mac': mac, 'arch': None, 'subarch': None},
-                         match.groupdict())
+        self.assertDictEqual(
+            {
+                'mac': mac,
+                'hardware_uuid': None,
+                'arch': None,
+                'subarch': None
+            }, match.groupdict())
+
+    def test_re_config_file_matches_pxelinux_cfg_with_hardware_uuid(self):
+        hardware_uuid = factory.make_UUID().encode()
+        match = re_config_file.match(b'pxelinux.cfg/%s' % hardware_uuid)
+        self.assertIsNotNone(match)
+        self.assertDictEqual(
+            {
+                'mac': None,
+                'hardware_uuid': hardware_uuid,
+                'arch': None,
+                'subarch': None,
+            }, match.groupdict())
 
     def test_re_config_file_does_not_match_non_config_file(self):
         self.assertIsNone(re_config_file.match(b'pxelinux.cfg/kernel'))
@@ -644,17 +667,25 @@ class TestPXEBootMethodRegex(MAASTestCase):
     def test_re_config_file_with_default(self):
         match = re_config_file.match(b'pxelinux.cfg/default')
         self.assertIsNotNone(match)
-        self.assertEqual(
-            {'mac': None, 'arch': None, 'subarch': None},
-            match.groupdict())
+        self.assertDictEqual(
+            {
+                'mac': None,
+                'hardware_uuid': None,
+                'arch': None,
+                'subarch': None,
+            }, match.groupdict())
 
     def test_re_config_file_with_default_arch(self):
         arch = factory.make_name('arch', sep='').encode("ascii")
         match = re_config_file.match(b'pxelinux.cfg/default.%s' % arch)
         self.assertIsNotNone(match)
-        self.assertEqual(
-            {'mac': None, 'arch': arch, 'subarch': None},
-            match.groupdict())
+        self.assertDictEqual(
+            {
+                'mac': None,
+                'hardware_uuid': None,
+                'arch': arch,
+                'subarch': None,
+            }, match.groupdict())
 
     def test_re_config_file_with_default_arch_and_subarch(self):
         arch = factory.make_name('arch', sep='').encode("ascii")
@@ -662,6 +693,10 @@ class TestPXEBootMethodRegex(MAASTestCase):
         match = re_config_file.match(
             b'pxelinux.cfg/default.%s-%s' % (arch, subarch))
         self.assertIsNotNone(match)
-        self.assertEqual(
-            {'mac': None, 'arch': arch, 'subarch': subarch},
-            match.groupdict())
+        self.assertDictEqual(
+            {
+                'mac': None,
+                'hardware_uuid': None,
+                'arch': arch,
+                'subarch': subarch,
+            }, match.groupdict())

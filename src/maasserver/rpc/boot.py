@@ -14,6 +14,7 @@ from django.core.exceptions import (
     ObjectDoesNotExist,
     ValidationError,
 )
+from django.db.models import Q
 from maasserver.compose_preseed import RSYSLOG_PORT
 from maasserver.dns.config import get_resource_name_for_subnet
 from maasserver.enum import (
@@ -25,7 +26,6 @@ from maasserver.models import (
     Config,
     Event,
     Node,
-    PhysicalInterface,
     RackController,
     Subnet,
     VLAN,
@@ -51,16 +51,26 @@ from provisioningserver.utils.url import splithost
 DEFAULT_ARCH = 'i386'
 
 
-def get_node_from_mac_string(mac_string):
-    """Get a Node object from a MAC address string.
+def get_node_from_mac_or_hardware_uuid(mac=None, hardware_uuid=None):
+    """Get a Node object from a MAC address or hardware UUID string.
 
-    Returns a Node object or None if no node with the given MAC address exists.
+    Returns a Node object or None if no node with the given MAC address or
+    hardware UUID exists.
     """
-    if mac_string is None:
+    if mac and hardware_uuid:
+        node = Node.objects.filter(
+            Q(
+                interface__type=INTERFACE_TYPE.PHYSICAL,
+                interface__mac_address=mac,
+            ) | Q(hardware_uuid__iexact=hardware_uuid))
+    elif mac:
+        node = Node.objects.filter(
+            interface__type=INTERFACE_TYPE.PHYSICAL,
+            interface__mac_address=mac)
+    elif hardware_uuid:
+        node = Node.objects.filter(hardware_uuid__iexact=hardware_uuid)
+    else:
         return None
-    node = Node.objects.filter(
-        interface__type=INTERFACE_TYPE.PHYSICAL,
-        interface__mac_address=mac_string)
     node = node.select_related('boot_interface', 'domain')
     return node.first()
 
@@ -264,7 +274,7 @@ def get_base_url_for_local_ip(local_ip, internal_domain):
 @transactional
 def get_config(
         system_id, local_ip, remote_ip, arch=None, subarch=None, mac=None,
-        bios_boot_method=None):
+        hardware_uuid=None, bios_boot_method=None):
     """Get the booting configration for the a machine.
 
     Returns a structure suitable for returning in the response
@@ -276,13 +286,16 @@ def get_config(
     region_ip = None
     if remote_ip is not None:
         region_ip = get_source_address(remote_ip)
-    machine = get_node_from_mac_string(mac)
+    machine = get_node_from_mac_or_hardware_uuid(mac, hardware_uuid)
 
     # Fail with no response early so no extra work is performed.
-    if machine is None and arch is None and mac is not None:
-        # Request was pxelinux.cfg/01-<mac> for a machine MAAS does not know
-        # about. So attempt fall back to pxelinux.cfg/default-<arch>-<subarch>
-        # for arch detection.
+    if machine is None and arch is None and (mac or hardware_uuid):
+        # PXELinux requests boot configuration in the following order:
+        # 1. pxelinux.cfg/<hardware uuid>
+        # 2. pxelinux.cfg/01-<mac>
+        # 3. pxelinux.cfg/default-<arch>-<subarch>
+        # If mac and/or hardware_uuid was given but no Node was found fail the
+        # request so PXELinux will move onto the next request.
         raise BootConfigNoResponse()
 
     # Get all required configuration objects in a single query.
@@ -313,15 +326,39 @@ def get_config(
     if machine is not None:
         # Update the last interface, last access cluster IP address, and
         # the last used BIOS boot method.
-        if (machine.boot_interface is None or
-                machine.boot_interface.mac_address != mac):
-            machine.boot_interface = PhysicalInterface.objects.get(
-                mac_address=mac)
-        if (machine.boot_cluster_ip is None or
-                machine.boot_cluster_ip != local_ip):
+        if machine.boot_cluster_ip != local_ip:
             machine.boot_cluster_ip = local_ip
+
         if machine.bios_boot_method != bios_boot_method:
             machine.bios_boot_method = bios_boot_method
+
+        try:
+            machine.boot_interface = machine.interface_set.get(mac_address=mac)
+        except ObjectDoesNotExist:
+            # MAC is unknown or wasn't sent. Determine the boot_interface using
+            # the boot_cluster_ip.
+            subnet = Subnet.objects.get_best_subnet_for_ip(local_ip)
+            if subnet:
+                machine.boot_interface = machine.interface_set.filter(
+                    vlan=subnet.vlan).first()
+        else:
+            # Update the VLAN of the boot interface to be the same VLAN for the
+            # interface on the rack controller that the machine communicated
+            # with, unless the VLAN is being relayed.
+            rack_interface = rack_controller.interface_set.filter(
+                ip_addresses__ip=local_ip).select_related('vlan').first()
+            if (rack_interface is not None and
+                    machine.boot_interface.vlan_id != rack_interface.vlan_id):
+                # Rack controller and machine is not on the same VLAN, with
+                # DHCP relay this is possible. Lets ensure that the VLAN on the
+                # interface is setup to relay through the identified VLAN.
+                if not VLAN.objects.filter(
+                        id=machine.boot_interface.vlan_id,
+                        relay_vlan=rack_interface.vlan_id).exists():
+                    # DHCP relay is not being performed for that VLAN. Set the
+                    # VLAN to the VLAN of the rack controller.
+                    machine.boot_interface.vlan = rack_interface.vlan
+                    machine.boot_interface.save()
 
         # Reset the machine's status_expires whenever the boot_config is called
         # on a known machine. This allows a machine to take up to the maximum
@@ -330,24 +367,6 @@ def get_config(
 
         # Does nothing if the machine hasn't changed.
         machine.save()
-
-        # Update the VLAN of the boot interface to be the same VLAN for the
-        # interface on the rack controller that the machine communicated with,
-        # unless the VLAN is being relayed.
-        rack_interface = rack_controller.interface_set.filter(
-            ip_addresses__ip=local_ip).select_related('vlan').first()
-        if (rack_interface is not None and
-                machine.boot_interface.vlan_id != rack_interface.vlan_id):
-            # Rack controller and machine is not on the same VLAN, with DHCP
-            # relay this is possible. Lets ensure that the VLAN on the
-            # interface is setup to relay through the identified VLAN.
-            if not VLAN.objects.filter(
-                    id=machine.boot_interface.vlan_id,
-                    relay_vlan=rack_interface.vlan_id).exists():
-                # DHCP relay is not being performed for that VLAN. Set the VLAN
-                # to the VLAN of the rack controller.
-                machine.boot_interface.vlan = rack_interface.vlan
-                machine.boot_interface.save()
 
         arch, subarch = machine.split_arch()
         if configs['use_rack_proxy']:

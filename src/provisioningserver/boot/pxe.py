@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """PXE Boot Method"""
@@ -44,6 +44,10 @@ re_mac_address_octet = r'[0-9a-f]{2}'
 re_mac_address = re.compile(
     "-".join(repeat(re_mac_address_octet, 6)))
 
+re_hardware_uuid = re.compile(
+    "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-"
+    "[a-fA-F0-9]{12}")
+
 # We assume that the ARP HTYPE (hardware type) that PXELINUX sends is
 # always Ethernet.
 re_config_file = r'''
@@ -55,6 +59,8 @@ re_config_file = r'''
         {htype:02x}    # ARP HTYPE.
         -
         (?P<mac>{re_mac_address.pattern})    # Capture MAC.
+    | # or hardware uuid
+        (?P<hardware_uuid>{re_hardware_uuid.pattern})
     | # or "default"
         default
           (?: # perhaps with specified arch, with a separator of either '-'
@@ -67,7 +73,8 @@ re_config_file = r'''
 '''
 
 re_config_file = re_config_file.format(
-    htype=ARP_HTYPE.ETHERNET, re_mac_address=re_mac_address)
+    htype=ARP_HTYPE.ETHERNET, re_mac_address=re_mac_address,
+    re_hardware_uuid=re_hardware_uuid)
 re_config_file = re_config_file.encode("ascii")
 re_config_file = re.compile(re_config_file, re.VERBOSE)
 

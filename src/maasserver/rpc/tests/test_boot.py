@@ -57,7 +57,7 @@ def get_config(*args, **kwargs):
     if explicit_count is None:
         # If you need to adjust this value up be sure that 100% you cannot
         # lower this value. If you want to adjust this value down, big +1!
-        assert count <= 22, (
+        assert count <= 23, (
             '%d > 22; Query count should remain below 22 queries '
             'at all times.' % count)
     else:
@@ -149,7 +149,28 @@ class TestGetConfig(MAASServerTestCase):
         node = self.make_node(status=NODE_STATUS.DEPLOYING)
         mac = node.get_boot_interface().mac_address
         # Should not raise BootConfigNoResponse.
+        get_config(
+            rack_controller.system_id, local_ip, remote_ip, mac=mac,
+            hardware_uuid=node.hardware_uuid)
+
+    def test__returns_success_for_known_node_mac(self):
+        rack_controller = factory.make_RackController()
+        local_ip = factory.make_ip_address()
+        remote_ip = factory.make_ip_address()
+        node = self.make_node(status=NODE_STATUS.DEPLOYING)
+        mac = node.get_boot_interface().mac_address
+        # Should not raise BootConfigNoResponse.
         get_config(rack_controller.system_id, local_ip, remote_ip, mac=mac)
+
+    def test__returns_success_for_known_node_hardware_uuid(self):
+        rack_controller = factory.make_RackController()
+        local_ip = factory.make_ip_address()
+        remote_ip = factory.make_ip_address()
+        node = self.make_node(status=NODE_STATUS.DEPLOYING)
+        # Should not raise BootConfigNoResponse.
+        get_config(
+            rack_controller.system_id, local_ip, remote_ip,
+            hardware_uuid=node.hardware_uuid)
 
     def test__purpose_local_does_less_work(self):
         rack_controller = factory.make_RackController()
@@ -164,7 +185,7 @@ class TestGetConfig(MAASServerTestCase):
         mac = node.get_boot_interface().mac_address
         config = get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac,
-            query_count=7)
+            query_count=8)
         self.assertEquals({
             "system_id": node.system_id,
             "arch": node.split_arch()[0],
@@ -200,7 +221,7 @@ class TestGetConfig(MAASServerTestCase):
         mac = node.get_boot_interface().mac_address
         config = get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac,
-            query_count=7)
+            query_count=8)
         self.assertEquals({
             "system_id": node.system_id,
             "arch": node.split_arch()[0],
@@ -264,9 +285,11 @@ class TestGetConfig(MAASServerTestCase):
         local_ip = factory.make_ip_address()
         remote_ip = factory.make_ip_address()
         mac = factory.make_mac_address(delimiter='-')
+        hardware_uuid = factory.make_UUID()
         self.assertRaises(
             BootConfigNoResponse, get_config,
-            rack_controller.system_id, local_ip, remote_ip, mac=mac)
+            rack_controller.system_id, local_ip, remote_ip, mac=mac,
+            hardware_uuid=hardware_uuid)
 
     def test__returns_success_for_detailed_but_unknown_node(self):
         rack_controller = factory.make_RackController()
@@ -676,6 +699,19 @@ class TestGetConfig(MAASServerTestCase):
             query_count=22)
         self.assertEqual(nic, reload_object(node).boot_interface)
 
+    def test__sets_boot_interface_when_given_hardware_uuid(self):
+        node = self.make_node()
+        nic = node.get_boot_interface()
+        node.boot_interface = None
+        node.save()
+        rack_controller = nic.vlan.primary_rack
+        subnet = nic.vlan.subnet_set.first()
+        local_ip = factory.pick_ip_in_Subnet(subnet)
+        get_config(
+            rack_controller.system_id, local_ip, factory.make_ip_address(),
+            hardware_uuid=node.hardware_uuid, query_count=24)
+        self.assertEqual(nic, reload_object(node).boot_interface)
+
     def test__sets_boot_cluster_ip_when_empty(self):
         rack_controller = factory.make_RackController()
         local_ip = factory.make_ip_address()
@@ -765,7 +801,7 @@ class TestGetConfig(MAASServerTestCase):
         mac = node.get_boot_interface().mac_address
         get_config(
             rack_controller.system_id, rack_ip.ip, remote_ip, mac=mac,
-            query_count=22)
+            query_count=23)
         self.assertEqual(
             relay_vlan, reload_object(node).get_boot_interface().vlan)
 
@@ -840,7 +876,7 @@ class TestGetConfig(MAASServerTestCase):
         mac = node.get_boot_interface().mac_address
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac,
-            query_count=22)
+            query_count=23)
         self.assertEqual("hwe-18.04", observed_config["subarch"])
 
     def test__commissioning_node_uses_min_hwe_kernel_converted(self):
@@ -854,7 +890,7 @@ class TestGetConfig(MAASServerTestCase):
         mac = node.get_boot_interface().mac_address
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac,
-            query_count=22)
+            query_count=23)
         self.assertEqual("hwe-18.04", observed_config["subarch"])
 
     def test__commissioning_node_uses_min_hwe_kernel_reports_missing(self):
@@ -891,7 +927,7 @@ class TestGetConfig(MAASServerTestCase):
         mac = node.get_boot_interface().mac_address
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac,
-            query_count=15)
+            query_count=16)
         self.assertEqual(observed_config["release"], commissioning_series)
         self.assertEqual(observed_config["subarch"], 'generic')
         self.assertEqual(node.distro_series, distro_series)
@@ -918,7 +954,7 @@ class TestGetConfig(MAASServerTestCase):
         mac = node.get_boot_interface().mac_address
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac,
-            query_count=15)
+            query_count=16)
         self.assertEqual(observed_config["release"], commissioning_series)
         self.assertEqual(observed_config["subarch"], default_min_hwe_kernel)
         self.assertEqual(node.distro_series, distro_series)
@@ -935,7 +971,7 @@ class TestGetConfig(MAASServerTestCase):
         mac = node.get_boot_interface().mac_address
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac,
-            query_count=16)
+            query_count=17)
         self.assertEqual("ga-90.90", observed_config["subarch"])
 
     def test__returns_ubuntu_os_series_for_ubuntu_xinstall(self):

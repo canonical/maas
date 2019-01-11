@@ -130,6 +130,7 @@ class DeviceHandler(NodeHandler):
             "default_user",
             "install_rackd",
             "install_kvm",
+            "hardware_uuid",
             ]
         list_fields = [
             "id",

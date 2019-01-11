@@ -17,7 +17,10 @@ import re
 
 from lxml import etree
 from maasserver.enum import NODE_METADATA
-from maasserver.models import Fabric
+from maasserver.models import (
+    Fabric,
+    Subnet,
+)
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.interface import (
     Interface,
@@ -224,6 +227,16 @@ def update_node_network_information(node, output, exit_status):
         if iface not in current_interfaces:
             iface.delete()
 
+    # If a machine boots by UUID before commissioning(s390x) no boot_interface
+    # will be set as interfaces existed during boot. Set it using the
+    # boot_cluster_ip now that the interfaces have been created.
+    if node.boot_interface is None and node.boot_cluster_ip is not None:
+        subnet = Subnet.objects.get_best_subnet_for_ip(node.boot_cluster_ip)
+        if subnet:
+            node.boot_interface = node.interface_set.filter(
+                vlan=subnet.vlan).first()
+            node.save(update_fields=['boot_interface'])
+
 
 def update_node_network_interface_tags(node, output, exit_status):
     """Updates the network interfaces tags from the results of `SRIOV_SCRIPT`.
@@ -299,7 +312,15 @@ def update_hardware_details(node, output, exit_status):
         if not memory or math.isnan(memory):
             memory = 0
         node.memory = memory
-        node.save(update_fields=['memory'])
+
+        # Only one hardware UUID should be provided but lxml always returns a
+        # list.
+        for e in evaluator('//node/configuration/setting[@id="uuid"]'):
+            value = e.get('value')
+            if value:
+                node.hardware_uuid = value
+
+        node.save(update_fields=['memory', 'hardware_uuid'])
 
         # This gathers the system vendor, product, version, and serial. Custom
         # built machines and some Supermicro servers do not provide this

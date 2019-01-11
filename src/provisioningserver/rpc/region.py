@@ -122,6 +122,7 @@ class GetBootConfig(amp.Command):
         (b"arch", amp.Unicode(optional=True)),
         (b"subarch", amp.Unicode(optional=True)),
         (b"mac", amp.Unicode(optional=True)),
+        (b"hardware_uuid", amp.Unicode(optional=True)),
         (b"bios_boot_method", amp.Unicode(optional=True)),
     ]
     response = [
