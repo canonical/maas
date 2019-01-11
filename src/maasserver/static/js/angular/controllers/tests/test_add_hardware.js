@@ -604,11 +604,16 @@ describe("AddHardwareController", function() {
 
             expect($scope.newMachineObj).toEqual(
             {
+                name: $scope.machine.name,
+                domain: $scope.machine.domain,
+                architecture: $scope.machine.architecture,
                 min_hwe_kernel: $scope.machine.min_hwe_kernel,
                 pxe_mac: $scope.machine.macs[0].mac,
                 extra_macs: [$scope.machine.macs[1].mac],
                 power_type: $scope.machine.power.type.name,
                 power_parameters: $scope.machine.power.parameters,
+                zone: $scope.machine.zone,
+                pool: $scope.machine.pool,
             });
         });
 

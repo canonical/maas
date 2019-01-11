@@ -13,14 +13,22 @@
                     label-width="2" input-width="3" subtle="false"
                     placeholder="Machine name (optional)">
                 </maas-obj-field>
-                <maas-obj-field type="options" key="domain" label="Domain"
-                    label-width="2" input-width="3" subtle="false"
-                    options="domain as domain.name for domain in domains">
-                </maas-obj-field>
-                <maas-obj-field type="options" key="architecture" label="Architecture"
-                    label-width="2" input-width="3" subtle="false"
-                    options="arch for arch in architectures">
-                </maas-obj-field>
+                <div class="p-form__group">
+                    <label for="domain" class="p-form__label col-2">Domain</label>
+                    <div class="p-form__control col-3">
+                        <select name="domain" id="domain" data-ng-model="machine.domain" data-ng-options="domain as domain.name for domain in domains">
+                            <option value="" disabled>Choose a domain</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="p-form__group">
+                    <label for="architecture" class="p-form__label col-2">Architecture</label>
+                    <div class="p-form__control col-3">
+                        <select name="architecture" id="architecture" data-ng-model="machine.architecture" data-ng-options="arch for arch in architectures">
+                            <option value="">Choose an architecture</option>
+                        </select>
+                    </div>
+                </div>
                 <div class="p-form__group">
                     <label for="min_hwe_kernel" class="p-form__label col-2">Minimum Kernel</label>
                     <div class="p-form__control col-3">
@@ -31,14 +39,20 @@
                         </select>
                     </div>
                 </div>
-                <maas-obj-field type="options" key="zone" label="Zone"
-                    label-width="2" input-width="3" subtle="false"
-                    options="zone as zone.name for zone in zones">
-                </maas-obj-field>
-                <maas-obj-field type="options" key="pool" label="Resource pool"
-                    label-width="2" input-width="3" subtle="false"
-                    options="pool as pool.name for pool in pools">
-                </maas-obj-field>
+                <div class="p-form__group">
+                    <label for="zone4" class="p-form__label col-2">Zone</label>
+                    <div class="p-form__control col-3">
+                        <select name="zone" id="zone4" data-ng-model="machine.zone" data-ng-options="zone as zone.name for zone in zones">
+                        </select>
+                    </div>
+                </div>
+                <div class="p-form__group">
+                    <label for="pool-select" class="p-form__label col-2">Resource pool</label>
+                    <div class="p-form__control col-3">
+                        <select name="pool" id="pool-select" data-ng-model="machine.pool" data-ng-options="pool as pool.name for pool in pools">
+                        </select>
+                    </div>
+                </div>
                 <div class="p-form__group" data-ng-repeat="mac in machine.macs">
                     <label for="mac-address" class="p-form__label col-2"><span data-ng-hide="mac !== machine.macs[0]">MAC Address</span>&nbsp;</label>
                     <div class="p-form__control p-search-box col-3">
