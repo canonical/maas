@@ -359,7 +359,8 @@ angular.module('MAAS').controller('PodDetailsController', [
 
         // Returns true if the pod is composable.
         $scope.canCompose = function() {
-            if(angular.isObject($scope.pod)) {
+            if(angular.isObject($scope.pod)
+                && angular.isArray($scope.pod.permissions)) {
                 return ($scope.pod.permissions.indexOf('compose') >= 0 &&
                     $scope.pod.capabilities.indexOf('composable') >= 0);
             } else {
