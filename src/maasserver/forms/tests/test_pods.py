@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for pod forms."""
@@ -292,7 +292,10 @@ class TestPodForm(MAASTransactionServerTestCase):
     def test_creates_pod_with_tags(self):
         self.fake_pod_discovery()
         pod_info = self.make_pod_info()
-        tags = [factory.make_name('tag'), factory.make_name('tag')]
+        tags = [
+            factory.make_name('tag'),
+            factory.make_name('tag'),
+            'pod-console-logging']
         pod_info['tags'] = ','.join(tags)
         form = PodForm(data=pod_info, request=self.request)
         self.assertTrue(form.is_valid(), form._errors)
