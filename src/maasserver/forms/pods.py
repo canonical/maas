@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Pod forms."""
@@ -149,22 +149,6 @@ class PodForm(MAASModelForm):
         if data is None:
             data = {}
         type_value = data.get('type', self.initial.get('type'))
-        console_log = data.get('console_logging', '').lower()
-        if console_log in ['true', 'false']:
-            console_log = True if console_log == 'true' else False
-            if self.is_new:
-                self.update_console_log = True
-            elif 'pod-console-logging' in instance.tags and console_log:
-                self.update_console_log = False
-            elif 'pod-console-logging' in instance.tags and not console_log:
-                self.update_console_log = True
-            else:
-                self.update_console_log = True
-        else:
-            self.update_console_log = False
-
-        if self.update_console_log:
-            self.console_log = console_log
 
         self.drivers_orig = driver_parameters.get_all_power_types()
         self.drivers = {
@@ -261,31 +245,14 @@ class PodForm(MAASModelForm):
             self.instance = super(PodForm, self).save(commit=False)
             self.instance.power_type = power_type
             self.instance.power_parameters = power_parameters
-            # If console_log is set, create a tag for the kernel parameters
-            # if it does not already exist.  Delete otherwise.
-            if self.update_console_log:
-                if self.console_log:
-                    tag, _ = Tag.objects.get_or_create(
-                        name="pod-console-logging",
-                        kernel_opts="console=tty1 console=ttyS0")
-                    # Add this tag to the pod.
-                    self.instance.add_tag(tag.name)
-                else:
-                    try:
-                        tag = Tag.objects.get(name="pod-console-logging")
-                        # Remove this tag from the pod.
-                        self.instance.remove_tag(tag.name)
-                        # Delete the tag if there are no longer any other
-                        # pods using it.
-                        pods = Pod.objects.filter(
-                            tags__contains=['pod-console-logging']).exclude(
-                                id=self.instance.id)
-                        if not pods:
-                            tag.delete()
-                    except Tag.DoesNotExist:
-                        # There was no tag so just continue.
-                        pass
-
+            # Add tag for pod console logging with
+            # appropriate kernel parameters.
+            tag, _ = Tag.objects.get_or_create(
+                name="pod-console-logging",
+                kernel_opts="console=tty1 console=ttyS0")
+            # Add this tag to the pod.  This only adds the tag
+            # if it is not present on the pod.
+            self.instance.add_tag(tag.name)
             return self.instance
 
         power_type = self.cleaned_data['type']
