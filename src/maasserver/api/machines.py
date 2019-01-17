@@ -1495,7 +1495,7 @@ def create_machine(request, requires_arch=False):
     if given_min_hwe_kernel:
         if hwe_regex.search(given_min_hwe_kernel) is None:
             raise MAASAPIValidationError(
-                'min_hwe_kernel must be in the form of hwe-<LETTER>.')
+                'min_hwe_kernel must start with "hwe-" or "ga-"')
 
     Form = get_machine_create_form(request.user)
     form = Form(
