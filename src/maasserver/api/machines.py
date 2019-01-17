@@ -541,6 +541,10 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         checked against the expected power parameters for the machine's power
         type ('true' or 'false').  The default is 'false'.
 
+        @param (string) "pool" [required=false] The resource pool to which the
+        machine should belong. All machines belong to the 'default' resource
+        pool if they do not belong to any other resource pool.
+
         @param (string) "zone" [required=false] Name of a valid physical zone
         in which to place this machine.
 
