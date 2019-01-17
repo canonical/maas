@@ -18,7 +18,6 @@ from maasserver import (
     eventloop,
     ipc,
     nonces_cleanup,
-    prometheus,
     rack_controller,
     region_controller,
     stats,
@@ -30,6 +29,7 @@ from maasserver.eventloop import (
     DEFAULT_PORT,
     MAASServices,
 )
+from maasserver.prometheus.stats import PrometheusService
 from maasserver.regiondservices import (
     ntp,
     service_monitor_service,
@@ -379,8 +379,7 @@ class TestFactories(MAASTestCase):
 
     def test_make_PrometheusService(self):
         service = eventloop.make_PrometheusService()
-        self.assertThat(service, IsInstance(
-            prometheus.PrometheusService))
+        self.assertThat(service, IsInstance(PrometheusService))
         # It is registered as a factory in RegionEventLoop.
         self.assertIs(
             eventloop.make_PrometheusService,

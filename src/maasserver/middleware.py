@@ -77,7 +77,7 @@ PUBLIC_URL_PREFIXES = [
     # RPC information is for use by rack controllers; no login.
     reverse('rpc-info'),
     # Prometheus stats
-    reverse('metrics'),
+    reverse('stats'),
     # API meta-information is publicly visible.
     reverse('api_version'),
     reverse('api_v1_error'),

@@ -16,6 +16,10 @@ from django.http import (
     HttpResponseNotFound,
 )
 from maasserver.models import Config
+from maasserver.prometheus import (
+    prom_cli,
+    PROMETHEUS_SUPPORTED,
+)
 from maasserver.stats import (
     get_kvm_pods_stats,
     get_maas_stats,
@@ -27,44 +31,33 @@ from provisioningserver.logger import LegacyLogger
 from twisted.application.internet import TimerService
 
 
-try:
-    from prometheus_client import (
-        CollectorRegistry,
-        Gauge,
-        push_to_gateway,
-        generate_latest,
-    )
-    PROMETHEUS = True
-except:
-    PROMETHEUS = False
-
 log = LegacyLogger()
 
 
-def prometheus_handler(request):
+def prometheus_stats_handler(request):
     if not Config.objects.get_config('prometheus_enabled'):
         return HttpResponseNotFound()
 
     return HttpResponse(
-        content=generate_latest(get_stats_for_prometheus()),
+        content=prom_cli.generate_latest(get_stats_for_prometheus()),
         content_type="text/plain")
 
 
 def get_stats_for_prometheus():
-    registry = CollectorRegistry()
+    registry = prom_cli.CollectorRegistry()
     stats = json.loads(get_maas_stats())
     architectures = get_machines_by_architecture()
     pods = get_kvm_pods_stats()
 
     # Gather counter for machines per status
-    counter = Gauge(
+    counter = prom_cli.Gauge(
         "machine_status", "Number of machines per status",
         ["status"], registry=registry)
     for status, machines in stats['machine_status'].items():
         counter.labels(status).set(machines)
 
     # Gather counter for number of nodes (controllers/machine/devices)
-    counter = Gauge(
+    counter = prom_cli.Gauge(
         "nodes", "Number of nodes per type (e.g. racks, machines, etc).",
         ["type"], registry=registry)
     for ctype, number in stats['controllers'].items():
@@ -73,21 +66,21 @@ def get_stats_for_prometheus():
         counter.labels(ctype).set(number)
 
     # Gather counter for networks
-    counter = Gauge(
+    counter = prom_cli.Gauge(
         "networks", "General statistics for subnets.",
         ["type"], registry=registry)
     for stype, number in stats['network_stats'].items():
         counter.labels(stype).set(number)
 
     # Gather overall amount of machine resources
-    counter = Gauge(
+    counter = prom_cli.Gauge(
         "machine_resources", "Amount of combined resources for all machines",
         ["resource"], registry=registry)
     for resource, value in stats['machine_stats'].items():
         counter.labels(resource).set(value)
 
     # Gather all stats for pods
-    counter = Gauge(
+    counter = prom_cli.Gauge(
         "kvm_pods", "General stats for KVM pods",
         ["type"], registry=registry)
     for resource, value in pods.items():
@@ -99,7 +92,7 @@ def get_stats_for_prometheus():
 
     # Gather statistics for architectures
     if len(architectures.keys()) > 0:
-        counter = Gauge(
+        counter = prom_cli.Gauge(
             "machine_arches", "Number of machines per architecture.",
             ["arches"], registry=registry)
         for arch, machines in architectures.items():
@@ -110,7 +103,7 @@ def get_stats_for_prometheus():
 
 def push_stats_to_prometheus(maas_name, push_gateway):
     registry = get_stats_for_prometheus()
-    push_to_gateway(
+    prom_cli.push_to_gateway(
         push_gateway, job='stats_for_%s' % maas_name, registry=registry)
 
 
@@ -140,7 +133,7 @@ class PrometheusService(TimerService, object):
             self._update_interval(
                 timedelta(minutes=config['prometheus_push_interval']))
             # Determine if we can run the actual update.
-            if (not PROMETHEUS or not config['prometheus_enabled'] or
+            if (not PROMETHEUS_SUPPORTED or not config['prometheus_enabled'] or
                     config['prometheus_push_gateway'] is None):
                 return
             # Run updates.

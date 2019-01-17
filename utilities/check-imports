@@ -274,7 +274,7 @@ RegionControllerRule = Rule(
     Allow("OpenSSL|OpenSSL.**"),
     Allow("petname"),
     Allow("piston3|piston3.**"),
-    Allow("prometheus_client.**"),
+    Allow("prometheus_client"),
     Allow("provisioningserver|provisioningserver.**"),
     Allow("psycopg2|psycopg2.**"),
     Allow("pytz.UTC"),

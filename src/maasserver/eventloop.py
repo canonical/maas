@@ -105,8 +105,8 @@ def make_StatsService():
 
 
 def make_PrometheusService():
-    from maasserver import prometheus
-    return prometheus.PrometheusService()
+    from maasserver.prometheus import stats
+    return stats.PrometheusService()
 
 
 def make_ImportResourcesService():

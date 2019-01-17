@@ -21,7 +21,7 @@ from maasserver.bootresources import (
     simplestreams_stream_handler,
 )
 from maasserver.macaroon_auth import MacaroonDischargeRequest
-from maasserver.prometheus import prometheus_handler
+from maasserver.prometheus.stats import prometheus_stats_handler
 from maasserver.views import (
     settings,
     TextTemplateView,
@@ -84,7 +84,7 @@ urlpatterns += [
         r'^images-stream/(?P<os>.*)/(?P<arch>.*)/(?P<subarch>.*)/'
         '(?P<series>.*)/(?P<version>.*)/(?P<filename>.*)$',
         simplestreams_file_handler, name='simplestreams_file_handler'),
-    url(r'^metrics$', prometheus_handler, name='metrics'),
+    url(r'^stats$', prometheus_stats_handler, name='stats'),
     url(
         r'^robots\.txt$', TextTemplateView.as_view(
             template_name='maasserver/robots.txt'),
