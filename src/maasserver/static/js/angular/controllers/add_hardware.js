@@ -551,11 +551,22 @@ angular.module('MAAS').controller('AddHardwareController', [
 
             // Return the new object.
             return {
+                name: machine.name,
+                domain: machine.domain,
+                architecture: machine.architecture,
                 min_hwe_kernel: machine.min_hwe_kernel,
                 pxe_mac: pxe_mac,
                 extra_macs: extra_macs,
                 power_type: machine.power.type.name,
                 power_parameters: angular.copy(machine.power.parameters),
+                zone: {
+                    id: machine.zone.id,
+                    name: machine.zone.name
+                },
+                pool: {
+                    id: machine.pool.id,
+                    name: machine.pool.name
+                },
             };
         }
 
