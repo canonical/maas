@@ -17,13 +17,14 @@ class PrometheusRequestMetricsMiddleware:
         start_time = time()
         response = self.get_response(request)
         end_time = time()
-        if self.prometheus_metrics is not None:
-            self._process_metrics(request, response, start_time, end_time)
+        self._process_metrics(request, response, start_time, end_time)
         return response
 
     def _process_metrics(self, request, response, start_time, end_time):
-        metrics = self.prometheus_metrics.metrics
-        http_request_latency = metrics['http_request_latency'].labels(
-            method=request.method, path=request.path,
-            status=response.status_code)
-        http_request_latency.observe(end_time - start_time)
+        labels = {
+            'method': request.method,
+            'path': request.path,
+            'status': response.status_code}
+        self.prometheus_metrics.update(
+            'http_request_latency', 'observe', value=end_time - start_time,
+            labels=labels)

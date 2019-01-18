@@ -1,5 +1,4 @@
 from django.http import HttpResponse
-from maasserver.prometheus import prom_cli
 from maasserver.prometheus.metrics import create_metrics
 from maasserver.prometheus.middleware import (
     PrometheusRequestMetricsMiddleware,
@@ -21,8 +20,7 @@ class TestPrometheusRequestMetricsMiddleware(MAASTestCase):
         middleware(factory.make_fake_request("/MAAS/accounts/login/"))
         middleware(factory.make_fake_request("/MAAS/accounts/login/"))
         middleware(factory.make_fake_request("/MAAS/other/path"))
-        metrics_text = prom_cli.generate_latest(
-            prometheus_metrics.registry).decode('ascii')
+        metrics_text = prometheus_metrics.generate_latest().decode('ascii')
         self.assertIn(
             'http_request_latency_count{method="GET",'
             'path="/MAAS/accounts/login/",status="200"} 2.0',
