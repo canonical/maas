@@ -261,8 +261,8 @@ angular.module('MAAS').controller('NodeStorageController', [
                 function(filesystem) {
                     filesystems.push({
                         "type": "filesystem",
-                        "name": "—",
-                        "size_human": "—",
+                        "name": "\u2014",
+                        "size_human": "\u2014",
                         "fstype": filesystem.fstype,
                         "mount_point": filesystem.mount_point,
                         "mount_options": filesystem.mount_options,
