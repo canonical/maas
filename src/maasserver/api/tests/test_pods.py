@@ -296,7 +296,6 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
             'power_pass': new_power_parameters['power_pass'],
             'zone': new_zone.name,
             'pool': new_pool.name,
-            'console_logging': 'True',
         })
         self.assertEqual(
             http.client.OK, response.status_code, response.content)

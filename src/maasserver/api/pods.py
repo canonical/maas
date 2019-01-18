@@ -1,4 +1,4 @@
-# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `Pod`."""
@@ -158,11 +158,6 @@ class PodHandler(OperationsHandler):
         mode for pods that use it: bridge, passthru, private, vepa.
         @param (string) "tags" [required=false] Tag or tags (command separated)
         associated with the pod.
-        @param (boolean) "console_log" [required=false] If 'True', VMs composed
-        in this pod will have console output logged (Note: this will
-        automatically create a tag named 'pod-console-logging' and apply it to
-        the pod). If 'False', MAAS deletes the 'pod-console-logging' tag, if
-        any, which turns off console logging.
 
         @success (http-status-code) "200" 200
         @success (json) "success-json" A JSON pod object.
