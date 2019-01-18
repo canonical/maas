@@ -71,6 +71,7 @@ parts:
       - python3-paramiko
       - python3-petname
       - python3-pexpect
+      - python3-prometheus-client
       - python3-psycopg2
       - python3-pyparsing
       - python3-requests

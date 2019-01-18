@@ -150,7 +150,7 @@ class TestPrometheusServiceAsync(MAASTransactionServerTestCase):
 
     def test_maybe_make_stats_request_makes_request(self):
         mock_call = self.patch(stats, "push_stats_to_prometheus")
-        self.patch(stats, "PROMETHEUS_SUPPORTED").return_value = True
+        self.patch(stats, "PROMETHEUS_SUPPORTED", True)
 
         with transaction.atomic():
             Config.objects.set_config('prometheus_enabled', True)

@@ -19,6 +19,7 @@ make
 psmisc
 python3-django-nose
 python3-dnspython
+python3-prometheus-client
 python-bson
 python-crochet
 python-django

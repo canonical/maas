@@ -219,6 +219,8 @@ TEMPLATES = [
 ]
 
 MIDDLEWARE = (
+    # Update Prometheus metrics for requests
+    'maasserver.prometheus.middleware.PrometheusRequestMetricsMiddleware',
 
     # Prints request & response to the logs. FIXME: Do we use this? Keep
     # DebuggingLoggerMiddleware underneath GZipMiddleware so that it deals
