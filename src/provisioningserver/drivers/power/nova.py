@@ -54,6 +54,12 @@ class NovaPowerDriver(PowerDriver):
             'os_password', "Password", field_type='password',
             required=True),
         make_setting_field('os_authurl', "Auth URL", required=True),
+        # Since OpenStack Queens Keystone supports ONLY v3 auth
+        # hence parameters below are required to work with that version
+        # but old one are left as an option for backward compatibility
+        # with prev OpenStack versions
+        make_setting_field('user_domain_name', "User Domain name"),
+        make_setting_field('project_domain_name', "Project Domain name"),
     ]
     ip_extractor = make_ip_extractor('os_authurl', IP_EXTRACTOR_PATTERNS.URL)
 
@@ -66,10 +72,18 @@ class NovaPowerDriver(PowerDriver):
         """Control power of nova instances."""
         if not self.try_novaapi_import():
             raise PowerToolError("Missing the python3-novaclient package.")
-        nova = self.nova_api.Client(2, os_username,
-                                    os_password,
-                                    os_tenantname,
-                                    os_authurl)
+        if user_domain_name != "" and project_domain_name != "":
+            nova = self.nova_api.Client(2, username=os_username,
+                                        password=os_password,
+                                        project_name=os_tenantname,
+                                        auth_url=os_authurl,
+                                        user_domain_name=user_domain_name,
+                                        project_domain_name=project_domain_name)
+        else:
+            nova = self.nova_api.Client(2, os_username,
+                                        os_password,
+                                        os_tenantname,
+                                        os_authurl)
 
         try:
             urllib.request.urlopen(os_authurl)
