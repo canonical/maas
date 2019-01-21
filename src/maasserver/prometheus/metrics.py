@@ -3,6 +3,8 @@
 
 """Prometheus metrics."""
 
+from collections import namedtuple
+
 from django.http import (
     HttpResponse,
     HttpResponseNotFound,
@@ -12,10 +14,15 @@ from maasserver.prometheus import (
     PROMETHEUS_SUPPORTED,
 )
 
+# Definition for a Prometheus metric.
+MetricDefinition = namedtuple(
+    'MetricDefiniition', ['type', 'name', 'description', 'labels'])
+
 
 METRICS_DEFINITIONS = [
-    ('Histogram', 'http_request_latency', 'HTTP request latency',
-     ['method', 'path', 'status']),
+    MetricDefinition(
+        'Histogram', 'http_request_latency', 'HTTP request latency',
+        ['method', 'path', 'status']),
 ]
 
 
@@ -57,9 +64,10 @@ def create_metrics():
         return PrometheusMetrics(registry=None, metrics=None)
     registry = prom_cli.CollectorRegistry()
     metrics = {}
-    for metric_type, name, description, labels in METRICS_DEFINITIONS:
-        cls = getattr(prom_cli, metric_type)
-        metrics[name] = cls(name, description, labels, registry=registry)
+    for metric in METRICS_DEFINITIONS:
+        cls = getattr(prom_cli, metric.type)
+        metrics[metric.name] = cls(
+            metric.name, metric.description, metric.labels, registry=registry)
     return PrometheusMetrics(registry=registry, metrics=metrics)
 
 
