@@ -63,14 +63,14 @@
 </div>
 <div class="p-strip" data-ng-show="!loading">
     <section class="row">
-        <table class="p-table-expanding" role="grid">
+        <table class="p-table-expanding p-table--sortable u-no-margin--top" style="overflow: visible;">
             <thead>
                 <tr role="row">
-                    <th class="col-3" data-ng-click="predicate='name'; reverse = !reverse" data-ng-class="{'is-sorted': predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="Domain">Domain</th>
-                    <th class="col-2 u-align--right" data-ng-click="predicate='authoritative'; reverse = !reverse" data-ng-class="{'is-sorted': predicate === 'authoritative', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="Authoritative">Authoritative</th>
-                    <th class="col-2 u-align--right" data-ng-click="predicate='hosts'; reverse = !reverse" data-ng-class="{'is-sorted': predicate === 'hosts', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="Hosts">Hosts</th>
-                    <th class="col-2 u-align--right" data-ng-click="predicate='resource_count'; reverse = !reverse" data-ng-class="{'is-sorted': predicate === 'resource_count', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="Total Records">Total Records</th>
-                    <th class="col-3 u-align--right" title="Actions" data-ng-if="isSuperUser()"><span class="u-float--right">Actions</span></th>
+                    <th role="columnheader" class="col-3" data-ng-click="predicate='name'; reverse = !reverse" data-ng-class="{'is-sorted': predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="Domain">Domain</th>
+                    <th role="columnheader" class="col-2 u-align--right" data-ng-click="predicate='authoritative'; reverse = !reverse" data-ng-class="{'is-sorted': predicate === 'authoritative', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="Authoritative">Authoritative</th>
+                    <th role="columnheader" class="col-2 u-align--right" data-ng-click="predicate='hosts'; reverse = !reverse" data-ng-class="{'is-sorted': predicate === 'hosts', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="Hosts">Hosts</th>
+                    <th role="columnheader" class="col-2 u-align--right" data-ng-click="predicate='resource_count'; reverse = !reverse" data-ng-class="{'is-sorted': predicate === 'resource_count', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="Total Records">Total Records</th>
+                    <th role="columnheader" class="col-3 u-align--right" title="Actions" data-ng-if="isSuperUser()"><span class="u-float--right">Actions</span></th>
                 </tr>
             </thead>
             <tbody>

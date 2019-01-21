@@ -49,31 +49,31 @@
 <section class="p-strip">
     <div class="row">
         <!-- Spaces grouped table -->
-        <table class="p-table--mobile-card">
+        <table class="p-table-expanding p-table--sortable u-no-margin--top" style="overflow: visible;">
             <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Description</th>
-                    <th class="u-align--right">Machines</th>
-                    <th class="u-align--right">Devices</th>
-                    <th class="u-align--right">Controllers</th>
+                <tr role="row">
+                    <th role="columnheader" data-ng-click="predicate='name'; reverse = !reverse" data-ng-class="{'is-sorted': predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" class="col-3">Name</th>
+                    <th role="columnheader" data-ng-click="predicate='description'; reverse = !reverse" data-ng-class="{'is-sorted': predicate === 'description', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" class="col-3 u-align--right">Description</th>
+                    <th role="columnheader" data-ng-click="predicate='machines'; reverse = !reverse" data-ng-class="{'is-sorted': predicate === 'machines', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" class="col-2 u-align--right">Machines</th>
+                    <th role="columnheader" data-ng-click="predicate='devices'; reverse = !reverse" data-ng-class="{'is-sorted': predicate === 'devices', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" class="col-2 u-align--right">Devices</th>
+                    <th role="columnheader" data-ng-click="predicate='controllers'; reverse = !reverse" data-ng-class="{'is-sorted': predicate === 'controllers', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" class="col-2 u-align--right">Controllers</th>
                 </tr>
             </thead>
             <tbody vs-repeat vs-scroll-parent="window">
-                <tr data-ng-repeat="zone in zones">
-                    <td aria-label="Name" title="{$ zone.name $}">
+                <tr role="row" data-ng-repeat="zone in zones | orderBy:predicate:reverse track by $index">
+                    <td aria-label="Name" title="{$ zone.name $}" class="col-3">
                         <a href="#/zone/{$ zone.id $}">{$ zone.name $}</a>
                     </td>
-                    <td aria-label="Description" title="{$ zone.description $}">
+                    <td aria-label="Description" title="{$ zone.description $}" class="u-align--right col-3">
                         {$ zone.description $}
                     </td>
-                    <td aria-label="Machines" class="u-align--right">
+                    <td aria-label="Machines" class="u-align--right col-2">
                         <a href="#/machines?query=zone:({$ zone.name $})">{$ zone.machines_count $}</a>
                     </td>
-                    <td aria-label="Devices" class="u-align--right">
+                    <td aria-label="Devices" class="u-align--right col-2">
                         <a href="#/devices?query=zone:({$ zone.name $})">{$ zone.devices_count $}</a>
                     </td>
-                    <td aria-label="Controllers" class="u-align--right">
+                    <td aria-label="Controllers" class="u-align--right col-2">
                         <a href="#/controllers?query=zone:({$ zone.name $})">{$ zone.controllers_count $}</a>
                     </td>
                 </tr>
