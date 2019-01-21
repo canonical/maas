@@ -577,7 +577,7 @@
                                     <a href="#/machines/?query=tags:({$ tag $})">{$ tag $}</a>
                                 </span>
                                 <tags-input data-ng-model="summary.tags"
-                                    data-ng-disabled="!summary.editing" allowed-tags-pattern="[\w-]+">
+                                    data-ng-hide="!summary.editing" allowed-tags-pattern="[\w-]+">
                                     <auto-complete source="tagsAutocomplete($query)"></auto-complete>
                                 </tags-input>
                             </div>
