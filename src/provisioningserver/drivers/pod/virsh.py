@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Virsh pod driver."""
@@ -221,10 +221,6 @@ DOM_TEMPLATE_S390X = dedent("""
         <pae/>
       </features>
       <devices>
-        <serial type='pty'>
-          <log file="/var/log/libvirt/qemu/{name}-serial0.log" append="off" />
-          <target port='0'/>
-        </serial>
         <console type='pty'>
           <target type='sclp' port='0'/>
           <alias name='console0'/>
