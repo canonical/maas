@@ -19,8 +19,8 @@ parts:
   maas:
     plugin: python
     source: .
-    requirements: requirements.txt
-    build-attributes: [no-system-libraries]
+    requirements:
+      - requirements.txt
     build-packages:
       - build-essential
       - bzr

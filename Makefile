@@ -88,6 +88,7 @@ install-dependencies:
 	        $(addprefix required-packages/,base build dev doc) | sed '/^\#/d')
 	sudo DEBIAN_FRONTEND=noninteractive apt-get -y \
 	    purge $(shell sort -u required-packages/forbidden | sed '/^\#/d')
+	if [ -x /usr/bin/snap ]; then sudo snap install --classic snapcraft; fi
 
 .gitignore:
 	sed 's:^[.]/:/:' $^ > $@
@@ -760,13 +761,9 @@ snap-clean:
 snap:
 	$(snapcraft)
 
-snap-cleanbuild:
-	$(snapcraft) cleanbuild
-
 define phony_snap_targets
 	snap
 	snap-clean
-	snap-cleanbuild
 endef
 
 
@@ -779,7 +776,7 @@ build/dev-snap: ## Check out a clean version of the working tree.
 	git checkout-index -a --prefix build/dev-snap/
 
 build/dev-snap/prime: build/dev-snap
-	cd build/dev-snap && $(snapcraft) prime
+	cd build/dev-snap && $(snapcraft) prime --destructive-mode
 
 sync-dev-snap: build/dev-snap/prime
 	rsync -v --exclude 'maastesting' --exclude 'tests' --exclude 'testing' \
