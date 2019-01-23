@@ -221,8 +221,7 @@ class MachineHandler(NodeHandler):
                 data["pxe_mac_vendor"] = obj.get_pxe_mac_vendor()
                 data["power_type"] = obj.power_type
                 data["vlan"] = self.dehydrate_vlan(obj, boot_interface)
-                if for_list:
-                    data["ip_addresses"] = self.dehydrate_all_ip_addresses(obj)
+                data["ip_addresses"] = self.dehydrate_all_ip_addresses(obj)
             else:
                 data["pxe_mac"] = data["pxe_mac_vendor"] = ""
 

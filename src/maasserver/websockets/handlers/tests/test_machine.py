@@ -316,8 +316,7 @@ class TestMachineHandler(MAASServerTestCase):
         }
         if boot_interface:
             data["vlan"] = handler.dehydrate_vlan(node, boot_interface)
-            if for_list:
-                data["ip_addresses"] = handler.dehydrate_all_ip_addresses(node)
+            data["ip_addresses"] = handler.dehydrate_all_ip_addresses(node)
         bmc = node.bmc
         if bmc is not None and bmc.bmc_type == BMC_TYPE.POD:
             data['pod'] = {'id': bmc.id, 'name': bmc.name}
@@ -1777,6 +1776,22 @@ class TestMachineHandler(MAASServerTestCase):
                 "special_filesystems": Equals(
                     [handler.dehydrate_filesystem(filesystem)])
             }))
+
+    def test_get_includes_static_ip_addresses(self):
+        user = factory.make_User()
+        machine = factory.make_Machine(owner=user)
+        [interface1, interface2] = [
+            factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=machine)
+            for _ in range(2)
+        ]
+        ip_address1 = factory.make_StaticIPAddress(interface=interface1)
+        ip_address2 = factory.make_StaticIPAddress(interface=interface2)
+        handler = MachineHandler(user, {}, None)
+        dehydrated_machine = handler.get({"system_id": machine.system_id})
+        dehydrated_ips = [
+            info['ip'] for info in dehydrated_machine['ip_addresses']]
+        self.assertEqual(
+            sorted(dehydrated_ips), sorted([ip_address1.ip, ip_address2.ip]))
 
     def test_list(self):
         user = factory.make_User()
