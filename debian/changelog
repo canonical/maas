@@ -1,8 +1,8 @@
-maas (2.5.1-0ubuntu1) UNRELEASED; urgency=medium
+maas (2.6.0~alpha1-0ubuntu1) UNRELEASED; urgency=medium
 
   * UNRELEASED
 
- -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 05 Dec 2018 14:10:00 -0500
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Thu, 24 Jan 2019 09:02:55 -0500
 
 maas (2.5.0-7442-gdf68e30a5-0ubuntu1) cosmic; urgency=medium
 
