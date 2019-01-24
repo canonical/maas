@@ -212,17 +212,18 @@ class TestResourcePoolHandler(MAASServerTestCase):
         pool = factory.make_ResourcePool()
         self.rbac_store.add_pool(pool)
         self.rbac_store.allow(user.username, pool, 'view')
-        self.rbac_store.allow(user.username, pool, 'edit')
+        self.rbac_store.allow(user.username, ALL_RESOURCES, 'edit')
         handler = ResourcePoolHandler(user, {}, None)
         handler.delete({"id": pool.id})
         self.assertIsNone(reload_object(pool))
 
-    def test_delete_rbac_no_edit(self):
+    def test_delete_rbac_no_edit_all(self):
         self.enable_rbac()
         user = factory.make_User()
         pool = factory.make_ResourcePool()
         self.rbac_store.add_pool(pool)
         self.rbac_store.allow(user.username, pool, 'view')
+        self.rbac_store.allow(user.username, pool, 'edit')
         handler = ResourcePoolHandler(user, {}, None)
         self.assertRaises(
             HandlerPermissionError, handler.delete, {"id": pool.id})

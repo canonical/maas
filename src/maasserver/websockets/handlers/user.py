@@ -91,6 +91,8 @@ class UserHandler(Handler):
             permissions.append('device_create')
         if self.user.has_perm(ResourcePoolPermission.create):
             permissions.append('resource_pool_create')
+        if self.user.has_perm(ResourcePoolPermission.delete):
+            permissions.append('resource_pool_delete')
         if self.user.has_perm(PodPermission.create):
             permissions.append('pod_create')
         return permissions

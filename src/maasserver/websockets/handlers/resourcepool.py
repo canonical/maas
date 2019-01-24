@@ -43,7 +43,7 @@ class ResourcePoolHandler(TimestampedModelHandler):
         create_permission = ResourcePoolPermission.create
         view_permission = ResourcePoolPermission.view
         edit_permission = ResourcePoolPermission.edit
-        delete_permission = ResourcePoolPermission.edit
+        delete_permission = ResourcePoolPermission.delete
 
     def get_queryset(self, for_list=False):
         """Return `QuerySet` used by this handler."""

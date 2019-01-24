@@ -540,11 +540,15 @@ class MAASAuthorizationBackend(ModelBackend):
             if rbac_enabled:
                 return rbac.can_create_resource_pool(user.username)
             return user.is_superuser
+        if perm == ResourcePoolPermission.delete:
+            if rbac_enabled:
+                return rbac.can_delete_resource_pool(user.username)
+            return user.is_superuser
 
         # From this point forward the `obj` must be a `ResourcePool`.
         if not isinstance(obj, ResourcePool):
             raise ValueError(
-                'only `ResourcePoolPermission.create` can be used '
+                'only `ResourcePoolPermission.(create|delete)` can be used '
                 'without an `obj`.')
 
         if perm == ResourcePoolPermission.edit:

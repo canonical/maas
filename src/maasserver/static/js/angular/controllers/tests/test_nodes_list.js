@@ -244,26 +244,12 @@ describe("NodesListController", function() {
     });
 
     describe("canDeleteResourcePool", function() {
-        it("returns false if not permissions on pool", function() {
+        it("calls hasGlobalPermission with resource_pool_delete", function() {
             var controller = makeController();
-            var pool = {};
-            expect($scope.canDeleteResourcePool(pool)).toBe(false);
-        });
-
-        it("returns false if no delete permission", function() {
-            var controller = makeController();
-            var pool = {
-                permissions: ['edit']
-            };
-            expect($scope.canDeleteResourcePool(pool)).toBe(false);
-        });
-
-        it("returns true if delete permission", function() {
-            var controller = makeController();
-            var pool = {
-                permissions: ['delete']
-            };
-            expect($scope.canDeleteResourcePool(pool)).toBe(true);
+            spyOn(UsersManager, "hasGlobalPermission").and.returnValue(true);
+            expect($scope.canDeleteResourcePool()).toBe(true);
+            expect(UsersManager.hasGlobalPermission).toHaveBeenCalledWith(
+                'resource_pool_delete');
         });
     });
 
