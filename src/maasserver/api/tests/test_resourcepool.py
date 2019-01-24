@@ -14,6 +14,7 @@ from maasserver.models import (
     ResourcePool,
 )
 from maasserver.rbac import (
+    ALL_RESOURCES,
     FakeRBACClient,
     rbac,
 )
@@ -194,17 +195,21 @@ class TestResourcePoolAPIWithRBAC(APITestCase.ForUser):
         self.assertEqual(response.status_code, http.client.FORBIDDEN)
 
     def test_DELETE_removes_pool(self):
-        self.become_admin()
+        pool = factory.make_ResourcePool()
+        self.store.allow(self.user.username, ALL_RESOURCES, 'edit')
+        response = self.client.delete(
+            reverse('resourcepool_handler', args=[pool.id]))
+        self.assertEqual(response.status_code, http.client.NO_CONTENT)
+
+    def test_DELETE_forbidden_edit_on_pool_only(self):
         pool = factory.make_ResourcePool()
         self.store.add_pool(pool)
         self.store.allow(self.user.username, pool, 'edit')
         response = self.client.delete(
-            reverse('resourcepool_handler', args=[pool.id]), {})
-        self.assertEqual(response.status_code, http.client.NO_CONTENT)
-        self.assertIsNone(reload_object(pool))
+            reverse('resourcepool_handler', args=[pool.id]))
+        self.assertEqual(response.status_code, http.client.FORBIDDEN)
 
     def test_DELETE_forbidden(self):
-        self.become_admin()
         pool = factory.make_ResourcePool()
         self.store.add_pool(pool)
         self.store.allow(self.user.username, pool, 'view')

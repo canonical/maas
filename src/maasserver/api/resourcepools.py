@@ -44,6 +44,7 @@ class ResourcePoolHandler(ModelOperationsHandler):
     api_doc_section_name = 'Resource pool'
     permission_read = ResourcePoolPermission.view
     permission_edit = ResourcePoolPermission.edit
+    permission_delete = ResourcePoolPermission.delete
 
     def read(self, request, id):
         """@description Returns a resource pool.
@@ -126,7 +127,7 @@ class ResourcePoolHandler(ModelOperationsHandler):
             <no content>
         """
         pool = ResourcePool.objects.get_resource_pool_or_404(
-            id, request.user, self.permission_edit)
+            id, request.user, self.permission_delete)
         pool.delete()
         return rc.DELETED
 

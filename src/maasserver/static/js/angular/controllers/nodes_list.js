@@ -962,11 +962,8 @@ angular.module('MAAS').controller('NodesListController', [
         };
 
         // Return true if user can delete resource pool.
-        $scope.canDeleteResourcePool = function(pool) {
-            if(pool.permissions && pool.permissions.indexOf('delete') !== -1) {
-                return true;
-            }
-            return false;
+        $scope.canDeleteResourcePool = function() {
+            return UsersManager.hasGlobalPermission('resource_pool_delete');
         };
 
         // Return true if custom commissioning scripts exist.

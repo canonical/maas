@@ -2086,6 +2086,7 @@ class ResourcePoolForm(MAASModelForm):
             )
         permission_create = ResourcePoolPermission.create
         permission_edit = ResourcePoolPermission.edit
+        permission_delete = ResourcePoolPermission.delete
 
 
 class NodeMACAddressChoiceField(forms.ModelMultipleChoiceField):

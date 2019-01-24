@@ -41,3 +41,4 @@ class ResourcePoolPermission(enum.Enum):
     view = 'view'
     edit = 'edit'
     create = 'create'
+    delete = 'delete'

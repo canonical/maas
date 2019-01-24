@@ -1077,7 +1077,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                             <button class="p-button--base is-small u-no-margin--right" data-ng-if="canEditResourcePool(pool)" data-ng-click="tabs.pools.initiatePoolAction(pool, 'edit')">
                               <i class="p-icon--edit">Edit</i>
                             </button>
-                            <button class="p-button--base is-small" data-ng-hide="tabs.pools.isDefaultPool(pool)" data-ng-if="canDeleteResourcePool(pool)" data-ng-click="tabs.pools.initiatePoolAction(pool, 'delete')">
+                            <button class="p-button--base is-small" data-ng-hide="tabs.pools.isDefaultPool(pool)" data-ng-if="canDeleteResourcePool()" data-ng-click="tabs.pools.initiatePoolAction(pool, 'delete')">
                               <i class="p-icon--delete">Delete</i>
                             </button>
                           </span>

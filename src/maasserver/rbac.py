@@ -325,6 +325,17 @@ class RBACWrapper:
         pool_identifiers = self._get_resource_pool_identifiers(user, 'edit')
         return pool_identifiers['edit'] is ALL_RESOURCES
 
+    def can_delete_resource_pool(self, user: str) -> bool:
+        """Return True if the `user` can delete a resource pool.
+
+        A user can delete a resource pool if they have edit on all resource
+        pools.
+
+        @param user: The user name of the user.
+        """
+        pool_identifiers = self._get_resource_pool_identifiers(user, 'edit')
+        return pool_identifiers['edit'] is ALL_RESOURCES
+
     def _get_resource_pool_identifiers(
             self, user: str,
             *permissions: Sequence[str]) -> Mapping[str, ResourcesResultType]:
