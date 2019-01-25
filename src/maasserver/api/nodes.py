@@ -535,7 +535,6 @@ class NodeHandler(OperationsHandler):
             # Not sure what media type to use here.
             content_type='application/bson')
 
-    @admin_method
     @operation(idempotent=True)
     def power_parameters(self, request, system_id):
         """@description-title Get power parameters
@@ -559,7 +558,8 @@ class NodeHandler(OperationsHandler):
         @error-example "not-found"
             Not Found
         """
-        node = get_object_or_404(self.model, system_id=system_id)
+        node = Node.objects.get_node_or_404(
+            system_id, request.user, NodePermission.admin)
         return node.power_parameters
 
 

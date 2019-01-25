@@ -506,7 +506,6 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
             }
         }
 
-    @admin_method
     def update(self, request, system_id):
         """@description-title Update a machine
         @description Updates a machine with the given system_id.
