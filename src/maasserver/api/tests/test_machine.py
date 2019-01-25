@@ -17,7 +17,10 @@ from django.conf import settings
 from django.db import transaction
 from django.utils.http import urlencode
 from maasserver import forms
-from maasserver.api import machines as machines_module
+from maasserver.api import (
+    auth,
+    machines as machines_module,
+)
 from maasserver.enum import (
     FILESYSTEM_FORMAT_TYPE_CHOICES,
     FILESYSTEM_TYPE,
@@ -53,6 +56,7 @@ from maasserver.testing.api import (
 )
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
+from maasserver.testing.fixtures import RBACEnabled
 from maasserver.testing.matchers import HasStatusCode
 from maasserver.testing.orm import reload_objects
 from maasserver.testing.osystems import make_usable_osystem
@@ -1129,7 +1133,7 @@ class TestMachineAPI(APITestCase.ForUser):
         self.assertEqual(
             http.client.CONFLICT, response.status_code)
 
-    def test_PUT_updates_machine(self):
+    def test_PUT_updates_machine_superuser(self):
         self.become_admin()
         # The api allows the updating of a Machine.
         machine = factory.make_Node(
@@ -1145,6 +1149,50 @@ class TestMachineAPI(APITestCase.ForUser):
             'francis.%s' % domain_name, parsed_result['fqdn'])
         self.assertEqual(0, Machine.objects.filter(hostname='diane').count())
         self.assertEqual(1, Machine.objects.filter(hostname='francis').count())
+
+    def test_PUT_not_updates_machine_non_superuser(self):
+        machine = factory.make_Node(
+            hostname='diane', owner=self.user,
+            architecture=make_usable_architecture(self), power_type='manual')
+        response = self.client.put(
+            self.get_machine_uri(machine), {'hostname': 'francis'})
+
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
+
+    def test_PUT_updates_machine_rbac_pool_admin(self):
+        self.patch(auth, 'validate_user_external_auth').return_value = True
+        rbac = self.useFixture(RBACEnabled())
+        self.become_non_local()
+        # The api allows the updating of a Machine.
+        machine = factory.make_Node(
+            hostname='diane', owner=self.user,
+            architecture=make_usable_architecture(self), power_type='manual')
+        rbac.store.add_pool(machine.pool)
+        rbac.store.allow(self.user.username, machine.pool, 'admin-machines')
+        response = self.client.put(
+            self.get_machine_uri(machine), {'hostname': 'francis'})
+        parsed_result = json_load_bytes(response.content)
+
+        self.assertEqual(http.client.OK, response.status_code)
+        domain_name = Domain.objects.get_default_domain().name
+        self.assertEqual(
+            'francis.%s' % domain_name, parsed_result['fqdn'])
+        self.assertEqual(0, Machine.objects.filter(hostname='diane').count())
+        self.assertEqual(1, Machine.objects.filter(hostname='francis').count())
+
+    def test_PUT_not_updates_machine_rbac_pool_user(self):
+        self.patch(auth, 'validate_user_external_auth').return_value = True
+        rbac = self.useFixture(RBACEnabled())
+        self.become_non_local()
+        # The api allows the updating of a Machine.
+        machine = factory.make_Node(
+            hostname='diane', owner=self.user,
+            architecture=make_usable_architecture(self), power_type='manual')
+        rbac.store.add_pool(machine.pool)
+        rbac.store.allow(self.user.username, machine.pool, 'deploy-machines')
+        response = self.client.put(
+            self.get_machine_uri(machine), {'hostname': 'francis'})
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_PUT_denied_if_locked(self):
         self.become_admin()

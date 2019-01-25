@@ -15,6 +15,7 @@ from unittest.mock import (
 
 import bson
 from django.conf import settings
+from maasserver.api import auth
 from maasserver.enum import (
     NODE_STATUS,
     NODE_STATUS_CHOICES,
@@ -28,6 +29,7 @@ from maasserver.models import (
 from maasserver.testing.api import APITestCase
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
+from maasserver.testing.fixtures import RBACEnabled
 from maasserver.testing.matchers import HasStatusCode
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
@@ -418,7 +420,7 @@ class TestPowerParameters(APITestCase.ForUser):
         """Get the API URI for `node`."""
         return reverse('node_handler', args=[node.system_id])
 
-    def test_get_power_parameters(self):
+    def test_get_power_parameters_superuser(self):
         self.become_admin()
         power_parameters = {factory.make_string(): factory.make_string()}
         node = factory.make_Node(power_parameters=power_parameters)
@@ -429,6 +431,43 @@ class TestPowerParameters(APITestCase.ForUser):
         parsed_params = json_load_bytes(response.content)
         self.assertEqual(node.power_parameters, parsed_params)
 
+    def test_get_power_parameters_user(self):
+        power_parameters = {factory.make_string(): factory.make_string()}
+        node = factory.make_Node(power_parameters=power_parameters)
+        response = self.client.get(
+            self.get_node_uri(node), {'op': 'power_parameters'})
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content)
+
+    def test_get_power_parameters_rbac_pool_admin(self):
+        self.patch(auth, 'validate_user_external_auth').return_value = True
+        rbac = self.useFixture(RBACEnabled())
+        self.become_non_local()
+        power_parameters = {factory.make_string(): factory.make_string()}
+        node = factory.make_Machine(power_parameters=power_parameters)
+        rbac.store.add_pool(node.pool)
+        rbac.store.allow(self.user.username, node.pool, 'admin-machines')
+        response = self.client.get(
+            self.get_node_uri(node), {'op': 'power_parameters'})
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_params = json_load_bytes(response.content)
+        self.assertEqual(node.power_parameters, parsed_params)
+
+    def test_get_power_parameters_rbac_pool_user(self):
+        self.patch(auth, 'validate_user_external_auth').return_value = True
+        rbac = self.useFixture(RBACEnabled())
+        self.become_non_local()
+        power_parameters = {factory.make_string(): factory.make_string()}
+        node = factory.make_Machine(power_parameters=power_parameters)
+        rbac.store.add_pool(node.pool)
+        rbac.store.allow(self.user.username, node.pool, 'view')
+        rbac.store.allow(self.user.username, node.pool, 'deploy-machines')
+        response = self.client.get(
+            self.get_node_uri(node), {'op': 'power_parameters'})
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content)
+
     def test_get_power_parameters_empty(self):
         self.become_admin()
         node = factory.make_Node()
@@ -438,13 +477,6 @@ class TestPowerParameters(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content)
         parsed_params = json_load_bytes(response.content)
         self.assertEqual(node.power_parameters, parsed_params)
-
-    def test_power_parameters_requires_admin(self):
-        node = factory.make_Node()
-        response = self.client.get(
-            self.get_node_uri(node), {'op': 'power_parameters'})
-        self.assertEqual(
-            http.client.FORBIDDEN, response.status_code, response.content)
 
 
 class TestSetOwnerData(APITestCase.ForUser):
