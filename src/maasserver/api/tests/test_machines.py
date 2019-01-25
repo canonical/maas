@@ -629,6 +629,41 @@ class TestMachinesAPI(APITestCase.ForUser):
         self.assertItemsEqual(
             required_machine_ids, extract_system_ids(parsed_result))
 
+    def test_GET_list_allocated_with_rbac(self):
+        self.patch(auth, 'validate_user_external_auth').return_value = True
+        rbac = self.useFixture(RBACEnabled())
+        self.become_non_local()
+
+        user = factory.make_User()
+        pool = factory.make_ResourcePool()
+        rbac.store.allow(user.username, pool, 'view')
+
+        pool = factory.make_ResourcePool()
+        rbac.store.add_pool(pool)
+        rbac.store.allow(self.user.username, pool, 'view')
+
+        token = get_auth_tokens(self.user)[0]
+        factory.make_Node(
+            hostname='viewable', owner=self.user, token=token, pool=pool,
+            status=NODE_STATUS.ALLOCATED)
+        # a machine with the same token but not accesssible to the user (not in
+        # the allowed pool)
+        factory.make_Node(
+            hostname='not-accessible', owner=self.user, token=token,
+            status=NODE_STATUS.ALLOCATED)
+        # a machine owned by another user in the accessible pool
+        factory.make_Node(
+            hostname='other-user', owner=factory.make_User(),
+            status=NODE_STATUS.ALLOCATED, pool=pool)
+
+        response = self.client.get(
+            reverse('machines_handler'), {'op': 'list_allocated'})
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
+        hostnames = [machine['hostname'] for machine in parsed_result]
+        self.assertEqual(['viewable'], hostnames)
+
     def test_POST_allocate_returns_available_machine(self):
         # The "allocate" operation returns an available machine.
         available_status = NODE_STATUS.READY
