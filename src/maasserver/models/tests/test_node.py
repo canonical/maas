@@ -432,6 +432,7 @@ class TestNodeManager(MAASServerTestCase):
 
 
 class TestMachineManager(MAASServerTestCase):
+
     def make_machine(self, user=None, **kwargs):
         """Create a machine, allocated to `user` if given."""
         if user is None:

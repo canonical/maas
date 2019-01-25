@@ -604,27 +604,6 @@ class MachineManager(BaseNodeManager):
 
     extra_filters = {'node_type': NODE_TYPE.MACHINE}
 
-    def get_allocated_visible_machines(self, token, ids):
-        """Fetch Machines that were allocated to the User_/oauth token.
-
-        :param user: The user whose machines to fetch
-        :type user: User_
-        :param token: The OAuth token associated with the Machines.
-        :type token: piston3.models.Token.
-        :param ids: Optional set of IDs to filter by. If given, machines whose
-            system_ids are not in `ids` will be ignored.
-        :type param_ids: Sequence
-
-        .. _User: https://
-           docs.djangoproject.com/en/dev/topics/auth/
-           #django.contrib.auth.models.User
-        """
-        if ids is None:
-            machines = self.filter(token=token)
-        else:
-            machines = self.filter(token=token, system_id__in=ids)
-        return machines
-
     def get_available_machines_for_acquisition(self, for_user):
         """Find the machines that can be acquired by the given user.
 

@@ -1933,10 +1933,12 @@ class MachinesHandler(NodesHandler, PowersMixin):
         @success-example "success-json" [exkey=machines-placeholder]
         placeholder text
         """
-        token = get_oauth_token(request)
-        match_ids = get_optional_list(request.GET, 'id')
-        machines = Machine.objects.get_allocated_visible_machines(
-            token, match_ids)
+        # limit to machines that the user can view
+        machines = Machine.objects.get_nodes(request.user, NodePermission.view)
+        machines = machines.filter(token=get_oauth_token(request))
+        system_ids = get_optional_list(request.GET, 'id')
+        if system_ids:
+            machines = machines.filter(system_id__in=system_ids)
         return machines.order_by('id')
 
     @operation(idempotent=False)
