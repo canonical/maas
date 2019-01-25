@@ -5,7 +5,7 @@
 set -e
 
 # Render the supervisord.conf based on the current mode.
-"$SNAP/command-maas.wrapper" config --render
+"$SNAP/snap/command-chain/snapcraft-runner" "$SNAP/command-maas.wrapper" config --render
 
 # Run the supervisor for the snap.
 exec "$SNAP/bin/supervisord" -d "$SNAP_DATA/supervisord" -c "$SNAP_DATA/supervisord/supervisord.conf" -n > "$SNAP_COMMON/log/supervisor.log" 2>&1

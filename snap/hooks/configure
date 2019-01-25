@@ -27,4 +27,4 @@ cp "$SNAP/etc/maas/preseeds/curtin_userdata_custom" "$SNAP_DATA/preseeds/curtin_
 cp "$SNAP/etc/maas/preseeds/curtin_userdata_windows" "$SNAP_DATA/preseeds/curtin_userdata_windows.sample"
 
 # Perform migrations. Does nothing in 'rack' or 'none' mode.
-exec "$SNAP/command-maas.wrapper" migrate --configure
+exec "$SNAP/snap/command-chain/snapcraft-runner" "$SNAP/command-maas.wrapper" migrate --configure

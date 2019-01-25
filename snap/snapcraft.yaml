@@ -48,8 +48,11 @@ parts:
       - iproute2
       - isc-dhcp-client
       - isc-dhcp-server
+      - libatm1
       - libjs-angularjs
       - libjs-jquery
+      - libpq5
+      - libxtables12
       - lshw
       - chrony
       - nginx-core
