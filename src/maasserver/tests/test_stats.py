@@ -113,6 +113,24 @@ class TestMAASStats(MAASServerTestCase):
         }
         self.assertEquals(compare, stats)
 
+    def test_get_kvm_pods_stats_no_pod(self):
+        self.assertEqual(
+            get_kvm_pods_stats(),
+            {'kvm_pods': 0,
+             'kvm_machines': 0,
+             'kvm_available_resources': {
+                 'cores': 0,
+                 'memory': 0,
+                 'storage': 0,
+                 'over_cores': 0,
+                 'over_memory': 0
+             },
+             'kvm_utilized_resources': {
+                 'cores': 0,
+                 'memory': 0,
+                 'storage': 0
+             }})
+
     def test_get_maas_stats(self):
         # Make one component of everything
         factory.make_RegionRackController()
@@ -180,6 +198,45 @@ class TestMAASStats(MAASServerTestCase):
             },
         }
         self.assertEquals(stats, json.dumps(compare))
+
+    def test_get_maas_stats_no_machines(self):
+        expected = {
+            "controllers": {
+                "regionracks": 0,
+                "regions": 0,
+                "racks": 0,
+            },
+            "nodes": {
+                "machines": 0,
+                "devices": 0,
+            },
+            "machine_stats": {
+                "total_cpu": 0,
+                "total_mem": 0,
+                "total_storage": 0,
+            },
+            "machine_status": {
+                "new": 0,
+                "ready": 0,
+                "allocated": 0,
+                "deployed": 0,
+                "commissioning": 0,
+                "testing": 0,
+                "deploying": 0,
+                "failed_deployment": 0,
+                "failed_commissioning": 0,
+                "failed_testing": 0,
+                "broken": 0,
+            },
+            "network_stats": {
+                "spaces": 0,
+                "fabrics": 1,
+                "vlans": 1,
+                "subnets_v4": 0,
+                "subnets_v6": 0,
+            },
+        }
+        self.assertEqual(json.loads(get_maas_stats()), expected)
 
     def test_get_request_params_returns_params(self):
         factory.make_RegionRackController()
