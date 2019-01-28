@@ -12,7 +12,7 @@ __all__ = [
     "BootResourceNoContentForm",
     "BootSourceForm",
     "BootSourceSelectionForm",
-    "BulkNodeActionForm",
+    "BulkNodeSetZoneForm",
     "ClaimIPForm",
     "ClaimIPForMACForm",
     "CommissioningForm",
@@ -66,8 +66,6 @@ __all__ = [
     "ZoneForm",
     ]
 
-from collections import Counter
-from functools import partial
 from itertools import chain
 import json
 import re
@@ -116,7 +114,6 @@ from maasserver.enum import (
     NODE_STATUS,
     NODE_TYPE,
 )
-from maasserver.exceptions import NodeActionError
 from maasserver.fields import (
     LargeObjectFile,
     MACAddressFormField,
@@ -163,10 +160,6 @@ from maasserver.models import (
 )
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.partition import MIN_PARTITION_SIZE
-from maasserver.node_action import (
-    ACTION_CLASSES,
-    ACTIONS_DICT,
-)
 from maasserver.permissions import (
     NodePermission,
     ResourcePoolPermission,
@@ -177,10 +170,7 @@ from maasserver.utils.forms import (
     get_QueryDict,
     set_form_error,
 )
-from maasserver.utils.orm import (
-    get_one,
-    transactional,
-)
+from maasserver.utils.orm import get_one
 from maasserver.utils.osystems import (
     get_distro_series_initial,
     get_release_requires_key,
@@ -192,7 +182,6 @@ from maasserver.utils.osystems import (
     validate_hwe_kernel,
     validate_min_hwe_kernel,
 )
-from maasserver.utils.threads import deferToDatabase
 from netaddr import (
     IPNetwork,
     valid_ipv6,
@@ -201,13 +190,6 @@ from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.network import make_network
-from provisioningserver.utils.twisted import (
-    asynchronous,
-    FOREVER,
-)
-from twisted.internet.defer import DeferredList
-from twisted.internet.task import coiterate
-from twisted.python.failure import Failure
 
 
 maaslog = get_maas_logger()
@@ -1875,55 +1857,19 @@ class InstanceListField(UnconstrainedMultipleChoiceField):
         return instances
 
 
-class SetZoneBulkAction:
-    """A custom action we only offer in bulk: "Set physical zone."
-
-    Looks just enough like a node action class for presentation purposes, but
-    isn't one of the actions we normally offer on the node page.  The
-    difference is that this action takes an argument: the zone.
-    """
-    name = 'set_zone'
-    display = "Set physical zone"
-
-
-class BulkNodeActionForm(Form):
+class BulkNodeSetZoneForm(Form):
     # system_id is a multiple-choice field so it can actually contain
     # a list of system ids.
     system_id = UnconstrainedMultipleChoiceField()
 
     def __init__(self, user, request=None, *args, **kwargs):
-        super(BulkNodeActionForm, self).__init__(*args, **kwargs)
+        super(BulkNodeSetZoneForm, self).__init__(*args, **kwargs)
         self.user = user
         self.request = request
-        action_choices = (
-            # Put an empty action as the first displayed option to avoid
-            # fat-fingered bulk actions.
-            [('', 'Select Action')] +
-            [(action.name, action.display) for action in ACTION_CLASSES]
-            )
-        add_zone_field = (
-            user.is_superuser and
-            (
-                self.data == {} or
-                self.data.get('action') == SetZoneBulkAction.name
-            )
-        )
-        # Only admin users get the "set zone" bulk action.
-        # The 'zone' field is required only if the form is being submitted
-        # with the 'action' set to SetZoneBulkAction.name or when the UI is
-        # rendering a GET request (i.e. the zone cannot be the empty string).
-        # Thus it cannot be added to the form when the form is being
-        # submitted with an action other than SetZoneBulkAction.name.
-        if add_zone_field:
-            action_choices.append(
-                (SetZoneBulkAction.name, SetZoneBulkAction.display))
-            # This adds an input field: the zone.
-            self.fields['zone'] = forms.ModelChoiceField(
-                label="Physical zone", required=True,
-                initial=Zone.objects.get_default_zone(),
-                queryset=Zone.objects.all(), to_field_name='name')
-        self.fields['action'] = forms.ChoiceField(
-            required=True, choices=action_choices)
+        self.fields['zone'] = forms.ModelChoiceField(
+            label="Physical zone", required=True,
+            initial=Zone.objects.get_default_zone(),
+            queryset=Zone.objects.all(), to_field_name='name')
 
     def clean_system_id(self):
         system_ids = self.cleaned_data['system_id']
@@ -1932,106 +1878,12 @@ class BulkNodeActionForm(Form):
         if len(system_ids) == 0:
             raise forms.ValidationError("No node selected.")
         # Validate all the system ids.
-        real_node_count = Node.objects.filter(
-            system_id__in=system_ids).count()
+        nodes = Node.objects.get_nodes(self.user, NodePermission.admin)
+        real_node_count = nodes.filter(system_id__in=system_ids).count()
         if real_node_count != len(system_ids):
             raise forms.ValidationError(
                 "Some of the given system ids are invalid system ids.")
         return system_ids
-
-    @transactional
-    def _perform_action_on_node(self, system_id, action_class):
-        """Perform a node action on the identified node.
-
-        This is *transactional*, meaning it will commit its changes on
-        success, and roll-back if not.
-
-        Returns a string describing what was done, one of:
-
-        * not_actionable
-        * not_permitted
-        * done
-
-        :param system_id: A `Node.system_id` value.
-        :param action_class: A value from `ACTIONS_DICT`.
-        """
-        node = Node.objects.get(system_id=system_id)
-        action_instance = action_class(
-            node=node, user=self.user, request=self.request)
-        if action_instance.is_actionable():
-            # Do not let execute() raise a redirect exception
-            # because this action is part of a bulk operation.
-            try:
-                action_instance.execute()
-            except NodeActionError:
-                return "not_actionable"
-            else:
-                return "done"
-        if not action_instance.is_permitted():
-            return "not_permitted"
-        return "not_actionable"
-
-    @asynchronous(timeout=FOREVER)
-    def _perform_action_on_nodes(
-            self, system_ids, action_class, concurrency=2):
-        """Perform a node action on the identified nodes.
-
-        This is *asynchronous*.
-
-        :param system_ids: An iterable of `Node.system_id` values.
-        :param action_class: A value from `ACTIONS_DICT`.
-        :param concurrency: The number of actions to run concurrently.
-
-        :return: A `dict` mapping `system_id` to results, where the result can
-            be a string (see `_perform_action_on_node`), or a `Failure` if
-            something went wrong.
-        """
-        # We're going to be making the same call for every specified node, so
-        # bundle up the common bits here to keep the noise down later on.
-        perform = partial(
-            deferToDatabase, self._perform_action_on_node,
-            action_class=action_class)
-
-        # The results will be a `system_id` -> `result` mapping, where
-        # `result` can be a string like "done" or "not_actionable", or a
-        # Failure instance.
-        results = {}
-
-        # Convenient callback.
-        def record(result, system_id):
-            results[system_id] = result
-
-        # A *lazy* list of tasks to be run. It's very important that each task
-        # is only created at the moment it's needed. Each task records its
-        # outcome via `record`, be that success or failure.
-        tasks = (
-            perform(system_id).addBoth(record, system_id)
-            for system_id in system_ids
-        )
-
-        # Create `concurrency` co-iterators. Each draws work from `tasks`.
-        deferreds = (coiterate(tasks) for _ in range(concurrency))
-        # Capture the moment when all the co-iterators have finished.
-        done = DeferredList(deferreds, consumeErrors=True)
-        # Return only the `results` mapping; ignore the result from `done`.
-
-        return done.addCallback(lambda _: results)
-
-    def perform_action(self, action_name, system_ids):
-        """Perform a node action on the identified nodes.
-
-        :param action_name: Name of a node action in `ACTIONS_DICT`.
-        :param system_ids: Iterable of `Node.system_id` values.
-        :return: A tuple as returned by `save`.
-        """
-        action_class = ACTIONS_DICT.get(action_name)
-        results = self._perform_action_on_nodes(system_ids, action_class)
-        # There is a lot of valuable information in `results`, including
-        # failures, but currently we're only interested in basic stats.
-        stats = Counter(
-            result for result in results.values()
-            if not isinstance(result, Failure))
-        return stats["done"], stats["not_actionable"], stats["not_permitted"]
 
     def set_zone(self, system_ids):
         """Custom bulk action: set zone on identified nodes.
@@ -2058,12 +1910,8 @@ class BulkNodeActionForm(Form):
         the transaction will still be valid for the actions that did complete
         successfully.
         """
-        action_name = self.cleaned_data['action']
         system_ids = self.cleaned_data['system_id']
-        if action_name == SetZoneBulkAction.name:
-            return self.set_zone(system_ids)
-        else:
-            return self.perform_action(action_name, system_ids)
+        return self.set_zone(system_ids)
 
 
 class ZoneForm(MAASModelForm):

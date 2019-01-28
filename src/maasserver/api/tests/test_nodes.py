@@ -11,7 +11,10 @@ import random
 
 from django.conf import settings
 from django.http import QueryDict
-from maasserver.api import nodes as nodes_module
+from maasserver.api import (
+    auth,
+    nodes as nodes_module,
+)
 from maasserver.api.utils import get_overridden_query_dict
 from maasserver.enum import (
     INTERFACE_TYPE,
@@ -23,6 +26,7 @@ from maasserver.enum import (
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
+from maasserver.testing.fixtures import RBACEnabled
 from maasserver.utils import ignore_unused
 from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
@@ -668,9 +672,29 @@ class TestNodesAPI(APITestCase.ForUser):
                 'nodes': [node.system_id],
                 'zone': factory.make_Zone().name
             })
-        self.assertEqual(http.client.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         node = reload_object(node)
         self.assertEqual(original_zone, node.zone)
+
+    def test_POST_set_zone_rbac_pool_admin_allowed(self):
+        self.patch(auth, 'validate_user_external_auth').return_value = True
+        rbac = self.useFixture(RBACEnabled())
+        self.become_non_local()
+        machine = factory.make_Machine()
+        zone = factory.make_Zone()
+        rbac.store.add_pool(machine.pool)
+        rbac.store.allow(self.user.username, machine.pool, 'admin-machines')
+        rbac.store.allow(self.user.username, machine.pool, 'view')
+        response = self.client.post(
+            reverse('nodes_handler'),
+            {
+                'op': 'set_zone',
+                'nodes': [machine.system_id],
+                'zone': zone.name
+            })
+        self.assertEqual(http.client.OK, response.status_code)
+        machine = reload_object(machine)
+        self.assertEqual(zone, machine.zone)
 
     def test_CREATE_disabled(self):
         response = self.client.post(reverse('nodes_handler'), {})
