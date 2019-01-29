@@ -520,7 +520,10 @@ class MAASAuthorizationBackend(ModelBackend):
         if rbac_enabled:
             can_admin = self._can_admin(
                 rbac_enabled, user, machine, admin_pools)
-            can_edit = (machine.pool_id in deploy_pools) or can_admin
+            can_edit = (
+                machine.pool_id in deploy_pools or
+                (machine.pool_id is None and machine.owner == user) or
+                can_admin)
             return (editable and can_edit) or can_admin
         return editable or user.is_superuser
 
