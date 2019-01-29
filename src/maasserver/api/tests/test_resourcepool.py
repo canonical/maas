@@ -9,17 +9,11 @@ import json
 
 from django.conf import settings
 from maasserver.api import auth
-from maasserver.models import (
-    Config,
-    ResourcePool,
-)
-from maasserver.rbac import (
-    ALL_RESOURCES,
-    FakeRBACClient,
-    rbac,
-)
+from maasserver.models import ResourcePool
+from maasserver.rbac import ALL_RESOURCES
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
+from maasserver.testing.fixtures import RBACEnabled
 from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 
@@ -138,12 +132,9 @@ class TestResourcePoolAPIWithRBAC(APITestCase.ForUser):
     def setUp(self):
         super().setUp()
         self.patch(auth, 'validate_user_external_auth').return_value = True
-        Config.objects.set_config('rbac_url', 'http://rbac.example.com')
-        self.rbac_client = FakeRBACClient()
-        rbac._store.client = self.rbac_client
-        rbac._store.cleared = False  # Prevent re-creation of the client.
-        self.store = self.rbac_client.store
-        self.become_admin()
+        rbac = self.useFixture(RBACEnabled())
+        self.store = rbac.store
+        self.become_non_local()
 
     def test_GET_returns_pool(self):
         pool = factory.make_ResourcePool()
@@ -168,7 +159,6 @@ class TestResourcePoolAPIWithRBAC(APITestCase.ForUser):
         self.assertEqual(response.status_code, http.client.FORBIDDEN)
 
     def test_PUT_updates_pool(self):
-        self.become_admin()
         pool = factory.make_ResourcePool()
         self.store.add_pool(pool)
         self.store.allow(self.user.username, pool, 'edit')
@@ -183,7 +173,6 @@ class TestResourcePoolAPIWithRBAC(APITestCase.ForUser):
         self.assertEqual(pool.description, new_description)
 
     def test_PUT_forbidden(self):
-        self.become_admin()
         pool = factory.make_ResourcePool()
         self.store.add_pool(pool)
         self.store.allow(self.user.username, pool, 'view')

@@ -10,17 +10,11 @@ import random
 
 from django.conf import settings
 from maasserver.api import auth
-from maasserver.models import (
-    Config,
-    ResourcePool,
-)
-from maasserver.rbac import (
-    ALL_RESOURCES,
-    FakeRBACClient,
-    rbac,
-)
+from maasserver.models import ResourcePool
+from maasserver.rbac import ALL_RESOURCES
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
+from maasserver.testing.fixtures import RBACEnabled
 from maasserver.utils.django_urls import reverse
 
 
@@ -74,12 +68,9 @@ class TestResourcePoolsAPIWithRBAC(APITestCase.ForUser):
     def setUp(self):
         super().setUp()
         self.patch(auth, 'validate_user_external_auth').return_value = True
-        Config.objects.set_config('rbac_url', 'http://rbac.example.com')
-        self.rbac_client = FakeRBACClient()
-        rbac._store.client = self.rbac_client
-        rbac._store.cleared = False  # Prevent re-creation of the client.
-        self.store = self.rbac_client.store
-        self.become_admin()
+        rbac = self.useFixture(RBACEnabled())
+        self.store = rbac.store
+        self.become_non_local()
 
     def test_GET_empty_when_no_access(self):
         for _ in range(3):

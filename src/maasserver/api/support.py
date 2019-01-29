@@ -469,7 +469,6 @@ class ModelCollectionOperationsHandler(OperationsHandler,
     def resource_uri(cls, *args, **kwargs):
         return (cls.handler_url_name, [])
 
-    @admin_method
     def create(self, request):
         """POST request.  Create a new instance of the model."""
         form = self.model_form(request.data)
