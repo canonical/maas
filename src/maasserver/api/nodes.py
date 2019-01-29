@@ -42,7 +42,7 @@ from maasserver.exceptions import (
     StaticIPAddressExhaustion,
 )
 from maasserver.fields import MAC_RE
-from maasserver.forms import BulkNodeActionForm
+from maasserver.forms import BulkNodeSetZoneForm
 from maasserver.forms.ephemeral import TestForm
 from maasserver.models import (
     Filesystem,
@@ -739,7 +739,6 @@ class NodesHandler(OperationsHandler):
         """
         return is_registered(request)
 
-    @admin_method
     @operation(idempotent=False)
     def set_zone(self, request):
         """@description-title Assign nodes to a zone
@@ -759,11 +758,10 @@ class NodesHandler(OperationsHandler):
         @error (content) "bad-param" The given parameters were not correct.
         """
         data = {
-            'action': 'set_zone',
             'zone': request.data.get('zone'),
             'system_id': get_optional_list(request.data, 'nodes'),
         }
-        form = BulkNodeActionForm(request.user, data=data)
+        form = BulkNodeSetZoneForm(request.user, data=data)
         if not form.is_valid():
             raise MAASAPIValidationError(form.errors)
         form.save()

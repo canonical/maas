@@ -2229,9 +2229,29 @@ class TestMachinesAPI(APITestCase.ForUser):
                 'nodes': [machine.system_id],
                 'zone': factory.make_Zone().name
             })
-        self.assertEqual(http.client.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         machine = reload_object(machine)
         self.assertEqual(original_zone, machine.zone)
+
+    def test_POST_set_zone_rbac_pool_admin_allowed(self):
+        self.patch(auth, 'validate_user_external_auth').return_value = True
+        rbac = self.useFixture(RBACEnabled())
+        self.become_non_local()
+        machine = factory.make_Machine()
+        zone = factory.make_Zone()
+        rbac.store.add_pool(machine.pool)
+        rbac.store.allow(self.user.username, machine.pool, 'admin-machines')
+        rbac.store.allow(self.user.username, machine.pool, 'view')
+        response = self.client.post(
+            reverse('machines_handler'),
+            {
+                'op': 'set_zone',
+                'nodes': [machine.system_id],
+                'zone': zone.name
+            })
+        self.assertEqual(http.client.OK, response.status_code)
+        machine = reload_object(machine)
+        self.assertEqual(zone, machine.zone)
 
     def test_POST_add_chassis_requires_admin(self):
         response = self.client.post(
