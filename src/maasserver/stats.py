@@ -10,7 +10,11 @@ __all__ = [
 
 from datetime import timedelta
 
-from django.db.models import Sum
+from django.db.models import (
+    Sum,
+    Value,
+)
+from django.db.models.functions import Coalesce
 from maasserver.models import Config
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
@@ -21,10 +25,7 @@ from twisted.application.internet import TimerService
 log = LegacyLogger()
 
 import base64
-from collections import (
-    Counter,
-    defaultdict,
-)
+from collections import Counter
 import json
 
 from maasserver.enum import (
@@ -45,13 +46,19 @@ from maasserver.utils import get_maas_user_agent
 import requests
 
 
+def NotNullSum(column):
+    """Like Sum, but returns 0 if the aggregate is None."""
+    return Coalesce(Sum(column), Value(0))
+
+
 def get_machine_stats():
     nodes = Node.objects.all()
     machines = nodes.filter(node_type=NODE_TYPE.MACHINE)
     # Rather overall amount of stats for machines.
     return machines.aggregate(
-        total_cpu=Sum('cpu_count'), total_mem=Sum('memory'),
-        total_storage=Sum('blockdevice__size'))
+        total_cpu=NotNullSum('cpu_count'),
+        total_mem=NotNullSum('memory'),
+        total_storage=NotNullSum('blockdevice__size'))
 
 
 def get_machine_state_stats():
@@ -85,12 +92,7 @@ def get_machines_by_architecture():
             dict(
                 short_arch="SUBSTRING(architecture FROM '(.*)/')")
             ).values_list('short_arch', flat=True)
-
-    count_by_arch = defaultdict(int)
-    for arch in node_arches:
-        count_by_arch[arch] += 1
-
-    return count_by_arch
+    return Counter(node_arches)
 
 
 def get_kvm_pods_stats():
@@ -99,8 +101,9 @@ def get_kvm_pods_stats():
     # total_mem is in MB
     # local_storage is in bytes
     available_resources = pods.aggregate(
-        cores=Sum('cores'), memory=Sum('memory'),
-        storage=Sum('local_storage'))
+        cores=NotNullSum('cores'),
+        memory=NotNullSum('memory'),
+        storage=NotNullSum('local_storage'))
 
     # available resources with overcommit
     over_cores = over_memory = 0
