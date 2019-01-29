@@ -27,7 +27,10 @@ from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.node_action import compile_node_actions
 from maasserver.permissions import NodePermission
 from maasserver.testing.factory import factory
-from maasserver.testing.fixtures import RBACForceOffFixture
+from maasserver.testing.fixtures import (
+    RBACEnabled,
+    RBACForceOffFixture,
+)
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.orm import (
     reload_object,
@@ -1012,6 +1015,18 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         }
         self.assertRaises(
             HandlerDoesNotExistError, handler.update, node_data)
+
+    @transactional
+    def test_update_owned_with_rbac(self):
+        self.useFixture(RBACEnabled())
+        user = factory.make_User(is_local=False)
+        node = factory.make_Node(owner=user, node_type=NODE_TYPE.DEVICE)
+        handler = DeviceHandler(user, {}, None)
+        new_hostname = factory.make_name("hostname")
+        updated_node = handler.update(
+            {"system_id": node.system_id,
+             'hostname': new_hostname})
+        self.assertEqual(updated_node['hostname'], new_hostname)
 
     @transactional
     def test_delete_interface_admin(self):

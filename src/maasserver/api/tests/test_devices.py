@@ -8,6 +8,7 @@ __all__ = []
 import http.client
 import random
 
+from maasserver.api import auth
 from maasserver.enum import (
     NODE_STATUS,
     NODE_TYPE,
@@ -19,6 +20,7 @@ from maasserver.models import (
 )
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
+from maasserver.testing.fixtures import RBACEnabled
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
@@ -335,6 +337,23 @@ class TestDeviceAPI(APITestCase.ForUser):
             {'hostname': factory.make_name('hostname')})
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
         self.assertEqual(old_hostname, reload_object(device).hostname)
+
+    def test_PUT_updates_with_rbac(self):
+        self.patch(auth, 'validate_user_external_auth').return_value = True
+        self.useFixture(RBACEnabled())
+        self.become_non_local()
+
+        device = factory.make_Node(
+            node_type=NODE_TYPE.DEVICE, owner=self.user)
+        new_hostname = factory.make_name('hostname')
+
+        response = self.client.put(
+            get_device_uri(device), {'hostname': new_hostname})
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+
+        device = reload_object(device)
+        self.assertEqual(new_hostname, device.hostname)
 
     def test_DELETE_removes_device(self):
         device = factory.make_Node(
