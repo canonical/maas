@@ -7,14 +7,17 @@ __all__ = []
 
 import http.client
 import json
+from unittest import mock
 
 from django.db import transaction
 from maasserver.models import Config
 from maasserver.prometheus import stats
 from maasserver.prometheus.stats import (
-    get_stats_for_prometheus,
     push_stats_to_prometheus,
+    STATS_DEFINITIONS,
+    update_prometheus_stats,
 )
+from maasserver.prometheus.utils import create_metrics
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     MAASServerTestCase,
@@ -51,19 +54,16 @@ class TestPrometheusHandler(MAASServerTestCase):
 
     def test_prometheus_stats_handler_returns_metrics(self):
         Config.objects.set_config('prometheus_enabled', True)
-        metrics = (
-            '# HELP machine_status Number per machines per stats'
-            '# TYPE machine_status counter'
-            'machine_status={status="deployed"} 100')
-        mock_prom_cli = self.patch(stats, 'prom_cli')
-        mock_prom_cli.generate_latest.return_value = metrics
         response = self.client.get(reverse('stats'))
-        self.assertEqual(metrics, response.content.decode("unicode_escape"))
+        content = response.content.decode("utf-8")
+        metrics = ('nodes', 'machine_resources', 'kvm_pods', 'machine_arches')
+        for metric in metrics:
+            self.assertIn('TYPE {} gauge'.format(metric), content)
 
 
 class TestPrometheus(MAASServerTestCase):
 
-    def test_get_stats_for_prometheus(self):
+    def test_update_prometheus_stats(self):
         self.patch(stats, 'prom_cli')
         # general values
         values = {
@@ -99,7 +99,8 @@ class TestPrometheus(MAASServerTestCase):
         }
         mock_pods = self.patch(stats, "get_kvm_pods_stats")
         mock_pods.return_value = pods
-        get_stats_for_prometheus()
+        metrics = create_metrics(STATS_DEFINITIONS)
+        update_prometheus_stats(metrics)
         self.assertThat(
             mock, MockCalledOnce())
         self.assertThat(
@@ -116,7 +117,7 @@ class TestPrometheus(MAASServerTestCase):
         self.assertThat(
             mock_prom_cli.push_to_gateway, MockCalledOnceWith(
                 push_gateway, job="stats_for_%s" % maas_name,
-                registry=mock_prom_cli.CollectorRegistry()))
+                registry=mock.ANY))
 
 
 class TestPrometheusService(MAASTestCase):

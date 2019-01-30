@@ -20,6 +20,11 @@ from maasserver.prometheus import (
     prom_cli,
     PROMETHEUS_SUPPORTED,
 )
+from maasserver.prometheus.utils import (
+    create_metrics,
+    MetricDefinition,
+    PrometheusMetrics,
+)
 from maasserver.stats import (
     get_kvm_pods_stats,
     get_maas_stats,
@@ -33,78 +38,98 @@ from twisted.application.internet import TimerService
 
 log = LegacyLogger()
 
+STATS_DEFINITIONS = [
+    MetricDefinition(
+        'Gauge', 'machine_status', 'Number of machines per status',
+        ['status']),
+    MetricDefinition(
+        'Gauge', 'nodes',
+        'Number of nodes per type (e.g. racks, machines, etc)',
+        ['type']),
+    MetricDefinition(
+        'Gauge', 'networks', 'General statistics for subnets',
+        ['type']),
+    MetricDefinition(
+        'Gauge', 'machine_resources',
+        'Amount of combined resources for all machines',
+        ['resource']),
+    MetricDefinition(
+        'Gauge', 'kvm_pods', 'General stats for KVM pods',
+        ['type']),
+    MetricDefinition(
+        'Gauge', 'machine_arches', 'Number of machines per architecture',
+        ['arches'])
+]
+
 
 def prometheus_stats_handler(request):
     if not Config.objects.get_config('prometheus_enabled'):
         return HttpResponseNotFound()
 
+    metrics = create_metrics(STATS_DEFINITIONS)
+    update_prometheus_stats(metrics)
     return HttpResponse(
-        content=prom_cli.generate_latest(get_stats_for_prometheus()),
-        content_type="text/plain")
+        content=metrics.generate_latest(), content_type="text/plain")
 
 
-def get_stats_for_prometheus():
-    registry = prom_cli.CollectorRegistry()
+def update_prometheus_stats(metrics: PrometheusMetrics):
+    """Update metrics in a PrometheusMetrics based on database values."""
     stats = json.loads(get_maas_stats())
     architectures = get_machines_by_architecture()
     pods = get_kvm_pods_stats()
 
     # Gather counter for machines per status
-    counter = prom_cli.Gauge(
-        "machine_status", "Number of machines per status",
-        ["status"], registry=registry)
     for status, machines in stats['machine_status'].items():
-        counter.labels(status).set(machines)
+        metrics.update(
+            'machine_status', 'set', value=machines, labels={'status': status})
 
     # Gather counter for number of nodes (controllers/machine/devices)
-    counter = prom_cli.Gauge(
-        "nodes", "Number of nodes per type (e.g. racks, machines, etc).",
-        ["type"], registry=registry)
     for ctype, number in stats['controllers'].items():
-        counter.labels(ctype).set(number)
+        metrics.update(
+            'nodes', 'set', value=number, labels={'type': ctype})
     for ctype, number in stats['nodes'].items():
-        counter.labels(ctype).set(number)
+        metrics.update(
+            'nodes', 'set', value=number, labels={'type': ctype})
 
     # Gather counter for networks
-    counter = prom_cli.Gauge(
-        "networks", "General statistics for subnets.",
-        ["type"], registry=registry)
     for stype, number in stats['network_stats'].items():
-        counter.labels(stype).set(number)
+        metrics.update(
+            'networks', 'set', value=number, labels={'type': stype})
 
     # Gather overall amount of machine resources
-    counter = prom_cli.Gauge(
-        "machine_resources", "Amount of combined resources for all machines",
-        ["resource"], registry=registry)
     for resource, value in stats['machine_stats'].items():
-        counter.labels(resource).set(value)
+        metrics.update(
+            'machine_resources', 'set', value=value,
+            labels={'resource': resource})
 
     # Gather all stats for pods
-    counter = prom_cli.Gauge(
-        "kvm_pods", "General stats for KVM pods",
-        ["type"], registry=registry)
     for resource, value in pods.items():
         if isinstance(value, dict):
             for r, v in value.items():
-                counter.labels("%s_%s" % (resource, r)).set(v)
+                metrics.update(
+                    'kvm_pods', 'set', value=v,
+                    labels={'type': '{}_{}'.format(resource, r)})
         else:
-            counter.labels(resource).set(value)
+            metrics.update(
+                'kvm_pods', 'set', value=value,
+                labels={'type': resource})
 
     # Gather statistics for architectures
     if len(architectures.keys()) > 0:
-        counter = prom_cli.Gauge(
-            "machine_arches", "Number of machines per architecture.",
-            ["arches"], registry=registry)
         for arch, machines in architectures.items():
-            counter.labels(arch).set(machines)
+            metrics.update(
+                'machine_arches', 'set', value=machines,
+                labels={'arches': arch})
 
-    return registry
+    return metrics
 
 
 def push_stats_to_prometheus(maas_name, push_gateway):
-    registry = get_stats_for_prometheus()
+    metrics = create_metrics(STATS_DEFINITIONS)
+    update_prometheus_stats(metrics)
     prom_cli.push_to_gateway(
-        push_gateway, job='stats_for_%s' % maas_name, registry=registry)
+        push_gateway, job='stats_for_%s' % maas_name,
+        registry=metrics.registry)
 
 
 # Define the default time the service interval is run.
