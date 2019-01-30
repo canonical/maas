@@ -1,4 +1,4 @@
-# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver models."""
@@ -4581,6 +4581,34 @@ class TestNodePowerParameters(MAASServerTestCase):
         self.assertEqual('hmc', node.bmc.power_type)
         self.assertEqual(node.power_type, node.bmc.power_type)
         self.assertEqual(ip_address, node.bmc.ip_address.ip)
+
+    def test_power_type_creates_new_bmc_for_manual_power_type(self):
+        ip_address = factory.make_ipv4_address()
+        bmc_parameters = dict(power_address=ip_address)
+        node_parameters = dict(server_name=factory.make_string())
+        parameters = {**bmc_parameters, **node_parameters}
+        node = factory.make_Node(
+            power_type='virsh', power_parameters=parameters)
+        self.assertFalse(BMC.objects.filter(power_type='manual'))
+        node.power_type = 'manual'
+        node.save()
+        node = reload_object(node)
+        self.assertEqual('manual', node.bmc.power_type)
+        self.assertEqual({}, node.bmc.power_parameters)
+        self.assertTrue(BMC.objects.filter(power_type='manual'))
+
+    def test_power_type_does_not_create_new_bmc_for_already_manual(self):
+        ip_address = factory.make_ipv4_address()
+        bmc_parameters = dict(power_address=ip_address)
+        node_parameters = dict(server_name=factory.make_string())
+        parameters = {**bmc_parameters, **node_parameters}
+        node = factory.make_Node(
+            power_type='manual', power_parameters=parameters)
+        bmc_id = node.bmc.id
+        node.power_type = 'manual'
+        node.save()
+        node = reload_object(node)
+        self.assertEqual(bmc_id, node.bmc.id)
 
     def test_power_parameters_are_stored_in_proper_scopes(self):
         node = factory.make_Node(power_type='virsh')
