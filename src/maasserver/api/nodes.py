@@ -1,4 +1,4 @@
-# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 __all__ = [
@@ -168,7 +168,11 @@ def store_node_power_parameters(node, request):
 
     The parameters should be JSON, passed with key `power_parameters`.
     """
-    power_type = request.POST.get("power_type", None)
+    # Don't overwrite redfish power type with ipmi.
+    if node.power_type == 'redfish':
+        power_type = node.power_type
+    else:
+        power_type = request.POST.get("power_type", None)
     if power_type is None:
         return
 
@@ -185,7 +189,15 @@ def store_node_power_parameters(node, request):
     power_parameters = request.POST.get("power_parameters", None)
     if power_parameters and not power_parameters.isspace():
         try:
-            node.power_parameters = json.loads(power_parameters)
+            power_parameters = json.loads(power_parameters)
+            if power_type == 'redfish':
+                node.power_parameters = {
+                    **node.instance_power_parameters,
+                    **power_parameters
+                }
+            else:
+                node.power_parameters = power_parameters
+
         except ValueError:
             raise MAASAPIBadRequest("Failed to parse JSON power_parameters")
 

@@ -1,4 +1,4 @@
-# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver API."""
@@ -178,6 +178,23 @@ class TestStoreNodeParameters(APITestCase.ForUser):
         store_node_power_parameters(self.node, self.request)
         self.assertEqual('', self.node.power_type)
         self.assertEqual({}, self.node.power_parameters)
+        self.save.assert_has_calls([])
+
+    def test_power_type_redish(self):
+        power_parameters = {"foo": [1, 2, 3]}
+        self.request.POST = {
+            "power_type": 'ipmi',
+            "power_parameters": json.dumps(power_parameters),
+            }
+        self.node.power_type = 'redfish'
+        self.node.instance_power_parameters = {
+            'node_id': '1',
+            }
+        store_node_power_parameters(self.node, self.request)
+        self.assertEqual('redfish', self.node.power_type)
+        self.assertEqual({
+            **power_parameters,
+            **self.node.instance_power_parameters}, self.node.power_parameters)
         self.save.assert_has_calls([])
 
     def test_power_type_set_but_no_parameters(self):
