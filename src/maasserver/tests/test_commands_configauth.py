@@ -16,6 +16,11 @@ from django.core.management import call_command
 from django.core.management.base import CommandError
 from maasserver.management.commands import configauth
 from maasserver.models import Config
+from maasserver.models.rbacsync import (
+    RBAC_ACTION,
+    RBACLastSync,
+    RBACSync,
+)
 from maasserver.rbac import FakeRBACUserClient
 from maasserver.testing.testcase import MAASServerTestCase
 
@@ -403,6 +408,41 @@ class TestConfigAuthCommand(MAASServerTestCase):
             candid_domain='domain', candid_admin_group='admins')
         self.read_input.assert_not_called()
         self.assertEqual('', Config.objects.get_config('rbac_url'))
+
+    def test_configauth_rbac_url_none_clears_lastsync_and_sync(self):
+        RBACLastSync.objects.create(resource_type='resource-pool', sync_id=0)
+        RBACSync.objects.create(resource_type='')
+        call_command(
+            'configauth', rbac_url='none',
+            candid_url='http://example.com:1234',
+            candid_user='user@admin', candid_key='private-key',
+            candid_domain='domain', candid_admin_group='admins')
+        self.read_input.assert_not_called()
+        self.assertEqual('', Config.objects.get_config('rbac_url'))
+        self.assertFalse(RBACLastSync.objects.all().exists())
+        self.assertFalse(RBACSync.objects.all().exists())
+
+    def test_configauth_rbac_clears_lastsync_and_full_sync(self):
+        RBACLastSync.objects.create(resource_type='resource-pool', sync_id=0)
+        self.rbac_user_client.services = [
+            {'name': 'mymaas',
+             '$uri': '/api/rbac/v1/service/4',
+             'pending': True,
+             'product': {'$ref' '/api/rbac/v1/product/2'}}]
+        call_command(
+            'configauth', candid_url='http://example.com:1234',
+            candid_user='user@admin', candid_key='private-key',
+            rbac_url='http://rbac.example.com',
+            rbac_service_name='mymaas')
+        self.read_input.assert_not_called()
+        self.assertEqual(
+            'http://rbac.example.com',
+            Config.objects.get_config('rbac_url'))
+        self.assertFalse(RBACLastSync.objects.all().exists())
+        latest = RBACSync.objects.order_by('-id').first()
+        self.assertEqual(RBAC_ACTION.FULL, latest.action)
+        self.assertEqual('', latest.resource_type)
+        self.assertEqual('configauth command called', latest.source)
 
 
 class TestIsValidUrl(unittest.TestCase):

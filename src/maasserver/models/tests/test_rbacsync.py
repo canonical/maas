@@ -26,6 +26,8 @@ class TestRBACSync(MAASServerTestCase):
         synced = [
             RBACSync.objects.create(resource_type=resource_type)
             for _ in range(3)
+        ] + [
+            RBACSync.objects.create(resource_type='')
         ]
         self.assertThat(
             RBACSync.objects.changes(resource_type), Equals(synced))
@@ -39,6 +41,7 @@ class TestRBACSync(MAASServerTestCase):
         resource_type = 'resource-pool'
         for _ in range(3):
             RBACSync.objects.create(resource_type=resource_type)
-        self.assertThat(RBACSync.objects.all(), HasLength(3))
+        RBACSync.objects.create(resource_type='')
+        self.assertThat(RBACSync.objects.all(), HasLength(4))
         RBACSync.objects.clear(resource_type)
         self.assertThat(RBACSync.objects.all(), HasLength(0))

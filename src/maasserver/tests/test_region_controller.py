@@ -658,6 +658,27 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
         self.assertIsNone(service._rbacSync())
         self.assertFalse(RBACSync.objects.exists())
 
+    def test__rbacSync_syncs_on_full_change(self):
+        _, resources = self.make_resource_pools()
+        RBACSync.objects.clear('resource-pool')
+        RBACSync.objects.clear('')
+        RBACSync.objects.create(
+            resource_type='', resource_name='', source='test')
+
+        rbac_client = MagicMock()
+        rbac_client.update_resources.return_value = 'x-y-z'
+        service = RegionControllerService(sentinel.listener)
+        self.patch(service, '_getRBACClient').return_value = rbac_client
+
+        self.assertEqual([], service._rbacSync())
+        self.assertThat(
+            rbac_client.update_resources,
+            MockCalledOnceWith('resource-pool', updates=resources))
+        self.assertFalse(RBACSync.objects.exists())
+        last_sync = RBACLastSync.objects.get()
+        self.assertEqual(last_sync.resource_type, 'resource-pool')
+        self.assertEqual(last_sync.sync_id, 'x-y-z')
+
     def test__rbacSync_syncs_on_init(self):
         RBACSync.objects.clear('resource-pool')
         _, resources = self.make_resource_pools()
