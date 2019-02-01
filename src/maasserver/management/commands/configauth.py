@@ -21,6 +21,11 @@ from maascli.init import (
 )
 from maasserver.management.commands.createadmin import read_input
 from maasserver.models import Config
+from maasserver.models.rbacsync import (
+    RBAC_ACTION,
+    RBACLastSync,
+    RBACSync,
+)
 from maasserver.rbac import RBACUserClient
 from maasserver.utils.dns import validate_url
 from macaroonbakery.bakery import generate_key
@@ -138,6 +143,21 @@ def set_auth_config(config_manager, auth_details):
     config_manager.set_config(
         'external_auth_admin_group', auth_details.admin_group)
     config_manager.set_config('rbac_url', auth_details.rbac_url)
+
+    # Clear the last sync, so if a new sync needs to occur it will do a full
+    # sync with the RBAC service.
+    RBACLastSync.objects.all().delete()
+    if not auth_details.rbac_url:
+        # No RBAC so remove all the sync trigger information, not needed
+        # because syncing will no longer occur.
+        RBACSync.objects.all().delete()
+    else:
+        # Force a full sync with the RBAC service. This is needed when the
+        # rbac_url is the same as its previous value (but is actually) a
+        # different RBAC service.
+        RBACSync.objects.create(
+            action=RBAC_ACTION.FULL, resource_type='', resource_name='',
+            source='configauth command called')
 
 
 def clear_user_sessions():
