@@ -106,6 +106,8 @@ def get_default_config():
         'disk_erase_with_quick_erase': False,
         # Curtin.
         'curtin_verbose': False,
+        # Netplan
+        'force_v1_network_yaml': False,
         # Analytics.
         'enable_analytics': True,
         # First admin journey.

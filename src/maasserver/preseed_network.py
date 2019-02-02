@@ -252,7 +252,8 @@ class InterfaceConfiguration:
                     # the v1 YAML, but it's per-interface for the v2 YAML.
                     self._set_default_gateway(
                         subnet,
-                        v1_subnet_operation if version == 1 else v2_config)
+                        v1_subnet_operation if version == 1 else v2_config,
+                        version)
                     if (subnet.dns_servers is not None and
                             len(subnet.dns_servers) > 0):
                         v1_subnet_operation["dns_nameservers"] = (
@@ -444,7 +445,7 @@ class InterfaceConfiguration:
 class NodeNetworkConfiguration:
     """Generator for the YAML network configuration for curtin."""
 
-    def __init__(self, node, version=1):
+    def __init__(self, node, version=1, source_routing=False):
         """Create the YAML network configuration for the specified node, and
         store it in the `config` ivar.
         """
@@ -578,9 +579,10 @@ class NodeNetworkConfiguration:
                     })
 
 
-def compose_curtin_network_config(node, version=1):
+def compose_curtin_network_config(node, version=1, source_routing=False):
     """Compose the network configuration for curtin."""
-    generator = NodeNetworkConfiguration(node, version=version)
+    generator = NodeNetworkConfiguration(
+        node, version=version, source_routing=source_routing)
     curtin_config = {
         "network_commands": {
             "builtin": ["curtin", "net-meta", "custom"],

@@ -70,6 +70,7 @@ from maasserver.utils.curtin import (
     curtin_supports_custom_storage_for_dd,
     curtin_supports_webhook_events,
 )
+from maasserver.utils.osystems import get_release_version_from_string
 from metadataserver.models import NodeKey
 from metadataserver.user_data.snippets import get_snippet_context
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
@@ -103,6 +104,14 @@ CURTIN_INSTALL_LOG = "/tmp/install.log"
 # The path to where the error_tarfile is located. Curtin uploads this file to
 # MAAS only when an error has occured.
 CURTIN_ERROR_TARFILE = "/tmp/curtin-logs.tar"
+
+
+NetworkYAMLSettings = namedtuple(
+    "NetworkYAMLSettings", (
+        "version",
+        "source_routing",
+    )
+)
 
 
 def get_enlist_preseed(request, rack_controller=None):
@@ -283,8 +292,44 @@ def compose_curtin_verbose_preseed():
         return []
 
 
+NETWORK_YAML_DEFAULT_SETTINGS = NetworkYAMLSettings(
+    version=1, source_routing=False)
+
+
+def get_network_yaml_settings(osystem, release):
+    """Returns the network YAML settings for the specified OS/release.
+
+    :param osystem: The operating system name.
+    :param release: The operating system release name.
+    :return: NetworkYAMLSettings namedtuple.
+    """
+    force_v1 = Config.objects.get_config('force_v1_network_yaml')
+    if force_v1:
+        return NETWORK_YAML_DEFAULT_SETTINGS
+    elif osystem == 'ubuntu':
+        release_version = get_release_version_from_string(release)
+        # Ubuntu 18.04 "bionic" and greater support source routing policies.
+        if release_version >= (18, 4, 0):
+            return NetworkYAMLSettings(version=2, source_routing=True)
+        # Ubuntu 16.04 "xenial" and greater support Netplan (v2 YAML), but
+        # not source routing policies.
+        elif release_version >= (16, 4, 0):
+            return NetworkYAMLSettings(version=2, source_routing=False)
+    elif osystem == 'ubuntu-core':
+        # XXX Ubuntu Core 18+ likely supports routing policies, and could
+        # support source routing. But this needs testing.
+        return NetworkYAMLSettings(version=2, source_routing=False)
+    elif osystem == 'esxi':
+        # XXX esxi will gain support for version 2 YAML soon.
+        return NetworkYAMLSettings(version=1, source_routing=False)
+    return NETWORK_YAML_DEFAULT_SETTINGS
+
+
 def get_curtin_yaml_config(request, node):
     """Return the curtin configration for the node."""
+    osystem = node.get_osystem()
+    release = node.get_distro_series()
+
     main_config = get_curtin_config(request, node)
     cloud_config = compose_curtin_cloud_config(request, node)
     archive_config = compose_curtin_archive_config(request, node)
@@ -292,19 +337,22 @@ def get_curtin_yaml_config(request, node):
     swap_config = compose_curtin_swap_preseed(node)
     kernel_config = compose_curtin_kernel_preseed(node)
     verbose_config = compose_curtin_verbose_preseed()
-    network_config = compose_curtin_network_config(node)
+    network_yaml_settings = get_network_yaml_settings(osystem, release)
+    network_config = compose_curtin_network_config(
+        node, version=network_yaml_settings.version,
+        source_routing=network_yaml_settings.source_routing)
 
-    if node.osystem not in [
+    if osystem not in [
             'ubuntu', 'ubuntu-core', 'centos', 'rhel', 'windows']:
         maaslog.warning(
             "%s: Custom network configuration is not supported on '%s' "
             "('%s'). It is only supported on Ubuntu, Ubuntu-Core, CentOS, "
             "RHEL, and Windows. Please verify that this image supports custom "
             "network configuration." % (
-                node.hostname, node.osystem, node.distro_series))
+                node.hostname, osystem, release))
 
     if curtin_supports_custom_storage():
-        if node.osystem in ['windows', 'ubuntu-core', 'esxi']:
+        if osystem in ['windows', 'ubuntu-core', 'esxi']:
             # Windows, ubuntu-core, and ESXi do not support custom storage.
             # Custom storage is still passed to allow Curtin to correctly
             # select the boot device.
@@ -313,7 +361,7 @@ def get_curtin_yaml_config(request, node):
             # doesn't support it, the storage config is not passed for
             # backwards compatibility.
             supports_custom_storage = curtin_supports_custom_storage_for_dd()
-        elif node.osystem != 'ubuntu':
+        elif osystem != 'ubuntu':
             # CentOS/RHEL storage is now natively supported by Curtin. Other
             # GNU/Linux distributions may work as well. If Curtin lacks support
             # don't send storage configuration for backwards compatibility.

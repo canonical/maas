@@ -636,6 +636,18 @@ CONFIG_ITEMS = {
                 "provides more detail in the installation logs")
         }
     },
+    'force_v1_network_yaml': {
+        'default': False,
+        'form': forms.BooleanField,
+        'form_kwargs': {
+            'required': False,
+            'label': (
+                "Always use the legacy v1 YAML (rather than Netplan format, "
+                "also known as v2 YAML) when composing the network "
+                "configuration for a machine."
+                )
+        }
+    },
     'enable_analytics': {
         'default': True,
         'form': forms.BooleanField,

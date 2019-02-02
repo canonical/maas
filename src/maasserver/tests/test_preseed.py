@@ -59,6 +59,7 @@ from maasserver.preseed import (
     get_curtin_userdata,
     get_enlist_preseed,
     get_netloc_and_path,
+    get_network_yaml_settings,
     get_node_deprecated_preseed_context,
     get_node_preseed_context,
     get_preseed,
@@ -870,6 +871,38 @@ class TestComposeCurtinVerbose(MAASServerTestCase):
             }, yaml.safe_load(preseed[0]))
 
 
+class TestGetNetworkYAMLSettings(MAASServerTestCase):
+
+    def test__forces_v1_if_config_option_set(self):
+        Config.objects.set_config('force_v1_network_yaml', True)
+        yaml_settings = get_network_yaml_settings('ubuntu', 'bionic')
+        self.assertThat(yaml_settings.version, Equals(1))
+
+    def test__returns_v1_for_trusty(self):
+        yaml_settings = get_network_yaml_settings('ubuntu', 'trusty')
+        self.assertThat(yaml_settings.version, Equals(1))
+
+    def test__returns_v2_with_no_source_routing_for_xenial(self):
+        yaml_settings = get_network_yaml_settings('ubuntu', 'xenial')
+        self.assertThat(yaml_settings.version, Equals(2))
+        self.assertThat(yaml_settings.source_routing, Equals(False))
+
+    def test__returns_v2_with_source_routing_for_bionic(self):
+        yaml_settings = get_network_yaml_settings('ubuntu', 'bionic')
+        self.assertThat(yaml_settings.version, Equals(2))
+        self.assertThat(yaml_settings.source_routing, Equals(True))
+
+    def test__returns_v2_with_source_routing_for_cosmic(self):
+        yaml_settings = get_network_yaml_settings('ubuntu', 'cosmic')
+        self.assertThat(yaml_settings.version, Equals(2))
+        self.assertThat(yaml_settings.source_routing, Equals(True))
+
+    def test__returns_v1_with_no_source_routing_for_esxi(self):
+        yaml_settings = get_network_yaml_settings('esxi', '')
+        self.assertThat(yaml_settings.version, Equals(1))
+        self.assertThat(yaml_settings.source_routing, Equals(False))
+
+
 class TestGetCurtinMergedConfig(MAASServerTestCase):
 
     def test__merges_configs_together(self):
@@ -925,7 +958,8 @@ class TestGetCurtinUserData(
         user_data = get_curtin_userdata(make_HttpRequest(), node)
         self.assertIn("PREFIX='curtin'", user_data)
         self.assertThat(mock_compose_storage, MockCalledOnceWith(node))
-        self.assertThat(mock_compose_network, MockCalledOnceWith(node))
+        self.assertThat(mock_compose_network, MockCalledOnceWith(
+            node, version=ANY, source_routing=ANY))
 
     def test_get_curtin_userdata_includes_storage_for_dd(self):
         # Tests that storage config is sent when deploying windows. This is
@@ -956,7 +990,35 @@ class TestGetCurtinUserData(
             preseed_module, 'compose_curtin_network_config')
         user_data = get_curtin_userdata(make_HttpRequest(), node)
         self.assertIn("PREFIX='curtin'", user_data)
-        self.assertThat(mock_compose_network, MockCalledOnceWith(node))
+        self.assertThat(
+            mock_compose_network, MockCalledOnceWith(
+                node, version=ANY, source_routing=ANY))
+
+    def test_get_curtin_userdata_uses_v2_for_bionic(self):
+        node = factory.make_Node_with_Interface_on_Subnet(
+            primary_rack=self.rpc_rack_controller,
+            osystem='ubuntu', distro_series='bionic')
+        self.configure_get_boot_images_for_node(node, 'xinstall')
+        mock_compose_network = self.patch(
+            preseed_module, 'compose_curtin_network_config')
+        user_data = get_curtin_userdata(make_HttpRequest(), node)
+        self.assertIn("PREFIX='curtin'", user_data)
+        self.assertThat(
+            mock_compose_network, MockCalledOnceWith(
+                node, version=2, source_routing=ANY))
+
+    def test_get_curtin_userdata_uses_v1_for_trusty(self):
+        node = factory.make_Node_with_Interface_on_Subnet(
+            primary_rack=self.rpc_rack_controller,
+            osystem='ubuntu', distro_series='trusty')
+        self.configure_get_boot_images_for_node(node, 'xinstall')
+        mock_compose_network = self.patch(
+            preseed_module, 'compose_curtin_network_config')
+        user_data = get_curtin_userdata(make_HttpRequest(), node)
+        self.assertIn("PREFIX='curtin'", user_data)
+        self.assertThat(
+            mock_compose_network, MockCalledOnceWith(
+                node, version=1, source_routing=ANY))
 
     def test_get_curtin_userdata_includes_storage_when_curtin_supported(self):
         node = factory.make_Node_with_Interface_on_Subnet(

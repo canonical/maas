@@ -849,7 +849,7 @@ class TestNetplan(MAASServerTestCase):
                 'version': 2,
                 'ethernets': {
                     'eth0': {
-                        'gateway': '10.0.0.1',
+                        'gateway4': '10.0.0.1',
                         'match': {'macaddress': '00:01:02:03:04:05'},
                         'mtu': 1500,
                         'set-name': 'eth0',
@@ -967,7 +967,7 @@ class TestNetplan(MAASServerTestCase):
                 'version': 2,
                 'ethernets': {
                     'eth0': {
-                        'gateway': '10.0.0.1',
+                        'gateway4': '10.0.0.1',
                         'nameservers': {
                             'addresses': ['10.0.0.2'],
                             'search': expected_search_list
