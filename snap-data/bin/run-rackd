@@ -27,6 +27,7 @@ export MAAS_DNS_CONFIG_DIR="$SNAP_DATA/bind"
 export MAAS_PROXY_CONFIG_DIR="$SNAP_DATA/proxy"
 export MAAS_SYSLOG_CONFIG_DIR="$SNAP_DATA/syslog"
 export MAAS_SYSLOG_LOG_DIR="$SNAP_COMMON/log"
+export MAAS_HTTP_CONFIG_DIR="$SNAP_DATA/http"
 
 # Run the rackd.
 exec $SNAP/sbin/rackd
