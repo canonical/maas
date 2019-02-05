@@ -16,15 +16,6 @@ from django.http import (
     HttpResponseNotFound,
 )
 from maasserver.models import Config
-from maasserver.prometheus import (
-    prom_cli,
-    PROMETHEUS_SUPPORTED,
-)
-from maasserver.prometheus.utils import (
-    create_metrics,
-    MetricDefinition,
-    PrometheusMetrics,
-)
 from maasserver.stats import (
     get_kvm_pods_stats,
     get_maas_stats,
@@ -33,6 +24,15 @@ from maasserver.stats import (
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.logger import LegacyLogger
+from provisioningserver.prometheus import (
+    prom_cli,
+    PROMETHEUS_SUPPORTED,
+)
+from provisioningserver.prometheus.utils import (
+    create_metrics,
+    MetricDefinition,
+    PrometheusMetrics,
+)
 from twisted.application.internet import TimerService
 
 

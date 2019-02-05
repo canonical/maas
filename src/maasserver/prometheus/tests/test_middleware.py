@@ -3,9 +3,9 @@ from maasserver.prometheus.metrics import METRICS_DEFINITIONS
 from maasserver.prometheus.middleware import (
     PrometheusRequestMetricsMiddleware,
 )
-from maasserver.prometheus.utils import create_metrics
 from maasserver.testing.factory import factory
 from maastesting.testcase import MAASTestCase
+from provisioningserver.prometheus.utils import create_metrics
 
 
 class TestPrometheusRequestMetricsMiddleware(MAASTestCase):

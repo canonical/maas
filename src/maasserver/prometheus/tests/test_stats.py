@@ -17,7 +17,6 @@ from maasserver.prometheus.stats import (
     STATS_DEFINITIONS,
     update_prometheus_stats,
 )
-from maasserver.prometheus.utils import create_metrics
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     MAASServerTestCase,
@@ -31,6 +30,7 @@ from maastesting.matchers import (
 )
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import extract_result
+from provisioningserver.prometheus.utils import create_metrics
 from provisioningserver.utils.twisted import asynchronous
 from twisted.application.internet import TimerService
 from twisted.internet.defer import fail

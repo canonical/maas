@@ -1,6 +1,6 @@
 from collections import namedtuple
 
-from maasserver.prometheus import (
+from provisioningserver.prometheus import (
     prom_cli,
     PROMETHEUS_SUPPORTED,
 )

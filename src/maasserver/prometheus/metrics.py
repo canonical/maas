@@ -11,7 +11,7 @@ from maasserver.prometheus.stats import (
     STATS_DEFINITIONS,
     update_prometheus_stats,
 )
-from maasserver.prometheus.utils import (
+from provisioningserver.prometheus.utils import (
     create_metrics,
     MetricDefinition,
 )

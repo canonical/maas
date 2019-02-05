@@ -1,8 +1,8 @@
 from maasserver.prometheus import metrics
-from maasserver.prometheus.utils import PrometheusMetrics
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.django_urls import reverse
+from provisioningserver.prometheus.utils import PrometheusMetrics
 
 
 class TestPrometheusMetricsHandler(MAASServerTestCase):
