@@ -36,6 +36,7 @@ from provisioningserver.drivers.pod import (
 )
 from provisioningserver.enum import LIBVIRT_NETWORK
 from provisioningserver.logger import get_maas_logger
+from provisioningserver.path import get_path
 from provisioningserver.rpc.exceptions import PodInvalidResources
 from provisioningserver.rpc.utils import (
     commission_node,
@@ -350,6 +351,13 @@ class VirshSSH(pexpect.spawn):
 
     def login(self, poweraddr, password=None):
         """Starts connection to virsh."""
+        # Append unverified-ssh command if user has not
+        # supplied their own extra parameters.  See,
+        # https://bugs.launchpad.net/maas/+bug/1807231
+        # for more details.
+        if '?' not in poweraddr:
+            poweraddr = poweraddr + '?command=' + get_path(
+                '/usr/lib/maas/unverified-ssh')
         self._execute(poweraddr)
         i = self.expect(self.PROMPTS, timeout=self.timeout)
         if i == self.I_PROMPT_SSHKEY:

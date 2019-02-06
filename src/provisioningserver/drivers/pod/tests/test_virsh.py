@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `provisioningserver.drivers.pod.virsh`."""
@@ -498,7 +498,7 @@ class TestVirshSSH(MAASTestCase):
             'virsh # '
         ]
         conn = self.configure_virshssh_pexpect(virsh_outputs)
-        self.assertTrue(conn.login(poweraddr=None))
+        self.assertTrue(conn.login(poweraddr=factory.make_name('poweraddr')))
 
     def test_login_with_sshkey(self):
         virsh_outputs = [
@@ -509,7 +509,7 @@ class TestVirshSSH(MAASTestCase):
         ]
         conn = self.configure_virshssh_pexpect(virsh_outputs)
         mock_sendline = self.patch(conn, 'sendline')
-        conn.login(poweraddr=None)
+        conn.login(poweraddr=factory.make_name('poweraddr'))
         self.assertThat(mock_sendline, MockCalledOnceWith('yes'))
 
     def test_login_with_password(self):
@@ -519,7 +519,8 @@ class TestVirshSSH(MAASTestCase):
         conn = self.configure_virshssh_pexpect(virsh_outputs)
         fake_password = factory.make_name('password')
         mock_sendline = self.patch(conn, 'sendline')
-        conn.login(poweraddr=None, password=fake_password)
+        conn.login(
+            poweraddr=factory.make_name('poweraddr'), password=fake_password)
         self.assertThat(mock_sendline, MockCalledOnceWith(fake_password))
 
     def test_login_missing_password(self):
@@ -528,7 +529,8 @@ class TestVirshSSH(MAASTestCase):
         ]
         conn = self.configure_virshssh_pexpect(virsh_outputs)
         mock_close = self.patch(conn, 'close')
-        self.assertFalse(conn.login(poweraddr=None, password=None))
+        self.assertFalse(
+            conn.login(poweraddr=factory.make_name('poweraddr')))
         self.assertThat(mock_close, MockCalledOnceWith())
 
     def test_login_invalid(self):
@@ -537,7 +539,31 @@ class TestVirshSSH(MAASTestCase):
         ]
         conn = self.configure_virshssh_pexpect(virsh_outputs)
         mock_close = self.patch(conn, 'close')
-        self.assertFalse(conn.login(poweraddr=None))
+        self.assertFalse(
+            conn.login(poweraddr=factory.make_name('poweraddr')))
+        self.assertThat(mock_close, MockCalledOnceWith())
+
+    def test_login_with_poweraddr_extra_parameters(self):
+        conn = virsh.VirshSSH(timeout=0.1)
+        self.addCleanup(conn.close)
+        mock_execute = self.patch(conn, '_execute')
+        mock_close = self.patch(conn, 'close')
+        poweraddr = "qemu+ssh://ubuntu@10.0.0.2/system?no_verify=1"
+        conn._spawn('cat')
+        self.assertFalse(conn.login(poweraddr=poweraddr))
+        self.assertThat(mock_execute, MockCalledOnceWith(poweraddr))
+        self.assertThat(mock_close, MockCalledOnceWith())
+
+    def test_login_with_poweraddr_no_extra_parameters(self):
+        conn = virsh.VirshSSH(timeout=0.1)
+        self.addCleanup(conn.close)
+        mock_execute = self.patch(conn, '_execute')
+        mock_close = self.patch(conn, 'close')
+        poweraddr = "qemu+ssh://ubuntu@10.0.0.2/system"
+        conn._spawn('cat')
+        self.assertFalse(conn.login(poweraddr=poweraddr))
+        self.assertThat(mock_execute, MockCalledOnceWith(
+            poweraddr + '?command=/usr/lib/maas/unverified-ssh'))
         self.assertThat(mock_close, MockCalledOnceWith())
 
     def test_logout(self):
