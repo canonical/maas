@@ -13,3 +13,8 @@ debian/tmp/usr/lib/maas/dhcp-monitor
 # For information on the usage of '=>' here, see:
 # https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=245554
 debian/extras/maas-rack => /usr/lib/maas/maas-common
+
+# Install unverified-ssh
+# This is used for KVM host communication:
+# https://bugs.launchpad.net/maas/+bug/1807231
+debian/tmp/usr/lib/maas/unverified-ssh

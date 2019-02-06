@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Setuptools installer for MAAS."""
@@ -72,7 +72,8 @@ setup(
              'scripts/network-monitor',
              'scripts/maas-delete-file',
              'scripts/maas-test-enlistment',
-             'scripts/maas-write-file']),
+             'scripts/maas-write-file',
+             'scripts/unverified-ssh']),
     ],
 
     classifiers=[
