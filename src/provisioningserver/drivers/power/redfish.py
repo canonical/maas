@@ -1,4 +1,4 @@
-# Copyright 2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2018-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Redfish Power Driver."""
@@ -11,7 +11,10 @@ from base64 import b64encode
 from http import HTTPStatus
 from io import BytesIO
 import json
-from os.path import join
+from os.path import (
+    basename,
+    join,
+)
 
 from provisioningserver.drivers import (
     make_ip_extractor,
@@ -42,7 +45,7 @@ from twisted.web.http_headers import Headers
 REDFISH_POWER_CONTROL_ENDPOINT = (
     b"redfish/v1/Systems/%s/Actions/ComputerSystem.Reset/")
 
-REDFISH_SYSTEMS_ENDPOINT = b"redfish/v1/Systems/%s/"
+REDFISH_SYSTEMS_ENDPOINT = b"redfish/v1/Systems/"
 
 
 class WebClientContextFactory(BrowserLikePolicyForHTTPS):
@@ -77,13 +80,6 @@ class RedfishPowerDriverBase(PowerDriver):
                 b"Content-Type": [b"application/json; charset=utf-8"],
             }
         )
-
-    def process_redfish_context(self, context):
-        """Process Redfish power driver context."""
-        url = self.get_url(context)
-        node_id = context.get('node_id').encode('utf-8')
-        headers = self.make_auth_headers(**context)
-        return url, node_id, headers
 
     @asynchronous
     def redfish_request(self, method, uri, headers=None, bodyProducer=None):
@@ -144,8 +140,7 @@ class RedfishPowerDriver(RedfishPowerDriverBase):
             'power_pass', "Redfish password",
             field_type='password', required=True),
         make_setting_field(
-            'node_id', "Node ID",
-            scope=SETTING_SCOPE.NODE, required=True),
+            'node_id', "Node ID", scope=SETTING_SCOPE.NODE),
     ]
     ip_extractor = make_ip_extractor('power_address')
 
@@ -154,9 +149,38 @@ class RedfishPowerDriver(RedfishPowerDriverBase):
         return []
 
     @inlineCallbacks
+    def process_redfish_context(self, context):
+        """Process Redfish power driver context.
+
+        Returns the basename of the first member found
+        in the Redfish Systems:
+
+        "Members": [
+          {
+            "@odata.id": "/redfish/v1/Systems/1"
+          }
+        """
+        url = self.get_url(context)
+        headers = self.make_auth_headers(**context)
+        node_id = context.get('node_id')
+        if node_id:
+            node_id = node_id.encode('utf-8')
+        else:
+            node_id = yield self.get_node_id(url, headers)
+        return url, node_id, headers
+
+    @inlineCallbacks
+    def get_node_id(self, url, headers):
+        uri = join(url, REDFISH_SYSTEMS_ENDPOINT)
+        systems, _ = yield self.redfish_request(b"GET", uri, headers)
+        members = systems.get('Members')
+        member = members[0].get('@odata.id')
+        return basename(member).encode('utf-8')
+
+    @inlineCallbacks
     def set_pxe_boot(self, url, node_id, headers):
         """Set the machine with node_id to PXE boot."""
-        endpoint = REDFISH_SYSTEMS_ENDPOINT % node_id
+        endpoint = REDFISH_SYSTEMS_ENDPOINT + b'%s/' % node_id
         payload = FileBodyProducer(
             BytesIO(
                 json.dumps(
@@ -185,10 +209,10 @@ class RedfishPowerDriver(RedfishPowerDriverBase):
 
     @asynchronous
     @inlineCallbacks
-    def power_on(self, system_id, context):
+    def power_on(self, node_id, context):
         """Power on machine."""
-        url, node_id, headers = self.process_redfish_context(context)
-        power_state = yield self.power_query(system_id, context)
+        url, node_id, headers = yield self.process_redfish_context(context)
+        power_state = yield self.power_query(node_id, context)
         # Power off the machine if currently on.
         if power_state == 'on':
             yield self.power("ForceOff", url, node_id, headers)
@@ -199,9 +223,9 @@ class RedfishPowerDriver(RedfishPowerDriverBase):
 
     @asynchronous
     @inlineCallbacks
-    def power_off(self, system_id, context):
+    def power_off(self, node_id, context):
         """Power off machine."""
-        url, node_id, headers = self.process_redfish_context(context)
+        url, node_id, headers = yield self.process_redfish_context(context)
         # Set to PXE boot.
         yield self.set_pxe_boot(url, node_id, headers)
         # Power off the machine.
@@ -209,9 +233,9 @@ class RedfishPowerDriver(RedfishPowerDriverBase):
 
     @asynchronous
     @inlineCallbacks
-    def power_query(self, system_id, context):
+    def power_query(self, node_id, context):
         """Power query machine."""
-        url, node_id, headers = self.process_redfish_context(context)
-        uri = join(url, REDFISH_SYSTEMS_ENDPOINT % node_id)
+        url, node_id, headers = yield self.process_redfish_context(context)
+        uri = join(url, REDFISH_SYSTEMS_ENDPOINT + b'%s/' % node_id)
         node_data, _ = yield self.redfish_request(b"GET", uri, headers)
         return node_data.get('PowerState').lower()
