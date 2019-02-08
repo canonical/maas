@@ -269,6 +269,7 @@ PowerInfo = namedtuple("PowerInfo", (
 DefaultGateways = namedtuple("DefaultGateways", (
     "ipv4",
     "ipv6",
+    "all",
 ))
 
 GatewayDefinition = namedtuple("GatewayDefinition", (
@@ -3404,9 +3405,8 @@ class Node(CleanSave, TimestampedModel):
             if interface.enabled:
                 interface.ensure_link_up()
 
-    def get_best_guess_for_default_gateways(self):
-        """Return the best guess for the default gateways. This is
-        either one IPv4 gateway, one IPv6 gateway, or both.
+    def get_gateways_by_priority(self):
+        """Return all possible default gateways for the Node, by priority.
 
         This is determined by looking at all interfaces on the node and
         selecting the best possible default gateway IP. The criteria below
@@ -3428,7 +3428,7 @@ class Node(CleanSave, TimestampedModel):
         # DISTINCT ON returns the first matching row for any given
         # IP family. Using the query's ordering.
         cursor.execute("""
-            SELECT DISTINCT ON (family(subnet.gateway_ip))
+            SELECT
                 interface.id, subnet.id, subnet.gateway_ip
             FROM maasserver_node AS node
             JOIN maasserver_interface AS interface ON
@@ -3503,9 +3503,11 @@ class Node(CleanSave, TimestampedModel):
         """Return the default gateways.
 
         :return: Return a tuple or tuples with IPv4 and IPv6 gateway
-            information.
-        :rtype: tuple
+            information, plus a list of all available gateways.
+        :rtype: DefaultGateways tuple
         """
+        all_gateways = self.get_gateways_by_priority()
+
         # Get the set gateways on the node.
         gateway_ipv4 = None
         gateway_ipv6 = None
@@ -3524,17 +3526,16 @@ class Node(CleanSave, TimestampedModel):
 
         # Early out if we already have both gateways.
         if gateway_ipv4 and gateway_ipv6:
-            return DefaultGateways(gateway_ipv4, gateway_ipv6)
+            return DefaultGateways(gateway_ipv4, gateway_ipv6, all_gateways)
 
         # Get the best guesses for the missing IP families.
-        found_gateways = self.get_best_guess_for_default_gateways()
         if not gateway_ipv4:
             gateway_ipv4 = self._get_gateway_tuple_by_family(
-                found_gateways, IPADDRESS_FAMILY.IPv4)
+                all_gateways, IPADDRESS_FAMILY.IPv4)
         if not gateway_ipv6:
             gateway_ipv6 = self._get_gateway_tuple_by_family(
-                found_gateways, IPADDRESS_FAMILY.IPv6)
-        return DefaultGateways(gateway_ipv4, gateway_ipv6)
+                all_gateways, IPADDRESS_FAMILY.IPv6)
+        return DefaultGateways(gateway_ipv4, gateway_ipv6, all_gateways)
 
     def get_default_dns_servers(
             self, ipv4=True, ipv6=True, default_region_ip=None):

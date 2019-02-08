@@ -169,12 +169,16 @@ class InterfaceConfiguration:
         interface configuration."""
         if subnet.gateway_ip:
             for gateway in self.gateways:
-                if gateway is not None:
-                    iface_id, subnet_id, gateway_ip = gateway
-                    if (iface_id == self.id and
-                            subnet_id and subnet.id and
-                            gateway_ip and subnet.gateway_ip):
-                        return subnet.gateway_ip
+                if gateway is None:
+                    continue
+                if isinstance(gateway, list):
+                    # Not relevant yet; this is the list of /all/ gateways.
+                    continue
+                iface_id, subnet_id, gateway_ip = gateway
+                if (iface_id == self.id and
+                        subnet_id and subnet.id and
+                        gateway_ip and subnet.gateway_ip):
+                    return subnet.gateway_ip
         return None
 
     def _set_default_gateway(self, subnet, config, version=1):

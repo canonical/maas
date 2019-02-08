@@ -5908,19 +5908,59 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
         node.gateway_link_ipv6 = static_ipv6
         node.save()
         node = reload_object(node)
+        nic0_gw = GatewayDefinition(
+            interface_id=nic0.id, subnet_id=ipv4_subnet.id,
+            gateway_ip=ipv4_subnet.gateway_ip)
+        nic1_gw = GatewayDefinition(
+            interface_id=nic1.id, subnet_id=ipv6_subnet.id,
+            gateway_ip=ipv6_subnet.gateway_ip)
         expected_gateways = DefaultGateways(
-            GatewayDefinition(
-                interface_id=nic0.id, subnet_id=ipv4_subnet.id,
-                gateway_ip=ipv4_subnet.gateway_ip),
-            GatewayDefinition(
-                interface_id=nic1.id, subnet_id=ipv6_subnet.id,
-                gateway_ip=ipv6_subnet.gateway_ip)
+            nic0_gw, nic1_gw, [nic0_gw, nic1_gw]
         )
         self.assertThat(
             node.get_default_gateways(), Equals(expected_gateways))
         node._clear_networking_configuration()
         self.assertThat(node.gateway_link_ipv4, Equals(None))
         self.assertThat(node.gateway_link_ipv6, Equals(None))
+
+    def test__get_default_gateways_returns_priority_and_complete_list(self):
+        node = factory.make_Node()
+        nic0 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        nic1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        nic2 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        ipv4_subnet = factory.make_Subnet(
+            cidr="192.168.0.0/24", gateway_ip="192.168.0.1")
+        ipv6_subnet = factory.make_Subnet(
+            cidr="2001:db8::/64", gateway_ip="2001:db8::1")
+        ipv4_subnet_2 = factory.make_Subnet(
+            cidr="192.168.1.0/24", gateway_ip="192.168.1.1")
+        static_ipv4 = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, interface=nic0,
+            subnet=ipv4_subnet)
+        static_ipv6 = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, interface=nic1,
+            subnet=ipv6_subnet)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, interface=nic2,
+            subnet=ipv4_subnet_2)
+        node.gateway_link_ipv4 = static_ipv4
+        node.gateway_link_ipv6 = static_ipv6
+        node.save()
+        node = reload_object(node)
+        nic0_gw = GatewayDefinition(
+            interface_id=nic0.id, subnet_id=ipv4_subnet.id,
+            gateway_ip=ipv4_subnet.gateway_ip)
+        nic1_gw = GatewayDefinition(
+            interface_id=nic1.id, subnet_id=ipv6_subnet.id,
+            gateway_ip=ipv6_subnet.gateway_ip)
+        nic2_gw = GatewayDefinition(
+            interface_id=nic2.id, subnet_id=ipv4_subnet_2.id,
+            gateway_ip=ipv4_subnet_2.gateway_ip)
+        expected_gateways = DefaultGateways(
+            nic0_gw, nic1_gw, [nic0_gw, nic2_gw, nic1_gw]
+        )
+        self.assertThat(
+            node.get_default_gateways(), Equals(expected_gateways))
 
     def test_set_initial_net_config_does_nothing_if_skip_networking(self):
         node = factory.make_Node_with_Interface_on_Subnet(skip_networking=True)
@@ -6054,8 +6094,21 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
             sorted(interface.name for interface in node.interface_set.all()))
 
 
-class TestGetBestGuessForDefaultGateways(MAASServerTestCase):
-    """Tests for `Node.get_best_guess_for_default_gateways`."""
+class TestGetGatewaysByPriority(MAASServerTestCase):
+    """Tests for `Node.get_gateways_by_priority`."""
+
+    def assertGatewayPriorities(self, expected, actual):
+        """Verifies the IPv4 and IPv6 gateways are in the correct order."""
+        for expected_gw in expected:
+            family = IPAddress(
+                GatewayDefinition(*expected_gw).gateway_ip).version
+            for actual_gw in actual:
+                if IPAddress(actual_gw.gateway_ip).version == family:
+                    self.assertEqual(expected_gw, actual_gw)
+                    return
+                else:
+                    continue
+            self.assertIsNotNone(expected_gw)
 
     def test__simple(self):
         node = factory.make_Node_with_Interface_on_Subnet(
@@ -6064,9 +6117,9 @@ class TestGetBestGuessForDefaultGateways(MAASServerTestCase):
         managed_subnet = boot_interface.ip_addresses.filter(
             alloc_type=IPADDRESS_TYPE.AUTO).first().subnet
         gateway_ip = managed_subnet.gateway_ip
-        self.assertEqual(
+        self.assertGatewayPriorities(
             [(boot_interface.id, managed_subnet.id, gateway_ip)],
-            node.get_best_guess_for_default_gateways())
+            node.get_gateways_by_priority())
 
     def test__ipv4_and_ipv6(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
@@ -6083,10 +6136,10 @@ class TestGetBestGuessForDefaultGateways(MAASServerTestCase):
             alloc_type=IPADDRESS_TYPE.STICKY,
             ip=factory.pick_ip_in_network(network_v6),
             subnet=subnet_v6, interface=interface)
-        self.assertItemsEqual([
+        self.assertGatewayPriorities([
             (interface.id, subnet_v4.id, subnet_v4.gateway_ip),
             (interface.id, subnet_v6.id, subnet_v6.gateway_ip),
-            ], node.get_best_guess_for_default_gateways())
+            ], node.get_gateways_by_priority())
 
     def test__only_one(self):
         node = factory.make_Node_with_Interface_on_Subnet(
@@ -6100,9 +6153,9 @@ class TestGetBestGuessForDefaultGateways(MAASServerTestCase):
             ip=factory.pick_ip_in_network(managed_subnet.get_ipnetwork()),
             subnet=managed_subnet, interface=boot_interface)
         gateway_ip = managed_subnet.gateway_ip
-        self.assertEqual(
+        self.assertGatewayPriorities(
             [(boot_interface.id, managed_subnet.id, gateway_ip)],
-            node.get_best_guess_for_default_gateways())
+            node.get_gateways_by_priority())
 
     def test__managed_subnet_over_unmanaged(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
@@ -6122,9 +6175,9 @@ class TestGetBestGuessForDefaultGateways(MAASServerTestCase):
             ip=factory.pick_ip_in_network(managed_network),
             subnet=managed_subnet, interface=interface)
         gateway_ip = managed_subnet.gateway_ip
-        self.assertEqual(
+        self.assertGatewayPriorities(
             [(interface.id, managed_subnet.id, gateway_ip)],
-            node.get_best_guess_for_default_gateways())
+            node.get_gateways_by_priority())
 
     def test__bond_over_physical_interface(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
@@ -6151,9 +6204,9 @@ class TestGetBestGuessForDefaultGateways(MAASServerTestCase):
             ip=factory.pick_ip_in_network(bond_network),
             subnet=bond_subnet, interface=bond_interface)
         gateway_ip = bond_subnet.gateway_ip
-        self.assertEqual(
+        self.assertGatewayPriorities(
             [(bond_interface.id, bond_subnet.id, gateway_ip)],
-            node.get_best_guess_for_default_gateways())
+            node.get_gateways_by_priority())
 
     def test__physical_over_vlan_interface(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
@@ -6176,9 +6229,9 @@ class TestGetBestGuessForDefaultGateways(MAASServerTestCase):
             ip=factory.pick_ip_in_network(vlan_network),
             subnet=vlan_subnet, interface=vlan_interface)
         gateway_ip = physical_subnet.gateway_ip
-        self.assertEqual(
+        self.assertGatewayPriorities(
             [(physical_interface.id, physical_subnet.id, gateway_ip)],
-            node.get_best_guess_for_default_gateways())
+            node.get_gateways_by_priority())
 
     def test__boot_interface_over_other_interfaces(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
@@ -6203,9 +6256,9 @@ class TestGetBestGuessForDefaultGateways(MAASServerTestCase):
         node.boot_interface = boot_interface
         node.save()
         gateway_ip = boot_subnet.gateway_ip
-        self.assertEqual(
+        self.assertGatewayPriorities(
             [(boot_interface.id, boot_subnet.id, gateway_ip)],
-            node.get_best_guess_for_default_gateways())
+            node.get_gateways_by_priority())
 
     def test__sticky_ip_over_user_reserved(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
@@ -6226,9 +6279,9 @@ class TestGetBestGuessForDefaultGateways(MAASServerTestCase):
             ip=factory.pick_ip_in_network(user_reserved_network),
             subnet=user_reserved_subnet, interface=interface)
         gateway_ip = sticky_subnet.gateway_ip
-        self.assertEqual(
+        self.assertGatewayPriorities(
             [(interface.id, sticky_subnet.id, gateway_ip)],
-            node.get_best_guess_for_default_gateways())
+            node.get_gateways_by_priority())
 
     def test__user_reserved_ip_over_auto(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
@@ -6249,9 +6302,9 @@ class TestGetBestGuessForDefaultGateways(MAASServerTestCase):
             ip=factory.pick_ip_in_network(auto_network),
             subnet=auto_subnet, interface=interface)
         gateway_ip = user_reserved_subnet.gateway_ip
-        self.assertEqual(
-            [(interface.id, user_reserved_subnet.id, gateway_ip)],
-            node.get_best_guess_for_default_gateways())
+        self.assertGatewayPriorities([
+            (interface.id, user_reserved_subnet.id, gateway_ip)],
+            node.get_gateways_by_priority())
 
 
 def MatchesDefaultGateways(ipv4, ipv6):
@@ -6267,6 +6320,9 @@ def MatchesDefaultGateways(ipv4, ipv6):
             ipv6=MatchesAll(
                 IsInstance(GatewayDefinition),
                 Equals(ipv6),
+            ),
+            all=MatchesAll(
+                IsInstance(list),
             ),
         ),
     )

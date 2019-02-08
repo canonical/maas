@@ -118,16 +118,19 @@ class AssertNetworkConfigMixin:
             elif ip_family == IPADDRESS_FAMILY.IPv6 and ipv6_set:
                 return (ret, ipv4_set, ipv6_set)
             for gateway in gateways:
-                if gateway is not None:
-                    iface_id, subnet_id, gateway_ip = gateway
-                    if (iface_id == iface.id and
-                            subnet_id == subnet.id and
-                            gateway_ip == subnet.gateway_ip):
-                        ret += "    gateway: %s\n" % gateway_ip
-                        if ip_family == IPADDRESS_FAMILY.IPv4:
-                            ipv4_set = True
-                        elif ip_family == IPADDRESS_FAMILY.IPv6:
-                            ipv6_set = True
+                if gateway is None:
+                    continue
+                if isinstance(gateway, list):
+                    continue
+                iface_id, subnet_id, gateway_ip = gateway
+                if (iface_id == iface.id and
+                        subnet_id == subnet.id and
+                        gateway_ip == subnet.gateway_ip):
+                    ret += "    gateway: %s\n" % gateway_ip
+                    if ip_family == IPADDRESS_FAMILY.IPv4:
+                        ipv4_set = True
+                    elif ip_family == IPADDRESS_FAMILY.IPv6:
+                        ipv6_set = True
             return (ret, ipv4_set, ipv6_set)
 
         def get_param_value(value):
