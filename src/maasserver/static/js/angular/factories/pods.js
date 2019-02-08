@@ -49,5 +49,18 @@ angular.module('MAAS').service(
                 });
         };
 
+        // Calculate the available cores with overcommit applied
+        PodsManager.prototype.availableWithOvercommit = function (
+            total, used, overcommitRatio, precisionValue) {
+            if (precisionValue) {
+
+                return (total * overcommitRatio - used)
+                    .toFixed(precisionValue)
+                    .replace(/[.,]0$/, '');
+            } else {
+                return ((total * overcommitRatio) - used);
+            }
+        };
+
         return new PodsManager();
     }]);

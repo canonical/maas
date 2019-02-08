@@ -154,11 +154,11 @@
                         <td class="p-table__cell" aria-label="iSCSI storage (GiB)" title="{$ pod.available.iscsi_storage_gb || '0' $} free of {$ pod.total.iscsi_storage_gb || '0' $}">
                             {$ pod.available.iscsi_storage_gb || '0' $} free of {$ pod.total.iscsi_storage_gb || '0' $}
                         </td>
-                        <td class="p-table__cell" aria-label="Cores" title="{$ pod.available.cores $} free of {$ pod.total.cores $}">
-                            {$ pod.available.cores $} free of {$ pod.total.cores $}
+                        <td class="p-table__cell" aria-label="Cores" title="{$ availableWithOvercommit(pod.total.cores, pod.used.cores, pod.cpu_over_commit_ratio, 1) $} CPU cores {$ pod.cpu_over_commit_ratio !== 1 ? 'x ' + pod.total.cores + ' overcommit' : '' $}">
+                            {$ availableWithOvercommit(pod.total.cores, pod.used.cores, pod.cpu_over_commit_ratio, 1) $} free of {$ pod.total.cores * pod.cpu_over_commit_ratio $}
                         </td>
-                        <td class="p-table__cell" aria-label="RAM (GiB)" title="{$ pod.available.memory_gb $} free of {$ pod.total.memory_gb $}">
-                            {$ pod.available.memory_gb $} free of {$ pod.total.memory_gb $}
+                        <td class="p-table__cell" aria-label="RAM (GiB)" title="{$ availableWithOvercommit(pod.total.memory_gb, pod.used.memory_gb, pod.memory_over_commit_ratio, 1) $} {$ pod.memory_over_commit_ratio !== 1 ? 'x ' + pod.total.memory_gb + ' overcommit' : '' $}">
+                            {$ availableWithOvercommit(pod.total.memory_gb, pod.used.memory_gb, pod.memory_over_commit_ratio, 1) $} free of {$ pod.total.memory_gb * pod.memory_over_commit_ratio $}
                         </td>
                         <td class="p-table__cell u-align--right" aria-label="Composed machines" title="{$ pod.composed_machines_count $}">
                             {$ pod.composed_machines_count $}

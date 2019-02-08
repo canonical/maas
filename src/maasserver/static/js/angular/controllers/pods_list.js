@@ -162,6 +162,9 @@ angular.module('MAAS').controller('PodsListController', [
             $scope.action.option = null;
         };
 
+        // Calculate the available cores with overcommit applied
+        $scope.availableWithOvercommit = PodsManager.availableWithOvercommit;
+
         // Perform the action on all pods.
         $scope.actionGo = function() {
             var extra = {};

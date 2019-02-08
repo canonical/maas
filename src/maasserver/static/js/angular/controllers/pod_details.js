@@ -374,17 +374,7 @@ angular.module('MAAS').controller('PodDetailsController', [
         };
 
         // Calculate the available cores with overcommit applied
-        $scope.availableWithOvercommit = function(
-            total, used, overcommitRatio, precisionValue) {
-            if (precisionValue) {
-
-                return (total * overcommitRatio - used)
-                  .toFixed(precisionValue)
-                  .replace(/[.,]0$/, '');
-            } else {
-                return ((total * overcommitRatio) - used);
-            }
-        };
+        $scope.availableWithOvercommit = PodsManager.availableWithOvercommit;
 
         // Strip trailing zero
         $scope.stripTrailingZero = function(value) {
