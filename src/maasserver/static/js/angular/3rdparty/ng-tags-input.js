@@ -643,6 +643,9 @@ tagsInput.directive('autoComplete', ["$document","$timeout","$sce","$q","tagsInp
             });
 
             $scope.suggestionList = new SuggestionList($scope.source, $scope.options, $scope.events);
+            $scope.getCurrentTag = function() {
+                return $scope.$parent.$parent.newTag.text;
+            };
 
             this.registerAutocompleteMatch = function() {
                 return {
@@ -1124,19 +1127,47 @@ tagsInput.factory('tiUtil', ["$timeout", function($timeout) {
 /* HTML templates */
 tagsInput.run(["$templateCache", function($templateCache) {
     $templateCache.put('ngTagsInput/tags-input.html',
-    "<div class=\"host\" tabindex=\"-1\" data-ng-click=\"eventHandlers.host.click()\" ti-transclude-append=\"\"><div class=\"tags\" data-ng-class=\"{focused: hasFocus}\"><ul class=\"tag-list\"><li class=\"tag-item\" data-ng-repeat=\"tag in tagList.items track by track(tag)\" data-ng-class=\"{ selected: tag == tagList.selected }\"><ti-tag-item data=\"tag\"></ti-tag-item></li></ul><input class=\"input u-no-margin--top u-no-margin--bottom\" autocomplete=\"off\" data-ng-model=\"newTag.text\" data-ng-change=\"eventHandlers.input.change(newTag.text)\" data-ng-keydown=\"eventHandlers.input.keydown($event)\" data-ng-focus=\"eventHandlers.input.focus($event)\" data-ng-blur=\"eventHandlers.input.blur($event)\" data-ng-paste=\"eventHandlers.input.paste($event)\" data-ng-trim=\"false\" data-ng-class=\"{'invalid-tag': newTag.invalid}\" data-ng-disabled=\"disabled\" ti-bind-attrs=\"{type: options.type, placeholder: options.placeholder, tabindex: options.tabindex, spellcheck: options.spellcheck}\" ti-autosize=\"\"></div></div>"
+    '<div class="host" tabindex="-1" data-ng-click="eventHandlers.host.click()" ti-transclude-append="">' +
+    '<div class="tags" data-ng-class="{focused: hasFocus}">' +
+    '<ul class="tag-list">' +
+    '<li class="tag-item" data-ng-repeat="tag in tagList.items track by track(tag)" data-ng-class="{ selected: tag == tagList.selected }">' +
+    '<ti-tag-item data="tag"></ti-tag-item>' +
+    '</li>' +
+    '</ul>' +
+    '<input class="input u-no-margin--top u-no-margin--bottom" autocomplete="off" data-ng-model="newTag.text" data-ng-change="eventHandlers.input.change(newTag.text)" data-ng-keydown="eventHandlers.input.keydown($event)" data-ng-focus="eventHandlers.input.focus($event)" data-ng-blur="eventHandlers.input.blur($event)" data-ng-paste="eventHandlers.input.paste($event)" data-ng-trim="false" data-ng-class="{\'invalid-tag\': newTag.invalid}" data-ng-disabled="disabled" ti-bind-attrs="{type: options.type, placeholder: options.placeholder, tabindex: options.tabindex, spellcheck: options.spellcheck}" ti-autosize="">' +
+    '</div>' +
+    '</div>'
   );
 
   $templateCache.put('ngTagsInput/tag-item.html',
-    "<span ng-bind=\"$getDisplayText()\"></span> <a class=\"p-icon--close\" data-ng-click=\"$removeTag()\" data-ng-bind=\"$$removeTagSymbol\">Remove tag</a>"
+    '<span ng-bind="$getDisplayText()"></span> ' +
+    '<a class="p-icon--close" data-ng-click="$removeTag()" data-ng-bind="$$removeTagSymbol">' +
+    'Remove tag' +
+    '</a>'
   );
 
   $templateCache.put('ngTagsInput/auto-complete.html',
-    "<div class=\"autocomplete\" data-ng-if=\"suggestionList.visible\"><ul class=\"p-list suggestion-list\"><li class=\"suggestion-item\" data-ng-repeat=\"item in suggestionList.items track by track(item)\" data-ng-class=\"{selected: item == suggestionList.selected}\" data-ng-click=\"addSuggestionByIndex($index)\" data-ng-mouseenter=\"suggestionList.select($index)\"><ti-autocomplete-match data=\"item\"></ti-autocomplete-match></li></ul></div><div class=\"autocomplete no-suggestion\" data-ng-if=\"!suggestionList.visible && hasFocus && shouldLoadSuggestions\"><ul class=\"p-list suggestion-list\"><li class=\"suggestion-item\">No scripts available</li></ul></div>"
+    '<div class="autocomplete" data-ng-if="suggestionList.visible">' +
+    '<ul class="p-list suggestion-list">' +
+    '<li class="suggestion-item">' +
+    'Create new tag <span class="tag-item">{$ getCurrentTag() $}</span>' +
+    '</li>' +
+    '<li class="suggestion-item" data-ng-repeat="item in suggestionList.items track by track(item)" data-ng-class="{selected: item == suggestionList.selected}" data-ng-click="addSuggestionByIndex($index)" data-ng-mouseenter="suggestionList.select($index)">' +
+    '<ti-autocomplete-match data="item"></ti-autocomplete-match>' +
+    '</li>' +
+    '</ul>' +
+    '</div>' +
+    '<div class="autocomplete no-suggestion" data-ng-if="!suggestionList.visible && hasFocus && shouldLoadSuggestions">' +
+    '<ul class="p-list suggestion-list">' +
+    '<li class="suggestion-item">' +
+    'Create new tag <span class="tag-item">{$ getCurrentTag() $}</span>' +
+    '</li>' +
+    '</ul>' +
+    '</div>'
   );
 
   $templateCache.put('ngTagsInput/auto-complete-match.html',
-    "<span data-ng-bind-html=\"$highlight($getDisplayText())\"></span>"
+    '<span data-ng-bind-html="$highlight($getDisplayText())"></span>'
   );
 }]);
 

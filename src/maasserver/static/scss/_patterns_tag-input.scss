@@ -95,10 +95,8 @@
         list-style-type: none;
 
         .tag-item {
-          background-color: #f7f7f7;
           line-height: 24px;
           margin: 4px;
-          padding: 0 5px;
         }
       }
 
@@ -126,7 +124,6 @@
       overflow: hidden;
 
       .tag-item {
-        display: inline-block;
         float: left;
         line-height: 36px;
         margin-bottom: 0;
@@ -143,5 +140,11 @@
     .input {
       width: 100% !important;
     }
+  }
+
+  .tag-item {
+    display: inline-block;
+    background-color: #f7f7f7;
+    padding: 0 5px;
   }
 }

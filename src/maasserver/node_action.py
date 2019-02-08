@@ -45,6 +45,7 @@ from maasserver.exceptions import (
 )
 from maasserver.models import (
     ResourcePool,
+    Tag,
     Zone,
 )
 from maasserver.node_status import (
@@ -844,6 +845,31 @@ class ExitRescueMode(NodeAction):
             raise NodeActionError(exception)
 
 
+class AddTag(NodeAction):
+    """Tag multiple machines."""
+    name = "tag"
+    display = "Tag"
+    display_sentence = "tagged"
+    actionable_statuses = ALL_STATUSES
+    permission = NodePermission.admin
+    for_type = {NODE_TYPE.MACHINE}
+    action_type = NODE_ACTION_TYPE.MISC
+    audit_description = "Tagging '%s'."
+
+    def get_node_action_audit_description(self, action):
+        """Retrieve the node action audit description."""
+        return self.audit_description % action.node.hostname
+
+    def _execute(self, tags=None):
+        """See `NodeAction.execute`."""
+        for tag in tags:
+            t, _ = Tag.objects.get_or_create(name=tag)
+            self.node.tags.add(t)
+
+        self.node.save()
+        return
+
+
 ACTION_CLASSES = (
     Commission,
     Acquire,
@@ -860,6 +886,7 @@ ACTION_CLASSES = (
     OverrideFailedTesting,
     Lock,
     Unlock,
+    AddTag,
     SetZone,
     SetPool,
     ImportImages,

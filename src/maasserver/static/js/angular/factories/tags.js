@@ -33,6 +33,22 @@ angular.module('MAAS').factory(
         // contain the query text.
         TagsManager.prototype.autocomplete = function(query) {
             var matching = [];
+            // Sort results alphabetically
+            this._items.sort(function(a, b) {
+                var firstValue = a.name;
+                var secondValue = b.name;
+
+                if (firstValue > secondValue) {
+                    return 1;
+                }
+
+                if (firstValue < secondValue) {
+                    return -1;
+                }
+
+                return 0;
+            });
+
             angular.forEach(this._items, function(item) {
                 if(item.name.indexOf(query) > -1) {
                     matching.push(item.name);

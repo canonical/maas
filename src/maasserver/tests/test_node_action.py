@@ -35,6 +35,7 @@ from maasserver.node_action import (
     Abort,
     Acquire,
     ACTION_CLASSES,
+    AddTag,
     Commission,
     compile_node_actions,
     Delete,
@@ -909,6 +910,29 @@ class TestSetPoolAction(MAASServerTestCase):
             audit_event.description,
             "Set the resource pool to '%s' on '%s'." % (
                 node.pool.name, node.hostname))
+
+
+class TestAddTagAction(MAASServerTestCase):
+
+    def test_AddTag_adds_tag(self):
+        user = factory.make_admin()
+        request = factory.make_fake_request('/')
+        request.user = user
+        tags = ['tag1', 'tag2', 'tag3']
+        node = factory.make_Node(status=NODE_STATUS.NEW)
+        action = AddTag(node, user, request)
+        action.execute(tags=tags)
+        node_tags = list(reload_object(node).tags.values())
+        self.assertEqual(node_tags[0].get('name'), tags[0])
+        self.assertEqual(node_tags[1].get('name'), tags[1])
+        self.assertEqual(node_tags[2].get('name'), tags[2])
+
+    def test_requires_admin_permission(self):
+        user = factory.make_User()
+        request = factory.make_fake_request('/')
+        request.user = user
+        node = factory.make_Node()
+        self.assertFalse(AddTag(node, user, request).is_permitted())
 
 
 class TestPowerOnAction(MAASServerTestCase):

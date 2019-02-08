@@ -276,13 +276,30 @@
                             </form>
                         </div>
                     </div>
+                    <div class="ng-hide" data-ng-show="tabs[tab].actionOption.name === 'tag'">
+                        <div class="row p-form--stacked">
+                            <div class="col-8">
+                                <div class="p-form__group u-clearfix">
+                                    <label class="p-form__label col-2 mobile-col-2 tablet-col-2">Tag machines</label>
+                                    <div class="p-form__control col-3 mobile-col-2 tablet-col-3 tags--inline">
+                                        <span data-ng-repeat="tag in node.tags" data-ng-hide="summary.editing">
+                                            <a href="#/machines/?query=tags:({$ tag $})">{$ tag $}</a>
+                                        </span>
+                                        <tags-input data-ng-model="tags" allowed-tags-pattern="[\w-]+" placeholder="Enter a tag">
+                                            <auto-complete source="tagsAutocomplete($query)"></auto-complete>
+                                        </tags-input>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="row u-align--right" data-ng-if="tabs[tab].actionOption.name !== 'commission' && tabs[tab].actionOption.name !== 'test' && !tabs[tab].actionProgress.showing_confirmation">
                     <div class="col-12">
                         <div class="u-space-between page-header__controls" data-ng-if="tabs[tab].actionOption.name !== 'commission' && tabs[tab].actionOption.name !== 'test'">
                             <div class="u-align--right">
                                 <button class="p-button--base" type="button" data-ng-click="actionCancel(tab)">Cancel</button>
-                                <button data-ng-class="tabs[tab].actionOption.name === 'delete' ? 'p-button--negative' : 'p-button--positive'" data-ng-click="actionGo(tab)" data-ng-hide="hasActionsFailed(tab)">
+                                <button data-ng-class="tabs[tab].actionOption.name === 'delete' ? 'p-button--negative' : 'p-button--positive'" data-ng-click="actionGo(tab)" data-ng-hide="hasActionsFailed(tab)" data-ng-disabled="tabs[tab].actionOption.name === 'tag' && tags.length <= 0">
                                     <span data-ng-if="tabs[tab].actionOption.name === 'acquire'">Acquire {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $}
                                     </span>
                                     <span data-ng-if="tabs[tab].actionOption.name === 'deploy'">Deploy {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $}
@@ -315,6 +332,7 @@
                                     </span>
                                     <span data-ng-if="tabs[tab].actionOption.name === 'delete'">Delete {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $}
                                     </span>
+                                    <span data-ng-if="tabs[tab].actionOption.name === 'tag'">Tag {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $}</span>
                                 </button>
                                 <button class="p-button--neutral" data-ng-click="actionGo(tab)" data-ng-if="hasActionsFailed(tab)">Retry</button>
                             </div>

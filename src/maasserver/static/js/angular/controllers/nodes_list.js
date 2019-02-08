@@ -9,12 +9,12 @@ angular.module('MAAS').controller('NodesListController', [
     'MachinesManager', 'DevicesManager', 'ControllersManager',
     'GeneralManager', 'ManagerHelperService', 'SearchService',
     'ZonesManager', 'UsersManager', 'ServicesManager', 'ScriptsManager',
-    'SwitchesManager', 'ResourcePoolsManager', 'VLANsManager',
+    'SwitchesManager', 'ResourcePoolsManager', 'VLANsManager', 'TagsManager',
     function($q, $scope, $interval, $rootScope, $routeParams, $location,
         MachinesManager, DevicesManager, ControllersManager, GeneralManager,
         ManagerHelperService, SearchService, ZonesManager, UsersManager,
         ServicesManager, ScriptsManager, SwitchesManager,
-             ResourcePoolsManager, VLANsManager) {
+        ResourcePoolsManager, VLANsManager, TagsManager) {
 
         // Mapping of device.ip_assignment to viewable text.
         var DEVICE_IP_ASSIGNMENT = {
@@ -41,6 +41,12 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.scripts = ScriptsManager.getItems();
         $scope.vlans = VLANsManager.getItems();
         $scope.loading = true;
+        $scope.tags = [];
+
+        // Called for autocomplete when the user is typing a tag name.
+        $scope.tagsAutocomplete = function (query) {
+            return TagsManager.autocomplete(query);
+        };
 
         $scope.tabs = {};
         $scope.pluralize = function(tab) {
@@ -722,6 +728,7 @@ angular.module('MAAS').controller('NodesListController', [
             var preAction = deferred.promise;
             deferred.resolve();
             var i, j;
+
             // Set deploy parameters if a deploy or set zone action.
             if(tab.actionOption.name === "deploy" &&
                angular.isString(tab.osSelection.osystem) &&
@@ -865,6 +872,12 @@ angular.module('MAAS').controller('NodesListController', [
                     tab.actionProgress.showing_confirmation = true;
                     return;
                 }
+            } else if (tab.actionOption.name === "tag") {
+                extra.tags = $scope.tags.map(function(tag) {
+                    return tag.text;
+                });
+
+                $scope.tags = [];
             }
 
             preAction.then(
@@ -1009,9 +1022,10 @@ angular.module('MAAS').controller('NodesListController', [
         // in the partial for this controller.
         ManagerHelperService.loadManagers($scope, [
             GeneralManager, ZonesManager, UsersManager, ResourcePoolsManager,
-            ServicesManager].concat(page_managers)).then(function() {
-                $scope.loading = false;
-            });
+            ServicesManager, TagsManager].concat(page_managers))
+                .then(function() {
+                    $scope.loading = false;
+                });
 
 
         // Stop polling and save the current filter when the scope is destroyed.

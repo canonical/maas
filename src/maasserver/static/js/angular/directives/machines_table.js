@@ -253,6 +253,10 @@ angular.module('MAAS').directive('maasMachinesTable', [
         };
 
         scope.removeDuplicates = function(ipArray, prop) {
+          if (!angular.isArray(ipArray)) {
+            return;
+          }
+
           return ipArray.filter((obj, pos, arr) => {
             return arr.map(mapObj => mapObj[prop]).indexOf(obj[prop]) === pos;
           });

@@ -40,7 +40,7 @@ describe("NodesListController", function() {
     // Load the required managers.
     var MachinesManager, DevicesManager, ControllersManager, GeneralManager,
         SwitchesManager, ZonesManager, UsersManager, ServicesManage,
-        ResourcePoolsManager;
+        ResourcePoolsManager, TagsManager;
     var ManagerHelperService, SearchService;
     var ScriptsManager, VLANsManager;
     beforeEach(inject(function($injector) {
@@ -57,6 +57,7 @@ describe("NodesListController", function() {
         VLANsManager = $injector.get("VLANsManager");
         SwitchesManager = $injector.get("SwitchesManager");
         ResourcePoolsManager = $injector.get("ResourcePoolsManager");
+        TagsManager = $injector.get("TagsManager");
     }));
 
     // Mock the websocket connection to the region
@@ -323,7 +324,7 @@ describe("NodesListController", function() {
                 ).toHaveBeenCalledWith(
                     $scope, [GeneralManager, ZonesManager, UsersManager,
                     ResourcePoolsManager,
-                    ServicesManager].concat(page_managers));
+                    ServicesManager, TagsManager].concat(page_managers));
             });
         });
 
@@ -1671,6 +1672,27 @@ describe("NodesListController", function() {
                             distro_series: "trusty",
                             install_kvm: false
                         });
+            });
+
+            it("calls performAction with tag", function() {
+                var controller = makeController();
+                var object = makeObject("machines");
+                var spy = spyOn($scope.tabs.machines.manager, "performAction")
+                    .and
+                    .returnValue($q.defer().promise);
+
+                $scope.tabs.machines.actionOption = { name: "tag" };
+                $scope.tabs.machines.selectedItems = [object];
+                $scope.tags = [
+                    { text: 'foo' },
+                    { text: 'bar' },
+                    { text: 'baz' }
+                ];
+                $scope.actionGo("machines");
+                $scope.$digest();
+                expect(spy).toHaveBeenCalledWith(object, "tag", {
+                    tags: ['foo', 'bar', 'baz']
+                });
             });
 
             it("calls performAction with install_kvm",

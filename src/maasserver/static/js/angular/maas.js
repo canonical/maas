@@ -10,9 +10,15 @@
 
 angular.module('MAAS',
     ['ngRoute', 'ngCookies', 'ngSanitize', 'ngTagsInput', 'vs-repeat']).config(
-    function($interpolateProvider, $routeProvider, $httpProvider) {
+        function ($interpolateProvider, $routeProvider, $httpProvider,
+            tagsInputConfigProvider) {
         $interpolateProvider.startSymbol('{$');
         $interpolateProvider.endSymbol('$}');
+
+        tagsInputConfigProvider
+            .setDefaults('autoComplete', {
+                minLength: 0
+            });
 
         // Set the $httpProvider to send the csrftoken in the header of any
         // http request.
