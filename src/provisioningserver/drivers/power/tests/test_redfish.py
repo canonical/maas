@@ -1,4 +1,4 @@
-# Copyright 2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2018-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `provisioningserver.drivers.power.redfish`."""
@@ -168,7 +168,6 @@ def make_context():
         'power_address': factory.make_ipv4_address(),
         'power_user': factory.make_name('power_user'),
         'power_pass': factory.make_name('power_pass'),
-        'node_id': factory.make_name('node_id'),
     }
 
 
@@ -332,7 +331,7 @@ class TestRedfishPowerDriver(MAASTestCase):
         power_change = factory.make_name('power_change')
         url = driver.get_url(context)
         headers = driver.make_auth_headers(**context)
-        node_id = context.get('node_id').encode('utf-8')
+        node_id = b'1'
         mock_file_body_producer = self.patch(
             redfish_module, 'FileBodyProducer')
         payload = FileBodyProducer(
@@ -354,7 +353,7 @@ class TestRedfishPowerDriver(MAASTestCase):
         driver = RedfishPowerDriver()
         context = make_context()
         url = driver.get_url(context)
-        node_id = context.get('node_id').encode('utf-8')
+        node_id = b'1'
         headers = driver.make_auth_headers(**context)
         mock_file_body_producer = self.patch(
             redfish_module, 'FileBodyProducer')
@@ -378,21 +377,23 @@ class TestRedfishPowerDriver(MAASTestCase):
     @inlineCallbacks
     def test__power_on(self):
         driver = RedfishPowerDriver()
-        system_id = factory.make_name('system_id')
         context = make_context()
         url = driver.get_url(context)
         headers = driver.make_auth_headers(**context)
-        node_id = context.get('node_id').encode('utf-8')
+        node_id = b'1'
+        mock_redfish_request = self.patch(driver, 'redfish_request')
+        mock_redfish_request.return_value = (
+            SAMPLE_JSON_SYSTEMS, None)
         mock_set_pxe_boot = self.patch(driver, 'set_pxe_boot')
         mock_power_query = self.patch(driver, 'power_query')
         mock_power_query.return_value = "on"
         mock_power = self.patch(driver, 'power')
 
-        yield driver.power_on(system_id, context)
+        yield driver.power_on(node_id, context)
         self.assertThat(mock_set_pxe_boot, MockCalledOnceWith(
             url, node_id, headers))
         self.assertThat(mock_power_query, MockCalledOnceWith(
-            system_id, context))
+            node_id, context))
         self.assertThat(mock_power, MockCallsMatch(
             call("ForceOff", url, node_id, headers),
             call("On", url, node_id, headers)))
@@ -400,15 +401,17 @@ class TestRedfishPowerDriver(MAASTestCase):
     @inlineCallbacks
     def test__power_off(self):
         driver = RedfishPowerDriver()
-        system_id = factory.make_name('system_id')
         context = make_context()
         url = driver.get_url(context)
         headers = driver.make_auth_headers(**context)
-        node_id = context.get('node_id').encode('utf-8')
+        node_id = b'1'
+        mock_redfish_request = self.patch(driver, 'redfish_request')
+        mock_redfish_request.return_value = (
+            SAMPLE_JSON_SYSTEMS, None)
         mock_set_pxe_boot = self.patch(driver, 'set_pxe_boot')
         mock_power = self.patch(driver, 'power')
 
-        yield driver.power_off(system_id, context)
+        yield driver.power_off(node_id, context)
         self.assertThat(mock_set_pxe_boot, MockCalledOnceWith(
             url, node_id, headers))
         self.assertThat(mock_power, MockCalledOnceWith(
@@ -423,7 +426,10 @@ class TestRedfishPowerDriver(MAASTestCase):
         mock_redfish_request = self.patch(driver, 'redfish_request')
         NODE_POWERED_ON = deepcopy(SAMPLE_JSON_SYSTEM)
         NODE_POWERED_ON['PowerState'] = "On"
-        mock_redfish_request.return_value = (NODE_POWERED_ON, None)
+        mock_redfish_request.side_effect = [
+            (SAMPLE_JSON_SYSTEMS, None),
+            (NODE_POWERED_ON, None),
+        ]
         power_state = yield driver.power_query(system_id, context)
         self.assertEquals(power_state, power_change.lower())
 
@@ -434,6 +440,9 @@ class TestRedfishPowerDriver(MAASTestCase):
         system_id = factory.make_name('system_id')
         context = make_context()
         mock_redfish_request = self.patch(driver, 'redfish_request')
-        mock_redfish_request.return_value = (SAMPLE_JSON_SYSTEM, None)
+        mock_redfish_request.side_effect = [
+            (SAMPLE_JSON_SYSTEMS, None),
+            (SAMPLE_JSON_SYSTEM, None),
+        ]
         power_state = yield driver.power_query(system_id, context)
         self.assertEquals(power_state, power_change.lower())
