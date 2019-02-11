@@ -1,4 +1,7 @@
-from maastesting.testcase import MAASTestCase
+from maastesting.testcase import (
+    MAASTestCase,
+    MAASTwistedRunTest,
+)
 import prometheus_client
 from provisioningserver.prometheus import utils
 from provisioningserver.prometheus.utils import (
@@ -6,9 +9,15 @@ from provisioningserver.prometheus.utils import (
     MetricDefinition,
     PrometheusMetrics,
 )
+from twisted.internet.defer import (
+    inlineCallbacks,
+    returnValue,
+)
 
 
 class TestPrometheusMetrics(MAASTestCase):
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def test_empty(self):
         prometheus_metrics = PrometheusMetrics()
@@ -30,6 +39,35 @@ class TestPrometheusMetrics(MAASTestCase):
             'a_gauge', 'set', value=22, labels={'foo': 'FOO', 'bar': 'BAR'})
         self.assertIn(
             'a_gauge{bar="BAR",foo="FOO"} 22.0',
+            prometheus_metrics.generate_latest().decode('ascii'))
+
+    @inlineCallbacks
+    def test_record_call_latency(self):
+        registry = prometheus_client.CollectorRegistry()
+        metric = prometheus_client.Histogram(
+            'histo', 'An histogram', ['foo', 'bar'], registry=registry)
+        prometheus_metrics = PrometheusMetrics(
+            registry=registry, metrics={'histo': metric})
+
+        label_call_args = []
+
+        def get_labels(*args, **kwargs):
+            label_call_args.append((args, kwargs))
+            return {'foo': 'FOO', 'bar': 'BAR'}
+
+        @prometheus_metrics.record_call_latency('histo', get_labels=get_labels)
+        @inlineCallbacks
+        def func(param1, param2=None):
+            yield
+            returnValue(param1)
+
+        obj = object()
+        result = yield func(obj, param2='baz')
+        self.assertIs(result, obj)
+        # the get_labels function is called with the same args as the function
+        self.assertEqual(label_call_args, [((obj,), {'param2': 'baz'})])
+        self.assertIn(
+            'histo_count{bar="BAR",foo="FOO"} 1.0',
             prometheus_metrics.generate_latest().decode('ascii'))
 
 

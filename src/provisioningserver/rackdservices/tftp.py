@@ -231,7 +231,7 @@ class TFTPBackend(FilesystemSynchronousBackend):
                                          params.get("label", ""))
             if "ephemeral" in purposes:
                 is_ephemeral = True
-        except:
+        except Exception:
             pass
 
         system_id = params.pop("system_id", None)

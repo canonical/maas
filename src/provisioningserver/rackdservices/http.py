@@ -4,8 +4,8 @@
 """HTTP service for the rack controller."""
 
 __all__ = [
+    "HTTPResource",
     "RackHTTPService",
-    "HTTPLogResource",
 ]
 
 from collections import defaultdict
@@ -21,6 +21,8 @@ from provisioningserver.events import (
 )
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.path import get_tentative_data_path
+from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
+from provisioningserver.prometheus.resource import PrometheusMetricsResource
 from provisioningserver.service_monitor import service_monitor
 from provisioningserver.utils import (
     load_template,
@@ -222,3 +224,13 @@ class HTTPLogResource(resource.Resource):
 
         # Respond empty to nginx.
         return b''
+
+
+class HTTPResource(resource.Resource):
+    """The root resource for HTTP."""
+
+    def __init__(self):
+        super().__init__()
+        self.putChild(b'log', HTTPLogResource())
+        self.putChild(
+            b'metrics', PrometheusMetricsResource(PROMETHEUS_METRICS))

@@ -33,7 +33,7 @@ server {
 
     location = /log {
         internal;
-        proxy_pass http://localhost:5249;
+        proxy_pass http://localhost:5249/log;
         proxy_set_header X-Original-URI $request_uri;
         proxy_set_header X-Original-Remote-IP $remote_addr;
     }

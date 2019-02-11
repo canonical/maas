@@ -46,6 +46,7 @@ from maastesting.twisted import (
     extract_result,
     TwistedLoggerFixture,
 )
+from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
 from provisioningserver.utils import twisted as twisted_module
 from provisioningserver.utils.twisted import (
     asynchronous,
@@ -1088,21 +1089,25 @@ class TestDeferredValue(MAASTestCase):
 class TestRPCFetcher(MAASTestCase):
     """Tests for `RPCFetcher`."""
 
+    def setUp(self):
+        super().setUp()
+        self.fake_command = Mock(__name__='Command')
+
     def test_call_returns_deferred(self):
         client = Mock()
         fetcher = RPCFetcher()
-        d = fetcher(client, sentinel.arg, test=sentinel.kwarg_test)
+        d = fetcher(client, self.fake_command, test=sentinel.kwarg_test)
 
         self.assertThat(d, IsInstance(Deferred))
         self.assertThat(client, MockCalledOnceWith(
-            sentinel.arg, test=sentinel.kwarg_test))
+            self.fake_command, test=sentinel.kwarg_test))
 
     def test__deferred_fires_when_client_completes(self):
         client = Mock()
         client.return_value = Deferred()
 
         fetcher = RPCFetcher()
-        d = fetcher(client, sentinel.arg, test=sentinel.kwarg_test)
+        d = fetcher(client, self.fake_command, test=sentinel.kwarg_test)
 
         self.assertThat(d, IsUnfiredDeferred())
         client.return_value.callback(sentinel.content)
@@ -1115,8 +1120,8 @@ class TestRPCFetcher(MAASTestCase):
         client.return_value = Deferred()
 
         fetcher = RPCFetcher()
-        d1 = fetcher(client, sentinel.arg, test=sentinel.kwarg_test)
-        d2 = fetcher(client, sentinel.arg, test=sentinel.kwarg_test)
+        d1 = fetcher(client, self.fake_command, test=sentinel.kwarg_test)
+        d2 = fetcher(client, self.fake_command, test=sentinel.kwarg_test)
 
         self.expectThat(d1, IsUnfiredDeferred())
         self.expectThat(d2, IsUnfiredDeferred())
@@ -1134,12 +1139,12 @@ class TestRPCFetcher(MAASTestCase):
 
         fetcher = RPCFetcher()
 
-        d1 = fetcher(client, sentinel.arg, test=sentinel.kwarg_test)
+        d1 = fetcher(client, self.fake_command, test=sentinel.kwarg_test)
         self.expectThat(d1, IsUnfiredDeferred())
         client_d1.callback(sentinel.foo)
         self.assertThat(extract_result(d1), Is(sentinel.foo))
 
-        d2 = fetcher(client, sentinel.arg, test=sentinel.kwarg_test)
+        d2 = fetcher(client, self.fake_command, test=sentinel.kwarg_test)
         self.expectThat(d2, IsUnfiredDeferred())
         client_d2.callback(sentinel.bar)
         self.assertThat(extract_result(d2), Is(sentinel.bar))
@@ -1149,8 +1154,8 @@ class TestRPCFetcher(MAASTestCase):
         client.return_value = Deferred()
 
         fetcher = RPCFetcher()
-        d1 = fetcher(client, sentinel.arg, test=sentinel.kwarg_test)
-        d2 = fetcher(client, sentinel.arg, test=sentinel.kwarg_test)
+        d1 = fetcher(client, self.fake_command, test=sentinel.kwarg_test)
+        d2 = fetcher(client, self.fake_command, test=sentinel.kwarg_test)
 
         exception_type = factory.make_exception_type()
         client.return_value.errback(exception_type())
@@ -1168,15 +1173,26 @@ class TestRPCFetcher(MAASTestCase):
 
         fetcher = RPCFetcher()
 
-        d1 = fetcher(client1, sentinel.arg, test=sentinel.kwarg_test)
+        d1 = fetcher(client1, self.fake_command, test=sentinel.kwarg_test)
         self.expectThat(d1, IsUnfiredDeferred())
         client1_d.callback(sentinel.foo)
         self.assertThat(extract_result(d1), Is(sentinel.foo))
 
-        d2 = fetcher(client2, sentinel.arg, test=sentinel.kwarg_test)
+        d2 = fetcher(client2, self.fake_command, test=sentinel.kwarg_test)
         self.expectThat(d2, IsUnfiredDeferred())
         client2_d.callback(sentinel.bar)
         self.assertThat(extract_result(d2), Is(sentinel.bar))
+
+    def test_call_records_latency_metric(self):
+        client_d = Deferred()
+        client = Mock()
+        client.return_value = client_d
+        fetcher = RPCFetcher()
+        fetcher(client, self.fake_command, test=sentinel.kwarg_test)
+        client_d.callback(object())
+        self.assertIn(
+            'rack_region_rpc_call_latency_count{call="Command"}',
+            PROMETHEUS_METRICS.generate_latest().decode('ascii'))
 
 
 class TestDeferToNewThread(MAASTestCase):

@@ -1,4 +1,6 @@
 from collections import namedtuple
+from functools import wraps
+from time import time
 
 from provisioningserver.prometheus import (
     prom_cli,
@@ -28,7 +30,7 @@ class PrometheusMetrics:
             return
 
         metric = self._metrics[metric_name]
-        if labels is not None:
+        if labels:
             metric = metric.labels(**labels)
         func = getattr(metric, action)
         if value is None:
@@ -40,6 +42,36 @@ class PrometheusMetrics:
         """Generate a bytestring with metric values."""
         if self.registry is not None:
             return prom_cli.generate_latest(self.registry)
+
+    def record_call_latency(
+            self, metric_name, get_labels=lambda *args, **kwargs: {}):
+        """Wrap a function returning a Deferred to record its call latency on a metric.
+
+        The `get_labels` function is called with the same arguments as the call
+        and must return a dict with labels for the metric.
+
+        """
+
+        def wrap_func(func):
+
+            @wraps(func)
+            def wrapper(*args, **kwargs):
+                labels = get_labels(*args, **kwargs)
+                before = time()
+                d = func(*args, **kwargs)
+
+                def record_latency(result):
+                    latency = time() - before
+                    self.update(
+                        metric_name, 'observe', value=latency, labels=labels)
+                    return result
+
+                d.addCallback(record_latency)
+                return d
+
+            return wrapper
+
+        return wrap_func
 
 
 def create_metrics(metric_definitions):

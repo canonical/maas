@@ -58,6 +58,7 @@ from netaddr import (
     IPAddress,
 )
 from provisioningserver.logger import LegacyLogger
+from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
 from twisted.internet.defer import (
     AlreadyCalledError,
     CancelledError,
@@ -642,6 +643,11 @@ class DeferredValue:
         self.observing = None
 
 
+def _get_call_latency_metric_labels(fetcher, client, *args, **kwargs):
+    """Return labels for the rack/region call latency metric."""
+    return {'call': args[0].__name__}
+
+
 class RPCFetcher:
     """Coalesces concurrent RPC requests.
 
@@ -665,6 +671,9 @@ class RPCFetcher:
         super(RPCFetcher, self).__init__()
         self.pending = defaultdict(dict)
 
+    @PROMETHEUS_METRICS.record_call_latency(
+        'rack_region_rpc_call_latency',
+        get_labels=_get_call_latency_metric_labels)
     def __call__(self, client, *args, **kwargs):
         """Call the command on the client."""
         command = (tuple(args), tuple(sorted(kwargs.items())))

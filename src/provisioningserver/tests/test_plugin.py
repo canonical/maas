@@ -106,8 +106,9 @@ class TestProvisioningServiceMaker(MAASTestCase):
         expected_services = [
             "dhcp_probe", "networks_monitor", "image_download",
             "lease_socket_service", "node_monitor", "external",
-            "rpc", "rpc-ping", "http", "http_log", "tftp", "service_monitor",
-            ]
+            "rpc", "rpc-ping", "http", "http_service", "tftp",
+            "service_monitor",
+        ]
         self.assertThat(service.namedServices, KeysEqual(*expected_services))
         self.assertEqual(
             len(service.namedServices), len(service.services),
@@ -131,8 +132,9 @@ class TestProvisioningServiceMaker(MAASTestCase):
         expected_services = [
             "dhcp_probe", "networks_monitor", "image_download",
             "lease_socket_service", "node_monitor", "external",
-            "rpc", "rpc-ping", "http", "http_log", "tftp", "service_monitor",
-            ]
+            "rpc", "rpc-ping", "http", "http_service", "tftp",
+            "service_monitor",
+        ]
         self.assertThat(service.namedServices, KeysEqual(*expected_services))
         self.assertEqual(
             len(service.namedServices), len(service.services),
@@ -220,8 +222,8 @@ class TestProvisioningServiceMaker(MAASTestCase):
         options = Options()
         service_maker = ProvisioningServiceMaker("Harry", "Hill")
         service = service_maker.makeService(options, clock=None)
-        http_log = service.getServiceNamed("http_log")
-        self.assertIsInstance(http_log, StreamServerEndpointService)
+        http_service = service.getServiceNamed("http_service")
+        self.assertIsInstance(http_service, StreamServerEndpointService)
 
     def test_tftp_service(self):
         # A TFTP service is configured and added to the top-level service.

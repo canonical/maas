@@ -47,9 +47,9 @@ class ProvisioningServiceMaker:
         self.tapname = name
         self.description = description
 
-    def _makeHTTPLogService(self):
-        """Create the HTTP log service."""
-        from provisioningserver.rackdservices.http import HTTPLogResource
+    def _makeHTTPService(self):
+        """Create the HTTP service."""
+        from provisioningserver.rackdservices.http import HTTPResource
         from twisted.application.internet import StreamServerEndpointService
         from twisted.internet.endpoints import AdoptedStreamServerEndpoint
         from provisioningserver.utils.twisted import SiteNoLog
@@ -71,10 +71,10 @@ class ProvisioningServiceMaker:
         site_endpoint.port = port  # Make it easy to get the port number.
         site_endpoint.socket = s  # Prevent garbage collection.
 
-        http_log = StreamServerEndpointService(
-            site_endpoint, SiteNoLog(HTTPLogResource()))
-        http_log.setName("http_log")
-        return http_log
+        http_service = StreamServerEndpointService(
+            site_endpoint, SiteNoLog(HTTPResource()))
+        http_service.setName("http_service")
+        return http_service
 
     def _makeTFTPService(
             self, tftp_root, tftp_port, rpc_service):
@@ -164,7 +164,7 @@ class ProvisioningServiceMaker:
         service_monitor.setName("service_monitor")
         return service_monitor
 
-    def _makeHTTPService(self, resource_root, rpc_service):
+    def _makeRackHTTPService(self, resource_root, rpc_service):
         from provisioningserver.rackdservices import http
         http_service = http.RackHTTPService(
             resource_root, rpc_service, reactor)
@@ -189,10 +189,10 @@ class ProvisioningServiceMaker:
         yield self._makeNodePowerMonitorService()
         yield self._makeServiceMonitorService(rpc_service)
         yield self._makeImageDownloadService(rpc_service, tftp_root)
-        yield self._makeHTTPService(tftp_root, rpc_service)
+        yield self._makeRackHTTPService(tftp_root, rpc_service)
         yield self._makeExternalService(rpc_service)
         # The following are network-accessible services.
-        yield self._makeHTTPLogService()
+        yield self._makeHTTPService()
         yield self._makeTFTPService(tftp_root, tftp_port, rpc_service)
 
     def _loadSettings(self):
