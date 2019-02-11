@@ -42,7 +42,12 @@ import yaml
 
 class AssertStorageConfigMixin:
 
-    def assertStorageConfig(self, expected, observed):
+    def stripUUIDs(self, config):
+        for entry in config:
+            entry.pop('uuid', None)
+        return config
+
+    def assertStorageConfig(self, expected, observed, strip_uuids=False):
         self.assertThat(observed, IsInstance(list))
         self.assertThat(observed, HasLength(1))
         observed = observed[0]
@@ -58,6 +63,9 @@ class AssertStorageConfigMixin:
         }))
         storage_observed = observed["storage"]["config"]
         storage_expected = yaml.safe_load(expected)["config"]
+        if strip_uuids:
+            storage_observed = self.stripUUIDs(storage_observed)
+            storage_expected = self.stripUUIDs(storage_expected)
         if storage_observed != storage_expected:
             storage_observed_dump = yaml.safe_dump(
                 storage_observed, default_flow_style=False)

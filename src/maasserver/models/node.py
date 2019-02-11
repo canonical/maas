@@ -17,6 +17,7 @@ from collections import (
     namedtuple,
     OrderedDict,
 )
+import copy
 from datetime import timedelta
 from functools import partial
 from itertools import count
@@ -102,6 +103,7 @@ from maasserver.fields import (
 )
 from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.bootresource import BootResource
+from maasserver.models.cacheset import CacheSet
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
 from maasserver.models.domain import Domain
@@ -3241,6 +3243,264 @@ class Node(CleanSave, TimestampedModel):
                 self.hostname, used_layout)
         else:
             raise StorageLayoutError("Unknown storage layout: %s" % layout)
+
+    def set_storage_configuration_from_node(self, source_node):
+        """Set the storage configuration for this node from the source node."""
+        mapping = self._get_storage_mapping_between_nodes(source_node)
+        self._clear_full_storage_configuration()
+
+        # Get all the filesystem groups and cachesets for the source node. This
+        # is used to do the cloning in layers, only cloning the filesystem
+        # groups and cache sets once filesystems that make up have been cloned.
+        source_groups = list(
+            FilesystemGroup.objects.filter_by_node(
+                source_node).prefetch_related('filesystems'))
+        source_groups += list(
+            CacheSet.objects.get_cache_sets_for_node(
+                source_node).prefetch_related('filesystems'))
+
+        # Clone the model at the physical level.
+        filesystem_map = self._copy_between_block_device_mappings(mapping)
+
+        # Continue through each layer until no more filesystem groups exist.
+        source_groups, layer_groups = (
+            self._get_group_layers_for_copy(source_groups, filesystem_map))
+        cache_sets_mapping = {}
+        while source_groups or layer_groups:
+            if not layer_groups:
+                raise ValueError(
+                    "Copying the next layer of filesystems groups or cache "
+                    "sets has failed.")
+            # Always do `CacheSet`'s before `FilesystemGroup`, because a
+            # filesystem group might depend on the cache set.
+            for source_group, dest_filesystems in layer_groups.items():
+                if isinstance(source_group, CacheSet):
+                    cache_set = self._copy_cache_set(
+                        source_group, dest_filesystems)
+                    cache_sets_mapping[source_group.id] = cache_set
+            filesystem_map = {}
+            for source_group, dest_filesystems in layer_groups.items():
+                if isinstance(source_group, FilesystemGroup):
+                    _, group_fsmap = self._copy_filesystem_group(
+                        source_group, dest_filesystems, cache_sets_mapping)
+                    filesystem_map.update(group_fsmap)
+            # Load the next layer.
+            source_groups, layer_groups = (
+                self._get_group_layers_for_copy(source_groups, filesystem_map))
+
+        # Clone the special filesystems.
+        for source_filesystem in source_node.special_filesystems.all():
+            self_filesystem = copy.deepcopy(source_filesystem)
+            self_filesystem.id = None
+            self_filesystem.pk = None
+            self_filesystem.uuid = None
+            self_filesystem.node = self
+            self_filesystem.save(force_insert=True)
+
+    def _get_storage_mapping_between_nodes(self, source_node):
+        """Return the mapping between which disks from this node map to disks
+        on the source node.
+
+        Raises a `ValidationError` when storage is not identical.
+        """
+        # Both node's must be the same architecture and boot method to have
+        # the same storage configuration.
+        if self.architecture != source_node.architecture:
+            raise ValidationError(
+                'node architectures do not match (%s != %s)' % (
+                    self.architecture, source_node.architecture))
+        if self.bios_boot_method != source_node.bios_boot_method:
+            raise ValidationError(
+                'node boot methods do not match (%s != %s)' % (
+                    self.bios_boot_method, source_node.bios_boot_method))
+
+        self_boot_disk = self.get_boot_disk()
+        if self_boot_disk is None:
+            raise ValidationError(
+                'destination node has no physical block devices')
+        source_boot_disk = source_node.get_boot_disk()
+        if source_boot_disk is None:
+            raise ValidationError('source node has no physical block devices')
+        if self_boot_disk.size < source_boot_disk.size:
+            raise ValidationError(
+                'destination boot disk(%s) is smaller than source '
+                'boot disk(%s)' % (
+                    self_boot_disk.name, source_boot_disk.name))
+
+        self_disks = [
+            disk
+            for disk in self.physicalblockdevice_set.order_by('id')
+            if disk.id != self_boot_disk.id
+        ]
+        source_disks = [
+            disk
+            for disk in source_node.physicalblockdevice_set.order_by('id')
+            if disk.id != source_boot_disk.id
+        ]
+        if len(self_disks) < len(source_disks):
+            raise ValidationError(
+                'source node does not have enough physical block devices '
+                '(%d < %d)' % (
+                    len(self_disks) + 1, len(source_disks) + 1))
+
+        mapping = {
+            self_boot_disk: source_boot_disk
+        }
+
+        # First pass; match on identical size and tags.
+        for self_disk in self_disks[:]:  # Iterate on copy
+            for source_disk in source_disks[:]:  # Iterate on copy
+                if (self_disk.size == source_disk.size and
+                        set(self_disk.tags) == set(source_disk.tags)):
+                    mapping[self_disk] = source_disk
+                    self_disks.remove(self_disk)
+                    source_disks.remove(source_disk)
+                    break
+
+        if not self_disks:
+            return mapping
+
+        # Second pass; re-order by size to match by those that are closes with
+        # identical tags.
+        self_disks = sorted(self_disks, key=attrgetter('size'))
+        source_disks = sorted(source_disks, key=attrgetter('size'))
+        for self_disk in self_disks[:]:  # Iterate on copy
+            for source_disk in source_disks[:]:  # Iterate on copy
+                if (self_disk.size >= source_disk.size and
+                        set(self_disk.tags) == set(source_disk.tags)):
+                    mapping[self_disk] = source_disk
+                    self_disks.remove(self_disk)
+                    source_disks.remove(source_disk)
+                    break
+
+        if not self_disks:
+            return mapping
+
+        # Third pass; still by size but tags don't need to match.
+        self_disks = sorted(self_disks, key=attrgetter('size'))
+        source_disks = sorted(source_disks, key=attrgetter('size'))
+        for self_disk in self_disks[:]:  # Iterate on copy
+            for source_disk in source_disks[:]:  # Iterate on copy
+                if self_disk.size >= source_disk.size:
+                    mapping[self_disk] = source_disk
+                    self_disks.remove(self_disk)
+                    source_disks.remove(source_disk)
+                    break
+
+        if self_disks:
+            raise ValidationError(
+                "%d destination node physical block devices do not match the "
+                "source nodes physical block devices" % len(self_disks))
+
+        return mapping
+
+    def _copy_between_block_device_mappings(self, mapping):
+        """Copy the source onto the destination disks in the mapping.
+
+        Block devices in this case can either be physical or virtual.
+        """
+        filesystem_map = {}
+        for self_disk, source_disk in mapping.items():
+            source_ptable = source_disk.get_partitiontable()
+            if source_ptable is not None:
+                self_ptable = copy.deepcopy(source_ptable)
+                self_ptable.id = None
+                self_ptable.pk = None
+                self_ptable.block_device = self_disk
+                self_ptable.save(force_insert=True)
+                for source_partition in source_ptable.partitions.all():
+                    self_partition = copy.deepcopy(source_partition)
+                    self_partition.id = None
+                    self_partition.pk = None
+                    self_partition.uuid = None
+                    self_partition.partition_table = self_ptable
+                    self_partition.save(force_insert=True)
+                    for source_filesystem in (
+                            source_partition.filesystem_set.all()):
+                        if not source_filesystem.acquired:
+                            self_filesystem = copy.deepcopy(source_filesystem)
+                            self_filesystem.id = None
+                            self_filesystem.pk = None
+                            self_filesystem.uuid = None
+                            self_filesystem.block_device = None
+                            self_filesystem.partition = self_partition
+                            self_filesystem.save(force_insert=True)
+                            filesystem_map[source_filesystem.id] = (
+                                self_filesystem)
+            for source_filesystem in source_disk.filesystem_set.all():
+                if not source_filesystem.acquired:
+                    self_filesystem = copy.deepcopy(source_filesystem)
+                    self_filesystem.id = None
+                    self_filesystem.pk = None
+                    self_filesystem.uuid = None
+                    self_filesystem.block_device = self_disk
+                    self_filesystem.partition = None
+                    self_filesystem.save(force_insert=True)
+                    filesystem_map[source_filesystem.id] = (
+                        self_filesystem)
+        return filesystem_map
+
+    def _get_group_layers_for_copy(
+            self, source_groups, filesystem_map):
+        """Pops the filesystem groups or cache set from the `source_groups`
+        when all filesystems that make it up exist in `filesystem_map`."""
+        layer = {}
+        for group in source_groups[:]:  # Iterate on copy
+            contains_all = True
+            dest_filesystems = []
+            for filesystem in group.filesystems.all():
+                dest_filesystem = filesystem_map.get(filesystem.id, None)
+                if dest_filesystem:
+                    dest_filesystems.append(dest_filesystem)
+                else:
+                    contains_all = False
+                    break
+            if contains_all:
+                layer[group] = dest_filesystems
+                source_groups.remove(group)
+        return source_groups, layer
+
+    def _copy_cache_set(self, source_cache_set, dest_filesystems):
+        """Copy the `cache_set` linking to `dest_filesystems`."""
+        self_cache_set = copy.deepcopy(source_cache_set)
+        self_cache_set.id = None
+        self_cache_set.pk = None
+        self_cache_set._prefetched_objects_cache = {}
+        self_cache_set.save(force_insert=True)
+        for dest_filesystem in dest_filesystems:
+            self_cache_set.filesystems.add(dest_filesystem)
+        return self_cache_set
+
+    def _copy_filesystem_group(
+            self, source_group, dest_filesystems, cache_sets_mapping):
+        """Copy the `source_group` linking to the `dest_filesystems`."""
+        self_group = copy.deepcopy(source_group)
+        self_group.id = None
+        self_group.pk = None
+        self_group._prefetched_objects_cache = {}
+        self_group.uuid = None
+        if source_group.cache_set_id is not None:
+            self_group.cache_set = (
+                cache_sets_mapping[source_group.cache_set_id])
+        self_group.save(force_insert=True)
+        for dest_filesystem in dest_filesystems:
+            self_group.filesystems.add(dest_filesystem)
+
+        # Copy the virtual block devices for the created filesystem group.
+        filesystem_map = {}
+        for source_vd in source_group.virtual_devices.all():
+            self_vd = copy.deepcopy(source_vd)
+            self_vd.id = None
+            self_vd.pk = None
+            self_vd.node = self
+            self_vd.uuid = None
+            self_vd.filesystem_group = self_group
+            self_vd.save(force_insert=True)
+            filesystem_map.update(
+                self._copy_between_block_device_mappings(
+                    {self_vd: source_vd}))
+
+        return self_group, filesystem_map
 
     def _clear_full_storage_configuration(self):
         """Clear's the full storage configuration for this node.

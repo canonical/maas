@@ -50,6 +50,7 @@ from maasserver.clusterrpc.power import (
 )
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.enum import (
+    CACHE_MODE_TYPE,
     FILESYSTEM_GROUP_TYPE,
     FILESYSTEM_TYPE,
     INTERFACE_LINK_TYPE,
@@ -61,6 +62,7 @@ from maasserver.enum import (
     NODE_STATUS_CHOICES_DICT,
     NODE_TYPE,
     NODE_TYPE_CHOICES,
+    PARTITION_TABLE_TYPE,
     POWER_STATE,
     SERVICE_STATUS,
 )
@@ -70,6 +72,7 @@ from maasserver.exceptions import (
     PowerProblem,
 )
 from maasserver.models import (
+    Bcache,
     bmc as bmc_module,
     BondInterface,
     BootResource,
@@ -88,6 +91,7 @@ from maasserver.models import (
     OwnerData,
     PhysicalInterface,
     RackController,
+    RAID,
     RegionController,
     RegionRackRPCConnection,
     Service,
@@ -95,6 +99,7 @@ from maasserver.models import (
     UnknownInterface,
     VLAN,
     VLANInterface,
+    VolumeGroup,
 )
 from maasserver.models.bmc import (
     BMC,
@@ -109,6 +114,7 @@ from maasserver.models.node import (
     generate_node_system_id,
     PowerInfo,
 )
+from maasserver.models.partitiontable import PARTITION_TABLE_EXTRA_SPACE
 from maasserver.models.resourcepool import ResourcePool
 from maasserver.models.signals import power as node_query
 from maasserver.models.timestampedmodel import now
@@ -124,6 +130,7 @@ from maasserver.node_status import (
 )
 from maasserver.permissions import NodePermission
 from maasserver.preseed import CURTIN_INSTALL_LOG
+from maasserver.preseed_storage import compose_curtin_storage_config
 from maasserver.rbac import (
     FakeRBACClient,
     rbac,
@@ -146,6 +153,7 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
+from maasserver.tests.test_preseed_storage import AssertStorageConfigMixin
 from maasserver.utils.orm import (
     get_one,
     post_commit,
@@ -11285,3 +11293,624 @@ class TestNodeGetHostedPods(MAASServerTestCase):
         pod = factory.make_Pod(ip_address=ip)
         pods = node.get_hosted_pods()
         self.assertThat(pods, Contains(pod))
+
+
+class TestNodeStorageClone__MappingBetweenNodes(MAASServerTestCase):
+
+    def test__identical_size_tags(self):
+        node1 = factory.make_Node(with_boot_disk=False)
+        node1_sda = factory.make_PhysicalBlockDevice(
+            node=node1, size=8 * 1024 ** 3, name="sda", tags=['hdd'])
+        node1_sdb = factory.make_PhysicalBlockDevice(
+            node=node1, size=8 * 1024 ** 3, name="sdb", tags=['sdd'])
+        node1_sdc = factory.make_PhysicalBlockDevice(
+            node=node1, size=8 * 1024 ** 3, name="sdc", tags=['sdd'])
+        node2 = factory.make_Node(with_boot_disk=False)
+        node2_sda = factory.make_PhysicalBlockDevice(
+            node=node2, size=8 * 1024 ** 3, name="sda", tags=['hdd'])
+        node2_sdb = factory.make_PhysicalBlockDevice(
+            node=node2, size=8 * 1024 ** 3, name="sdb", tags=['sdd'])
+        node2_sdc = factory.make_PhysicalBlockDevice(
+            node=node2, size=8 * 1024 ** 3, name="sdc", tags=['sdd'])
+        self.assertEqual({
+            node2_sda: node1_sda,
+            node2_sdb: node1_sdb,
+            node2_sdc: node1_sdc,
+        }, node2._get_storage_mapping_between_nodes(node1))
+
+    def test__larger_size_identical_tags(self):
+        node1 = factory.make_Node(with_boot_disk=False)
+        node1_sda = factory.make_PhysicalBlockDevice(
+            node=node1, size=8 * 1024 ** 3, name="sda", tags=['hdd'])
+        node1_sdb = factory.make_PhysicalBlockDevice(
+            node=node1, size=8 * 1024 ** 3, name="sdb", tags=['sdd', 'match'])
+        node1_sdc = factory.make_PhysicalBlockDevice(
+            node=node1, size=8 * 1024 ** 3, name="sdc", tags=['sdd'])
+        node2 = factory.make_Node(with_boot_disk=False)
+        node2_sda = factory.make_PhysicalBlockDevice(
+            node=node2, size=8 * 1024 ** 3, name="sda", tags=['hdd'])
+        node2_sdb = factory.make_PhysicalBlockDevice(
+            node=node2, size=10 * 1024 ** 3, name="sdb", tags=['sdd', 'match'])
+        node2_sdc = factory.make_PhysicalBlockDevice(
+            node=node2, size=8 * 1024 ** 3, name="sdc", tags=['sdd'])
+        self.assertEqual({
+            node2_sda: node1_sda,
+            node2_sdb: node1_sdb,
+            node2_sdc: node1_sdc,
+        }, node2._get_storage_mapping_between_nodes(node1))
+
+    def test__larger_size_diff_tags(self):
+        node1 = factory.make_Node(with_boot_disk=False)
+        node1_sda = factory.make_PhysicalBlockDevice(
+            node=node1, size=8 * 1024 ** 3, name="sda", tags=['hdd'])
+        node1_sdb = factory.make_PhysicalBlockDevice(
+            node=node1, size=8 * 1024 ** 3, name="sdb", tags=['sdd', 'match'])
+        node1_sdc = factory.make_PhysicalBlockDevice(
+            node=node1, size=8 * 1024 ** 3, name="sdc", tags=['sdd'])
+        node2 = factory.make_Node(with_boot_disk=False)
+        node2_sda = factory.make_PhysicalBlockDevice(
+            node=node2, size=8 * 1024 ** 3, name="sda", tags=['hdd'])
+        node2_sdb = factory.make_PhysicalBlockDevice(
+            node=node2, size=10 * 1024 ** 3, name="sdb", tags=['sdd', 'other'])
+        node2_sdc = factory.make_PhysicalBlockDevice(
+            node=node2, size=8 * 1024 ** 3, name="sdc", tags=['diff'])
+        self.assertEqual({
+            node2_sda: node1_sda,
+            node2_sdb: node1_sdc,
+            node2_sdc: node1_sdb,
+        }, node2._get_storage_mapping_between_nodes(node1))
+
+    def test__small_size_fails(self):
+        node1 = factory.make_Node(with_boot_disk=False)
+        factory.make_PhysicalBlockDevice(
+            node=node1, size=8 * 1024 ** 3, name="sda", tags=['hdd'])
+        factory.make_PhysicalBlockDevice(
+            node=node1, size=8 * 1024 ** 3, name="sdb", tags=['sdd', 'match'])
+        factory.make_PhysicalBlockDevice(
+            node=node1, size=8 * 1024 ** 3, name="sdc", tags=['sdd'])
+        node2 = factory.make_Node(with_boot_disk=False)
+        factory.make_PhysicalBlockDevice(
+            node=node2, size=8 * 1024 ** 3, name="sda", tags=['hdd'])
+        factory.make_PhysicalBlockDevice(
+            node=node2, size=6 * 1024 ** 3, name="sdb", tags=['sdd', 'other'])
+        factory.make_PhysicalBlockDevice(
+            node=node2, size=8 * 1024 ** 3, name="sdc", tags=['diff'])
+        self.assertRaises(
+            ValidationError, node2._get_storage_mapping_between_nodes, node1)
+
+
+class TestNodeStorageClone_SimpleMBRLayout(
+        MAASServerTestCase, AssertStorageConfigMixin):
+
+    STORAGE_CONFIG = dedent("""\
+        config:
+          - id: sda
+            name: sda
+            type: disk
+            wipe: superblock
+            ptable: msdos
+            model: QEMU HARDDISK
+            serial: QM00001
+            grub_device: true
+          - id: sda-part1
+            name: sda-part1
+            type: partition
+            number: 1
+            size: 536870912B
+            device: sda
+            wipe: superblock
+            offset: 4194304B
+            flag: boot
+          - id: sda-part2
+            name: sda-part2
+            type: partition
+            number: 2
+            size: 1073741824B
+            wipe: superblock
+            device: sda
+            flag: boot
+          - id: sda-part3
+            name: sda-part3
+            type: partition
+            number: 3
+            size: 2684354560B
+            wipe: superblock
+            device: sda
+          - id: sda-part4
+            type: partition
+            number: 4
+            device: sda
+            flag: extended
+            size: 4287627264B
+          - id: sda-part5
+            name: sda-part5
+            type: partition
+            number: 5
+            size: 2146435072B
+            device: sda
+            wipe: superblock
+            flag: logical
+          - id: sda-part6
+            name: sda-part6
+            type: partition
+            number: 6
+            size: 2138046464B
+            device: sda
+            wipe: superblock
+            flag: logical
+          - id: sda-part1_format
+            type: format
+            fstype: fat32
+            label: efi
+            volume: sda-part1
+          - id: sda-part2_format
+            type: format
+            fstype: ext4
+            label: boot
+            volume: sda-part2
+          - id: sda-part3_format
+            type: format
+            fstype: ext4
+            label: root
+            volume: sda-part3
+          - id: sda-part5_format
+            type: format
+            fstype: ext4
+            label: srv
+            volume: sda-part5
+          - id: sda-part6_format
+            type: format
+            fstype: ext4
+            label: srv-data
+            volume: sda-part6
+          - id: sda-part3_mount
+            type: mount
+            path: /
+            device: sda-part3_format
+          - id: sda-part2_mount
+            type: mount
+            path: /boot
+            options: rw,relatime,block_validity,barrier,acl
+            device: sda-part2_format
+          - id: sda-part1_mount
+            type: mount
+            path: /boot/efi
+            options: rw,nosuid,nodev
+            device: sda-part1_format
+          - id: sda-part5_mount
+            type: mount
+            path: /srv
+            options: rw,nosuid,nodev,noexec,relatime
+            device: sda-part5_format
+          - id: sda-part6_mount
+            type: mount
+            path: /srv/data
+            options: rw,nosuid,nodev,noexec,relatime
+            device: sda-part6_format
+        """)
+
+    def create_physical_disks(self, node):
+        return factory.make_PhysicalBlockDevice(
+            node=node, size=8 * 1024 ** 3, name="sda",
+            model="QEMU HARDDISK", serial="QM00001")  # 8 GiB
+
+    def test__copy(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, with_boot_disk=False)
+        boot_disk = self.create_physical_disks(node)
+        partition_table = factory.make_PartitionTable(
+            table_type=PARTITION_TABLE_TYPE.MBR, block_device=boot_disk)
+        efi_partition = factory.make_Partition(
+            partition_table=partition_table,
+            uuid="6efc2c3d-bc9d-4ee5-a7ed-c6e1574d5398",
+            size=512 * 1024 ** 2,
+            bootable=True)
+        boot_partition = factory.make_Partition(
+            partition_table=partition_table,
+            uuid="0c1c1c3a-1e9d-4047-8ef6-328a03d513e5",
+            size=1 * 1024 ** 3,
+            bootable=True)
+        root_partition = factory.make_Partition(
+            partition_table=partition_table,
+            uuid="f74ff260-2a5b-4a36-b1b8-37f746b946bf",
+            size=2.5 * 1024 ** 3,
+            bootable=False)
+        partition_five = factory.make_Partition(
+            partition_table=partition_table,
+            uuid="1b59e74f-6189-41a1-ba8e-fbf38df19820",
+            size=2 * 1024 ** 3,
+            bootable=False)
+        partition_six = factory.make_Partition(
+            partition_table=partition_table,
+            uuid="8c365c80-900b-40a1-a8c7-1e445878d19a",
+            size=(2 * 1024 ** 3) - PARTITION_TABLE_EXTRA_SPACE,
+            bootable=False)
+        factory.make_Filesystem(
+            partition=efi_partition, fstype=FILESYSTEM_TYPE.FAT32,
+            uuid="bf34f38c-02b7-4b4b-bb7c-e73521f9ead7", label="efi",
+            mount_point="/boot/efi", mount_options="rw,nosuid,nodev")
+        factory.make_Filesystem(
+            partition=boot_partition, fstype=FILESYSTEM_TYPE.EXT4,
+            uuid="f98e5b7b-cbb1-437e-b4e5-1769f81f969f", label="boot",
+            mount_point="/boot", mount_options=(
+                "rw,relatime,block_validity,barrier,acl"))
+        factory.make_Filesystem(
+            partition=root_partition, fstype=FILESYSTEM_TYPE.EXT4,
+            uuid="90a69b22-e281-4c5b-8df9-b09514f27ba1", label="root",
+            mount_point="/", mount_options=None)
+        factory.make_Filesystem(
+            partition=partition_five, fstype=FILESYSTEM_TYPE.EXT4,
+            uuid="9c1764f0-2b48-4127-b719-ec61ac7d5f4c", label="srv",
+            mount_point="/srv", mount_options=(
+                "rw,nosuid,nodev,noexec,relatime"))
+        factory.make_Filesystem(
+            partition=partition_six, fstype=FILESYSTEM_TYPE.EXT4,
+            uuid="bcac8449-3a45-4586-bdfb-c21e6ba47902", label="srv-data",
+            mount_point="/srv/data", mount_options=(
+                "rw,nosuid,nodev,noexec,relatime"))
+
+        dest_node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, with_boot_disk=False)
+        self.create_physical_disks(dest_node)
+        dest_node.set_storage_configuration_from_node(node)
+
+        node._create_acquired_filesystems()
+        dest_node._create_acquired_filesystems()
+        self.assertStorageConfig(
+            self.STORAGE_CONFIG, compose_curtin_storage_config(node),
+            strip_uuids=True)
+        self.assertStorageConfig(
+            self.STORAGE_CONFIG, compose_curtin_storage_config(dest_node),
+            strip_uuids=True)
+
+
+class TestNodeStorageClone_ComplexDiskLayout(
+        MAASServerTestCase, AssertStorageConfigMixin):
+
+    STORAGE_CONFIG = dedent("""\
+        config:
+          - id: sda
+            name: sda
+            type: disk
+            wipe: superblock
+            ptable: gpt
+            model: QEMU HARDDISK
+            serial: QM00001
+            grub_device: true
+          - id: sdb
+            name: sdb
+            type: disk
+            wipe: superblock
+            ptable: gpt
+            model: QEMU SSD
+            serial: QM00002
+          - id: sdc
+            name: sdc
+            type: disk
+            wipe: superblock
+            model: QEMU HARDDISK
+            serial: QM00003
+          - id: sdd
+            name: sdd
+            type: disk
+            wipe: superblock
+            model: QEMU HARDDISK
+            serial: QM00004
+          - id: sde
+            name: sde
+            type: disk
+            wipe: superblock
+            model: QEMU HARDDISK
+            serial: QM00005
+          - id: sdf
+            name: sdf
+            type: disk
+            wipe: superblock
+            model: QEMU HARDDISK
+            serial: QM00006
+          - id: sdg
+            name: sdg
+            type: disk
+            wipe: superblock
+            model: QEMU HARDDISK
+            serial: QM00007
+          - id: md0
+            name: md0
+            type: raid
+            raidlevel: 5
+            devices:
+              - sdc
+              - sdd
+              - sde
+            spare_devices:
+              - sdf
+              - sdg
+            ptable: gpt
+          - id: sda-part1
+            name: sda-part1
+            type: partition
+            number: 1
+            size: 536870912B
+            device: sda
+            wipe: superblock
+            offset: 4194304B
+            flag: boot
+          - id: sda-part2
+            name: sda-part2
+            type: partition
+            number: 2
+            size: 1073741824B
+            device: sda
+            wipe: superblock
+            flag: boot
+          - id: sda-part3
+            name: sda-part3
+            type: partition
+            number: 3
+            size: 6970933248B
+            device: sda
+            wipe: superblock
+          - id: sdb-part1
+            name: sdb-part1
+            type: partition
+            number: 1
+            offset: 4194304B
+            size: 2139095040B
+            wipe: superblock
+            device: sdb
+          - id: bcache0
+            name: bcache0
+            type: bcache
+            backing_device: sda-part3
+            cache_device: sdb-part1
+            cache_mode: writethrough
+          - id: sdb-part2
+            name: sdb-part2
+            type: partition
+            number: 2
+            size: 6442450944B
+            wipe: superblock
+            device: sdb
+          - id: vgroot
+            name: vgroot
+            type: lvm_volgroup
+            devices:
+              - sdb-part2
+          - id: vgroot-lvextra
+            name: lvextra
+            type: lvm_partition
+            volgroup: vgroot
+            size: 2147483648B
+          - id: vgroot-lvroot
+            name: lvroot
+            type: lvm_partition
+            volgroup: vgroot
+            size: 2147483648B
+          - id: md0-part1
+            name: md0-part1
+            type: partition
+            number: 1
+            offset: 4194304B
+            size: 2199014866944B
+            wipe: superblock
+            device: md0
+          - id: sda-part1_format
+            type: format
+            fstype: fat32
+            label: efi
+            volume: sda-part1
+          - id: sda-part2_format
+            type: format
+            fstype: ext4
+            label: boot
+            volume: sda-part2
+          - id: vgroot-lvroot_format
+            type: format
+            fstype: ext4
+            label: root
+            volume: vgroot-lvroot
+          - id: md0-part1_format
+            type: format
+            fstype: ext4
+            label: data
+            volume: md0-part1
+          - id: vgroot-lvroot_mount
+            type: mount
+            path: /
+            options: rw,relatime,errors=remount-ro,data=random
+            device: vgroot-lvroot_format
+          - id: sda-part2_mount
+            type: mount
+            path: /boot
+            options: rw,relatime,block_invalidity,barrier,user_xattr,acl
+            device: sda-part2_format
+          - id: sda-part1_mount
+            type: mount
+            path: /boot/efi
+            options: rw,relatime,pids
+            device: sda-part1_format
+          - id: md0-part1_mount
+            type: mount
+            path: /srv/data
+            device: md0-part1_format
+        """)
+
+    def create_physical_disks(self, node):
+        boot_disk = factory.make_PhysicalBlockDevice(
+            node=node, size=8 * 1024 ** 3, name="sda",
+            model="QEMU HARDDISK", serial="QM00001", tags=['hdd'])  # 8 GiB
+        ssd_disk = factory.make_PhysicalBlockDevice(
+            node=node, size=8 * 1024 ** 3, name="sdb",
+            model="QEMU SSD", serial="QM00002", tags=['ssd'])  # 8 GiB
+        raid_5_disk_1 = factory.make_PhysicalBlockDevice(
+            node=node, size=1 * 1024 ** 4, name="sdc",
+            model="QEMU HARDDISK", serial="QM00003", tags=['hdd'])  # 1 TiB
+        raid_5_disk_2 = factory.make_PhysicalBlockDevice(
+            node=node, size=1 * 1024 ** 4, name="sdd",
+            model="QEMU HARDDISK", serial="QM00004", tags=['hdd'])  # 1 TiB
+        raid_5_disk_3 = factory.make_PhysicalBlockDevice(
+            node=node, size=1 * 1024 ** 4, name="sde",
+            model="QEMU HARDDISK", serial="QM00005", tags=['hdd'])  # 1 TiB
+        raid_5_disk_4 = factory.make_PhysicalBlockDevice(
+            node=node, size=1 * 1024 ** 4, name="sdf",
+            model="QEMU HARDDISK", serial="QM00006", tags=['hdd'])  # 1 TiB
+        raid_5_disk_5 = factory.make_PhysicalBlockDevice(
+            node=node, size=1 * 1024 ** 4, name="sdg",
+            model="QEMU HARDDISK", serial="QM00007", tags=['hdd'])  # 1 TiB
+        return (
+            boot_disk, ssd_disk,
+            raid_5_disk_1, raid_5_disk_2,
+            raid_5_disk_3, raid_5_disk_4,
+            raid_5_disk_5)
+
+    def test__copy(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, bios_boot_method="uefi",
+            with_boot_disk=False)
+        (boot_disk, ssd_disk,
+            raid_5_disk_1, raid_5_disk_2,
+            raid_5_disk_3, raid_5_disk_4,
+            raid_5_disk_5) = self.create_physical_disks(node)
+        boot_partition_table = factory.make_PartitionTable(
+            table_type=PARTITION_TABLE_TYPE.GPT, block_device=boot_disk)
+        efi_partition = factory.make_Partition(
+            partition_table=boot_partition_table,
+            uuid="6efc2c3d-bc9d-4ee5-a7ed-c6e1574d5398",
+            size=512 * 1024 ** 2,
+            bootable=True)
+        boot_partition = factory.make_Partition(
+            partition_table=boot_partition_table,
+            uuid="0c1c1c3a-1e9d-4047-8ef6-328a03d513e5",
+            size=1 * 1024 ** 3,
+            bootable=True)
+        root_partition = factory.make_Partition(
+            partition_table=boot_partition_table,
+            uuid="f74ff260-2a5b-4a36-b1b8-37f746b946bf",
+            size=(6.5 * 1024 ** 3) - PARTITION_TABLE_EXTRA_SPACE,
+            bootable=False)
+        factory.make_Filesystem(
+            partition=efi_partition, fstype=FILESYSTEM_TYPE.FAT32,
+            uuid="bf34f38c-02b7-4b4b-bb7c-e73521f9ead7", label="efi",
+            mount_point="/boot/efi", mount_options="rw,relatime,pids")
+        factory.make_Filesystem(
+            partition=boot_partition, fstype=FILESYSTEM_TYPE.EXT4,
+            uuid="f98e5b7b-cbb1-437e-b4e5-1769f81f969f", label="boot",
+            mount_point="/boot", mount_options=(
+                "rw,relatime,block_invalidity,barrier,user_xattr,acl"))
+        ssd_partition_table = factory.make_PartitionTable(
+            table_type=PARTITION_TABLE_TYPE.GPT, block_device=ssd_disk)
+        cache_partition = factory.make_Partition(
+            partition_table=ssd_partition_table,
+            uuid="f3281144-a0b6-46f1-90af-8541f97f7b1f",
+            size=(2 * 1024 ** 3) - PARTITION_TABLE_EXTRA_SPACE,
+            bootable=False)
+        cache_set = factory.make_CacheSet(partition=cache_partition)
+        Bcache.objects.create_bcache(
+            name="bcache0", uuid="9e7bdc2d-1567-4e1c-a89a-4e20df099458",
+            backing_partition=root_partition, cache_set=cache_set,
+            cache_mode=CACHE_MODE_TYPE.WRITETHROUGH)
+        lvm_partition = factory.make_Partition(
+            partition_table=ssd_partition_table,
+            uuid="ea7f96d0-b508-40d9-8495-b2163df35c9b",
+            size=(6 * 1024 ** 3),
+            bootable=False)
+        vgroot = VolumeGroup.objects.create_volume_group(
+            name="vgroot", uuid="1793be1b-890a-44cb-9322-057b0d53b53c",
+            block_devices=[], partitions=[lvm_partition])
+        lvroot = vgroot.create_logical_volume(
+            name="lvroot", uuid="98fac182-45a4-4afc-ba57-a1ace0396679",
+            size=2 * 1024 ** 3)
+        vgroot.create_logical_volume(
+            name="lvextra", uuid="0d960ec6-e6d0-466f-8f83-ee9c11e5b9ba",
+            size=2 * 1024 ** 3)
+        factory.make_Filesystem(
+            block_device=lvroot, fstype=FILESYSTEM_TYPE.EXT4, label="root",
+            uuid="90a69b22-e281-4c5b-8df9-b09514f27ba1", mount_point="/",
+            mount_options="rw,relatime,errors=remount-ro,data=random")
+        raid_5 = RAID.objects.create_raid(
+            level=FILESYSTEM_GROUP_TYPE.RAID_5,
+            name="md0", uuid="ec7816a7-129e-471e-9735-4e27c36fa10b",
+            block_devices=[raid_5_disk_1, raid_5_disk_2, raid_5_disk_3],
+            spare_devices=[raid_5_disk_4, raid_5_disk_5])
+        raid_5_partition_table = factory.make_PartitionTable(
+            table_type=PARTITION_TABLE_TYPE.GPT,
+            block_device=raid_5.virtual_device)
+        raid_5_partition = factory.make_Partition(
+            partition_table=raid_5_partition_table,
+            uuid="18a6e885-3e6d-4505-8a0d-cf34df11a8b0",
+            size=(2 * 1024 ** 4) - PARTITION_TABLE_EXTRA_SPACE,
+            bootable=False)
+        factory.make_Filesystem(
+            partition=raid_5_partition, fstype=FILESYSTEM_TYPE.EXT4,
+            uuid="a8ad29a3-6083-45af-af8b-06ead59f108b", label="data",
+            mount_point="/srv/data", mount_options=None)
+
+        dest_node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, bios_boot_method="uefi",
+            with_boot_disk=False)
+        self.create_physical_disks(dest_node)
+        dest_node.set_storage_configuration_from_node(node)
+
+        node._create_acquired_filesystems()
+        dest_node._create_acquired_filesystems()
+        self.assertStorageConfig(
+            self.STORAGE_CONFIG, compose_curtin_storage_config(node),
+            strip_uuids=True)
+        self.assertStorageConfig(
+            self.STORAGE_CONFIG, compose_curtin_storage_config(dest_node),
+            strip_uuids=True)
+
+
+class TestNodeStorageClone_SpecialFilesystems(
+        MAASServerTestCase, AssertStorageConfigMixin):
+
+    STORAGE_CONFIG = dedent("""\
+        config:
+          - grub_device: true
+            id: sda
+            model: QEMU HARDDISK
+            name: sda
+            ptable: msdos
+            serial: QM00001
+            type: disk
+            wipe: superblock
+          - fstype: ramfs
+            id: mnt-ramfs_mount
+            path: /mnt/ramfs
+            spec: ramfs
+            type: mount
+          - fstype: tmpfs
+            id: mnt-tmpfs_mount
+            path: /mnt/tmpfs
+            spec: tmpfs
+            options: noexec,size=1024k
+            type: mount
+    """)
+
+    def create_physical_disks(self, node):
+        return factory.make_PhysicalBlockDevice(
+            node=node, size=8 * 1024 ** 3, name="sda",
+            model="QEMU HARDDISK", serial="QM00001")
+
+    def test__copy(self):
+        node = factory.make_Node(with_boot_disk=False)
+        self.create_physical_disks(node)
+        factory.make_Filesystem(
+            node=node, fstype='tmpfs', mount_options='noexec,size=1024k',
+            mount_point='/mnt/tmpfs')
+        factory.make_Filesystem(
+            node=node, fstype='ramfs', mount_options=None,
+            mount_point='/mnt/ramfs')
+
+        dest_node = factory.make_Node(with_boot_disk=False)
+        self.create_physical_disks(dest_node)
+        dest_node.set_storage_configuration_from_node(node)
+
+        node._create_acquired_filesystems()
+        dest_node._create_acquired_filesystems()
+        self.assertStorageConfig(
+            self.STORAGE_CONFIG, compose_curtin_storage_config(node),
+            strip_uuids=True)
+        self.assertStorageConfig(
+            self.STORAGE_CONFIG, compose_curtin_storage_config(dest_node),
+            strip_uuids=True)
