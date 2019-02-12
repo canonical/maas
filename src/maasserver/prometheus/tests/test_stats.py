@@ -40,7 +40,7 @@ class TestPrometheusHandler(MAASServerTestCase):
 
     def test_prometheus_stats_handler_returns_http_not_found(self):
         Config.objects.set_config('prometheus_enabled', False)
-        response = self.client.get(reverse('stats'))
+        response = self.client.get(reverse('metrics'))
         self.assertEqual("text/html; charset=utf-8", response["Content-Type"])
         self.assertEquals(response.status_code, http.client.NOT_FOUND)
 
@@ -48,13 +48,13 @@ class TestPrometheusHandler(MAASServerTestCase):
         Config.objects.set_config('prometheus_enabled', True)
         mock_prom_cli = self.patch(stats, 'prom_cli')
         mock_prom_cli.generate_latest.return_value = {}
-        response = self.client.get(reverse('stats'))
+        response = self.client.get(reverse('metrics'))
         self.assertEqual("text/plain", response["Content-Type"])
         self.assertEquals(response.status_code, http.client.OK)
 
     def test_prometheus_stats_handler_returns_metrics(self):
         Config.objects.set_config('prometheus_enabled', True)
-        response = self.client.get(reverse('stats'))
+        response = self.client.get(reverse('metrics'))
         content = response.content.decode("utf-8")
         metrics = ('nodes', 'machine_resources', 'kvm_pods', 'machine_arches')
         for metric in metrics:

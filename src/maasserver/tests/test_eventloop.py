@@ -53,6 +53,7 @@ from testtools.matchers import (
     Equals,
     IsInstance,
 )
+from twisted.application.internet import StreamServerEndpointService
 from twisted.internet import defer
 from twisted.internet.defer import inlineCallbacks
 from twisted.python.threadable import isInIOThread
@@ -558,6 +559,18 @@ class TestFactories(MAASTestCase):
             eventloop.loop.factories["ipc-worker"]["requires"])
         self.assertFalse(
             eventloop.loop.factories["ipc-worker"]["only_on_master"])
+
+    def test_make_PrometheusExporterService(self):
+        service = eventloop.make_PrometheusExporterService()
+        self.assertIsInstance(service, StreamServerEndpointService)
+        self.assertEqual(
+            service.endpoint._port, eventloop.DEFAULT_PROMETHEUS_EXPORTER_PORT)
+        # It is registered as a factory in RegionEventLoop.
+        self.assertIs(
+            eventloop.make_PrometheusExporterService,
+            eventloop.loop.factories['prometheus-exporter']['factory'])
+        self.assertTrue(
+            eventloop.loop.factories['prometheus-exporter']['only_on_master'])
 
 
 class TestDisablingDatabaseConnections(MAASServerTestCase):

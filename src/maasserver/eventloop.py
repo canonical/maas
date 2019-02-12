@@ -60,6 +60,8 @@ from twisted.internet.defer import (
 
 # Default port for regiond.
 DEFAULT_PORT = 5240
+# Default port for the prometheus exporter.
+DEFAULT_PROMETHEUS_EXPORTER_PORT = 5239
 
 logger = getLogger(__name__)
 
@@ -193,6 +195,14 @@ def make_IPCWorkerService():
     return IPCWorkerService(reactor)
 
 
+def make_PrometheusExporterService():
+    from maasserver.prometheus.service import (
+        create_prometheus_exporter_service,
+    )
+    return create_prometheus_exporter_service(
+        reactor, DEFAULT_PROMETHEUS_EXPORTER_PORT)
+
+
 class MAASServices(MultiService):
 
     def __init__(self, eventloop):
@@ -295,6 +305,11 @@ class RegionEventLoop:
             "only_on_master": False,
             "factory": make_WebApplicationService,
             "requires": ["postgres-listener-worker", "status-worker"],
+        },
+        "prometheus-exporter": {
+            "only_on_master": True,
+            "factory": make_PrometheusExporterService,
+            "requires": [],
         },
         "service-monitor": {
             "only_on_master": True,
