@@ -3,6 +3,7 @@
 *.egg-info
 *.log
 *.snap
+*.fuse_hidden*
 /.bzr
 /.coverage
 /.coverage.*
