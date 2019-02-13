@@ -13,6 +13,7 @@ libjs-jquery
 libpq-dev
 lshw
 nginx-core
+openssh-client
 postgresql
 pxelinux
 python3-all
