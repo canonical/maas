@@ -35,10 +35,13 @@ from netaddr.ip import (
     IPV4_LINK_LOCAL,
     IPV6_LINK_LOCAL,
 )
+from provisioningserver import boot
 from provisioningserver.boot import BytesReader
 from provisioningserver.boot.pxe import PXEBootMethod
 from provisioningserver.boot.tests.test_pxe import compose_config_path
 from provisioningserver.events import EVENT_TYPES
+from provisioningserver.prometheus.metrics import METRICS_DEFINITIONS
+from provisioningserver.prometheus.utils import create_metrics
 from provisioningserver.rackdservices import tftp as tftp_module
 from provisioningserver.rackdservices.tftp import (
     get_boot_image,
@@ -46,6 +49,8 @@ from provisioningserver.rackdservices.tftp import (
     Port,
     TFTPBackend,
     TFTPService,
+    TransferTimeTrackingSession,
+    TransferTimeTrackingTFTP,
     UDPServer,
 )
 from provisioningserver.rpc.exceptions import BootConfigNoResponse
@@ -67,6 +72,7 @@ from testtools.matchers import (
     MatchesStructure,
 )
 from tftp.backend import IReader
+from tftp.datagram import RQDatagram
 from tftp.errors import (
     BackendError,
     FileNotFound,
@@ -214,7 +220,6 @@ class TestTFTPBackend(MAASTestCase):
     def setUp(self):
         super(TestTFTPBackend, self).setUp()
         self.useFixture(ClusterConfigurationFixture())
-        from provisioningserver import boot
         self.patch(boot, "find_mac_via_arp")
         self.patch(tftp_module, 'log_request')
 
@@ -965,6 +970,58 @@ class TestTFTPService(MAASTestCase):
         self.assertEqual(normal_addresses, {
             server.name for server in tftp_service.getServers()
         })
+
+
+class TestTransferTimeTrackingSession(MAASTestCase):
+
+    def test_track_time(self):
+        prometheus_metrics = create_metrics(METRICS_DEFINITIONS)
+        session = TransferTimeTrackingSession(
+            'file.txt', BytesReader(b'some data'), _clock=Clock(),
+            prometheus_metrics=prometheus_metrics)
+        session.transport = Mock()
+        session.startProtocol()
+        session.cancel()
+        metrics = prometheus_metrics.generate_latest().decode('ascii')
+        self.assertIn(
+            'maas_tftp_file_transfer_latency_count{filename="file.txt"} 1.0',
+            metrics)
+
+
+class TestTransferTimeTrackingTFTP(MAASTestCase):
+    """Tests for `TransferTimeTrackingTFTP`."""
+
+    def clean_filename(self, path):
+        datagram = RQDatagram(path, b'octet', {})
+        tftp = TransferTimeTrackingTFTP(sentinel.backend)
+        return tftp._clean_filename(datagram)
+
+    def test_clean_filename(self):
+        self.assertEqual(
+            self.clean_filename(b'files/foo.txt'), 'files/foo.txt')
+
+    def test_clean_filename_strip_leading_slashes(self):
+        self.assertEqual(
+            self.clean_filename(b'//files/foo.txt'), 'files/foo.txt')
+
+    def test_clean_filename_pxelinux_cfg(self):
+        self.assertEqual(
+            self.clean_filename(b'pxelinux.cfg/aa-bb-cc-dd-ee-ff'),
+            'pxelinux.cfg')
+
+    def test_clean_filename_pxelinux_cfg_arch(self):
+        self.assertEqual(
+            self.clean_filename(b's390x/pxelinux.cfg/aa-bb-cc-dd-ee-ff'),
+            'pxelinux.cfg')
+
+    def test_clean_filename_grub_cfg(self):
+        self.assertEqual(
+            self.clean_filename(b'grub/grub.cfg-aa-bb-cc-dd-ee-ff'),
+            'grub/grub.cfg')
+
+    def test_clean_filename_windows(self):
+        self.assertEqual(
+            self.clean_filename(b'\\boot\\winpe.wim'), 'boot/winpe.wim')
 
 
 class DummyProtocol(Protocol):

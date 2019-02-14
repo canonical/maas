@@ -26,5 +26,5 @@ class PrometheusRequestMetricsMiddleware:
             'path': request.path,
             'status': response.status_code}
         self.prometheus_metrics.update(
-            'http_request_latency', 'observe', value=end_time - start_time,
-            labels=labels)
+            'maas_http_request_latency', 'observe',
+            value=end_time - start_time, labels=labels)

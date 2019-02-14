@@ -672,7 +672,7 @@ class RPCFetcher:
         self.pending = defaultdict(dict)
 
     @PROMETHEUS_METRICS.record_call_latency(
-        'rack_region_rpc_call_latency',
+        'maas_rack_region_rpc_call_latency',
         get_labels=_get_call_latency_metric_labels)
     def __call__(self, client, *args, **kwargs):
         """Call the command on the client."""

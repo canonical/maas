@@ -1191,7 +1191,7 @@ class TestRPCFetcher(MAASTestCase):
         fetcher(client, self.fake_command, test=sentinel.kwarg_test)
         client_d.callback(object())
         self.assertIn(
-            'rack_region_rpc_call_latency_count{call="Command"}',
+            'maas_rack_region_rpc_call_latency_count{call="Command"}',
             PROMETHEUS_METRICS.generate_latest().decode('ascii'))
 
 

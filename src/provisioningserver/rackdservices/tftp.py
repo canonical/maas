@@ -13,6 +13,7 @@ from socket import (
     AF_INET,
     AF_INET6,
 )
+from time import time
 
 from netaddr import IPAddress
 from provisioningserver.boot import BootMethodRegistry
@@ -27,6 +28,7 @@ from provisioningserver.logger import (
     get_maas_logger,
     LegacyLogger,
 )
+from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
 from provisioningserver.rpc.boot_images import list_boot_images
 from provisioningserver.rpc.exceptions import BootConfigNoResponse
 from provisioningserver.rpc.region import (
@@ -49,6 +51,7 @@ from tftp.errors import (
     FileNotFound,
 )
 from tftp.protocol import TFTP
+from tftp.session import ReadSession
 from twisted.application import internet
 from twisted.application.service import MultiService
 from twisted.internet import (
@@ -409,6 +412,55 @@ class UDPServer(internet.UDPServer):
         return p
 
 
+class TransferTimeTrackingSession(ReadSession):
+
+    def __init__(
+            self, filename, reader, _clock=None,
+            prometheus_metrics=PROMETHEUS_METRICS):
+        super().__init__(reader, _clock=_clock)
+        self.prometheus_metrics = prometheus_metrics
+        self.filename = filename
+
+    def startProtocol(self):
+        self.start_time = time()
+        super().startProtocol()
+
+    def cancel(self):
+        latency = time() - self.start_time
+        self.start_time = None
+        self.prometheus_metrics.update(
+            'maas_tftp_file_transfer_latency', 'observe',
+            labels={'filename': self.filename},
+            value=latency)
+        super().cancel()
+
+
+class TransferTimeTrackingTFTP(TFTP):
+
+    @inlineCallbacks
+    def _startSession(self, datagram, addr, mode):
+        session = yield super()._startSession(datagram, addr, mode)
+        stream_session = getattr(session, 'session', None)
+        # replace the standard ReadSession with one that tracks transfer time
+        if stream_session is not None:
+            filename = self._clean_filename(datagram)
+            print("X" * 80, datagram.filename.decode('utf-8'), filename)
+            session.session = TransferTimeTrackingSession(
+                filename, stream_session.reader, _clock=stream_session._clock)
+        returnValue(session)
+
+    def _clean_filename(self, datagram):
+        filename = datagram.filename.decode('ascii')
+        filename = filename.replace('\\', '/')  # normalize Windows paths
+        filename = filename.lstrip('/')
+        if 'pxelinux.cfg/' in filename:
+            return 'pxelinux.cfg'
+        if filename.startswith('grub/grub.cfg-'):
+            return 'grub/grub.cfg'
+
+        return filename
+
+
 class TFTPService(MultiService, object):
     """An umbrella service representing a set of running TFTP servers.
 
@@ -471,7 +523,8 @@ class TFTPService(MultiService, object):
         for address in addrs_desired - addrs_established:
             if not IPAddress(address).is_link_local():
                 tftp_service = UDPServer(
-                    self.port, TFTP(self.backend), interface=address)
+                    self.port, TransferTimeTrackingTFTP(self.backend),
+                    interface=address)
                 tftp_service.setName(address)
                 tftp_service.setServiceParent(self)
 

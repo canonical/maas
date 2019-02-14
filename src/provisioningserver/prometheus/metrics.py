@@ -11,8 +11,11 @@ from provisioningserver.prometheus.utils import (
 
 METRICS_DEFINITIONS = [
     MetricDefinition(
-        'Histogram', 'rack_region_rpc_call_latency',
+        'Histogram', 'maas_rack_region_rpc_call_latency',
         'Latency of Rack-Region RPC call', ['call']),
+    MetricDefinition(
+        'Histogram', 'maas_tftp_file_transfer_latency',
+        'Latency of TFTP file downloads', ['filename']),
 ]
 
 

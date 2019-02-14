@@ -11,7 +11,7 @@ from provisioningserver.prometheus.utils import (
 
 METRICS_DEFINITIONS = [
     MetricDefinition(
-        'Histogram', 'http_request_latency', 'HTTP request latency',
+        'Histogram', 'maas_http_request_latency', 'HTTP request latency',
         ['method', 'path', 'status']),
 ]
 
