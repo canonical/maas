@@ -6,6 +6,7 @@ from datetime import (
     timedelta,
 )
 import json
+import os
 from unittest import (
     mock,
     TestCase,
@@ -16,6 +17,7 @@ from django.http import HttpResponse
 import maasserver.macaroon_auth
 from maasserver.macaroon_auth import (
     _get_authentication_caveat,
+    _get_bakery_client,
     _get_macaroon_oven_key,
     _IDClient,
     APIError,
@@ -37,10 +39,18 @@ from maasserver.models import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.worker_user import get_worker_user
+from maastesting.testcase import MAASTestCase
+from macaroonbakery._utils import visit_page_with_browser
 from macaroonbakery.bakery import (
     IdentityError,
     SimpleIdentity,
     VerificationError,
+)
+from macaroonbakery.httpbakery import WebBrowserInteractor
+from macaroonbakery.httpbakery.agent import (
+    Agent,
+    AgentInteractor,
+    AuthInfo,
 )
 from metadataserver.nodeinituser import get_node_init_user
 import requests
@@ -739,3 +749,39 @@ class TestGetAuthenticationCaveat(TestCase):
             'https://example.com', domain='')
         self.assertEqual(caveat.location, 'https://example.com')
         self.assertEqual(caveat.condition, 'is-authenticated-user')
+
+
+class TestGetBakeryClient(MAASTestCase):
+
+    def test_with_auth_info(self):
+        agent = Agent(url='http://auth.example.com', username='user')
+        auth_info = AuthInfo(key='a key', agents=[agent])
+        client = _get_bakery_client(auth_info=auth_info)
+        [interaction_method] = client._interaction_methods
+        self.assertIsInstance(interaction_method, AgentInteractor)
+
+    def test_with_credentials_from_env(self):
+        self.patch(os, 'environ', {'MAAS_CANDID_CREDENTIALS': 'user:pass'})
+        client = _get_bakery_client()
+        [interaction_method] = client._interaction_methods
+        self.assertIsInstance(interaction_method, WebBrowserInteractor)
+        # use a custom method to interact with the form
+        self.assertIsNot(
+            interaction_method._open_web_browser, visit_page_with_browser)
+
+    def test_with_credentials_invalid_format(self):
+        self.patch(os, 'environ', {'MAAS_CANDID_CREDENTIALS': 'foobar'})
+        client = _get_bakery_client()
+        [interaction_method] = client._interaction_methods
+        self.assertIsInstance(interaction_method, WebBrowserInteractor)
+        # Use the in-browser interaction
+        self.assertIs(
+            interaction_method._open_web_browser, visit_page_with_browser)
+
+    def test_default(self):
+        client = _get_bakery_client()
+        [interaction_method] = client._interaction_methods
+        self.assertIsInstance(interaction_method, WebBrowserInteractor)
+        # Use the in-browser interaction
+        self.assertIs(
+            interaction_method._open_web_browser, visit_page_with_browser)
