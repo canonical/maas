@@ -11,7 +11,11 @@ from datetime import datetime
 import time
 
 from maasserver.models import Discovery
-from maasserver.websockets.base import dehydrate_datetime
+from maasserver.permissions import NodePermission
+from maasserver.websockets.base import (
+    dehydrate_datetime,
+    HandlerPermissionError,
+)
 from maasserver.websockets.handlers.viewmodel import ViewModelHandler
 from provisioningserver.logger import get_maas_logger
 
@@ -30,6 +34,7 @@ class DiscoveryHandler(ViewModelHandler):
         allowed_methods = [
             'list',
             'get',
+            'clear',
         ]
 
     def list(self, params):
@@ -60,3 +65,12 @@ class DiscoveryHandler(ViewModelHandler):
         # be changed to something that is ordered and unique.
         return str(
             time.mktime(obj.timetuple()) + obj.microsecond / 1e6)
+
+    def clear(self, params=None):
+        if params is None:
+            params = dict()
+        if not self.user.has_perm(NodePermission.admin, Discovery):
+            raise HandlerPermissionError()
+        if len(params) == 0:
+            params['all'] = True
+        Discovery.objects.clear(**params)
