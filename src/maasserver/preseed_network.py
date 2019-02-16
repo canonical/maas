@@ -69,7 +69,7 @@ def _generate_route_operation(route, version=1):
 
 class InterfaceConfiguration:
 
-    def __init__(self, iface, node_config, version=1):
+    def __init__(self, iface, node_config, version=1, source_routing=False):
         """
 
         :param iface: The interface whose configuration to generate.
@@ -81,9 +81,14 @@ class InterfaceConfiguration:
         self.node_config = node_config
         self.routes = node_config.routes
         self.gateways = node_config.gateways
+        self.secondary_gateway_routes = []
+        self.secondary_gateway_policies = []
+        # Note: the matching routes are populated in _generate_addresses().
+        # (Only routes with an on-link gateway can be configured.)
         self.matching_routes = set()
         self.addr_family_present = defaultdict(bool)
         self.version = version
+        self.source_routing = source_routing
         self.config = None
         self.name = self.iface.get_name()
 
@@ -101,8 +106,11 @@ class InterfaceConfiguration:
         if version == 2:
             routes = self._generate_route_operations(
                 self.matching_routes, version=version)
+            routes.extend(self.secondary_gateway_routes)
             if len(routes) > 0:
                 self.config['routes'] = routes
+            if len(self.secondary_gateway_policies) > 0:
+                self.config['routing-policy'] = self.secondary_gateway_policies
 
     def _generate_route_operations(self, matching_routes, version=1):
         """Generate all route operations."""
@@ -164,16 +172,27 @@ class InterfaceConfiguration:
         else:
             return None
 
-    def _get_default_gateway(self, subnet):
-        """Return True if this is the gateway that should be added to the
-        interface configuration."""
+    def _get_default_gateway(self, subnet, include_secondary=False):
+        """Return a gateway that should be added for the specified subnet.
+
+        If no relevant gateway is found, returns None.
+        """
         if subnet.gateway_ip:
             for gateway in self.gateways:
                 if gateway is None:
                     continue
                 if isinstance(gateway, list):
-                    # Not relevant yet; this is the list of /all/ gateways.
-                    continue
+                    # If this is a list, it's the list of secondary gateways.
+                    if include_secondary:
+                        for gw in gateway:
+                            iface_id, subnet_id, gateway_ip = gw
+                            if (iface_id == self.id and
+                                    subnet_id and subnet.id and
+                                    gateway_ip and subnet.gateway_ip):
+                                return subnet.gateway_ip
+                    else:
+                        # Caller didn't ask for secondary gateways.
+                        continue
                 iface_id, subnet_id, gateway_ip = gateway
                 if (iface_id == self.id and
                         subnet_id and subnet.id and
@@ -184,12 +203,14 @@ class InterfaceConfiguration:
     def _set_default_gateway(self, subnet, config, version=1):
         """Set the default gateway on the `subnet_operation` if it should
         be set."""
-        family = subnet.get_ipnetwork().version
+        network = subnet.get_ipnetwork()
+        family = network.version
         node_config = self.node_config
-        if family == IPADDRESS_FAMILY.IPv4 and node_config.gateway_ipv4_set:
-            return
-        elif family == IPADDRESS_FAMILY.IPv6 and node_config.gateway_ipv6_set:
-            return
+        if not self.source_routing:
+            if family == 4 and node_config.gateway_ipv4_set:
+                return
+            elif family == 6 and node_config.gateway_ipv6_set:
+                return
         gateway = self._get_default_gateway(subnet)
         if gateway is not None:
             if version == 1:
@@ -202,6 +223,29 @@ class InterfaceConfiguration:
                 node_config.gateway_ipv6_set = True
                 if version == 2:
                     config["gateway6"] = str(gateway)
+        elif version == 2 and self.source_routing:
+            # Check if we should select a secondary gateway for use with
+            # source routing.
+            secondary_gateway = self._get_default_gateway(
+                subnet, include_secondary=True)
+            if secondary_gateway is not None:
+                # Allocate another routing table for this gateway.
+                table_id = self.node_config.get_next_routing_table_id()
+                self.secondary_gateway_routes.append({
+                    'to': '0.0.0.0/0',
+                    'via': str(secondary_gateway),
+                    'table': table_id
+                })
+                self.secondary_gateway_policies.append({
+                    'from': str(network),
+                    'table': table_id,
+                    'priority': 100
+                })
+                self.secondary_gateway_policies.append({
+                    'from': str(network),
+                    'to': str(network),
+                    'table': 254
+                })
 
     def _get_matching_routes(self, source):
         """Return all route objects matching `source`."""
@@ -463,8 +507,11 @@ class NodeNetworkConfiguration:
         self.v2_vlans = {}
         self.v2_bonds = {}
         self.v2_bridges = {}
+        # Reserved routing tables in Linux are 0, 253, 254, and 255.
+        self.next_routing_table_id = 1
         self.gateway_ipv4_set = False
         self.gateway_ipv6_set = False
+        self.source_routing = source_routing
 
         # The default value is False: expected keys are 4 and 6.
         self.addr_family_present = defaultdict(bool)
@@ -494,7 +541,9 @@ class NodeNetworkConfiguration:
         for iface in interfaces:
             if not iface.is_enabled():
                 continue
-            generator = InterfaceConfiguration(iface, self, version=version)
+            generator = InterfaceConfiguration(
+                iface, self, version=version,
+                source_routing=self.source_routing)
             self.matching_routes.update(generator.matching_routes)
             self.addr_family_present.update(generator.addr_family_present)
             if version == 1:
@@ -544,6 +593,13 @@ class NodeNetworkConfiguration:
                 v2_config.update({"bridges": self.v2_bridges})
             self.set_v2_default_dns()
         self.config = network_config
+
+    def get_next_routing_table_id(self):
+        next_table_id = self.next_routing_table_id
+        self.next_routing_table_id += 1
+        if next_table_id >= 253:
+            raise IndexError("Maximum number of routing tables exceeded.")
+        return next_table_id
 
     def set_v2_default_dns(self):
         """Define default nameservers on each interface.

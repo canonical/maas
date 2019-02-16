@@ -30,6 +30,7 @@ from netaddr import (
     IPAddress,
     IPNetwork,
 )
+from testtools import ExpectedException
 from testtools.matchers import (
     ContainsDict,
     Equals,
@@ -457,8 +458,9 @@ class TestBridgeNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):
 
 class TestNetplan(MAASServerTestCase):
 
-    def _render_netplan_dict(self, node):
-        return NodeNetworkConfiguration(node, version=2).config
+    def _render_netplan_dict(self, node, source_routing=False):
+        return NodeNetworkConfiguration(
+            node, version=2, source_routing=source_routing).config
 
     def _render_v1_dict(self, node):
         return NodeNetworkConfiguration(node, version=1).config
@@ -886,6 +888,68 @@ class TestNetplan(MAASServerTestCase):
             },
         }
         self.expectThat(netplan, Equals(expected_netplan))
+        netplan_with_source_routing = self._render_netplan_dict(
+            node, source_routing=True)
+        expected_netplan_with_source_routing = {
+            'network': {
+                'version': 2,
+                'ethernets': {
+                    'eth0': {
+                        'gateway4': '10.0.0.1',
+                        'match': {'macaddress': '00:01:02:03:04:05'},
+                        'mtu': 1500,
+                        'set-name': 'eth0',
+                        'addresses': ['10.0.0.4/24'],
+                        'routes': [{
+                            'to': '192.168.0.0/24',
+                            'via': '10.0.0.3',
+                            'metric': 42,
+                        }],
+                        'nameservers': {
+                            'addresses': nameserver_addresses,
+                            'search': [domain.name]
+                        },
+                    },
+                    'eth1': {
+                        'match': {'macaddress': '02:01:02:03:04:05'},
+                        'mtu': 1500,
+                        'set-name': 'eth1',
+                        'addresses': ['10.0.1.4/24'],
+                        'routes': [
+                            {
+                                'to': '192.168.0.0/24',
+                                'via': '10.0.1.3',
+                                'metric': 43,
+                            },
+                            {
+                                'to': '0.0.0.0/0',
+                                'via': '10.0.1.1',
+                                'table': 1,
+                            },
+                        ],
+                        'routing-policy': [
+                            {
+                                'from': '10.0.1.0/24',
+                                'priority': 100,
+                                'table': 1
+                            },
+                            {
+                                'from': '10.0.1.0/24',
+                                'table': 254,
+                                'to': '10.0.1.0/24'
+                            }
+                        ],
+                        'nameservers': {
+                            'addresses': nameserver_addresses,
+                            'search': [domain.name]
+                        },
+                    },
+                },
+            },
+        }
+        self.expectThat(
+            netplan_with_source_routing,
+            Equals(expected_netplan_with_source_routing))
         v1 = self._render_v1_dict(node)
         expected_v1 = {
             'network': {
@@ -1093,3 +1157,20 @@ class TestNetplan(MAASServerTestCase):
             }
         }
         self.expectThat(v1, Equals(expected_v1))
+
+
+class TestGetNextRoutingTableId(MAASServerTestCase):
+
+    def test__routing_table_index_starts_at_one(self):
+        node = factory.make_Node()
+        generator = NodeNetworkConfiguration(node)
+        table_id = generator.get_next_routing_table_id()
+        self.assertThat(table_id, Equals(1))
+
+    def test__raises_IndexError_for_too_many_tables(self):
+        node = factory.make_Node()
+        generator = NodeNetworkConfiguration(node)
+        for _ in range(252):
+            generator.get_next_routing_table_id()
+        with ExpectedException(IndexError):
+            generator.get_next_routing_table_id()
