@@ -262,13 +262,7 @@ class MacaroonClient:
     def __init__(self, url, auth_info):
         self._url = url.rstrip('/')
         self._auth_info = auth_info
-        interaction_methods = None
-        if auth_info is not None:
-            # if auth info is specified, use the default interaction (most
-            # likely the browser-based one)
-            interaction_methods = [AgentInteractor(self._auth_info)]
-        self._client = httpbakery.Client(
-            interaction_methods=interaction_methods)
+        self._client = _get_bakery_client(auth_info=auth_info)
 
     def _request(self, method, url, json=None, status_code=200):
         cookiejar = self._client.cookies
@@ -401,6 +395,41 @@ class _IDClient(bakery.IdentityClient):
         return None, [
             _get_authentication_caveat(
                 self.auth_endpoint, domain=self.auth_domain)]
+
+
+def _get_bakery_client(auth_info=None):
+    """Return an httpbakery.Client."""
+    interaction_methods = None
+    if auth_info is not None:
+        interaction_methods = [AgentInteractor(auth_info)]
+    else:
+        username, password = None, None
+        credentials = os.environ.get('MAAS_CANDID_CREDENTIALS')
+        if credentials:
+            user_pass = credentials.split(':', 1)
+            if len(user_pass) == 2:
+                username, password = user_pass
+        if username and password:
+
+            def login_with_credentials(visit_url):
+                """Login with Candid's builtin username/password form.
+
+                This is only intended for use in automated testing.
+
+                """
+                resp = requests.get(visit_url)
+                assert resp.status_code == 200
+                requests.post(
+                    resp.url,
+                    data={
+                        'username': username,
+                        'password': password
+                    })
+
+            interaction_methods = [
+                httpbakery.WebBrowserInteractor(open=login_with_credentials)]
+
+    return httpbakery.Client(interaction_methods=interaction_methods)
 
 
 def _get_bakery(request):
