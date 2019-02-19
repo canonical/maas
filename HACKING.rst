@@ -449,6 +449,18 @@ this line:
     BindsTo=maas-rackd.service
 
 
+Non-interactive configuration of RBAC service authentication
+============================================================
+
+For development and automating testing purposes, it's possible to configure
+maas with the RBAC service in a non-interactive way, with the following::
+
+    $ sudo MAAS_CANDID_CREDENTIALS=user1:password1 maas configauth --rbac-url http://<url-of-rbac>:5000 --rbac-sevice-name <maas-service-name-in-RBAC>
+
+This will automatically handle logging in with Candid, without requiring the
+user to fill in the authentication form via browser.
+
+
 Development services
 ====================
 
