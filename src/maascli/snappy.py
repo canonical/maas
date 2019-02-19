@@ -73,6 +73,12 @@ ARGUMENTS = OrderedDict([
             'the database. Only used when in \'region+rack\' or '
             '\'region\' mode.'),
     }),
+    ('database-port', {
+        'help': (
+            'Optional option to set the port that should be used to '
+            'communicate to the database. Only used when in '
+            '\'region+rack\' or \'region\' mode.'),
+    }),
     ('database-name', {
         'help': (
             'Database name for MAAS to use. Only used when in '
@@ -276,6 +282,7 @@ def print_config(
         print_config_value(config, 'maas_url')
         if current_mode in ['region+rack', 'region']:
             print_config_value(config, 'database_host')
+            print_config_value(config, 'database_port')
             print_config_value(config, 'database_name')
             print_config_value(config, 'database_user')
             print_config_value(
@@ -688,12 +695,20 @@ class cmd_init(SnappyCommand):
             perform_work('Stopping services', stop_services)
 
         # Configure the settings.
-        MAASConfiguration().update(
-            {'maas_url': maas_url,
-             'database_host': database_host,
-             'database_name': database_name,
-             'database_user': database_user,
-             'database_pass': database_pass})
+        settings = {
+            'maas_url': maas_url,
+            'database_host': database_host,
+            'database_name': database_name,
+            'database_user': database_user,
+            'database_pass': database_pass}
+
+        # Add the port to the configuration if exists. By default
+        # MAAS handles picking the port automatically in the backend
+        # if none provided.
+        if options.database_port:
+            settings['database_port'] = options.database_port
+
+        MAASConfiguration().update(settings)
         set_rpc_secret(rpc_secret)
 
         # Finalize the Initialization.
