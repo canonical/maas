@@ -183,6 +183,16 @@ code inside of a running browser you can launch Karma_ manually.::
 .. _Karma: http://karma-runner.github.io/
 
 
+JavaScript debugging
+^^^^^^^^^^^^^^^^^^^^
+
+Angularjs debugInfo, which provides hooks for browser debugging tools like Batarang,
+is disabled by default. To re-enable debugInfo, run ``angular.reloadWithDebugInfo();``
+in the browser console.
+
+See https://docs.angularjs.org/guide/production#disabling-debug-data for details.
+
+
 Production MAAS server debugging
 ================================
 

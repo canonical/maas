@@ -11,7 +11,14 @@
 angular.module('MAAS',
     ['ngRoute', 'ngCookies', 'ngSanitize', 'ngTagsInput', 'vs-repeat']).config(
         function ($interpolateProvider, $routeProvider, $httpProvider,
-            tagsInputConfigProvider) {
+            $compileProvider, tagsInputConfigProvider) {
+
+        // Disable debugInfo unless in a karma context.
+        // Re-enable debugInfo in development by running
+        // angular.reloadWithDebugInfo(); in the console.
+        // See: https://docs.angularjs.org/guide/production#disabling-debug-data
+        $compileProvider.debugInfoEnabled(!!window.__karma__);
+
         $interpolateProvider.startSymbol('{$');
         $interpolateProvider.endSymbol('$}');
 
@@ -24,6 +31,9 @@ angular.module('MAAS',
         // http request.
         $httpProvider.defaults.xsrfCookieName = 'csrftoken';
         $httpProvider.defaults.xsrfHeaderName = 'X-CSRFToken';
+
+        // Batch http responses into digest cycles
+        $httpProvider.useApplyAsync(true);
 
         // Helper that wrappers the templateUrl to append the files version
         // to the path. Used to override client cache.
