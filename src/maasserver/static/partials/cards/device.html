@@ -1,12 +1,14 @@
 <header class="p-card__header">
   <h2 class="p-heading--four">Overview</h2>
 </header>
-<ul class="p-list">
-  <li class="p-list__item u-no-margin--top" data-ng-if="node.owner">Owner: {$ node.owner $}</li>
-  <li class="p-list__item u-no-margin--top" data-ng-if="!node.owner">Owner: <span>(unassigned)</span></li>
-  <li class="p-list__item u-no-margin--top">Domain: {$ header.domain.selected.name $}</li>
-  <li class="p-list__item u-no-margin--top">Zone: {$ summary.zone.selected.name $}</li>
-</ul>
+<div class="p-card__content">
+  <ul class="p-list">
+    <li class="p-list__item u-no-margin--top" data-ng-if="node.owner"><span class="muted-label">Owner:</span> {$ node.owner $}</li>
+    <li class="p-list__item u-no-margin--top" data-ng-if="!node.owner"><span class="muted-label">Owner:</span> <span>(unassigned)</span></li>
+    <li class="p-list__item u-no-margin--top"><span class="muted-label">Domain:</span> {$ header.domain.selected.name $}</li>
+    <li class="p-list__item u-no-margin--top"><span class="muted-label">Zone:</span> {$ summary.zone.selected.name $}</li>
+  </ul>
+</div>
 <footer class="p-card__footer">
   <p><a data-ng-click="section.area = 'configuration'">Edit &rsaquo;</a></p>
 </footer>

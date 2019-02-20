@@ -19,5 +19,13 @@
     .p-heading--2 + & {
       margin-top: - $sp-unit * 2;
     }
+
+    .muted-label {
+      color: $color-mid-dark;
+    }
+  }
+
+  .p-card__header {
+    border-bottom: 0;
   }
 }
