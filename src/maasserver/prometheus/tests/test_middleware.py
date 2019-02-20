@@ -24,12 +24,20 @@ class TestPrometheusRequestMetricsMiddleware(MAASTestCase):
         middleware(factory.make_fake_request("/MAAS/accounts/login/"))
         middleware(factory.make_fake_request("/MAAS/accounts/login/"))
         middleware(factory.make_fake_request("/MAAS/other/path"))
+        middleware(factory.make_fake_request(
+            "/MAAS/other/path", data={'op': 'do-foo'}))
+        middleware(factory.make_fake_request(
+            "/MAAS/other/path", method='POST', data={'op': 'do-bar'}))
         metrics_text = prometheus_metrics.generate_latest().decode('ascii')
         self.assertIn(
-            'maas_http_request_latency_count{method="GET",'
+            'maas_http_request_latency_count{method="GET",op="",'
             'path="/MAAS/accounts/login/",status="200"} 2.0',
             metrics_text)
         self.assertIn(
-            'maas_http_request_latency_count{method="GET",'
+            'maas_http_request_latency_count{method="GET",op="do-foo",'
+            'path="/MAAS/other/path",status="404"} 1.0',
+            metrics_text)
+        self.assertIn(
+            'maas_http_request_latency_count{method="POST",op="do-bar",'
             'path="/MAAS/other/path",status="404"} 1.0',
             metrics_text)

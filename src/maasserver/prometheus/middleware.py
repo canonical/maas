@@ -21,10 +21,13 @@ class PrometheusRequestMetricsMiddleware:
         return response
 
     def _process_metrics(self, request, response, start_time, end_time):
+        op = request.POST.get('op', request.GET.get('op', ''))
         labels = {
             'method': request.method,
             'path': request.path,
-            'status': response.status_code}
+            'status': response.status_code,
+            'op': op
+        }
         self.prometheus_metrics.update(
             'maas_http_request_latency', 'observe',
             value=end_time - start_time, labels=labels)
