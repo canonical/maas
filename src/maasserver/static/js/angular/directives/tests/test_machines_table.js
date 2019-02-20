@@ -577,4 +577,32 @@ describe("maasMachinesTable", function() {
             expect(actual.length).toEqual(3);
         });
     });
+
+    describe("changePowerState", function() {
+
+        it(`executes MachinesManager.checkPowerState
+            if action param is "check"`, () => {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            var machine = makeMachine();
+            spyOn(MachinesManager, "checkPowerState")
+                .and.returnValue($q.defer().promise);
+
+            scope.changePowerState(machine, "check");
+            expect(MachinesManager.checkPowerState)
+                .toHaveBeenCalledWith(machine);
+        });
+
+        it("executes MachinesManager.performAction correctly", () => {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            var machine = makeMachine();
+            spyOn(MachinesManager, "performAction")
+                .and.returnValue($q.defer().promise);
+
+            scope.changePowerState(machine, "on");
+            expect(MachinesManager.performAction)
+                .toHaveBeenCalledWith(machine, "on");
+        });
+    });
 });

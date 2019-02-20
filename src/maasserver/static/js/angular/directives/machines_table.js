@@ -195,6 +195,30 @@ angular.module('MAAS').directive('maasMachinesTable', [
           scope.onListingChange({$machines: scope.table.filteredMachines});
         });
 
+        // Watch a simplified list of machines for changes to power state,
+        // then set transitional state accordingly.
+        scope.$watch(
+          scope =>
+            scope.table.machines.map(machine => ({
+              id: machine.id,
+              state: machine.power_state
+            })),
+          (newMachines, oldMachines) => {
+            newMachines.forEach(newMachine => {
+              const oldMachine =
+                oldMachines.find(
+                  machine => machine.id === newMachine.id
+                ) || {};
+              if (newMachine.state !== oldMachine.state) {
+                scope.table.machines.find(
+                  machine => machine.id === newMachine.id
+                ).powerTransition = undefined;
+              }
+            });
+          },
+          true
+        );
+
         // Truncates leading zeroes in RAM and returns unit separately
         scope.formatMemoryUnit = function(ram) {
           var memory = parseFloat(ram);
@@ -260,7 +284,28 @@ angular.module('MAAS').directive('maasMachinesTable', [
           return ipArray.filter((obj, pos, arr) => {
             return arr.map(mapObj => mapObj[prop]).indexOf(obj[prop]) === pos;
           });
-        }
+        };
+
+        scope.changePowerState = (machine, action) => {
+          machine.powerTransition = true;
+
+          if (action === "check") {
+            MachinesManager.checkPowerState(machine).then(() => {
+              machine.action_failed = false;
+              machine.powerTransition = undefined;
+            }, error => {
+              machine.action_failed = true;
+              machine.powerTransition = undefined;
+            });
+          } else {
+            MachinesManager.performAction(machine, action).then(() => {
+              machine.action_failed = false;
+            }, error => {
+              machine.action_failed = true;
+              machine.powerTransition = undefined;
+            });
+          }
+        };
       }
     };
 }]);

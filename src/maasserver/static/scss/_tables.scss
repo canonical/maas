@@ -53,6 +53,15 @@
   }
 
   .p-table__row {
+    .p-table--machines tbody &:hover {
+      background-color: $color-x-light;
+      box-shadow: 0 1px 3px 0 transparentize($color-dark, .8);
+
+      .p-power-menu__toggle {
+        display: inline-block;
+      }
+    }
+
     &--muted {
       background: $color-light;
     }
@@ -360,6 +369,11 @@
 
       .p-table__col--name {
         @include breakpoint-widths(46%, 30%, 22%, 20%, 17%);
+        position: relative;
+
+        .p-tooltip {
+          position: static;
+        }
       }
 
       .p-table__col--power {
@@ -368,6 +382,11 @@
 
       .p-table__col--status {
         @include breakpoint-widths(46%, 44%, 22%, 22%, 19%);
+        position: relative;
+
+        .p-tooltip {
+          position: static;
+        }
       }
 
       .p-table__col--owner {
@@ -574,9 +593,10 @@
     }
   }
 
+  $checkbox-space: 1rem + $sph-intra;
+  $icon-space: map-get($icon-sizes, default) + $sph-intra--condensed;
+
   .p-double-row {
-    $checkbox-space: 1rem + $sph-intra;
-    $icon-space: map-get($icon-sizes, default) + $sph-intra--condensed;
     overflow: visible;
 
     %p-double-row__icon-container {
@@ -666,6 +686,89 @@
     .p-domain-name__tld {
       @extend %small-text;
       margin-bottom: map-get($line-heights, default-text) - map-get($line-heights, small) - map-get($nudges, nudge--small);
+    }
+  }
+
+  .p-power-menu {
+    @extend .p-contextual-menu;
+    margin-bottom: -$sp-unit;
+    width: 100%;
+
+    %power-menu-link {
+      @extend .p-contextual-menu__link;
+      padding: $spv-intra $sp-xx-large;
+      position: relative;
+      transition: 0s;
+
+      &::before {
+        background-position: center;
+        background-repeat: no-repeat;
+        background-size: map-get($icon-sizes, default);
+        content: '';
+        height: 17px;
+        left: $sph-intra;
+        position: absolute;
+        top: $spv-intra--expanded;
+        width: map-get($icon-sizes, default);
+      }
+    }
+
+    .p-power-menu__title {
+      border-bottom: 1px solid $color-light-new;
+      color: $color-mid-dark;
+      font-size: .75rem;
+      font-weight: 400;
+      padding: $spv-intra--condensed $sp-xx-large;
+      text-transform: uppercase;
+    }
+
+    .p-power-menu__footer {
+      border-top: 1px solid $color-light-new;
+      color: $color-mid-dark;
+      padding: $spv-intra--condensed $sp-xx-large;
+    }
+
+    .p-power-menu__toggle {
+      background-color: transparentize($color-x-light, 0.25);
+      cursor: pointer;
+      display: none;
+      position: absolute;
+      right: 0;
+      top: 2px;
+    }
+
+    .p-power-menu__dropdown {
+      @extend .p-contextual-menu__dropdown;
+      left: -#{$sph-intra};
+      max-width: none;
+      min-width: 100%;
+      top: $sp-x-large;
+      width: -moz-max-content;
+      width: max-content;
+    }
+
+    .p-power-menu__check-power {
+      @extend %power-menu-link;
+    }
+
+    .p-power-menu__power-on {
+      @extend %power-menu-link;
+
+      &::before {
+        @include maas-icon-power-on($color-positive);
+      }
+    }
+
+    .p-power-menu__power-off {
+      @extend %power-menu-link;
+
+      &::before {
+        @include maas-icon-power-on($color-mid-light);
+      }
+    }
+
+    .p-double-row__icon-container {
+      cursor: pointer;
     }
   }
 
