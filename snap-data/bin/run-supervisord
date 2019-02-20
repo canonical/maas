@@ -4,6 +4,12 @@
 
 set -e
 
+# set up prometheus for multiprocess configuration
+export prometheus_multiproc_dir=/tmp/prometheus
+# ensure the dir exists and it's empty
+rm -rf "$prometheus_multiproc_dir"
+mkdir -p "$prometheus_multiproc_dir"
+
 # Render the supervisord.conf based on the current mode.
 "$SNAP/snap/command-chain/snapcraft-runner" "$SNAP/command-maas.wrapper" config --render
 

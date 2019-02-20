@@ -1,3 +1,5 @@
+import atexit
+
 from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
@@ -30,25 +32,46 @@ class TestPrometheusMetrics(MAASTestCase):
         self.assertIsNone(prometheus_metrics.generate_latest())
 
     def test_update(self):
-        registry = prometheus_client.CollectorRegistry()
-        metric = prometheus_client.Gauge(
-            'a_gauge', 'A Gauge', ['foo', 'bar'], registry=registry)
+        definitions = [
+            MetricDefinition('Gauge', 'a_gauge', 'A Gauge', ['foo', 'bar'])
+        ]
         prometheus_metrics = PrometheusMetrics(
-            registry=registry, metrics={'a_gauge': metric})
+            definitions=definitions,
+            registry=prometheus_client.CollectorRegistry())
         prometheus_metrics.update(
             'a_gauge', 'set', value=22, labels={'foo': 'FOO', 'bar': 'BAR'})
         self.assertIn(
             'a_gauge{bar="BAR",foo="FOO"} 22.0',
             prometheus_metrics.generate_latest().decode('ascii'))
 
+    def test_register_atexit_global_registry(self):
+        mock_register = self.patch(atexit, 'register')
+        definitions = [
+            MetricDefinition('Gauge', 'a_gauge', 'A Gauge', ['foo', 'bar'])
+        ]
+        prometheus_metrics = PrometheusMetrics(definitions=definitions)
+        mock_register.assert_called_once_with(
+            prometheus_metrics._cleanup_metric_files)
+
+    def test_no_register_atexit_custom_registry(self):
+        mock_register = self.patch(atexit, 'register')
+        definitions = [
+            MetricDefinition('Gauge', 'a_gauge', 'A Gauge', ['foo', 'bar'])
+        ]
+        PrometheusMetrics(
+            definitions=definitions,
+            registry=prometheus_client.CollectorRegistry())
+        mock_register.assert_not_called()
+
     @inlineCallbacks
     def test_record_call_latency(self):
-        registry = prometheus_client.CollectorRegistry()
-        metric = prometheus_client.Histogram(
-            'histo', 'An histogram', ['foo', 'bar'], registry=registry)
+        definitions = [
+            MetricDefinition(
+                'Histogram', 'histo', 'An histogram', ['foo', 'bar'])
+        ]
         prometheus_metrics = PrometheusMetrics(
-            registry=registry, metrics={'histo': metric})
-
+            definitions=definitions,
+            registry=prometheus_client.CollectorRegistry())
         label_call_args = []
 
         def get_labels(*args, **kwargs):
@@ -82,7 +105,9 @@ class TestCreateMetrics(MAASTestCase):
                 'Counter', 'sample_counter', 'Sample counter', [])]
 
     def test_metrics(self):
-        prometheus_metrics = create_metrics(self.metrics_definitions)
+        prometheus_metrics = create_metrics(
+            self.metrics_definitions,
+            registry=prometheus_client.CollectorRegistry())
         self.assertIsInstance(prometheus_metrics, PrometheusMetrics)
         self.assertCountEqual(
             prometheus_metrics.available_metrics,
@@ -90,5 +115,7 @@ class TestCreateMetrics(MAASTestCase):
 
     def test_metrics_prometheus_not_availble(self):
         self.patch(utils, 'PROMETHEUS_SUPPORTED', False)
-        prometheus_metrics = create_metrics(self.metrics_definitions)
+        prometheus_metrics = create_metrics(
+            self.metrics_definitions,
+            registry=prometheus_client.CollectorRegistry())
         self.assertEqual(prometheus_metrics.available_metrics, [])

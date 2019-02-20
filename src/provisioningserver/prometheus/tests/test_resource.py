@@ -1,4 +1,5 @@
 from maastesting.testcase import MAASTestCase
+import prometheus_client
 from provisioningserver.prometheus.utils import (
     create_metrics,
     MetricDefinition,
@@ -19,7 +20,9 @@ class TestPrometheusMetricsResource(MAASTestCase):
                 'Counter', 'sample_counter', 'Sample counter', [])]
 
     def test_metrics(self):
-        prometheus_metrics = create_metrics(self.metrics_definitions)
+        prometheus_metrics = create_metrics(
+            self.metrics_definitions,
+            registry=prometheus_client.CollectorRegistry())
         resource = http.PrometheusMetricsResource(prometheus_metrics)
         request = Request(DummyChannel(), False)
         content = resource.render_GET(request).decode('utf-8')

@@ -63,10 +63,15 @@ STATS_DEFINITIONS = [
 
 
 def prometheus_stats_handler(request):
-    if not Config.objects.get_config('prometheus_enabled'):
+    have_prometheus = (
+        PROMETHEUS_SUPPORTED and
+        Config.objects.get_config('prometheus_enabled'))
+    if not have_prometheus:
         return HttpResponseNotFound()
 
-    metrics = create_metrics(STATS_DEFINITIONS)
+    metrics = create_metrics(
+        STATS_DEFINITIONS,
+        registry=prom_cli.CollectorRegistry())
     update_prometheus_stats(metrics)
     return HttpResponse(
         content=metrics.generate_latest(), content_type="text/plain")
@@ -125,7 +130,8 @@ def update_prometheus_stats(metrics: PrometheusMetrics):
 
 
 def push_stats_to_prometheus(maas_name, push_gateway):
-    metrics = create_metrics(STATS_DEFINITIONS)
+    metrics = create_metrics(
+        STATS_DEFINITIONS, registry=prom_cli.CollectorRegistry())
     update_prometheus_stats(metrics)
     prom_cli.push_to_gateway(
         push_gateway, job='stats_for_%s' % maas_name,

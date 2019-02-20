@@ -1184,15 +1184,16 @@ class TestRPCFetcher(MAASTestCase):
         self.assertThat(extract_result(d2), Is(sentinel.bar))
 
     def test_call_records_latency_metric(self):
+        mock_metrics = self.patch(PROMETHEUS_METRICS, 'update')
         client_d = Deferred()
         client = Mock()
         client.return_value = client_d
         fetcher = RPCFetcher()
         fetcher(client, self.fake_command, test=sentinel.kwarg_test)
         client_d.callback(object())
-        self.assertIn(
-            'maas_rack_region_rpc_call_latency_count{call="Command"}',
-            PROMETHEUS_METRICS.generate_latest().decode('ascii'))
+        mock_metrics.assert_called_with(
+            'maas_rack_region_rpc_call_latency', 'observe',
+            labels={'call': 'Command'}, value=mock.ANY)
 
 
 class TestDeferToNewThread(MAASTestCase):

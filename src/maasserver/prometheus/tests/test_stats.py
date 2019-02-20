@@ -30,6 +30,7 @@ from maastesting.matchers import (
 )
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import extract_result
+import prometheus_client
 from provisioningserver.prometheus.utils import create_metrics
 from provisioningserver.utils.twisted import asynchronous
 from twisted.application.internet import TimerService
@@ -38,8 +39,16 @@ from twisted.internet.defer import fail
 
 class TestPrometheusHandler(MAASServerTestCase):
 
-    def test_prometheus_stats_handler_returns_http_not_found(self):
+    def test_prometheus_stats_handler_not_found_disabled(self):
         Config.objects.set_config('prometheus_enabled', False)
+        self.patch(stats, "PROMETHEUS_SUPPORTED", True)
+        response = self.client.get(reverse('metrics'))
+        self.assertEqual("text/html; charset=utf-8", response["Content-Type"])
+        self.assertEquals(response.status_code, http.client.NOT_FOUND)
+
+    def test_prometheus_stats_handler_not_found_not_supported(self):
+        Config.objects.set_config('prometheus_enabled', True)
+        self.patch(stats, "PROMETHEUS_SUPPORTED", False)
         response = self.client.get(reverse('metrics'))
         self.assertEqual("text/html; charset=utf-8", response["Content-Type"])
         self.assertEquals(response.status_code, http.client.NOT_FOUND)
@@ -99,7 +108,8 @@ class TestPrometheus(MAASServerTestCase):
         }
         mock_pods = self.patch(stats, "get_kvm_pods_stats")
         mock_pods.return_value = pods
-        metrics = create_metrics(STATS_DEFINITIONS)
+        metrics = create_metrics(
+            STATS_DEFINITIONS, registry=prometheus_client.CollectorRegistry())
         update_prometheus_stats(metrics)
         self.assertThat(
             mock, MockCalledOnce())

@@ -35,6 +35,7 @@ from netaddr.ip import (
     IPV4_LINK_LOCAL,
     IPV6_LINK_LOCAL,
 )
+import prometheus_client
 from provisioningserver import boot
 from provisioningserver.boot import BytesReader
 from provisioningserver.boot.pxe import PXEBootMethod
@@ -975,7 +976,9 @@ class TestTFTPService(MAASTestCase):
 class TestTransferTimeTrackingSession(MAASTestCase):
 
     def test_track_time(self):
-        prometheus_metrics = create_metrics(METRICS_DEFINITIONS)
+        prometheus_metrics = create_metrics(
+            METRICS_DEFINITIONS,
+            registry=prometheus_client.CollectorRegistry())
         session = TransferTimeTrackingSession(
             'file.txt', BytesReader(b'some data'), _clock=Clock(),
             prometheus_metrics=prometheus_metrics)

@@ -444,7 +444,6 @@ class TransferTimeTrackingTFTP(TFTP):
         # replace the standard ReadSession with one that tracks transfer time
         if stream_session is not None:
             filename = self._clean_filename(datagram)
-            print("X" * 80, datagram.filename.decode('utf-8'), filename)
             session.session = TransferTimeTrackingSession(
                 filename, stream_session.reader, _clock=stream_session._clock)
         returnValue(session)

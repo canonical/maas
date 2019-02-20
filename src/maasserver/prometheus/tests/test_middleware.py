@@ -5,6 +5,7 @@ from maasserver.prometheus.middleware import (
 )
 from maasserver.testing.factory import factory
 from maastesting.testcase import MAASTestCase
+import prometheus_client
 from provisioningserver.prometheus.utils import create_metrics
 
 
@@ -15,7 +16,9 @@ class TestPrometheusRequestMetricsMiddleware(MAASTestCase):
         return HttpResponse(status=status)
 
     def test_update_metrics(self):
-        prometheus_metrics = create_metrics(METRICS_DEFINITIONS)
+        prometheus_metrics = create_metrics(
+            METRICS_DEFINITIONS,
+            registry=prometheus_client.CollectorRegistry())
         middleware = PrometheusRequestMetricsMiddleware(
             self.get_response, prometheus_metrics=prometheus_metrics)
         middleware(factory.make_fake_request("/MAAS/accounts/login/"))

@@ -1,5 +1,7 @@
+import atexit
 from collections import namedtuple
 from functools import wraps
+import os
 from time import time
 
 from provisioningserver.prometheus import (
@@ -15,9 +17,25 @@ MetricDefinition = namedtuple(
 class PrometheusMetrics:
     """Wrapper for accessing and interacting with Prometheus metrics."""
 
-    def __init__(self, registry=None, metrics=None):
-        self.registry = registry
-        self._metrics = metrics or {}
+    def __init__(self, definitions=None, registry=None):
+        if definitions is None:
+            self.registry = None
+            self._metrics = {}
+        else:
+            self.registry = registry or prom_cli.REGISTRY
+            self._metrics = self._create_metrics(definitions)
+        if self.registry is prom_cli.REGISTRY:
+            atexit.register(self._cleanup_metric_files)
+
+    def _create_metrics(self, definitions):
+        metrics = {}
+        for definition in definitions:
+            labels = definition.labels
+            cls = getattr(prom_cli, definition.type)
+            metrics[definition.name] = cls(
+                definition.name, definition.description, labels,
+                registry=self.registry)
+        return metrics
 
     @property
     def available_metrics(self):
@@ -41,7 +59,15 @@ class PrometheusMetrics:
     def generate_latest(self):
         """Generate a bytestring with metric values."""
         if self.registry is not None:
-            return prom_cli.generate_latest(self.registry)
+            registry = self.registry
+            if registry is prom_cli.REGISTRY:
+                # when using the global registry, setup up multiprocess
+                # support. In this case, a separate registry needs to be used
+                # for generating the samples.
+                registry = prom_cli.CollectorRegistry()
+                from prometheus_client import multiprocess
+                multiprocess.MultiProcessCollector(registry)
+            return prom_cli.generate_latest(registry)
 
     def record_call_latency(
             self, metric_name, get_labels=lambda *args, **kwargs: {}):
@@ -73,15 +99,15 @@ class PrometheusMetrics:
 
         return wrap_func
 
+    def _cleanup_metric_files(self):
+        """Remove prometheus metrics files for the process itself."""
+        if 'prometheus_multiproc_dir' not in os.environ:
+            return
+        from prometheus_client import multiprocess
+        multiprocess.mark_process_dead(os.getpid())
 
-def create_metrics(metric_definitions):
+
+def create_metrics(metric_definitions, registry=None):
     """Return a PrometheusMetrics from the specified definitions."""
-    if not PROMETHEUS_SUPPORTED:
-        return PrometheusMetrics(registry=None, metrics=None)
-    registry = prom_cli.CollectorRegistry()
-    metrics = {}
-    for metric in metric_definitions:
-        cls = getattr(prom_cli, metric.type)
-        metrics[metric.name] = cls(
-            metric.name, metric.description, metric.labels, registry=registry)
-    return PrometheusMetrics(registry=registry, metrics=metrics)
+    definitions = metric_definitions if PROMETHEUS_SUPPORTED else None
+    return PrometheusMetrics(definitions=definitions, registry=registry)

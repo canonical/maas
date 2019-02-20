@@ -16,6 +16,7 @@ RestartSec=10s
 KillMode=mixed
 Environment="DJANGO_SETTINGS_MODULE=maasserver.djangosettings.settings"
 Environment="LOGFILE=/var/log/maas/regiond.log"
+Environment="prometheus_multiproc_dir=/var/lib/maas/prometheus"
 # Logs go to the journal; read them with:
 #   journalctl -u maas-regiond
 # Logs also go to $LOGFILE for backward compatibility. The journal
