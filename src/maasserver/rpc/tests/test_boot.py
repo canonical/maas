@@ -1,4 +1,4 @@
-# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for boot configuration retrieval from RPC."""
@@ -185,7 +185,7 @@ class TestGetConfig(MAASServerTestCase):
         mac = node.get_boot_interface().mac_address
         config = get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac,
-            query_count=8)
+            query_count=9)
         self.assertEquals({
             "system_id": node.system_id,
             "arch": node.split_arch()[0],
@@ -221,7 +221,7 @@ class TestGetConfig(MAASServerTestCase):
         mac = node.get_boot_interface().mac_address
         config = get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac,
-            query_count=8)
+            query_count=9)
         self.assertEquals({
             "system_id": node.system_id,
             "arch": node.split_arch()[0],
@@ -241,6 +241,23 @@ class TestGetConfig(MAASServerTestCase):
             "extra_opts": '',
             "http_boot": True,
         }, config)
+
+    def test__purpose_local_to_xinstall_for_ephemeral_deployment(self):
+        # A diskless node is one that it is ephemerally deployed.
+        rack_controller = factory.make_RackController()
+        local_ip = factory.make_ip_address()
+        remote_ip = factory.make_ip_address()
+        node = self.make_node_with_extra(
+            status=NODE_STATUS.DEPLOYED, netboot=False, with_boot_disk=False)
+        node.boot_cluster_ip = local_ip
+        node.osystem = factory.make_name('osystem')
+        node.distro_series = factory.make_name('distro_series')
+        node.save()
+        mac = node.get_boot_interface().mac_address
+        config = get_config(
+            rack_controller.system_id, local_ip, remote_ip, mac=mac,
+            query_count=22)
+        self.assertEquals(config['purpose'], 'xinstall')
 
     def test__returns_kparams_for_known_node(self):
         rack_controller = factory.make_RackController()

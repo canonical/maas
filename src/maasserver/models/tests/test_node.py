@@ -1014,6 +1014,18 @@ class TestNode(MAASServerTestCase):
         rack = factory.make_RackController()
         self.assertFalse(rack.is_device)
 
+    def test_is_diskless(self):
+        node = factory.make_Node(with_boot_disk=False)
+        self.assertTrue(node.is_diskless)
+
+    def test_is_not_diskless(self):
+        node = factory.make_Node()
+        self.assertFalse(node.is_diskless)
+
+    def test_ephemeral_deployment_checks_diskless(self):
+        node = factory.make_Node()
+        self.assertFalse(node.ephemeral_deployment)
+
     def test_system_id_is_a_valid_znum(self):
         node = factory.make_Node()
         self.assertThat(
@@ -4289,6 +4301,11 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node()
         self.assertEqual([], node.storage_layout_issues())
 
+    def test_storage_layout_issues_is_valid_when_ephemeral_deployment(self):
+        # A diskless node is one that it is ephemerally deployed.
+        node = factory.make_Node(with_boot_disk=False)
+        self.assertEqual([], node.storage_layout_issues())
+
     def test_reset_status_expires(self):
         status = random.choice(MONITORED_STATUSES)
         node = factory.make_Node(status=status)
@@ -4321,6 +4338,7 @@ class TestNode(MAASServerTestCase):
 
     def test_storage_layout_issues_returns_invalid_when_no_disk(self):
         node = factory.make_Node(with_boot_disk=False)
+        node.osystem = 'rhel'
         self.assertEqual(
             ["Specify a storage device to be able to deploy this node.",
              "Mount the root '/' filesystem to be able to deploy this node."],

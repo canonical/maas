@@ -1,4 +1,4 @@
-# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Low-level composition code for preseeds."""
@@ -511,7 +511,8 @@ def _compose_cloud_init_preseed(
         NODE_STATUS.COMMISSIONING,
         NODE_STATUS.TESTING,
         } and node.enable_ssh)
-    if node.status != NODE_STATUS.ENTERING_RESCUE_MODE and not enable_ssh:
+    if (node.status != NODE_STATUS.ENTERING_RESCUE_MODE and
+            not enable_ssh and not node.ephemeral_deployment):
         testing_reboot = False
         if node.status == NODE_STATUS.TESTING:
             script_set = node.current_testing_script_set
