@@ -1,4 +1,4 @@
-# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the machines API."""
@@ -74,6 +74,8 @@ from maastesting.matchers import (
 )
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import always_succeed_with
+from metadataserver.enum import SCRIPT_TYPE
+from metadataserver.models import ScriptSet
 from provisioningserver.rpc import cluster as cluster_module
 from provisioningserver.utils.enum import map_enum
 from testtools.matchers import (
@@ -268,6 +270,7 @@ class TestMachinesAPI(APITestCase.ForUser):
 
     def test_POST_handles_error_when_unable_to_access_bmc(self):
         # Regression test for LP1600328
+        self.patch(Machine, "_start").return_value = None
         make_usable_osystem(self)
         self.become_admin()
         power_address = factory.make_ip_address()
@@ -288,6 +291,32 @@ class TestMachinesAPI(APITestCase.ForUser):
         self.assertEqual(
             power_address, machine.power_parameters['power_address'])
         self.assertEqual(power_id, machine.power_parameters['power_id'])
+
+    def test_POST_starts_commissioning_with_selected_test_scripts(self):
+        # Regression test for LP1707562
+        self.become_admin()
+        self.patch(Machine, "_start").return_value = None
+        make_usable_osystem(self)
+        power_address = factory.make_ip_address()
+        power_id = factory.make_name('power_id')
+        test_script = factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
+        response = self.client.post(
+            reverse('machines_handler'),
+            {
+                'architecture': make_usable_architecture(self),
+                'mac_addresses': ['aa:bb:cc:dd:ee:ff'],
+                'power_type': 'virsh',
+                'power_parameters_power_address': power_address,
+                'power_parameters_power_id': power_id,
+                'testing_scripts': test_script.name,
+            })
+        parsed_result = json.loads(response.content.decode())
+        self.assertEquals(NODE_STATUS.COMMISSIONING, parsed_result['status'])
+        script_set = ScriptSet.objects.get(
+            id=parsed_result['current_testing_result_id'])
+        self.assertItemsEqual(
+            [test_script.name],
+            [script_result.name for script_result in script_set])
 
     def test_GET_lists_machines(self):
         # The api allows for fetching the list of Machines.

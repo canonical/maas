@@ -1,4 +1,4 @@
-# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 __all__ = [
@@ -1755,6 +1755,34 @@ class MachinesHandler(NodesHandler, PowersMixin):
         COMMISSIONING. Machines will wait for COMMISSIONING results and not
         time out.
 
+        @param (int) "enable_ssh" [required=false]  Whether to enable SSH for
+        the commissioning environment using the user's SSH key(s). '1' == True,
+        '0' == False.
+
+        @param (int) "skip_bmc_config" [required=false] Whether to skip
+        re-configuration of the BMC for IPMI based machines. '1' == True, '0'
+        == False.
+
+        @param (int) "skip_networking" [required=false] Whether to skip
+        re-configuring the networking on the machine after the commissioning
+        has completed. '1' == True, '0' == False.
+
+        @param (int) "skip_storage" [required=false] Whether to skip
+        re-configuring the storage on the machine after the commissioning has
+        completed. '1' == True, '0' == False.
+
+        @param (string) "commissioning_scripts" [required=false] A comma
+        seperated list of commissioning script names and tags to be run. By
+        default all custom commissioning scripts are run. Built-in
+        commissioning scripts always run. Selecting 'update_firmware' or
+        'configure_hba' will run firmware updates or configure HBA's on
+        matching machines.
+
+        @param (string) "testing_scripts" [required=false] A comma seperated
+        list of testing script names and tags to be run. By default all tests
+        tagged 'commissioning' will be run. Set to 'none' to disable running
+        tests.
+
         @success (http-status-code) "200" 200
         @success (json) "success-json" A JSON object containing the machine
         information.
@@ -1763,10 +1791,12 @@ class MachinesHandler(NodesHandler, PowersMixin):
         """
         machine = create_machine(request)
         if request.user.is_superuser:
-            d = machine.start_commissioning(request.user)
+            form = CommissionForm(
+                instance=machine, user=request.user, data=request.data)
             # Silently ignore errors to prevent 500 errors. The commissioning
             # callbacks have their own logging. This fixes LP1600328.
-            d.addErrback(lambda _: None)
+            if form.is_valid():
+                machine = form.save()
         return machine
 
     def _check_system_ids_exist(self, system_ids):
