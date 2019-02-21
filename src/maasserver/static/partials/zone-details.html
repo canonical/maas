@@ -70,25 +70,19 @@
             <div class="row form p-form--stacked" data-ng-if="editSummary != true">
                 <div class="col-6">
                     <div class="p-form__group">
-                        <div class="p-form__label">
-                            <p><strong>Name</strong></p>
-                        </div>
+                        <p class="p-form__label is-disabled">Name</p>
                         <div class="p-form__control">
                             <p>{$ zone.name $}</p>
                         </div>
                     </div>
                     <div class="p-form__group">
-                        <div class="p-form__label">
-                            <p><strong>Description</strong></p>
-                        </div>
+                        <p class="p-form__label is-disabled">Description</p>
                         <div class="p-form__control">
                             <p>{$ zone.description $}</p>
                         </div>
                     </div>
                     <div class="p-form__group">
-                        <div class="p-form__label">
-                            <p><strong>Machines</strong></p>
-                        </div>
+                        <p class="p-form__label is-disabled">Machines</p>
                         <div class="p-form__control">
                             <p>{$ zone.machines_count $}</p>
                         </div>
@@ -103,12 +97,12 @@
                                 label-width="2" input-width="4" blur-on-enter="true"></maas-obj-field>
                             <maas-obj-field type="textarea" key="description" label="Description" placeholder="Zone description"
                                 label-width="2" input-width="4" blur-on-enter="true"></maas-obj-field>
-                            <dl>
-                                <dt class="col-2">Machines</dt>
-                                <dd class="col-4">
+                            <div class="p-form__group">
+                                <p class="p-form__label is-disabled">Machines</p>
+                                <div class="p-form__control">
                                     <a href="#/machines&query=zone:({$ zone.name $})">{$ zone.machines_count $}</a>
-                                </dd>
-                            </dl>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="row">

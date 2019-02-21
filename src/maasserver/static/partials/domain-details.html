@@ -133,16 +133,16 @@
     <div class="form p-form--stacked row" data-ng-if="editSummary != true">
         <div class="col-6">
             <div class="p-form__group">
-                <div class="p-form__label">
-                    <p><strong>Name</strong></p>
+                <div class="p-form__label is-disabled">
+                    <p>Name</p>
                 </div>
                 <div class="p-form__control">
                     <p>{$ domain.name $}</p>
                 </div>
             </div>
             <div class="p-form__group">
-                <div class="p-form__label">
-                    <p><strong>TTL</strong></p>
+                <div class="p-form__label is-disabled">
+                    <p>TTL</p>
                 </div>
                 <div class="p-form__control">
                     <p data-ng-if="domain.ttl">{$ domain.ttl $}</p>
@@ -152,8 +152,8 @@
         </div>
         <div class="col-6">
             <div class="p-form__group">
-                <div class="p-form__label">
-                    <p><strong>Authoritative</strong></p>
+                <div class="p-form__label is-disabled">
+                    <p>Authoritative</p>
                 </div>
                 <div class="p-form__control">
                     <span data-ng-if="domain.authoritative == false">No</span>

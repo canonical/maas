@@ -60,7 +60,6 @@ describe("ZonesManager", function() {
             for(i=0;i<3;i++) {
                 ZonesManager._items.push(makeZone());
             }
-
             expect(ZonesManager.getDefaultZone({
                 zone: ZonesManager._items[2].id
             })).toBe(

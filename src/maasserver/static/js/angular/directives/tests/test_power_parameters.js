@@ -195,9 +195,9 @@ describe("maasPowerParameters", function() {
                 var directive = compileDirective("powerTypes", "value");
                 var select = directive.find("select");
                 expect(select.attr("data-ng-model")).toBe("ngModel.type");
-                expect(select.attr("data-ng-options")).toBe("type as " +
-                    "type.description for type " +
-                    "in maasPowerParameters track by type.name");
+                expect(select.attr("data-ng-options")).toBe(
+                    `type as type.description
+                        for type in maasPowerParameters track by type.name`);
                 expect(select.attr("data-ng-disabled")).toBe(
                     "ngDisabled || ngModel.in_pod");
             });

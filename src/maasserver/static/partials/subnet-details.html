@@ -84,24 +84,24 @@
         <div class="form p-form--stacked row" data-ng-if="editSummary != true">
             <div class="col-6">
                 <div class="p-form__group">
-                    <div class="p-form__label col-2 tablet-col-2">
-                        <p><strong>Name</strong></p>
+                    <div class="p-form__label is-disabled col-2 tablet-col-2">
+                        <p>Name</p>
                     </div>
                     <div class="p-form__control col-4 tablet-col-3">
                         <p>{$ subnet.name $}</p>
                     </div>
                 </div>
                 <div class="p-form__group">
-                    <div class="p-form__label col-2 tablet-col-2">
-                        <p><strong>CIDR</strong></p>
+                    <div class="p-form__label is-disabled col-2 tablet-col-2">
+                        <p>CIDR</p>
                     </div>
                     <div class="p-form__control col-4 tablet-col-3">
                         <p>{$ subnet.cidr $}</span>
                     </div>
                 </div>
                 <div class="p-form__group">
-                    <div class="p-form__label col-2 tablet-col-2">
-                        <p><strong>Gateway IP</strong></p>
+                    <div class="p-form__label is-disabled col-2 tablet-col-2">
+                        <p>Gateway IP</p>
                     </div>
                     <div class="p-form__control col-4 tablet-col-3">
                         <p data-ng-if="subnet.gateway_ip">{$ subnet.gateway_ip $}</p>
@@ -109,8 +109,8 @@
                     </div>
                 </div>
                 <div class="p-form__group">
-                    <div class="p-form__label col-2 tablet-col-2">
-                        <p><strong>DNS</strong></p>
+                    <div class="p-form__label is-disabled col-2 tablet-col-2">
+                        <p>DNS</p>
                     </div>
                     <div class="p-form__control col-4 tablet-col-3">
                         <p data-ng-if="subnet.dns_servers">{$ subnet.dns_servers $}</p>
@@ -118,8 +118,8 @@
                     </div>
                 </div>
                 <div class="p-form__group">
-                    <div class="p-form__label col-2 tablet-col-2">
-                        <p><strong>Description</strong></p>
+                    <div class="p-form__label is-disabled col-2 tablet-col-2">
+                        <p>Description</p>
                     </div>
                     <div class="p-form__control col-4 tablet-col-3">
                         <p data-ng-if="subnet.description">{$ subnet.description $}</p>
@@ -129,9 +129,9 @@
             </div>
             <div class="col-6">
                 <div class="p-form__group">
-                    <div class="p-form__label col-2 tablet-col-2">
+                    <div class="p-form__label is-disabled col-2 tablet-col-2">
                         <p>
-                            <strong>Managed allocation</strong>
+                            Managed allocation
                             <span data-ng-if="subnet.managed == false" class="p-tooltip p-tooltip--btm-right">
                                 <i class="p-icon--information">Help:</i>
                                 <span class="p-tooltip__message" role="tooltip">MAAS allocates IP addresses only from&#xa;the reserved ranges on this subnet.</span>
@@ -149,9 +149,9 @@
                     </div>
                 </div>
                 <div class="p-form__group">
-                    <div class="p-form__label col-2 tablet-col-2">
+                    <div class="p-form__label is-disabled col-2 tablet-col-2">
                         <p>
-                            <strong>Active discovery</strong>
+                            Active discovery
                             <span data-ng-if="subnet.managed == true" class="p-tooltip p-tooltip--btm-right">
                                 <i class="p-icon--information u-no-margin--right">Help:</i>
                                 <span class="p-tooltip__message" role="tooltip">When enabled, MAAS will scan this subnet {$ active_discovery_interval | lowercase $}&#xa;to discover hosts that have not been discovered passively.</span>
@@ -164,9 +164,9 @@
                     </div>
                 </div>
                 <div class="p-form__group">
-                    <div class="p-form__label col-2 tablet-col-2">
+                    <div class="p-form__label is-disabled col-2 tablet-col-2">
                         <p>
-                            <strong>Proxy access</strong>
+                            Proxy access
                             <span data-ng-if="subnet.allow_proxy == false" class="p-tooltip p-tooltip--btm-right">
                                 <i class="p-icon--information">Help:</i>
                                 <span class="p-tooltip__message" role="tooltip">MAAS will not allow clients from this&#xa;subnet to access the MAAS proxy.</span>
@@ -184,9 +184,9 @@
                     </div>
                 </div>
                 <div class="p-form__group">
-                    <div class="p-form__label col-2 tablet-col-2">
+                    <div class="p-form__label is-disabled col-2 tablet-col-2">
                         <p>
-                            <strong>Allow DNS resolution</strong>
+                            Allow DNS resolution
                             <span data-ng-if="subnet.allow_dns == false" class="p-tooltip p-tooltip--btm-right">
                                 <i class="p-icon--information">Help:</i>
                                 <span class="p-tooltip__message" role="tooltip">MAAS will not allow clients from this&#xa;subnet to use MAAS for DNS resolution.</span>
@@ -204,34 +204,36 @@
                     </div>
                 </div>
                 <div class="p-form__group">
-                    <div class="p-form__label col-2 tablet-col-2">
-                        <p><strong>Fabric</strong></p>
+                    <div class="p-form__label is-disabled col-2 tablet-col-2">
+                        <p>Fabric</p>
                     </div>
                     <div class="p-form__control col-4 tablet-col-3">
                         <p>{$ subnet.fabric_name $}</p>
                     </div>
                 </div>
                 <div class="p-form__group">
-                    <div class="p-form__label col-2 tablet-col-2">
-                        <p><strong>VLAN</strong></p>
+                    <div class="p-form__label is-disabled col-2 tablet-col-2">
+                        <p>VLAN</p>
                     </div>
                     <div class="p-form__control col-4 tablet-col-3">
                         <p>{$ subnet.vlan_name $}</p>
                     </div>
                 </div>
                 <div class="p-form__group">
-                    <div class="p-form__label col-2 tablet-col-2">
-                        <p><strong>Space</strong></p>
+                    <div class="p-form__label is-disabled col-2 tablet-col-2">
+                        <p>Space</p>
                     </div>
                     <div class="p-form__control col-4 tablet-col-3">
-                        <a data-ng-if="space !== null" href="#/space/{$ space.id $}">{$ space.name $}</a>
-                        <span data-ng-if="space === null">
-                            (undefined)
-                            <span class="p-tooltip p-tooltip--top-center">
-                                <i class="p-icon--warning">Warning:</i>
-                                <span class="p-tooltip__message" role="tooltip">This subnet does not belong to a space.&#xa;MAAS integrations require a space in order to determine the purpose of a network.</span>
+                        <p>
+                            <a data-ng-if="space !== null" href="#/space/{$ space.id $}">{$ space.name $}</a>
+                            <span data-ng-if="space === null">
+                                (undefined)
+                                <span class="p-tooltip p-tooltip--top-center">
+                                    <i class="p-icon--warning">Warning:</i>
+                                    <span class="p-tooltip__message" role="tooltip">This subnet does not belong to a space.&#xa;MAAS integrations require a space in order to determine the purpose of a network.</span>
+                                </span>
                             </span>
-                        </span>
+                        </p>
                     </div>
                 </div>
             </div>
@@ -286,18 +288,20 @@
                             options="v.id as getVLANName(v) for v in vlans | filterByFabric:subnet.$maasForm.getValue('fabric')"
                             label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
                         <div class="p-form__group">
-                            <div class="p-form__label col-2 tablet-col-2">
+                            <div class="p-form__label is-disabled col-2 tablet-col-2">
                                 <p>Space</p>
                             </div>
                             <div class="p-form__control col-4 tablet-col-3">
-                                <a data-ng-if="space !== null" href="#/space/{$ space.id $}">{$ space.name $}</a>
-                                <span data-ng-if="space === null">
-                                    (undefined)
-                                    <span class="p-tooltip p-tooltip--top-center">
-                                        <i class="p-icon--warning">Warning:</i>
-                                        <span class="p-tooltip__message" role="tooltip">This subnet does not belong to a space.&#xa;MAAS integrations require a space in order to determine the purpose of a network.</span>
+                                <p>
+                                    <a data-ng-if="space !== null" href="#/space/{$ space.id $}">{$ space.name $}</a>
+                                    <span data-ng-if="space === null">
+                                        (undefined)
+                                        <span class="p-tooltip p-tooltip--top-center">
+                                            <i class="p-icon--warning">Warning:</i>
+                                            <span class="p-tooltip__message" role="tooltip">This subnet does not belong to a space.&#xa;MAAS integrations require a space in order to determine the purpose of a network.</span>
+                                        </span>
                                     </span>
-                                </span>
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -477,7 +481,7 @@
             <div class="col-6">
                 <div class="row">
                     <div class="col-2">
-                        <p><strong>Subnet addresses</strong></p>
+                        <p class="p-form__label is-disabled">Subnet addresses</p>
                     </div>
                     <div class="col-4">
                         <p>{$ subnet.statistics.total_addresses $}</p>
@@ -486,7 +490,7 @@
 
                 <div class="row">
                     <div class="col-2">
-                        <p><strong>Availability</strong></p>
+                        <p class="p-form__label is-disabled">Availability</p>
                     </div>
                     <div class="col-4">
                         <p>{$ subnet.statistics.num_available $} ({$ subnet.statistics.available_string $})</p>
@@ -499,7 +503,7 @@
                     <!-- <dt class="u-hide ng-hide">Reserved</dt>
                         <dd class="u-hide ng-hide">10%</dd> -->
                     <div class="col-2">
-                        <p><strong>Used</strong></p>
+                        <p class="p-form__label is-disabled">Used</p>
                     </div>
                     <div class="col-4">
                         <p>{$ subnet.statistics.usage_string $}</p>

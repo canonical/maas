@@ -240,40 +240,40 @@
         <div class="p-form p-form--stacked row" data-ng-if="!vlanDetails.editSummary">
             <div class="col-6">
                 <div class="p-form__group">
-                    <div class="p-form__label col-2 mobile-col-2 tablet-col-2">
-                        <p><strong>VID</strong></p>
+                    <div class="p-form__label is-disabled col-2 mobile-col-2 tablet-col-2">
+                        <p>VID</p>
                     </div>
                     <div class="p-form__control col-3 mobile-col-2 tablet-col-3">
                         <p>{$ vlanDetails.vlan.vid $}</p>
                     </div>
                 </div>
                 <div class="p-form__group">
-                    <div class="p-form__label col-2 mobile-col-2 tablet-col-2">
-                        <p><strong>Name</strong></p>
+                    <div class="p-form__label is-disabled col-2 mobile-col-2 tablet-col-2">
+                        <p>Name</p>
                     </div>
                     <div class="p-form__control col-3 mobile-col-2 tablet-col-3">
                         <p>{$ vlanDetails.vlan.name $}</p>
                     </div>
                 </div>
                 <div class="p-form__group">
-                    <div class="p-form__label col-2 mobile-col-2 tablet-col-2">
-                        <p><strong>MTU</strong></p>
+                    <div class="p-form__label is-disabled col-2 mobile-col-2 tablet-col-2">
+                        <p>MTU</p>
                     </div>
                     <div class="p-form__control col-3 mobile-col-2 tablet-col-3">
                         <p>{$ vlanDetails.vlan.mtu $}</p>
                     </div>
                 </div>
                 <div class="p-form__group">
-                    <div class="p-form__label col-2 mobile-col-2 tablet-col-2">
-                        <p><strong>Space</strong></p>
+                    <div class="p-form__label is-disabled col-2 mobile-col-2 tablet-col-2">
+                        <p>Space</p>
                     </div>
                     <div class="p-form__control col-3 mobile-col-2 tablet-col-3">
                         <p>{$ vlanDetails.getSpaceName() $}</p>
                     </div>
                 </div>
                 <div class="p-form__group">
-                    <div class="p-form__label col-2 mobile-col-2 tablet-col-2">
-                        <p><strong>Description</strong></p>
+                    <div class="p-form__label is-disabled col-2 mobile-col-2 tablet-col-2">
+                        <p>Description</p>
                     </div>
                     <div class="p-form__control col-3 mobile-col-2 tablet-col-3">
                         <p>{$ vlanDetails.vlan.description $}</p>
@@ -282,16 +282,16 @@
             </div>
             <div class="col-6">
                 <div class="p-form__group">
-                    <div class="p-form__label col-2 mobile-col-2 tablet-col-2">
-                        <p><strong>Fabric</strong></p>
+                    <div class="p-form__label is-disabled col-2 mobile-col-2 tablet-col-2">
+                        <p>Fabric</p>
                     </div>
                     <div class="p-form__control col-3 mobile-col-2 tablet-col-3">
                         <p><a href="#/fabric/{$ vlanDetails.fabric.id $}">{$ vlanDetails.fabric.name $}</a></p>
                     </div>
                 </div>
                 <div class="p-form__group" data-ng-if="vlanDetails.relatedControllers">
-                    <div class="p-form__label col-2 mobile-col-2 tablet-col-2">
-                        <p><strong>Rack controllers</strong>
+                    <div class="p-form__label is-disabled col-2 mobile-col-2 tablet-col-2">
+                        <p>Rack controllers
                         <span class="p-tooltip p-tooltip--top-center">
                             <i class="p-icon--information">Help:</i>
                             <span class="p-tooltip__message" role="tooltip">A rack controller controls hosts and images and runs network services&#xa;like DHCP for connected VLANs.</span>
@@ -299,7 +299,7 @@
                     </div>
                     <div class="p-form__control col-3 mobile-col-2 tablet-col-3">
                         <span data-ng-repeat="rack in vlanDetails.relatedControllers">
-                            <a href="#/controller/{$ rack.system_id $}">{$ rack.hostname $}</a>,
+                            <a href="#/controller/{$ rack.system_id $}">{$ rack.hostname $}</a><span ng-show="!$last">,</span>
                         </span>
                     </div>
                 </div>
@@ -326,17 +326,19 @@
                         <maas-obj-field type="options" key="fabric" label="Fabric"
                                         options="fabric.id as fabric.name for fabric in vlanDetails.fabrics" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
                         <div class="p-form__group" data-ng-if="vlanDetails.relatedControllers">
-                            <div class="p-form__label col-2 mobile-col-2 tablet-col-2">
-                                <p><strong>Rack controllers</strong>
+                            <div class="p-form__label is-disabled col-2 mobile-col-2 tablet-col-2">
+                                <p>Rack controllers
                                 <span class="p-tooltip p-tooltip--top-center">
                                     <i class="p-icon--information">Help:</i>
                                     <span class="p-tooltip__message" role="tooltip">A rack controller controls hosts and images and runs network services&#xa;like DHCP for connected VLANs.</span>
                                 </span></p>
                             </div>
                             <div class="p-form__control col-3 mobile-col-2 tablet-col-3">
-                                <span data-ng-repeat="rack in vlanDetails.relatedControllers">
-                                    <a href="#/controller/{$ rack.system_id $}">{$ rack.hostname $}</a>,
-                                </span>
+                                <p>
+                                    <span data-ng-repeat="rack in vlanDetails.relatedControllers">
+                                        <a href="#/controller/{$ rack.system_id $}">{$ rack.hostname $}</a><span ng-show="!$last">,</span>
+                                    </span>
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -365,8 +367,8 @@
         <div class="p-form p-form--stacked row">
             <div class="col-8">
                 <div class="p-form__group">
-                    <div class="p-form__label">
-                        <p><strong>Status</strong></p>
+                    <div class="p-form__label is-disabled">
+                        <p>Status</p>
                     </div>
                     <div class="p-form__control">
                         <p>{$ vlanDetails.getDHCPStatus() $}</p>
@@ -374,8 +376,8 @@
                 </div>
 
                 <div class="p-form__group" data-ng-if="vlanDetails.vlan.external_dhcp">
-                    <div class="p-form__label">
-                        <p><strong>External DHCP</strong></p>
+                    <div class="p-form__label is-disabled">
+                        <p>External DHCP</p>
                     </div>
                     <div class="p-form__control">
                         <p>
@@ -388,9 +390,9 @@
                     </div>
                 </div>
                 <div class="p-form__group" data-ng-if="vlanDetails.primaryRack">
-                    <div class="p-form__label">
+                    <div class="p-form__label is-disabled">
                         <p>
-                            <strong>Primary controller</strong>
+                            Primary controller
                             <span class="p-tooltip p-tooltip--top-center">
                                 <i class="p-icon--help">Help:</i>
                                 <span class="p-tooltip__message" role="tooltip">The rack controller where DHCP service runs on.</span>
@@ -402,9 +404,9 @@
                     </div>
                 </div>
                 <div class="p-form__group" data-ng-if="vlanDetails.secondaryRack">
-                    <div class="p-form__label">
+                    <div class="p-form__label is-disabled">
                         <p>
-                            <strong>Secondary controller</strong>
+                            Secondary controller
                             <span class="p-tooltip p-tooltip--top-center">
                                 <i class="p-icon--help">Help:</i>
                                 <span class="p-tooltip__message" role="tooltip">The rack controller that will take over DHCP services if the primary fails.</span>

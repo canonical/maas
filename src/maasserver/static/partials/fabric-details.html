@@ -83,16 +83,16 @@
             <div class="form p-form--stacked row" data-ng-if="editSummary != true">
                 <div class="col-6">
                     <div class="p-form__group">
-                        <div class="p-form__label col-2 tablet-col-2">
-                            <div><strong>Name:</strong></div>
+                        <div class="p-form__label is-disabled col-2 tablet-col-2">
+                            <div>Name</div>
                         </div>
                         <div class="p-form__control col-3 tablet-col-4">
                             <p>{$ fabric.name $}</p>
                         </div>
                     </div>
                     <div class="p-form__group">
-                        <div class="p-form__label col-2 tablet-col-2">
-                            <div><strong>Description:</strong></div>
+                        <div class="p-form__label is-disabled col-2 tablet-col-2">
+                            <div>Description</div>
                         </div>
                         <div class="p-form__control col-4 tablet-col-4">
                             <p>{$ fabric.description $}</p>
@@ -101,12 +101,12 @@
                 </div>
                 <div class="col-6">
                     <div class="p-form__group">
-                        <div class="p-form__label col-2 tablet-col-2">
-                            <div><strong>Rack controllers</strong></div>
+                        <div class="p-form__label is-disabled col-2 tablet-col-2">
+                            <div>Rack controllers</div>
                         </div>
                         <div class="p-form__control col-3 tablet-col-4">
                             <span data-ng-repeat="rack in racks | orderBy:'hostname' track by rack.system_id">
-                                <a href="#/controller/{$ rack.system_id $}">{$ rack.hostname $}</a>,
+                                <a href="#/controller/{$ rack.system_id $}">{$ rack.hostname $}</a><span ng-show="!$last">,</span>
                             </span>
                         </div>
                     </div>
@@ -122,12 +122,12 @@
                         </div>
                         <div class="col-6">
                             <div class="p-form__group">
-                                <div class="p-form__label col-2 tablet-col-2">
+                                <div class="p-form__label is-disabled col-2 tablet-col-2">
                                     <p>Rack controllers</p>
                                 </div>
                                 <div class="p-form__control col-3 tablet-col-4">
                                     <span data-ng-repeat="rack in racks | orderBy:'hostname' track by rack.system_id">
-                                        <a href="#/controller/{$ rack.system_id $}">{$ rack.hostname $}</a>,
+                                        <a href="#/controller/{$ rack.system_id $}">{$ rack.hostname $}</a><span ng-show="!$last">,</span>
                                     </span>
                                 </div>
                             </div>

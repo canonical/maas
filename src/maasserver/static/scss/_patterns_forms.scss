@@ -14,6 +14,20 @@
       padding-right: $sp-x-large;
     }
   }
+
+  .p-form__label {
+    color: $color-dark;
+
+    &.is-disabled {
+      color: $color-mid-dark;
+    }
+  }
+
+  maas-obj-form[disabled="disabled"] {
+    .p-form__label {
+      color: $color-mid-dark;
+    }
+  }
 }
 
 @mixin maas-p-form-stacked {
