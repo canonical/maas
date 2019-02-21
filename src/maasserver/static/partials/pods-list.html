@@ -31,6 +31,14 @@
                     <span data-ng-pluralize count="action.progress.errors" when="{'one': 'pod', 'other': 'pods'}"></span>,
                     see listing for specific error for each pod.
                 </p>
+
+                <div data-ng-if="action.option.name === 'refresh'" class="col-8">
+                    <p class="u-remove-max-width u-align--left">
+                        Refreshing <span data-ng-if="selectedItems.length === 1">this pod</span><span data-ng-if="selectedItems.length > 1">these pods</span> will cause MAAS to recalculate usage metrics, update information about storage pools,
+                        and commission any machines present in <span data-ng-if="selectedItems.length === 1">the pod</span><span data-ng-if="selectedItems.length > 1">the pods</span> that are not yet known to MAAS.
+                    </p>
+                </div>
+
                 <button class="p-button--base is-inline" type="button" data-ng-click="actionCancel()">Cancel</button>
                 <button class="is-inline" data-ng-class="action.option.name === 'delete' ? 'p-button--negative' : 'p-button--positive'" data-ng-click="actionGo()" data-ng-if="!hasActionsFailed()">
                     <span data-ng-if="action.option.name === 'refresh'">Refresh {$ selectedItems.length $}
