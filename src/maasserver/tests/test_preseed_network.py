@@ -87,7 +87,21 @@ class AssertNetworkConfigMixin:
           metric: %(metric)s
         """)
 
-    def assertNetworkConfig(self, expected, output):
+    def stripMACs(self, config):
+        for entry in config:
+            if 'mac_address' in entry:
+                entry['mac_address'] = '*match*'
+        return config
+
+    def stripIPs(self, config):
+        for entry in config:
+            for subnet in entry.get('subnets', []):
+                if 'address' in subnet:
+                    subnet['address'] = '*match*'
+        return config
+
+    def assertNetworkConfig(
+            self, expected, output, strip_macs=False, strip_ips=False):
         output = output[0]
         output = yaml.safe_load(output)
         self.assertThat(output, ContainsDict({
@@ -101,6 +115,12 @@ class AssertNetworkConfigMixin:
         }))
         expected_network = yaml.safe_load(expected)
         output_network = output["network"]["config"]
+        if strip_macs:
+            expected_network = self.stripMACs(expected_network)
+            output_network = self.stripMACs(output_network)
+        if strip_ips:
+            expected_network = self.stripIPs(expected_network)
+            output_network = self.stripIPs(output_network)
         expected_equals = list(map(Equals, expected_network))
         self.assertThat(output_network, MatchesListwise(expected_equals))
 

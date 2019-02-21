@@ -130,6 +130,7 @@ from maasserver.node_status import (
 )
 from maasserver.permissions import NodePermission
 from maasserver.preseed import CURTIN_INSTALL_LOG
+from maasserver.preseed_network import compose_curtin_network_config
 from maasserver.preseed_storage import compose_curtin_storage_config
 from maasserver.rbac import (
     FakeRBACClient,
@@ -153,6 +154,7 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
+from maasserver.tests.test_preseed_network import AssertNetworkConfigMixin
 from maasserver.tests.test_preseed_storage import AssertStorageConfigMixin
 from maasserver.utils.orm import (
     get_one,
@@ -244,6 +246,7 @@ from testtools.matchers import (
 )
 from twisted.internet import defer
 from twisted.internet.error import ConnectionDone
+import yaml
 
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
@@ -11932,3 +11935,272 @@ class TestNodeStorageClone_SpecialFilesystems(
         self.assertStorageConfig(
             self.STORAGE_CONFIG, compose_curtin_storage_config(dest_node),
             strip_uuids=True)
+
+
+class TestNodeInterfaceClone__MappingBetweenNodes(MAASServerTestCase):
+
+    def test__match_by_name(self):
+        node1 = factory.make_Node()
+        node1_eth0 = factory.make_Interface(node=node1, name='eth0')
+        node1_ens3 = factory.make_Interface(node=node1, name='ens3')
+        node1_br0 = factory.make_Interface(node=node1, name='br0')
+        node2 = factory.make_Node()
+        node2_eth0 = factory.make_Interface(node=node2, name='eth0')
+        node2_ens3 = factory.make_Interface(node=node2, name='ens3')
+        node2_br0 = factory.make_Interface(node=node2, name='br0')
+        factory.make_Interface(node=node2, name='other')
+        self.assertEqual({
+            node2_eth0: node1_eth0,
+            node2_ens3: node1_ens3,
+            node2_br0: node1_br0,
+        }, node2._get_interface_mapping_between_nodes(node1))
+
+    def test__fail_when_source_no_match(self):
+        node1 = factory.make_Node()
+        factory.make_Interface(node=node1, name='eth0')
+        factory.make_Interface(node=node1, name='ens3')
+        factory.make_Interface(node=node1, name='br0')
+        factory.make_Interface(node=node1, name='other')
+        factory.make_Interface(node=node1, name='match')
+        node2 = factory.make_Node()
+        factory.make_Interface(node=node2, name='eth0')
+        factory.make_Interface(node=node2, name='ens3')
+        factory.make_Interface(node=node2, name='br0')
+        error = self.assertRaises(
+            ValidationError, node2._get_interface_mapping_between_nodes, node1)
+        self.assertEquals(
+            'destination node physical interfaces do not match the '
+            'source nodes physical interfaces: other, match', error.message)
+
+
+class TestNodeInterfaceClone__IPCloning(MAASServerTestCase):
+
+    def test__auto_ip_assigned_on_clone_when_source_has_ip(self):
+        node = factory.make_Node()
+        node_eth0 = factory.make_Interface(node=node, name='eth0')
+        node_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, interface=node_eth0)
+        self.assertIsNotNone(node_ip.ip)
+
+        dest_node = factory.make_Node()
+        dest_node_eth0 = factory.make_Interface(node=dest_node, name='eth0')
+        dest_node.set_networking_configuration_from_node(node)
+        dest_ip = dest_node_eth0.ip_addresses.first()
+        self.assertIsNotNone(dest_ip.ip)
+        self.assertNotEqual(node_ip.ip, dest_ip.ip)
+
+    def test__auto_ip_unassigned_on_clone_when_source_has_no_ip(self):
+        node = factory.make_Node()
+        node_eth0 = factory.make_Interface(node=node, name='eth0')
+        node_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, interface=node_eth0, ip=None)
+        self.assertIsNone(node_ip.ip)
+
+        dest_node = factory.make_Node()
+        dest_node_eth0 = factory.make_Interface(node=dest_node, name='eth0')
+        dest_node.set_networking_configuration_from_node(node)
+        dest_ip = dest_node_eth0.ip_addresses.first()
+        self.assertIsNone(dest_ip.ip)
+
+    def test__sticky_ip_assigned_on_clone(self):
+        node = factory.make_Node()
+        node_eth0 = factory.make_Interface(node=node, name='eth0')
+        node_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, interface=node_eth0)
+        self.assertIsNotNone(node_ip.ip)
+
+        dest_node = factory.make_Node()
+        dest_node_eth0 = factory.make_Interface(node=dest_node, name='eth0')
+        dest_node.set_networking_configuration_from_node(node)
+        dest_ip = dest_node_eth0.ip_addresses.first()
+        self.assertIsNotNone(dest_ip.ip)
+        self.assertNotEqual(node_ip.ip, dest_ip.ip)
+
+    def test__user_reserved_ip_assigned_on_clone(self):
+        user = factory.make_User()
+        subnet = factory.make_Subnet()
+        node = factory.make_Node()
+        node_eth0 = factory.make_Interface(node=node, name='eth0')
+        node_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED, interface=node_eth0,
+            user=user, subnet=subnet)
+        self.assertIsNotNone(node_ip.ip)
+
+        dest_node = factory.make_Node()
+        dest_node_eth0 = factory.make_Interface(node=dest_node, name='eth0')
+        dest_node.set_networking_configuration_from_node(node)
+        dest_ip = dest_node_eth0.ip_addresses.first()
+        self.assertIsNotNone(dest_ip.ip)
+        self.assertNotEqual(node_ip.ip, dest_ip.ip)
+        self.assertEqual(user, dest_ip.user)
+
+    def test__dhcp_assigned_on_clone(self):
+        node = factory.make_Node()
+        node_eth0 = factory.make_Interface(node=node, name='eth0')
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DHCP, interface=node_eth0, ip=None)
+
+        dest_node = factory.make_Node()
+        dest_node_eth0 = factory.make_Interface(node=dest_node, name='eth0')
+        dest_node.set_networking_configuration_from_node(node)
+        dest_ip = dest_node_eth0.ip_addresses.first()
+        self.assertEqual(IPADDRESS_TYPE.DHCP, dest_ip.alloc_type)
+
+    def test__discovered_not_assigned_on_clone(self):
+        node = factory.make_Node()
+        node_eth0 = factory.make_Interface(node=node, name='eth0')
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED, interface=node_eth0)
+
+        dest_node = factory.make_Node()
+        dest_node_eth0 = factory.make_Interface(node=dest_node, name='eth0')
+        dest_node.set_networking_configuration_from_node(node)
+        dest_ip = dest_node_eth0.ip_addresses.first()
+        self.assertIsNone(dest_ip)
+
+
+class TestNodeInterfaceClone_SimpleNetworkLayout(
+        MAASServerTestCase, AssertNetworkConfigMixin):
+
+    def create_staticipaddresses(self, node):
+        for iface in node.interface_set.filter(enabled=True):
+            factory.make_StaticIPAddress(
+                interface=iface,
+                subnet=iface.vlan.subnet_set.first())
+            iface.params = {
+                "mtu": random.randint(600, 1400),
+                "accept_ra": factory.pick_bool(),
+                "autoconf": factory.pick_bool(),
+            }
+            iface.save()
+        extra_interface = node.interface_set.all()[1]
+        sip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, ip="",
+            subnet=None, interface=extra_interface)
+        sip.subnet = None
+        sip.save()
+
+    def test__copy(self):
+        # Keep them in the same domain to make the checking of configuraton
+        # easy. A copy to destination doesn't move the destinations nodes
+        # domain.
+        domain = factory.make_Domain('bbb')
+        node = factory.make_Node_with_Interface_on_Subnet(
+            interface_count=2, ifname='eth0', extra_ifnames=['eth1'],
+            domain=domain)
+        self.create_staticipaddresses(node)
+        node_config = self.collect_interface_config(node)
+        node_config += self.collect_dns_config(node)
+
+        dest_node = factory.make_Node_with_Interface_on_Subnet(
+            interface_count=2, ifname='eth0', extra_ifnames=['eth1'],
+            domain=domain)
+        dest_node.set_networking_configuration_from_node(node)
+        dest_config = self.collect_interface_config(dest_node)
+        dest_config += self.collect_dns_config(dest_node)
+
+        node_composed_config = compose_curtin_network_config(node)
+        dest_composed_config = compose_curtin_network_config(dest_node)
+        self.assertNetworkConfig(
+            node_config, dest_composed_config, strip_macs=True, strip_ips=True)
+        self.assertNetworkConfig(
+            dest_config, node_composed_config, strip_macs=True, strip_ips=True)
+
+
+class TestNodeInterfaceClone_VLANOnBondNetworkLayout(
+        MAASServerTestCase, AssertNetworkConfigMixin):
+
+    def test__copy(self):
+        domain = factory.make_Domain('bbb')
+        node = factory.make_Node_with_Interface_on_Subnet(
+            interface_count=2, ifname='eth0', extra_ifnames=['eth1'],
+            domain=domain)
+        phys_ifaces = list(node.interface_set.all())
+        phys_vlan = node.interface_set.first().vlan
+        bond_iface = factory.make_Interface(iftype=INTERFACE_TYPE.BOND,
+                                            node=node, vlan=phys_vlan,
+                                            parents=phys_ifaces)
+        bond_iface.params = {
+            "bond_mode": "balance-rr",
+        }
+        bond_iface.save()
+        vlan_iface = factory.make_Interface(
+            iftype=INTERFACE_TYPE.VLAN, node=node, parents=[bond_iface])
+        subnet = factory.make_Subnet(vlan=vlan_iface.vlan)
+        factory.make_StaticIPAddress(interface=vlan_iface, subnet=subnet)
+        node_config = self.collect_interface_config(node, filter="physical")
+        node_config += self.collect_interface_config(node, filter="bond")
+        node_config += self.collect_interface_config(node, filter="vlan")
+        node_config += self.collect_dns_config(node)
+
+        dest_node = factory.make_Node_with_Interface_on_Subnet(
+            interface_count=2, ifname='eth0', extra_ifnames=['eth1'],
+            domain=domain)
+        dest_node.set_networking_configuration_from_node(node)
+        dest_config = self.collect_interface_config(
+            dest_node, filter="physical")
+        dest_config += self.collect_interface_config(dest_node, filter="bond")
+        dest_config += self.collect_interface_config(dest_node, filter="vlan")
+        dest_config += self.collect_dns_config(dest_node)
+
+        node_composed_config = compose_curtin_network_config(node)
+        dest_composed_config = compose_curtin_network_config(dest_node)
+        self.assertNetworkConfig(
+            node_config, dest_composed_config, strip_macs=True, strip_ips=True)
+        self.assertNetworkConfig(
+            dest_config, node_composed_config, strip_macs=True, strip_ips=True)
+
+        # Bond configuration should have different MAC addresses.
+        node_bond = yaml.safe_load(
+            self.collect_interface_config(node, filter="bond"))
+        dest_bond = yaml.safe_load(
+            self.collect_interface_config(dest_node, filter="bond"))
+        self.assertNotEqual(
+            node_bond[0]['mac_address'], dest_bond[0]['mac_address'])
+
+
+class TestNodeInterfaceClone_BridgeNetworkLayout(
+        MAASServerTestCase, AssertNetworkConfigMixin):
+
+    def test__renders_expected_output(self):
+        node = factory.make_Node_with_Interface_on_Subnet(ifname='eth0')
+        boot_interface = node.get_boot_interface()
+        vlan = boot_interface.vlan
+        mac_address = factory.make_mac_address()
+        bridge_iface = factory.make_Interface(
+            iftype=INTERFACE_TYPE.BRIDGE, node=node, vlan=vlan,
+            parents=[boot_interface], mac_address=mac_address)
+        bridge_iface.params = {
+            "bridge_fd": 0,
+            "bridge_stp": True,
+        }
+        bridge_iface.save()
+        factory.make_StaticIPAddress(
+            interface=bridge_iface, alloc_type=IPADDRESS_TYPE.STICKY,
+            subnet=bridge_iface.vlan.subnet_set.first())
+        node_config = self.collect_interface_config(node, filter="physical")
+        node_config += self.collect_interface_config(node, filter="bridge")
+        node_config += self.collect_dns_config(node)
+
+        dest_node = factory.make_Node_with_Interface_on_Subnet(ifname='eth0')
+        dest_node.set_networking_configuration_from_node(node)
+        dest_config = self.collect_interface_config(
+            dest_node, filter="physical")
+        dest_config += self.collect_interface_config(
+            dest_node, filter="bridge")
+        dest_config += self.collect_dns_config(dest_node)
+
+        node_composed_config = compose_curtin_network_config(node)
+        dest_composed_config = compose_curtin_network_config(dest_node)
+        self.assertNetworkConfig(
+            node_config, dest_composed_config, strip_macs=True, strip_ips=True)
+        self.assertNetworkConfig(
+            dest_config, node_composed_config, strip_macs=True, strip_ips=True)
+
+        # Bridge configuration should have different MAC addresses.
+        node_bridge = yaml.safe_load(
+            self.collect_interface_config(node, filter="bridge"))
+        dest_bridge = yaml.safe_load(
+            self.collect_interface_config(dest_node, filter="bridge"))
+        self.assertNotEqual(
+            node_bridge[0]['mac_address'], dest_bridge[0]['mac_address'])

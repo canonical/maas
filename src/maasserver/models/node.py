@@ -114,6 +114,7 @@ from maasserver.models.interface import (
     BondInterface,
     BridgeInterface,
     Interface,
+    InterfaceRelationship,
     PhysicalInterface,
     VLANInterface,
 )
@@ -3679,6 +3680,151 @@ class Node(CleanSave, TimestampedModel):
                 continue
             if interface.enabled:
                 interface.ensure_link_up()
+
+    def set_networking_configuration_from_node(self, source_node):
+        """Set the networking configuration for this node from the source
+        node."""
+        mapping = self._get_interface_mapping_between_nodes(source_node)
+        self._clear_networking_configuration()
+
+        # Get all none physical interface for the source node. This
+        # is used to do the cloning in layers, only cloning the interfaces
+        # that have already been cloned to make up the next layer of
+        # interfaces.
+        source_interfaces = [
+            interface
+            for interface in source_node.interface_set.all()
+            if interface.type != INTERFACE_TYPE.PHYSICAL
+        ]
+
+        # Clone the model at the physical level.
+        exclude_addresses = self._copy_between_interface_mappings(mapping)
+        mapping = {
+            source_interface.id: self_interface
+            for self_interface, source_interface in mapping.items()
+        }
+
+        # Continue through each layer until no more interfaces exist.
+        source_interfaces, layer_interfaces = (
+            self._get_interface_layers_for_copy(source_interfaces, mapping))
+        while source_interfaces or layer_interfaces:
+            if not layer_interfaces:
+                raise ValueError(
+                    "Copying the next layer of interfaces has failed.")
+            for source_interface, dest_parents in layer_interfaces.items():
+                dest_mapping = self._copy_interface(
+                    source_interface, dest_parents)
+                exclude_addresses += (
+                    self._copy_between_interface_mappings(
+                        dest_mapping, exclude_addresses=exclude_addresses))
+                mapping.update({
+                    source_interface.id: self_interface
+                    for self_interface, source_interface in (
+                        dest_mapping.items())
+                })
+            # Load the next layer.
+            source_interfaces, layer_interfaces = (
+                self._get_interface_layers_for_copy(
+                    source_interfaces, mapping))
+
+    def _get_interface_mapping_between_nodes(self, source_node):
+        """Return the mapping between which interface from this node map to
+        interfaces on the source node.
+
+        Mapping between the nodes is done by the name of the interface. This
+        node must have the same names as the names from `source_node`.
+
+        Raises a `ValidationError` when interfaces cannot be matched.
+        """
+        self_interfaces = {
+            interface.name: interface
+            for interface in self.interface_set.all()
+            if interface.type == INTERFACE_TYPE.PHYSICAL
+        }
+        missing = []
+        mapping = {}
+        for interface in source_node.interface_set.all():
+            if interface.type == INTERFACE_TYPE.PHYSICAL:
+                self_interface = self_interfaces.get(interface.name, None)
+                if self_interface is not None:
+                    mapping[self_interface] = interface
+                else:
+                    missing.append(interface.name)
+        if missing:
+            raise ValidationError(
+                "destination node physical interfaces do not match the "
+                "source nodes physical interfaces: %s" % ', '.join(missing))
+        return mapping
+
+    def _copy_between_interface_mappings(
+            self, mapping, exclude_addresses=None):
+        """Copy the source onto the destination interfaces in the mapping."""
+        if exclude_addresses is None:
+            exclude_addresses = []
+        for self_interface, source_interface in mapping.items():
+            self_interface.vlan = source_interface.vlan
+            self_interface.params = source_interface.params
+            self_interface.ipv4_params = source_interface.ipv4_params
+            self_interface.ipv6_params = source_interface.ipv6_params
+            self_interface.enabled = source_interface.enabled
+            self_interface.acquired = source_interface.acquired
+            self_interface.save()
+
+            for ip_address in source_interface.ip_addresses.all():
+                if ip_address.ip and ip_address.alloc_type in [
+                        IPADDRESS_TYPE.AUTO, IPADDRESS_TYPE.STICKY,
+                        IPADDRESS_TYPE.USER_RESERVED]:
+                    new_ip = StaticIPAddress.objects.allocate_new(
+                        subnet=ip_address.subnet,
+                        alloc_type=ip_address.alloc_type,
+                        user=ip_address.user,
+                        exclude_addresses=exclude_addresses)
+                    self_interface.ip_addresses.add(new_ip)
+                    exclude_addresses.append(new_ip.id)
+                elif ip_address.alloc_type != IPADDRESS_TYPE.DISCOVERED:
+                    self_ip_address = copy.deepcopy(ip_address)
+                    self_ip_address.id = None
+                    self_ip_address.pk = None
+                    self_ip_address.ip = None
+                    self_ip_address.save(force_insert=True)
+                    self_interface.ip_addresses.add(self_ip_address)
+        return exclude_addresses
+
+    def _get_interface_layers_for_copy(
+            self, source_interfaces, interface_mapping):
+        """Pops the interface from the `source_interfaces` when all interfaces
+        that make it up exist in `interface_mapping`."""
+        layer = {}
+        for interface in source_interfaces[:]:  # Iterate on copy
+            contains_all = True
+            dest_parents = []
+            for parent_interface in interface.parents.all():
+                dest_interface = interface_mapping.get(
+                    parent_interface.id, None)
+                if dest_interface:
+                    dest_parents.append(dest_interface)
+                else:
+                    contains_all = False
+                    break
+            if contains_all:
+                layer[interface] = dest_parents
+                source_interfaces.remove(interface)
+        return source_interfaces, layer
+
+    def _copy_interface(self, source_interface, dest_parents):
+        """Copy the `source_interface` linking to the `dest_parents`."""
+        self_interface = copy.copy(source_interface)
+        self_interface.id = None
+        self_interface.pk = None
+        self_interface.node = self
+        self_interface._prefetched_objects_cache = {}
+        self_interface.save(force_insert=True)
+        for parent in dest_parents:
+            InterfaceRelationship.objects.create(
+                child=self_interface, parent=parent)
+        self_interface.mac_address = dest_parents[0].mac_address
+        self_interface.save()
+        return {self_interface: source_interface}
 
     def get_gateways_by_priority(self):
         """Return all possible default gateways for the Node, by priority.

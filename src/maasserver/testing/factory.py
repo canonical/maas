@@ -855,7 +855,8 @@ class Factory(maastesting.factory.Factory):
 
     def make_Node_with_Interface_on_Subnet(
             self, interface_count=1, vlan=None, subnet=None,
-            cidr=None, fabric=None, ifname=None, unmanaged=False,
+            cidr=None, fabric=None, ifname=None, extra_ifnames=None,
+            unmanaged=False,
             with_dhcp_rack_primary=True, with_dhcp_rack_secondary=False,
             primary_rack=None, secondary_rack=None,
             **kwargs):
@@ -908,8 +909,12 @@ class Factory(maastesting.factory.Factory):
                 alloc_type=IPADDRESS_TYPE.AUTO, ip="",
                 subnet=subnet, interface=boot_interface)
         for _ in range(1, interface_count):
+            ifname = None
+            if extra_ifnames:
+                ifname = extra_ifnames[0]
+                extra_ifnames = extra_ifnames[1:]
             interface = self.make_Interface(
-                INTERFACE_TYPE.PHYSICAL, node=node, vlan=vlan)
+                INTERFACE_TYPE.PHYSICAL, name=ifname, node=node, vlan=vlan)
             self.make_StaticIPAddress(
                 alloc_type=IPADDRESS_TYPE.DISCOVERED, ip="",
                 subnet=subnet, interface=interface)
