@@ -170,32 +170,24 @@
                 <div class="row">
                     <div class="col-10 ng-hide" data-ng-show="tabs[tab].actionOption.name === 'commission'">
                         <form>
-                            <ul class="p-inline-list--settings u-no-margin--left u-no-padding--left">
-                                <li class="p-inline-list__item">
+                            <div class="row">
+                                <div class="col-5">
                                     <input id="{$ tab $}-enableSSH" type="checkbox" data-ng-model="tabs[tab].commissionOptions.enableSSH">
                                     <label for="{$ tab $}-enableSSH">Allow SSH access and prevent machine powering off</label>
-                                </li>
-                                <li class="p-inline-list__item">
+                                    <input id="{$ tab $}-skipBMCConfig" type="checkbox" data-ng-model="tabs[tab].commissionOptions.skipBMCConfig">
+                                    <label for="{$ tab $}-skipBMCConfig">Skip configuring supported BMC controllers with a MAAS generated username and password.</label>
                                     <input id="{$ tab $}-skipNetworking" type="checkbox" data-ng-model="tabs[tab].commissionOptions.skipNetworking">
                                     <label for="{$ tab $}-skipNetworking">Retain network configuration</label>
-                                </li>
-                                <li class="p-inline-list__item">
+                                </div>
+                                <div class="col-5">
                                     <input id="{$ tab $}-skipStorage" type="checkbox" data-ng-model="tabs[tab].commissionOptions.skipStorage">
                                     <label for="{$ tab $}-skipStorage">Retain storage configuration</label>
-                                </li>
-                                <li class="p-inline-list__item">
-                                        <input id="{$ tab $}-skipBMCConfig" type="checkbox" data-ng-model="tabs[tab].commissionOptions.skipBMCConfig">
-                                        <label for="{$ tab $}-skipBMCConfig">Skip configuring supported BMC controllers with a MAAS generated username and password.</label>
-                                </li>
-                                <li class="p-inline-list__item">
                                     <input id="{$ tab $}-updateFirmware" type="checkbox" data-ng-model="tabs[tab].commissionOptions.updateFirmware">
                                     <label for="{$ tab $}-updateFirmware">Update firmware</label>
-                                </li>
-                                <li class="p-inline-list__item">
                                     <input id="{$ tab $}-configureHBA" type="checkbox" data-ng-model="tabs[tab].commissionOptions.configureHBA">
                                     <label for="{$ tab $}-configureHBA">Configure HBA</label>
-                                </li>
-                            </ul>
+                                </div>
+                            </div>
                         </form>
                     </div>
                     <div class="ng-hide" data-ng-show="tabs[tab].actionOption.name === 'test' || tabs[tab].actionOption.name === 'deploy' || tabs[tab].actionOption.name === 'release' || tabs[tab].actionOption.name === 'set-zone' || tabs[tab].actionOption.name === 'set-pool'">

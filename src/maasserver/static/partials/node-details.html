@@ -74,33 +74,21 @@
                 <div class="page-header__section">
                     <form class="p-form">
                         <div class="row">
-                            <div class="col-10 ng-hide" data-ng-show="action.option.name === 'commission' || action.option.name === 'test'">
-                                <ul class="p-inline-list--settings u-no-margin--left u-no-padding--left">
-                                    <li class="p-inline-list__item">
-                                        <input id="enableSSH" type="checkbox" data-ng-model="commissionOptions.enableSSH">
-                                        <label for="enableSSH">Allow SSH access and prevent machine from powering off</label>
-                                    </li>
-                                    <li class="p-inline-list__item ng-hide" data-ng-show="action.option.name === 'commission'">
-                                        <input id="skipNetworking" type="checkbox" data-ng-model="commissionOptions.skipNetworking">
-                                        <label for="skipNetworking">Retain network configuration</label>
-                                    </li>
-                                    <li class="p-inline-list__item ng-hide" data-ng-show="action.option.name === 'commission'">
-                                        <input id="skipStorage" type="checkbox" data-ng-model="commissionOptions.skipStorage">
-                                        <label for="skipStorage">Retain storage configuration</label>
-                                    </li>
-                                    <li class="p-inline-list__item ng-hide" data-ng-show="action.option.name === 'commission'">
-                                        <input id="skipBMCConfig" type="checkbox" data-ng-model="commissionOptions.skipBMCConfig">
-                                        <label for="skipBMCConfig">Skip configuring supported BMC controllers with a MAAS generated username and password.</label>
-                                    </li>
-                                    <li class="p-inline-list__item ng-hide" data-ng-show="action.option.name === 'commission'">
-                                        <input id="updateFirmware" type="checkbox" data-ng-model="commissionOptions.updateFirmware">
-                                        <label for="updateFirmware">Update firmware</label>
-                                    </li>
-                                    <li class="p-inline-list__item ng-hide" data-ng-show="action.option.name === 'commission'">
-                                        <input id="configureHBA" type="checkbox"data-ng-model="commissionOptions.configureHBA">
-                                        <label for="configureHBA">Configure HBA</label>
-                                    </li>
-                                </ul>
+                            <div class="col-5 ng-hide" data-ng-show="action.option.name === 'commission' || action.option.name === 'test'">
+                                <input id="enableSSH" type="checkbox" data-ng-model="commissionOptions.enableSSH">
+                                <label for="enableSSH">Allow SSH access and prevent machine from powering off</label>
+                                <input id="skipBMCConfig" type="checkbox" data-ng-model="commissionOptions.skipBMCConfig">
+                                <label for="skipBMCConfig">Skip configuring supported BMC controllers with a MAAS generated username and password.</label>
+                                <input id="skipNetworking" type="checkbox" data-ng-model="commissionOptions.skipNetworking">
+                                <label for="skipNetworking">Retain network configuration</label>
+                            </div>
+                            <div class="col-5 ng-hide" data-ng-show="action.option.name === 'commission' || action.option.name === 'test'">
+                                <input id="skipStorage" type="checkbox" data-ng-model="commissionOptions.skipStorage">
+                                <label for="skipStorage">Retain storage configuration</label>
+                                <input id="updateFirmware" type="checkbox" data-ng-model="commissionOptions.updateFirmware">
+                                <label for="updateFirmware">Update firmware</label>
+                                <input id="configureHBA" type="checkbox"data-ng-model="commissionOptions.configureHBA">
+                                <label for="configureHBA">Configure HBA</label>
                             </div>
                         </div>
                         <div class="row">
