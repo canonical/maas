@@ -24,7 +24,7 @@ class PrometheusMetrics:
         else:
             self.registry = registry or prom_cli.REGISTRY
             self._metrics = self._create_metrics(definitions)
-        if self.registry is prom_cli.REGISTRY:
+        if PROMETHEUS_SUPPORTED and self.registry is prom_cli.REGISTRY:
             atexit.register(self._cleanup_metric_files)
 
     def _create_metrics(self, definitions):

@@ -1,2 +1,3 @@
 var/log/maas
 var/lib/maas
+var/lib/maas/prometheus
