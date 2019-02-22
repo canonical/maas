@@ -1,4 +1,4 @@
-# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The machine handler for the WebSocket connection."""
@@ -370,8 +370,9 @@ class MachineHandler(NodeHandler):
         data = super(NodeHandler, self).update(params)
         node_obj = Node.objects.get(system_id=data['system_id'])
 
-        # Update the tags for the node and disks.
-        self.update_tags(node_obj, params['tags'])
+        # Update the tags for the node and disks if they are set.
+        if 'tags' in params:
+            self.update_tags(node_obj, params['tags'])
         node_obj.save()
 
         return self.full_dehydrate(node_obj)

@@ -1,4 +1,4 @@
-# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.node`"""
@@ -2162,6 +2162,16 @@ class TestMachineHandler(MAASServerTestCase):
         node_data["tags"].append(tag_name)
         updated_node = handler.update(node_data)
         self.assertItemsEqual([tag_name], updated_node["tags"])
+
+    def test_update_doesnt_update_tags_for_node_if_not_set_in_parameters(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {}, None)
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(
+            interface=True, architecture=architecture, power_type='manual')
+        node_data = self.dehydrate_node(node, handler)
+        updated_node = handler.update(node_data)
+        self.assertItemsEqual([], updated_node["tags"])
 
     def test_update_disk_for_physical_block_device(self):
         user = factory.make_admin()
