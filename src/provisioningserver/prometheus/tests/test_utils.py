@@ -64,7 +64,7 @@ class TestPrometheusMetrics(MAASTestCase):
         mock_register.assert_not_called()
 
     @inlineCallbacks
-    def test_record_call_latency(self):
+    def test_record_call_latency_async(self):
         definitions = [
             MetricDefinition(
                 'Histogram', 'histo', 'An histogram', ['foo', 'bar'])
@@ -86,6 +86,33 @@ class TestPrometheusMetrics(MAASTestCase):
 
         obj = object()
         result = yield func(obj, param2='baz')
+        self.assertIs(result, obj)
+        # the get_labels function is called with the same args as the function
+        self.assertEqual(label_call_args, [((obj,), {'param2': 'baz'})])
+        self.assertIn(
+            'histo_count{bar="BAR",foo="FOO"} 1.0',
+            prometheus_metrics.generate_latest().decode('ascii'))
+
+    def test_record_call_latency_sync(self):
+        definitions = [
+            MetricDefinition(
+                'Histogram', 'histo', 'An histogram', ['foo', 'bar'])
+        ]
+        prometheus_metrics = PrometheusMetrics(
+            definitions=definitions,
+            registry=prometheus_client.CollectorRegistry())
+        label_call_args = []
+
+        def get_labels(*args, **kwargs):
+            label_call_args.append((args, kwargs))
+            return {'foo': 'FOO', 'bar': 'BAR'}
+
+        @prometheus_metrics.record_call_latency('histo', get_labels=get_labels)
+        def func(param1, param2=None):
+            return param1
+
+        obj = object()
+        result = func(obj, param2='baz')
         self.assertIs(result, obj)
         # the get_labels function is called with the same args as the function
         self.assertEqual(label_call_args, [((obj,), {'param2': 'baz'})])

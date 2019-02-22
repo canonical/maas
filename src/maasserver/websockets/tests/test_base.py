@@ -25,6 +25,7 @@ from maasserver.models.node import (
 from maasserver.models.vlan import VLAN
 from maasserver.models.zone import Zone
 from maasserver.permissions import NodePermission
+from maasserver.prometheus.metrics import PROMETHEUS_METRICS
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
@@ -399,6 +400,18 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
         result = handler.execute("get", params).wait(30)
         self.assertThat(result, Is(sentinel.thing))
         self.assertThat(base.deferToDatabase, MockCalledOnceWith(ANY, params))
+
+    def test_execute_track_latency(self):
+        mock_metrics = self.patch(PROMETHEUS_METRICS, 'update')
+
+        handler = self.make_nodes_handler()
+        params = {"system_id": factory.make_name("system_id")}
+        self.patch(base, "deferToDatabase").return_value = sentinel.thing
+        result = handler.execute("get", params).wait(30)
+        self.assertIs(result, sentinel.thing)
+        mock_metrics.assert_called_with(
+            'maas_websocket_call_latency', 'observe',
+            labels={'call': 'testnodes.get'}, value=ANY)
 
     def test_list(self):
         output = [

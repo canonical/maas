@@ -13,6 +13,9 @@ METRICS_DEFINITIONS = [
     MetricDefinition(
         'Histogram', 'maas_http_request_latency', 'HTTP request latency',
         ['method', 'path', 'status', 'op']),
+    MetricDefinition(
+        'Histogram', 'maas_websocket_call_latency',
+        'Latency of a Websocket handler call', ['call']),
 ]
 
 

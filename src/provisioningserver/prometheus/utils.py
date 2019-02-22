@@ -8,6 +8,7 @@ from provisioningserver.prometheus import (
     prom_cli,
     PROMETHEUS_SUPPORTED,
 )
+from twisted.internet.defer import Deferred
 
 # Definition for a Prometheus metric.
 MetricDefinition = namedtuple(
@@ -71,7 +72,10 @@ class PrometheusMetrics:
 
     def record_call_latency(
             self, metric_name, get_labels=lambda *args, **kwargs: {}):
-        """Wrap a function returning a Deferred to record its call latency on a metric.
+        """Wrap a function to record its call latency on a metric.
+
+        If the function is asynchronous (it returns a Deferred), the time to
+        complete the deferred is tracked.
 
         The `get_labels` function is called with the same arguments as the call
         and must return a dict with labels for the metric.
@@ -84,16 +88,24 @@ class PrometheusMetrics:
             def wrapper(*args, **kwargs):
                 labels = get_labels(*args, **kwargs)
                 before = time()
-                d = func(*args, **kwargs)
+                result = func(*args, **kwargs)
+                after = time()
+                if not isinstance(result, Deferred):
+                    latency = after - before
+                    self.update(
+                        metric_name, 'observe', value=latency, labels=labels)
+                    return result
 
+                # attach a callback to the deferred to track time after the
+                # call has completed
                 def record_latency(result):
                     latency = time() - before
                     self.update(
                         metric_name, 'observe', value=latency, labels=labels)
                     return result
 
-                d.addCallback(record_latency)
-                return d
+                result.addCallback(record_latency)
+                return result
 
             return wrapper
 

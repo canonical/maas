@@ -18,6 +18,7 @@ from django.db.models import Model
 from django.utils.encoding import is_protected_type
 from maasserver import concurrency
 from maasserver.permissions import NodePermission
+from maasserver.prometheus.metrics import PROMETHEUS_METRICS
 from maasserver.rbac import rbac
 from maasserver.utils.forms import get_QueryDict
 from maasserver.utils.orm import transactional
@@ -346,6 +347,14 @@ class Handler(metaclass=HandlerMetaclass):
         """
         return get_QueryDict(params)
 
+    def _get_call_latency_metrics_label(self, method_name, params):
+        call_name = '{handler_name}.{method_name}'.format(
+            handler_name=self._meta.handler_name, method_name=method_name)
+        return {'call': call_name}
+
+    @PROMETHEUS_METRICS.record_call_latency(
+        'maas_websocket_call_latency',
+        get_labels=_get_call_latency_metrics_label)
     @asynchronous
     def execute(self, method_name, params):
         """Execute the given method on the handler.
