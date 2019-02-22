@@ -1,4 +1,4 @@
-# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test `maasserver.preseed` and related bits and bobs."""
@@ -1768,6 +1768,13 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
         self.assertEqual(
             PRESEED_TYPE.COMMISSIONING, get_preseed_type_for(node))
 
+    def test_get_preseed_type_for_ephemeral_deployment(self):
+        # A diskless node is one that it is ephemerally deployed.
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYING, with_boot_disk=False)
+        self.assertEqual(
+            PRESEED_TYPE.COMMISSIONING, get_preseed_type_for(node))
+
 
 class TestPreseedMethods(
         PreseedRPCMixin, BootImageHelperMixin, MAASTransactionServerTestCase):
@@ -1870,6 +1877,15 @@ class TestPreseedMethods(
         node = factory.make_Node_with_Interface_on_Subnet(
             primary_rack=self.rpc_rack_controller,
             status=NODE_STATUS.COMMISSIONING)
+        preseed = get_preseed(make_HttpRequest(), node)
+        self.assertIn(b'#cloud-config', preseed)
+
+    def test_get_preseed_returns_comm_preseed_for_ephemeral_deployment(self):
+        # A diskless node is one that it is ephemerally deployed.
+        node = factory.make_Node_with_Interface_on_Subnet(
+            primary_rack=self.rpc_rack_controller,
+            status=NODE_STATUS.COMMISSIONING,
+            with_boot_disk=False)
         preseed = get_preseed(make_HttpRequest(), node)
         self.assertIn(b'#cloud-config', preseed)
 

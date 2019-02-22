@@ -1,4 +1,4 @@
-# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.compose_preseed`."""
@@ -516,6 +516,22 @@ class TestComposePreseed(MAASServerTestCase):
         rack_controller = factory.make_RackController()
         node = factory.make_Node(
             interface=True, status=NODE_STATUS.ENTERING_RESCUE_MODE)
+        nic = node.get_boot_interface()
+        nic.vlan.dhcp_on = True
+        nic.vlan.primary_rack = rack_controller
+        nic.vlan.save()
+        request = make_HttpRequest()
+        preseed = yaml.safe_load(
+            compose_preseed(request, PRESEED_TYPE.COMMISSIONING, node))
+        self.assertNotIn('power_state', preseed)
+
+    def test_compose_preseed_ephemeral_deployment_not_include_poweroff(self):
+        # A diskless node is one that it is ephemerally deployed.
+        rack_controller = factory.make_RackController()
+        node = factory.make_Node(
+            interface=True,
+            status=NODE_STATUS.ENTERING_RESCUE_MODE,
+            with_boot_disk=False)
         nic = node.get_boot_interface()
         nic.vlan.dhcp_on = True
         nic.vlan.primary_rack = rack_controller

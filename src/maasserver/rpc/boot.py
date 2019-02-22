@@ -1,4 +1,4 @@
-# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """RPC helpers for getting the configuration for a booting machine."""
@@ -260,6 +260,21 @@ def get_base_url_for_local_ip(local_ip, internal_domain):
         return 'http://%s:5248/' % local_ip
 
 
+def get_final_boot_purpose(machine, arch, purpose):
+    """Return the final boot purpose."""
+    if machine is None and arch == DEFAULT_ARCH:
+        # If the machine is enlisting and the arch is the default arch (i386),
+        # use the dedicated enlistment template which performs architecture
+        # detection.
+        return "enlist"
+    elif purpose == 'poweroff':
+        # In order to power the machine off, we need to get it booted in the
+        # commissioning environment and issue a `poweroff` command.
+        return 'commissioning'
+    else:
+        return purpose
+
+
 @synchronous
 @transactional
 def get_config(
@@ -361,6 +376,12 @@ def get_config(
         hostname = machine.hostname
         domain = machine.domain.name
         purpose = machine.get_boot_purpose()
+
+        # Ephemeral deployments will have 'local' boot
+        # purpose on power cycles.  Set purpose back to
+        # 'xinstall' so that the system can be re-deployed.
+        if purpose == 'local' and machine.ephemeral_deployment:
+            purpose = "xinstall"
 
         # Early out if the machine is booting local.
         if purpose == 'local':
@@ -467,19 +488,7 @@ def get_config(
         # Global kernel options for enlistment.
         extra_kernel_opts = configs["kernel_opts"]
 
-    # Set the final boot purpose.
-    if machine is None and arch == DEFAULT_ARCH:
-        # If the machine is enlisting and the arch is the default arch (i386),
-        # use the dedicated enlistment template which performs architecture
-        # detection.
-        boot_purpose = "enlist"
-    elif purpose == 'poweroff':
-        # In order to power the machine off, we need to get it booted in the
-        # commissioning environment and issue a `poweroff` command.
-        boot_purpose = 'commissioning'
-    else:
-        boot_purpose = purpose
-
+    boot_purpose = get_final_boot_purpose(machine, arch, purpose)
     kernel, initrd, boot_dtb = get_boot_filenames(
         arch, subarch, osystem, series,
         commissioning_osystem=configs['commissioning_osystem'],
