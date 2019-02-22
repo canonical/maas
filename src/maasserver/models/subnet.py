@@ -5,6 +5,7 @@
 
 __all__ = [
     'create_cidr',
+    'get_allocated_ips',
     'Subnet',
 ]
 
@@ -473,19 +474,46 @@ class Subnet(CleanSave, TimestampedModel):
                 "IP range. (Delete the dynamic range or disable DHCP first.)")
         super().delete(*args, **kwargs)
 
+    def get_allocated_ips(self):
+        """Get all the IPs for the given subnets
+
+        Any StaticIPAddress record that has a non-emtpy ip is considered to
+        be allocated.
+
+        It returns a generator producing a 2-tuple with the subnet and a
+        list of IP tuples
+
+        An IP tuple consist of the IP as a string and its allocation type.
+
+        The result can be cached by calling cache_allocated_ips().
+        """
+        ips = getattr(self, '_cached_allocated_ips', None)
+        if ips is None:
+            [(_, ips)] = list(get_allocated_ips([self]))
+        return ips
+
+    def cache_allocated_ips(self, ips):
+        """Cache the results of get_allocated_ips().
+
+        This is to be used similar to how prefetching objects on
+        queryset works.
+        """
+        self._cached_allocated_ips = ips
+
     def _get_ranges_for_allocated_ips(
             self, ipnetwork: IPNetwork, ignore_discovered_ips: bool) -> set:
         """Returns a set of MAASIPRange objects created from the set of allocated
         StaticIPAddress objects.
         """
-        # Note, the original implementation used .exclude() to filter,
-        # but we'll filter at runtime so that prefetch_related in the
-        # websocket works properly.
         ranges = set()
-        for sip in self.staticipaddress_set.all():
-            if sip.ip and not (ignore_discovered_ips and (
-                    sip.alloc_type == IPADDRESS_TYPE.DISCOVERED)):
-                ip = IPAddress(sip.ip)
+        # We work with tuple rather than real model objects, since a
+        # subnet may many IPs and creating a model object for each IP is
+        # slow.
+        ips = self.get_allocated_ips()
+        for ip, alloc_type in ips:
+            if ip and not (ignore_discovered_ips and (
+                    alloc_type == IPADDRESS_TYPE.DISCOVERED)):
+                ip = IPAddress(ip)
                 if ip in ipnetwork:
                     ranges.add(make_iprange(ip, purpose="assigned-ip"))
         return ranges
@@ -770,6 +798,7 @@ class Subnet(CleanSave, TimestampedModel):
         if with_summary:
             ip_addresses = ip_addresses.prefetch_related(
                 'interface_set', 'interface_set__node',
+                'interface_set__node__domain',
                 'bmc_set', 'bmc_set__node_set',
                 'dnsresource_set', 'dnsresource_set__domain',
             )
@@ -937,3 +966,26 @@ class Subnet(CleanSave, TimestampedModel):
             delete_notification = True
         if notification is not None and delete_notification:
             notification.delete()
+
+
+def get_allocated_ips(subnets):
+    """Get all the IPs for the given subnets
+
+    Any StaticIPAddress record that has a non-emtpy ip is considered to
+    be allocated.
+
+    It returns a generator producing a 2-tuple with the subnet and a
+    list of IP tuples
+
+    An IP tuple consist of the IP as a string and its allocation type.
+    """
+    from maasserver.models.staticipaddress import StaticIPAddress
+
+    mapping = {subnet.id: [] for subnet in subnets}
+    ips = StaticIPAddress.objects.filter(
+        subnet__id__in=mapping.keys(), ip__isnull=False)
+    for subnet_id, ip, alloc_type in ips.values_list(
+            'subnet_id', 'ip', 'alloc_type'):
+        mapping[subnet_id].append((ip, alloc_type))
+    for subnet in subnets:
+        yield subnet, mapping[subnet.id]

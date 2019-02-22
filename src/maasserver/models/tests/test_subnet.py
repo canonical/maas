@@ -34,6 +34,7 @@ from maasserver.models import (
 )
 from maasserver.models.subnet import (
     create_cidr,
+    get_allocated_ips,
     Subnet,
 )
 from maasserver.models.timestampedmodel import now
@@ -48,6 +49,10 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import (
     get_one,
     reload_object,
+)
+from maastesting.djangotestcase import (
+    count_queries,
+    CountQueries,
 )
 from maastesting.matchers import DocTestMatches
 from netaddr import (
@@ -983,6 +988,33 @@ class TestRenderJSONForRelatedIPs(MAASServerTestCase):
         self.expectThat(json[0]["ip"], Equals('10.0.0.1'))
         self.expectThat(json, HasLength(1))
 
+    def test_query_count_stable(self):
+        subnet = factory.make_Subnet(cidr='10.0.0.0/24')
+        for _ in range(10):
+            ip = factory.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.USER_RESERVED, subnet=subnet)
+            factory.make_DNSResource(ip_addresses=[ip], subnet=subnet)
+        for _ in range(10):
+            node = factory.make_Node_with_Interface_on_Subnet(
+                subnet=subnet, status=NODE_STATUS.READY)
+            iface = node.interface_set.first()
+            factory.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet,
+                interface=iface)
+        for _ in range(10):
+            ip = factory.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet,
+                interface=None)
+            bmc = factory.make_BMC(ip_address=ip)
+            node = factory.make_Node_with_Interface_on_Subnet(
+                subnet=subnet, status=NODE_STATUS.READY, bmc=bmc)
+            factory.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet,
+                interface=node.interface_set.first())
+        with CountQueries() as counter:
+            subnet.render_json_for_related_ips()
+        self.assertEqual(9, counter.num_queries)
+
 
 class TestSubnetGetRelatedRanges(MAASServerTestCase):
 
@@ -1500,3 +1532,62 @@ class TestSubnetIPExhaustionNotifications(MAASServerTestCase):
         notification_exists = notification is not None
         self.assertThat(
             notification_exists, Equals(False))
+
+
+class TestGetAllocatedIps(MAASServerTestCase):
+
+    def test_no_ips(self):
+        subnet1 = factory.make_Subnet()
+        subnet2 = factory.make_Subnet()
+        result = get_allocated_ips([subnet1, subnet2])
+        result1, result2 = result
+        self.assertIs(subnet1, result1[0])
+        self.assertEqual([], result1[1])
+        self.assertIs(subnet2, result2[0])
+        self.assertEqual([], result2[1])
+
+    def test_no_allocated_ips(self):
+        subnet = factory.make_Subnet()
+        # There may be records with emtpy ip fields in the db, for
+        # expired leases, but still link an interface to a subnet.
+        # Such records are ignored.
+        factory.make_StaticIPAddress(subnet=subnet, ip=None)
+        factory.make_StaticIPAddress(subnet=subnet, ip='')
+        [(_, ips)] = get_allocated_ips([subnet])
+        self.assertEqual([], ips)
+
+    def test_allocated_ips(self):
+        subnet1 = factory.make_Subnet()
+        ip1 = factory.make_StaticIPAddress(subnet=subnet1)
+        ip2 = factory.make_StaticIPAddress(subnet=subnet1)
+        subnet2 = factory.make_Subnet()
+        ip3 = factory.make_StaticIPAddress(subnet=subnet2)
+        queries, result = count_queries(
+            lambda: list(get_allocated_ips([subnet1, subnet2])))
+        [(returned_subnet1, ips1), (returned_subnet2, ips2)] = result
+        self.assertIs(subnet1, returned_subnet1)
+        self.assertEqual([(ip1.ip, ip1.alloc_type),
+                          (ip2.ip, ip2.alloc_type)], ips1)
+        self.assertIs(subnet2, returned_subnet2)
+        self.assertEqual([(ip3.ip, ip3.alloc_type)], ips2)
+        self.assertEqual(1, queries)
+
+    def test_subnet_allocated_ips(self):
+        subnet = factory.make_Subnet()
+        ip1 = factory.make_StaticIPAddress(subnet=subnet)
+        ip2 = factory.make_StaticIPAddress(subnet=subnet)
+        queries, ips = count_queries(subnet.get_allocated_ips)
+        self.assertEqual([(ip1.ip, ip1.alloc_type),
+                          (ip2.ip, ip2.alloc_type)], ips)
+        self.assertEqual(1, queries)
+
+    def test_subnet_allocated_ips_cached(self):
+        subnet = factory.make_Subnet()
+        ip1 = factory.make_StaticIPAddress(subnet=subnet)
+        ip2 = factory.make_StaticIPAddress(subnet=subnet)
+        [(_, ips)] = get_allocated_ips([subnet])
+        subnet.cache_allocated_ips(ips)
+        queries, ips = count_queries(subnet.get_allocated_ips)
+        self.assertEqual([(ip1.ip, ip1.alloc_type),
+                          (ip2.ip, ip2.alloc_type)], ips)
+        self.assertEqual(0, queries)
