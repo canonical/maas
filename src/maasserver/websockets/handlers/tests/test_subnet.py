@@ -10,6 +10,11 @@ from unittest.mock import sentinel
 
 from fixtures import FakeLogger
 from maasserver.api import discoveries as discoveries_module
+from maasserver.enum import (
+    INTERFACE_TYPE,
+    IPADDRESS_TYPE,
+    NODE_STATUS,
+)
 from maasserver.models.subnet import Subnet
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -84,7 +89,7 @@ class TestSubnetHandler(MAASServerTestCase):
         subnet = factory.make_Subnet()
         self.assertIsNone(handler.cache.get("staticroutes"))
         queries, _ = count_queries(handler.get, {"id": subnet.id})
-        self.assertEquals(6, queries)
+        self.assertEquals(5, queries)
         self.assertIsNotNone(handler.cache["staticroutes"])
 
     def test_list(self):
@@ -102,16 +107,28 @@ class TestSubnetHandler(MAASServerTestCase):
     def test_list_uses_consistent_queries(self):
         user = factory.make_User()
         handler = SubnetHandler(user, {}, None)
-        for _ in range(20):
-            factory.make_Subnet()
+        subnet = factory.make_Subnet()
+        factory.make_Interface(
+            iftype=INTERFACE_TYPE.UNKNOWN, subnet=subnet)
         self.assertIsNone(handler.cache.get("staticroutes"))
-        queries_one, _ = count_queries(handler.list, {"limit": 1})
+        queries_one, _ = count_queries(handler.list, {})
+
+        for _ in range(10):
+            subnet = factory.make_Subnet()
+            for x in range(5):
+                node = factory.make_Node_with_Interface_on_Subnet(
+                    subnet=subnet, status=NODE_STATUS.READY)
+                iface = node.interface_set.first()
+                factory.make_StaticIPAddress(
+                    alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet,
+                    interface=iface)
+
         self.assertIsNotNone(handler.cache["staticroutes"])
         del handler.cache["staticroutes"]
         queries_all, _ = count_queries(handler.list, {})
         self.assertEquals(queries_one, queries_all)
         self.assertIsNotNone(handler.cache["staticroutes"])
-        self.assertEquals(5, queries_one)
+        self.assertEquals(4, queries_one)
 
 
 class TestSubnetHandlerDelete(MAASServerTestCase):

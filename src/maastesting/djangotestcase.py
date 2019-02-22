@@ -66,6 +66,7 @@ class CountQueries:
         self.connection.force_debug_cursor = True
         self.starting_count = len(self.connection.queries)
         request_started.disconnect(reset_queries)
+        return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.connection.force_debug_cursor = self.force_debug_cursor

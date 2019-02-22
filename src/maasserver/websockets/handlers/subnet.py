@@ -14,6 +14,7 @@ from maasserver.models import (
     StaticRoute,
     Subnet,
 )
+from maasserver.models.subnet import get_allocated_ips
 from maasserver.permissions import NodePermission
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
@@ -32,12 +33,6 @@ class SubnetHandler(TimestampedModelHandler):
         queryset = (
             Subnet.objects.all()
                   .select_related('vlan')
-                  .select_related('vlan__space')
-                  .prefetch_related('vlan__fabric')
-                  .prefetch_related('staticipaddress_set')
-                  .prefetch_related('staticipaddress_set__user')
-                  .prefetch_related(
-                      'staticipaddress_set__interface_set__node')
                   .prefetch_related('iprange_set'))
         pk = 'id'
         form = SubnetForm
@@ -87,6 +82,11 @@ class SubnetHandler(TimestampedModelHandler):
         super()._cache_pks(objs)
         self.cache["staticroutes"] = StaticRoute.objects.filter(
             source__in=objs)
+        # Prefetching on the staticipaddress query set doesn't work,
+        # since it only works with model objects. Working with model
+        # objects for the IPs doesn't scale.
+        for subnet, allocated_ips in get_allocated_ips(objs):
+            subnet.cache_allocated_ips(allocated_ips)
 
     def create(self, parameters):
         assert self.user.has_perm(
