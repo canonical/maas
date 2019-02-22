@@ -1,4 +1,4 @@
-# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver models."""
@@ -145,6 +145,25 @@ class TestBMC(MAASServerTestCase):
         machine_ip_addr = TestBMC.get_machine_ip_address(machine)
         self.assertNotEqual(machine_ip_addr.id, bmc.ip_address.id)
         return machine, bmc, machine_ip
+
+    def test_make_machine_and_bmc_discovered_ip(self):
+        # Regression test for LP:1816651
+        subnet = factory.make_Subnet()
+        discovered_ip = factory.make_StaticIPAddress(
+            subnet=subnet, alloc_type=IPADDRESS_TYPE.DISCOVERED)
+        sticky_ip = factory.make_StaticIPAddress(
+            ip=discovered_ip.ip, subnet=subnet,
+            alloc_type=IPADDRESS_TYPE.STICKY)
+        bmc = factory.make_BMC(
+            power_type='virsh',
+            power_parameters={
+                'power_address':
+                "protocol://%s:8080/path/to/thing#tag" % (
+                    factory.ip_to_url_format(discovered_ip.ip))})
+        self.assertItemsEqual(
+            [discovered_ip, sticky_ip],
+            StaticIPAddress.objects.filter(ip=discovered_ip.ip))
+        self.assertEqual(sticky_ip, bmc.ip_address)
 
     def test_bmc_save_extracts_ip_address(self):
         subnet = factory.make_Subnet()
