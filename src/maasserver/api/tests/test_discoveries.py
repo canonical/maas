@@ -312,6 +312,57 @@ class TestDiscoveriesScanAPI(APITestCase.ForUser):
         self.assertEqual(204, response.status_code, response.content)
 
 
+class TestDiscoveriesClearByMACandIP(APITestCase.ForUser):
+
+    def test__clear_by_mac_and_ip_not_allowed_for_non_admin(self):
+        rack = factory.make_RackController()
+        iface = rack.interface_set.first()
+        make_discoveries(interface=iface, count=3)
+        uri = get_discoveries_uri()
+        response = self.client.post(uri, {
+            'op': 'clear_by_mac_and_ip',
+            'ip': '1.1.1.1',
+            'mac': '00:01:02:03:04:05',
+        })
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code,
+            response.content)
+
+    def test__clear_by_mac_and_ip_requires_parameters(self):
+        self.become_admin()
+        rack = factory.make_RackController()
+        iface = rack.interface_set.first()
+        make_discoveries(interface=iface, count=3)
+        uri = get_discoveries_uri()
+        response = self.client.post(uri, {
+            'op': 'clear_by_mac_and_ip',
+        })
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code,
+            response.content)
+
+    def test__clear_by_mac_and_ip_allowed_for_admin(self):
+        self.become_admin()
+        rack = factory.make_RackController()
+        iface = rack.interface_set.first()
+        make_discoveries(interface=iface, count=3)
+        neigh = factory.make_Discovery()
+        uri = get_discoveries_uri()
+        response = self.client.post(uri, {
+            'op': 'clear_by_mac_and_ip',
+            'ip': neigh.ip,
+            'mac': neigh.mac_address,
+        })
+        self.assertEqual(204, response.status_code, response.content)
+        # The second time, we should get a NOT_HERE result.
+        response = self.client.post(uri, {
+            'op': 'clear_by_mac_and_ip',
+            'ip': neigh.ip,
+            'mac': neigh.mac_address,
+        })
+        self.assertEqual(410, response.status_code, response.content)
+
+
 class TestDiscoveryAPI(APITestCase.ForUser):
 
     def test_handler_path(self):

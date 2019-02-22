@@ -24,6 +24,7 @@ from maasserver.api.support import (
     OperationsHandler,
 )
 from maasserver.api.utils import (
+    get_mandatory_param,
     get_optional_list,
     get_optional_param,
 )
@@ -223,6 +224,33 @@ class DiscoveriesHandler(OperationsHandler):
         Discovery.objects.clear(
             user=request.user, all=all, mdns=mdns, neighbours=neighbours)
         return rc.DELETED
+
+    @operation(idempotent=False)
+    def clear_by_mac_and_ip(self, request, **kwargs):
+        """@description-title Delete discoveries that match a MAC and IP
+        @description Deletes all discovered neighbours (and associated reverse
+        DNS entries) associated with the given IP address and MAC address.
+
+        @param (string) "ip" [required=true] IP address
+
+        @param (string) "mac" [required=true] MAC address
+
+        @success (http-status-code) "server-success" 204
+        """
+        ip = get_mandatory_param(request.POST, 'ip')
+        mac = get_mandatory_param(request.POST, 'mac')
+
+        if not request.user.has_perm(NodePermission.admin, Discovery):
+            response = HttpResponseForbidden(
+                content_type='text/plain',
+                content="Must be an administrator to clear discovery entries.")
+            return response
+        delete_result = Discovery.objects.delete_by_mac_and_ip(
+            ip=ip, mac=mac, user=request.user)
+        if delete_result[0] == 0:
+            return rc.NOT_HERE
+        else:
+            return rc.DELETED
 
     @operation(idempotent=False)
     def scan(self, request, **kwargs):

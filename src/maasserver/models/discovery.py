@@ -139,6 +139,19 @@ class DiscoveryManager(Manager, DiscoveryQueriesMixin):
             "Cleared" if user is None else "User '%s' cleared" % (
                 user.username), what))
 
+    def delete_by_mac_and_ip(self, ip, mac, user=None):
+        # Circular imports.
+        from maasserver.models import (Neighbour, MDNS, RDNS)
+        delete_result = Neighbour.objects.filter(
+            ip=ip, mac_address=mac).delete()
+        MDNS.objects.filter(ip=ip).delete()
+        RDNS.objects.filter(ip=ip).delete()
+        if delete_result[0] >= 1:
+            maaslog.info("%s%s." % (
+                "Cleared" if user is None else "User '%s' cleared" % (
+                    user.username), " neighbour entry: %s (%s)" % (ip, mac)))
+        return delete_result
+
 
 class Discovery(CleanSave, ViewModel):
     """A `Discovery` object represents the combined data for a network entity

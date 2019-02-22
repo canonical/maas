@@ -152,3 +152,46 @@ class TestDiscoveryHandlerClear(MAASServerTestCase):
         num_mdns = MDNS.objects.count()
         self.assertThat(num_discoveries, Equals(1))
         self.assertThat(num_mdns, Equals(0))
+
+
+class TestDiscoveryHandlerDeleteByMACAndIP(MAASServerTestCase):
+
+    def test__raises_if_not_admin(self):
+        user = factory.make_User()
+        handler = DiscoveryHandler(user, {}, None)
+        disco = factory.make_Discovery()
+        num_discoveries = Discovery.objects.count()
+        self.assertThat(num_discoveries, Equals(1))
+        with ExpectedException(HandlerPermissionError):
+            handler.delete_by_mac_and_ip(
+                dict(ip=disco.ip, mac=disco.mac_address))
+
+    def test__raises_if_missing_ip(self):
+        user = factory.make_User()
+        handler = DiscoveryHandler(user, {}, None)
+        disco = factory.make_Discovery()
+        num_discoveries = Discovery.objects.count()
+        self.assertThat(num_discoveries, Equals(1))
+        with ExpectedException(HandlerPermissionError):
+            handler.delete_by_mac_and_ip(dict(mac=disco.mac_address))
+
+    def test__raises_if_missing_mac(self):
+        user = factory.make_User()
+        handler = DiscoveryHandler(user, {}, None)
+        disco = factory.make_Discovery()
+        num_discoveries = Discovery.objects.count()
+        self.assertThat(num_discoveries, Equals(1))
+        with ExpectedException(HandlerPermissionError):
+            handler.delete_by_mac_and_ip(dict(ip=disco.ip))
+
+    def test__deletes_discovery_and_returns_number_deleted(self):
+        user = factory.make_admin()
+        handler = DiscoveryHandler(user, {}, None)
+        disco = factory.make_Discovery()
+        num_discoveries = Discovery.objects.count()
+        self.assertThat(num_discoveries, Equals(1))
+        result = handler.delete_by_mac_and_ip(
+            dict(ip=disco.ip, mac=disco.mac_address))
+        num_discoveries = Discovery.objects.count()
+        self.assertThat(num_discoveries, Equals(0))
+        self.assertThat(result, Equals(1))

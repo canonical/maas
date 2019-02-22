@@ -10,6 +10,7 @@ from maasserver.models import (
     discovery as discovery_module,
     MDNS,
     Neighbour,
+    RDNS,
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -213,4 +214,67 @@ class TestDiscoveryManagerClear(MAASServerTestCase):
         Discovery.objects.clear(user=user, all=True)
         self.assertThat(maaslog, MockCalledOnceWith(
             Matches(DocTestMatches("User '%s' cleared..." % user.username))
+        ))
+
+
+class TestDiscoveryManagerDeleteByMacAndIP(MAASServerTestCase):
+    """Tests for `DiscoveryManager.delete_by_mac_and_ip` """
+
+    def test__deletes_neighbours_matching_mac_and_ip(self):
+        neigh = factory.make_Neighbour()
+        factory.make_Neighbour(ip=neigh.ip, mac_address=neigh.mac_address)
+        self.assertThat(Neighbour.objects.count(), Equals(2))
+        Discovery.objects.delete_by_mac_and_ip(
+            ip=neigh.ip, mac=neigh.mac_address)
+        self.assertThat(Neighbour.objects.count(), Equals(0))
+
+    def test__unrelated_neighbours_remain(self):
+        neigh = factory.make_Neighbour()
+        factory.make_Neighbour(ip=neigh.ip, mac_address=neigh.mac_address)
+        # Make an extra neighbour; this one shouldn't go away.
+        factory.make_Neighbour()
+        self.assertThat(Neighbour.objects.count(), Equals(3))
+        Discovery.objects.delete_by_mac_and_ip(
+            ip=neigh.ip, mac=neigh.mac_address)
+        self.assertThat(Neighbour.objects.count(), Equals(1))
+
+    def test__deletes_related_mdns_entries(self):
+        neigh = factory.make_Neighbour()
+        factory.make_Neighbour(ip=neigh.ip, mac_address=neigh.mac_address)
+        factory.make_MDNS(ip=neigh.ip)
+        self.assertThat(Neighbour.objects.count(), Equals(2))
+        self.assertThat(MDNS.objects.count(), Equals(1))
+        Discovery.objects.delete_by_mac_and_ip(
+            ip=neigh.ip, mac=neigh.mac_address)
+        self.assertThat(Neighbour.objects.count(), Equals(0))
+        self.assertThat(MDNS.objects.count(), Equals(0))
+
+    def test__deletes_related_rdns_entries(self):
+        neigh = factory.make_Neighbour()
+        factory.make_Neighbour(ip=neigh.ip, mac_address=neigh.mac_address)
+        factory.make_RDNS(ip=neigh.ip)
+        self.assertThat(Neighbour.objects.count(), Equals(2))
+        self.assertThat(RDNS.objects.count(), Equals(1))
+        Discovery.objects.delete_by_mac_and_ip(
+            ip=neigh.ip, mac=neigh.mac_address)
+        self.assertThat(Neighbour.objects.count(), Equals(0))
+        self.assertThat(MDNS.objects.count(), Equals(0))
+
+    def test__log_entries(self):
+        maaslog = self.patch(discovery_module.maaslog, 'info')
+        user = factory.make_admin()
+        neigh = factory.make_Neighbour(
+            ip='1.1.1.1', mac_address='00:01:02:03:04:05')
+        Discovery.objects.delete_by_mac_and_ip(
+            ip=neigh.ip, mac=neigh.mac_address, user=user)
+        self.assertThat(maaslog, MockCalledOnceWith(
+            Matches(DocTestMatches("User '%s' cleared..." % user.username))
+        ))
+        neigh = factory.make_Neighbour(
+            ip='1.1.1.1', mac_address='00:01:02:03:04:05')
+        maaslog = self.patch(discovery_module.maaslog, 'info')
+        Discovery.objects.delete_by_mac_and_ip(
+            ip=neigh.ip, mac=neigh.mac_address)
+        self.assertThat(maaslog, MockCalledOnceWith(
+            Matches(DocTestMatches('Cleared neighbour entry: 1.1.1.1 (00:...'))
         ))

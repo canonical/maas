@@ -74,3 +74,18 @@ class DiscoveryHandler(ViewModelHandler):
         if len(params) == 0:
             params['all'] = True
         Discovery.objects.clear(**params)
+
+    def delete_by_mac_and_ip(self, params=None):
+        if params is None:
+            params = dict()
+        if not self.user.has_perm(NodePermission.admin, Discovery):
+            raise HandlerPermissionError()
+        ip = params.get("ip", None)
+        if ip is None:
+            raise ValueError("IP address required.")
+        mac = params.get("mac", None)
+        if mac is None:
+            raise ValueError("MAC address required.")
+        delete_result = Discovery.objects.delete_by_mac_and_ip(ip=ip, mac=mac)
+        # Return the count of objects deleted.
+        return delete_result[0]
