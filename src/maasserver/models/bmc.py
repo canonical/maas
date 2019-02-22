@@ -1,4 +1,4 @@
-# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """BMC objects."""
@@ -337,12 +337,14 @@ class BMC(CleanSave, TimestampedModel):
                     with transaction.atomic():
                         subnet = Subnet.objects.get_best_subnet_for_ip(new_ip)
                         (self.ip_address,
-                         _) = StaticIPAddress.objects.get_or_create(
-                            ip=new_ip,
-                            defaults={
-                                'alloc_type': IPADDRESS_TYPE.STICKY,
-                                'subnet': subnet,
-                            })
+                         _) = StaticIPAddress.objects.exclude(
+                             alloc_type=IPADDRESS_TYPE.DISCOVERED
+                             ).get_or_create(
+                                 ip=new_ip,
+                                 defaults={
+                                     'alloc_type': IPADDRESS_TYPE.STICKY,
+                                     'subnet': subnet,
+                                 })
                 except Exception as error:
                     maaslog.info(
                         "BMC could not save extracted IP "
