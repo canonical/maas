@@ -71,6 +71,7 @@ from maasserver.forms import (
     get_machine_edit_form,
     MachineForm,
 )
+from maasserver.forms.clone import CloneForm
 from maasserver.forms.ephemeral import CommissionForm
 from maasserver.forms.filesystem import (
     MountNonStorageFilesystemForm,
@@ -2497,6 +2498,45 @@ class MachinesHandler(NodesHandler, PowersMixin):
             "Asking %s to add machines from chassis %s" % (
                 ", ".join(rack.hostname for rack in racks), hostname),
             content_type=("text/plain; charset=%s" % settings.DEFAULT_CHARSET))
+
+    @operation(idempotent=False)
+    def clone(self, request):
+        """@description-title Clone storage and/or interface configurations
+        @description Clone storage and/or interface configurations
+
+        A machine storage and/or interface configuration can be cloned to a
+        set of destination machines.
+
+        For storage configuration, cloning the destination machine must have at
+        least the same number of physical block devices or more, along with
+        the physical block devices being the same size or greater.
+
+        For interface configuration, cloning the destination machine must have
+        at least the same number of interfaces with the same names. The
+        destination machine can have more interfaces than the source, as long
+        as the subset of interfaces on the destination have the same matching
+        names as the source.
+
+        @param (string) "source" [required=true] The system_id of the machine
+        that is the source of the configuration.
+
+        @param (string) "destination" [required=true] A list of system_ids to
+        clone the configuration to.
+
+        @success (http-status-code) "204" 204
+
+        @error (http-status-code) "400" 400
+        @error (content) "not-found" Source and/or destinations are not found.
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user not authenticated.
+        """
+        form = CloneForm(request.user, data=request.POST)
+        if not form.is_valid():
+            raise MAASAPIValidationError(form.errors)
+        form.save()
+        # 204 HTTP No Content (not actually DELETED).
+        return rc.DELETED
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):

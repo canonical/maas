@@ -2864,6 +2864,42 @@ class TestMachinesAPI(APITestCase.ForUser):
                 self.user.username, 'virsh', hostname, None, None,
                 False, None, None, None, None, None))
 
+    def test_POST_clone_error(self):
+        self.become_admin()
+        source = factory.make_Machine(with_boot_disk=False)
+        factory.make_Interface(node=source, name='eth0')
+        destination = factory.make_Machine(
+            status=NODE_STATUS.READY, with_boot_disk=False)
+        factory.make_Interface(node=destination, name='eth1')
+        response = self.client.post(
+            reverse('machines_handler'),
+            {
+                'op': 'clone',
+                'source': source.system_id,
+                'destinations': destination.system_id,
+                'interfaces': 'true',
+            })
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response.content)
+
+    def test_POST_clone(self):
+        self.become_admin()
+        source = factory.make_Machine(with_boot_disk=False)
+        factory.make_Interface(node=source, name='eth0')
+        destination = factory.make_Machine(
+            status=NODE_STATUS.READY, with_boot_disk=False)
+        factory.make_Interface(node=destination, name='eth0')
+        response = self.client.post(
+            reverse('machines_handler'),
+            {
+                'op': 'clone',
+                'source': source.system_id,
+                'destinations': destination.system_id,
+                'interfaces': 'true',
+            })
+        self.assertEqual(
+            http.client.NO_CONTENT, response.status_code, response.content)
+
 
 class TestPowerState(APITransactionTestCase.ForUser):
 

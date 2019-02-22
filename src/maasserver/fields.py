@@ -839,6 +839,16 @@ class NodeChoiceField(forms.ModelChoiceField):
                 "Select a valid choice. "
                 "%s is not one of the available choices." % value)
 
+    def to_python(self, value):
+        # Avoid circular imports
+        from maasserver.models.node import Node
+        try:
+            return self.queryset.get(Q(system_id=value) | Q(hostname=value))
+        except Node.DoesNotExist:
+            raise ValidationError(
+                "Select a valid choice. "
+                "%s is not one of the available choices." % value)
+
 
 class VersionedTextFileField(forms.ModelChoiceField):
 
