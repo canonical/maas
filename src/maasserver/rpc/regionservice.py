@@ -24,6 +24,7 @@ from maasserver.dns.config import get_trusted_networks
 from maasserver.models.config import Config
 from maasserver.models.node import RackController
 from maasserver.models.subnet import Subnet
+from maasserver.prometheus.metrics import PROMETHEUS_METRICS
 from maasserver.rpc import (
     boot,
     configuration,
@@ -754,6 +755,11 @@ class RegionServer(Region):
         super(RegionServer, self).connectionLost(reason)
 
 
+def _get_call_latency_metric_labels(client, cmd, *args, **kwargs):
+    """Return labels for the region/rack call latency metric."""
+    return {'call': cmd.__name__}
+
+
 class RackClient(common.Client):
     """A `common.Client` for communication from region to rack."""
 
@@ -778,6 +784,9 @@ class RackClient(common.Client):
         else:
             return self.cache['call_cache']
 
+    @PROMETHEUS_METRICS.record_call_latency(
+        'maas_region_rack_rpc_call_latency',
+        get_labels=_get_call_latency_metric_labels)
     @asynchronous
     def __call__(self, cmd, *args, **kwargs):
         """Call a remote RPC method.

@@ -10,6 +10,7 @@ from operator import attrgetter
 import random
 from unittest import skip
 from unittest.mock import (
+    ANY,
     call,
     MagicMock,
     Mock,
@@ -22,6 +23,7 @@ from maasserver.models import (
     RackController,
     RegionController,
 )
+from maasserver.prometheus.metrics import PROMETHEUS_METRICS
 from maasserver.rpc import regionservice
 from maasserver.rpc.regionservice import (
     RackClient,
@@ -589,6 +591,20 @@ class TestRackClient(MAASTestCase):
         result = yield client(cluster.ListBootImages)
         self.assertIs(sentinel.boot_images, result)
         self.assertNotIn(cluster.ListBootImages, call_cache)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__call__records_latency_metric(self):
+        mock_metrics = self.patch(PROMETHEUS_METRICS, 'update')
+        conn = DummyConnection()
+        conn.ident = factory.make_name('ident')
+        self.patch(conn, 'callRemote').return_value = (
+            succeed(sentinel.boot_images))
+        client = RackClient(conn, {})
+        yield client(cluster.ListBootImages)
+        mock_metrics.assert_called_with(
+            'maas_region_rack_rpc_call_latency', 'observe',
+            labels={'call': 'ListBootImages'}, value=ANY)
 
 
 class TestRegionService(MAASTestCase):
