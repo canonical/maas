@@ -180,8 +180,15 @@ def update_lease(
         # Interfaces no longer holds an active lease. Create the new object
         # to show that it used to be connected to this subnet.
         if sip is None:
-            sip = StaticIPAddress.objects.create(
-                alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=None, subnet=subnet)
+            # XXX: There shouldn't be more than one StaticIPAddress
+            #      record here, but it can happen be due to bug 1817305.
+            sip = StaticIPAddress.objects.filter(
+                alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=None,
+                subnet=subnet, interface__in=interfaces).first()
+            if sip is None:
+                sip = StaticIPAddress.objects.create(
+                    alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=None,
+                    subnet=subnet)
         else:
             sip.ip = None
             sip.save()

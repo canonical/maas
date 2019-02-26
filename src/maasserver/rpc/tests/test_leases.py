@@ -9,6 +9,7 @@ from datetime import datetime
 import random
 import time
 
+from django.utils import timezone
 from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_FAMILY,
@@ -381,3 +382,76 @@ class TestUpdateLease(MAASServerTestCase):
         self.assertItemsEqual(
             [boot_interface.id],
             sip.interface_set.values_list("id", flat=True))
+
+    def test_expiry_does_not_keep_adding_null_ip_records_repeated_calls(self):
+        subnet = factory.make_ipv4_Subnet_with_IPRanges(
+            with_static_range=False, dhcp_on=True)
+        # Create a bunch of null IPs to show the effects of bug 1817056.
+        null_ips = [
+            StaticIPAddress(
+                created=timezone.now(), updated=timezone.now(), ip=None,
+                alloc_type=IPADDRESS_TYPE.DISCOVERED,
+                subnet=subnet)
+            for _ in range(10)]
+        StaticIPAddress.objects.bulk_create(null_ips)
+        node = factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
+        boot_interface = node.get_boot_interface()
+        boot_interface.ip_addresses.add(*null_ips)
+
+        dynamic_range = subnet.get_dynamic_ranges()[0]
+        ip = factory.pick_ip_in_IPRange(dynamic_range)
+
+        kwargs = self.make_kwargs(
+            action="expiry",
+            mac=boot_interface.mac_address, ip=ip)
+        null_ip_query = StaticIPAddress.objects.filter(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=None, subnet=subnet)
+        update_lease(**kwargs)
+        # XXX: We shouldn't need to record the previous count and
+        #      instead expect the count to be 1. This will be addressed
+        #      in bug 1817305.
+        previous_null_ip_count = null_ip_query.count()
+        previous_interface_ip_count = boot_interface.ip_addresses.count()
+        update_lease(**kwargs)
+        self.assertEqual(previous_null_ip_count, null_ip_query.count())
+        self.assertEqual(
+            previous_interface_ip_count, boot_interface.ip_addresses.count())
+
+    def test_expiry_does_not_keep_adding_null_ip_records_other_interface(self):
+        subnet = factory.make_ipv4_Subnet_with_IPRanges(
+            with_static_range=False, dhcp_on=True)
+        node1 = factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
+        boot_interface1 = node1.get_boot_interface()
+        node2 = factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
+        boot_interface2 = node2.get_boot_interface()
+        # We now have two nodes, both having null IP records linking
+        # them to the same subnet.
+        self.assertIsNone(boot_interface1.ip_addresses.first().ip)
+        self.assertIsNone(boot_interface2.ip_addresses.first().ip)
+
+        dynamic_range = subnet.get_dynamic_ranges()[0]
+        ip = factory.pick_ip_in_IPRange(dynamic_range)
+        kwargs1 = self.make_kwargs(
+            action="expiry",
+            mac=boot_interface1.mac_address, ip=ip)
+        kwargs2 = self.make_kwargs(
+            action="expiry",
+            mac=boot_interface2.mac_address, ip=ip)
+        self.assertEqual(1, boot_interface1.ip_addresses.count())
+        self.assertEqual(1, boot_interface2.ip_addresses.count())
+
+        # When expiring the leases for the two nodes, they keep the
+        # existing links they have.
+        previous_ip_id1 = boot_interface1.ip_addresses.first().id
+        previous_ip_id2 = boot_interface2.ip_addresses.first().id
+        update_lease(**kwargs1)
+        update_lease(**kwargs2)
+
+        [ip_address1] = boot_interface1.ip_addresses.all()
+        self.assertEqual(previous_ip_id1, ip_address1.id)
+        self.assertEqual(1, ip_address1.interface_set.count())
+        [ip_address2] = boot_interface2.ip_addresses.all()
+        self.assertEqual(previous_ip_id2, ip_address2.id)
+        self.assertEqual(1, ip_address2.interface_set.count())
+        self.assertEqual(1, boot_interface1.ip_addresses.count())
+        self.assertEqual(1, boot_interface2.ip_addresses.count())
