@@ -4086,6 +4086,41 @@ class TestNode(MAASServerTestCase):
             reload_object(filesystem_on_iscsi_vbd1), Is(None),
             "Filesystem on virtual block device should have been removed.")
 
+    def test__clear_full_storage_configuration_lp1815091(self):
+        node = factory.make_Node()
+        physical_block_devices = [
+            factory.make_PhysicalBlockDevice(node=node, size=10 * 1000 ** 3)
+            for _ in range(4)
+            ]
+        raid5_filesystems = [
+            factory.make_Filesystem(
+                block_device=bd,
+                fstype=FILESYSTEM_TYPE.RAID)
+            for bd in physical_block_devices[:3]
+        ]
+        raid5 = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.RAID_5,
+            filesystems=raid5_filesystems).virtual_device
+        backing_filesystem = factory.make_Filesystem(
+            block_device=raid5,
+            fstype=FILESYSTEM_TYPE.BCACHE_BACKING)
+        cacheset = factory.make_CacheSet(
+            block_device=physical_block_devices[3])
+        root = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
+            filesystems=[backing_filesystem], cache_set=cacheset)
+        node._clear_full_storage_configuration()
+        for pbd in physical_block_devices:
+            self.expectThat(
+                reload_object(pbd), Not(Is(None)),
+                "Physical block device should not have been deleted.")
+        self.expectThat(
+            reload_object(root), Is(None),
+            "Bcache should have been removed.")
+        self.expectThat(
+            reload_object(raid5), Is(None),
+            "Raid should have been removed.")
+
     def test__create_acquired_filesystems(self):
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
         block_device = factory.make_PhysicalBlockDevice(node=node)
