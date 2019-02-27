@@ -701,6 +701,23 @@ class TestGetConfig(MAASServerTestCase):
             query_count=22)
         self.assertEqual(nic, reload_object(node).boot_interface)
 
+    def test__sets_boot_interface_handles_virtual_nics_same_mac(self):
+        rack_controller = factory.make_RackController()
+        local_ip = factory.make_ip_address()
+        remote_ip = factory.make_ip_address()
+        node = self.make_node()
+        nic = node.get_boot_interface()
+        # Create a bridge that has the same mac address as the parent nic.
+        factory.make_Interface(
+            INTERFACE_TYPE.BRIDGE, parents=[nic], mac_address=nic.mac_address)
+        node.boot_interface = None
+        node.save()
+        mac = nic.mac_address
+        get_config(
+            rack_controller.system_id, local_ip, remote_ip, mac=mac,
+            query_count=22)
+        self.assertEqual(nic, reload_object(node).boot_interface)
+
     def test__updates_boot_interface_when_changed(self):
         rack_controller = factory.make_RackController()
         local_ip = factory.make_ip_address()

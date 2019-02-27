@@ -348,7 +348,8 @@ def get_config(
             machine.bios_boot_method = bios_boot_method
 
         try:
-            machine.boot_interface = machine.interface_set.get(mac_address=mac)
+            machine.boot_interface = machine.interface_set.get(
+                type=INTERFACE_TYPE.PHYSICAL, mac_address=mac)
         except ObjectDoesNotExist:
             # MAC is unknown or wasn't sent. Determine the boot_interface using
             # the boot_cluster_ip.
