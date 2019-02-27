@@ -35,6 +35,7 @@ class DiscoveryHandler(ViewModelHandler):
             'list',
             'get',
             'clear',
+            'delete_by_mac_and_ip',
         ]
 
     def list(self, params):
