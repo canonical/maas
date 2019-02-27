@@ -214,3 +214,8 @@ class PodProblem(MAASAPIException):
 
 class NoScriptsFound(MAASException):
     """Raised when no Scripts are found based on user input."""
+
+
+class StorageClearProblem(MAASAPIException):
+    """Raised when an issue occur's that prevents the clearing of a machine's
+    storage configuration."""

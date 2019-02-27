@@ -95,6 +95,7 @@ from maasserver.exceptions import (
     NodeStateViolation,
     NoScriptsFound,
     PowerProblem,
+    StorageClearProblem,
 )
 from maasserver.fields import (
     MAASIPAddressField,
@@ -3271,14 +3272,31 @@ class Node(CleanSave, TimestampedModel):
             block_device__id__in=block_device_ids).delete()
         Filesystem.objects.filter(
             block_device__id__in=block_device_ids).delete()
-        for block_device in self.virtualblockdevice_set.all():
-            try:
-                block_device.filesystem_group.delete(force=True)
-            except FilesystemGroup.DoesNotExist:
-                # When a filesystem group has multiple virtual block devices
-                # it is possible that accessing `filesystem_group` will
-                # result in it already being deleted.
-                pass
+        virtual_devices = list(reversed(self.virtualblockdevice_set.all()))
+        for _ in range(10):  # 10 times gives enough tries to remove.
+            for virtual_bd in virtual_devices[:]:  # Iterate on copy.
+                try:
+                    virtual_bd.filesystem_group.delete(force=True)
+                    virtual_devices.remove(virtual_bd)
+                except FilesystemGroup.DoesNotExist:
+                    # When a filesystem group has multiple virtual block
+                    # devices it is possible that accessing `filesystem_group`
+                    # will result in it already being deleted.
+                    virtual_devices.remove(virtual_bd)
+                except ValidationError:
+                    # Cannot be deleted because another device depends on it.
+                    # Next loop through will delete the device.
+                    pass
+            if not virtual_devices:
+                # Done, all have been removed.
+                break
+        if virtual_devices:
+            raise StorageClearProblem(
+                "Failed to remove %d virtual devices: %s" % (
+                    len(virtual_devices), ', '.join([
+                        virtual_bd.get_name()
+                        for virtual_bd in virtual_devices
+                    ])))
 
     def _create_acquired_filesystems(self):
         """Copy all filesystems that have a user mountable filesystem to be
