@@ -11,7 +11,7 @@ from django.db import (
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('maasserver', '0181_packagerepository_disable_sources'),
+        ('maasserver', '0182_remove_duplicate_null_ips'),
     ]
 
     operations = [
