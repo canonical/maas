@@ -82,6 +82,12 @@ angular.module('MAAS').controller('DashboardController', [
             return VLANsManager.getName(vlan);
         };
 
+        // Remove device
+        $scope.removeDevice = function (device) {
+            device.isBeingRemoved = true;
+            DiscoveriesManager.removeDevice(device);
+        };
+
         // Sets selected device
         $scope.toggleSelected = function(deviceId) {
             if($scope.selectedDevice === deviceId) {

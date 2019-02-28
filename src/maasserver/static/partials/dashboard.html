@@ -1,6 +1,6 @@
 <header class="p-strip--light is-shallow u-no-padding--bottom page-header" media-query="min-width: 769px" window-width>
     <div class="row">
-        <div class="tablet-col-4 ol-8">
+        <div class="tablet-col-4 col-8">
             <h1 class="page-header__title">Network discovery</h1>
             <ul class="p-inline-list page-header__status">
                 <li class="p-inline-list__item">{$ discoveredDevices.length $} items discovered</li>
@@ -93,13 +93,21 @@
                                 after-save="afterSave" table-form="true" save-on-blur="false">
                                 <div class="row">
                                     <div class="u-float--left" data-ng-if="windowWidth >= 768">
-                                        <maas-obj-field class="" type="text" key="hostname"
-                                            disable-label="true" placeholder="Hostname (optional)"></maas-obj-field>
+                                        <maas-obj-field class="u-full-width-input" type="text" key="hostname"
+                                            disable-label="true" placeholder="Hostname (optional)" data-ng-disabled="discovery.isBeingRemoved"></maas-obj-field>
                                     </div>
                                     <div class="u-float--right">
+                                        <span class="p-button--base" data-ng-if="discovery.isBeingRemoved">
+                                            <i class="p-icon--spinner u-animation--spin"></i>
+                                            Deleting discovery&hellip;
+                                        </span>
+                                        <button class="p-button--base p-tooltip p-tooltip--btm-right" aria-describedby="remove-{$ discovery.id $}-message" data-ng-click="removeDevice(discovery)" data-ng-if="!discovery.isBeingRemoved">
+                                            <i class="p-icon--delete">Delete network discovery</i>
+                                            <span class="p-tooltip__message" role="tooltip" id="remove-{$ discovery.id $}-message">Delete network discovery</span>
+                                        </button>
                                         <button class="p-button--close" data-ng-if="windowWidth >= 768"
                                             data-ng-click="toggleSelected(discovery.first_seen)">
-                                            <i class="p-icon--close"></i></button>
+                                            <i class="p-icon--close">Close panel</i></button>
                                         </button>
                                     </div>
                                 </div>
@@ -111,7 +119,7 @@
                                             <i class="p-icon--close"></i></button>
                                     </div>
                                     <div class="row"><hr></div>
-                                    <div class="p-strip is-shallow u-no-padding--top">
+                                    <div class="p-strip is-shallow u-no-padding--top" data-ng-class="{ 'u-disable' : discovery.isBeingRemoved }">
                                         <div class="row is-active">
                                             <div class="col-6">
                                                 <div class="p-form__group u-clearfix">
@@ -152,7 +160,9 @@
                                                     <label class="p-form__label is-disabled col-2 mobile-col-2 tablet-col-2">Fabric</label>
                                                     <div class="p-form__control col-3 mobile-col-2 tablet-col-3">
                                                         <span class="p-control-text">
-                                                            {$ discovery.fabric_name $}
+                                                            <a href="#/fabric/{$ discovery.fabric $}">
+                                                                {$ discovery.fabric_name $}
+                                                            </a>
                                                         </span>
                                                     </div>
                                                 </div>
@@ -160,7 +170,9 @@
                                                     <label class="p-form__label is-disabled col-2 mobile-col-2 tablet-col-2">VLAN</label>
                                                     <div class="p-form__control col-3 mobile-col-2 tablet-col-3">
                                                         <span class="p-control-text">
-                                                            {$ getVLANName(discovery.vlan) $}
+                                                            <a href="#/vlan/{$ discovery.vlan $}">
+                                                                {$ getVLANName(discovery.vlan) $}
+                                                            </a>
                                                         </span>
                                                     </div>
                                                 </div>
@@ -173,7 +185,7 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="row is-active">
+                                    <div class="row is-active" data-ng-class="{ 'u-disable' : discovery.isBeingRemoved }">
                                         <div class="col-6">
                                             <div data-ng-if="windowWidth < 768" class="u-clearfix">
                                                 <label for="Name" class="p-form__label col-2 tablet-col-2">Name</label>
@@ -211,7 +223,7 @@
                                         </div>
                                     </div>
                                     <hr>
-                                    <div class="p-space-between is-active">
+                                    <div class="p-space-between is-active" data-ng-class="{ 'u-disable' : discovery.isBeingRemoved }">
                                         <maas-obj-errors></maas-obj-errors>
                                         <div class="p-space-between__align-right">
                                             <button class="p-button--base" type="button" data-ng-click="toggleSelected(selectedDevice)">Cancel</button>

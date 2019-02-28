@@ -448,4 +448,19 @@ describe("DashboardController", function() {
             expect($location.path).toHaveBeenCalledWith("/device/" + parent);
         });
     });
+
+    describe("removeDevice", function () {
+        it("calls `removeDevice` in `DiscoveriesManager`", function() {
+            var controller = makeController();
+            var device = {
+                ip: "127.0.0.1",
+                mac_address: "00:25:96:FF:FE:12:34:56"
+            };
+            spyOn(DiscoveriesManager, "removeDevice");
+            $scope.removeDevice(device);
+            expect(DiscoveriesManager.removeDevice).toHaveBeenCalled();
+            expect(DiscoveriesManager.removeDevice)
+                .toHaveBeenCalledWith(device);
+        });
+    });
 });

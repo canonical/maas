@@ -58,3 +58,9 @@ $table-h-indent: $sph-intra--condensed;
   display: flex;
   justify-content: space-between;
 }
+
+
+.u-disable {
+  opacity: .5;
+  pointer-events: none !important;
+}
