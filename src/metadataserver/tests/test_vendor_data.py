@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `metadataserver.vendor_data`."""
@@ -13,6 +13,7 @@ from maasserver.server_address import get_maas_facing_server_host
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from metadataserver.vendor_data import (
+    generate_ephemeral_deployment_network_configuration,
     generate_ntp_configuration,
     generate_rack_controller_configuration,
     generate_system_info,
@@ -268,3 +269,22 @@ class TestGenerateRackControllerConfiguration(MAASServerTestCase):
         self.assertThat(
             config['runcmd'], Contains(['chmod', '+x', '/etc/rc.local']))
         self.assertThat(config['runcmd'], Contains(['/etc/rc.local']))
+
+
+class TestGenerateEphemeralDeploymentNetworkConfiguration(MAASServerTestCase):
+    """Tests for `generate_ephemeral_deployment_network_configuration`."""
+
+    def test_yields_nothing_when_node_is_not_ephemeral_deployment(self):
+        node = factory.make_Node()
+        configuration = generate_ephemeral_deployment_network_configuration(
+            node)
+        self.assertThat(dict(configuration), Equals({}))
+
+    def test_yields_configuration_when_node_is_ephemeral_deployment(self):
+        node = factory.make_Node(with_boot_disk=False)
+        configuration = get_vendor_data(node)
+        config = dict(configuration)
+        self.assertThat(
+            config['write_files'][0]['path'],
+            Contains("/etc/netplan/config.yaml"))
+        self.assertThat(config['runcmd'], Contains("netplan apply"))

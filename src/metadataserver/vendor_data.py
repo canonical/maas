@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """vendor-data for cloud-init's use."""
@@ -17,11 +17,14 @@ from maasserver.models import (
     Config,
     NodeMetadata,
 )
+from maasserver.preseed import get_network_yaml_settings
+from maasserver.preseed_network import NodeNetworkConfiguration
 from maasserver.server_address import get_maas_facing_server_host
 from netaddr import IPAddress
 from provisioningserver.ntp.config import normalise_address
 from provisioningserver.utils.text import make_gecos_field
 from provisioningserver.utils.version import get_maas_version_track_channel
+import yaml
 
 
 def get_vendor_data(node):
@@ -30,6 +33,7 @@ def get_vendor_data(node):
         generate_ntp_configuration(node),
         generate_rack_controller_configuration(node),
         generate_kvm_pod_configuration(node),
+        generate_ephemeral_deployment_network_configuration(node),
     ))
 
 
@@ -98,6 +102,27 @@ def generate_rack_controller_configuration(node):
             "/snap/bin/maas init --mode rack --maas-url %s --secret %s" % (
                 maas_url, secret)
         ]
+
+
+def generate_ephemeral_deployment_network_configuration(node):
+    """Generate cloud-init network configuration for ephemeral deployment."""
+    if node.ephemeral_deployment:
+        osystem = node.get_osystem()
+        release = node.get_distro_series()
+        network_yaml_settings = get_network_yaml_settings(osystem, release)
+        network_config = NodeNetworkConfiguration(
+            node, version=network_yaml_settings.version,
+            source_routing=network_yaml_settings.source_routing)
+        # Render the resulting YAML.
+        network_config_yaml = yaml.safe_dump(
+            network_config.config, default_flow_style=False)
+        yield "write_files", [
+            {
+                'content': network_config_yaml,
+                'path': "/etc/netplan/config.yaml",
+            }
+        ]
+        yield "runcmd", ["netplan apply"]
 
 
 def generate_kvm_pod_configuration(node):
