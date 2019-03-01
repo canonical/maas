@@ -1,4 +1,4 @@
-# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Preseed generation."""
@@ -533,8 +533,7 @@ def get_preseed_type_for(node):
     """
     is_commissioning_preseed = (
         node.status in COMMISSIONING_LIKE_STATUSES or
-        node.get_boot_purpose() == 'poweroff' or
-        node.ephemeral_deployment
+        node.get_boot_purpose() == 'poweroff'
         )
     if is_commissioning_preseed:
         return PRESEED_TYPE.COMMISSIONING
@@ -556,7 +555,7 @@ def get_preseed(request, node) -> bytes:
     """
     config = Config.objects.get_configs([
         'commissioning_osystem', 'commissioning_distro_series'])
-    if node.status in COMMISSIONING_LIKE_STATUSES or node.ephemeral_deployment:
+    if node.status in COMMISSIONING_LIKE_STATUSES:
         return render_preseed(
             request, node, PRESEED_TYPE.COMMISSIONING,
             osystem=config['commissioning_osystem'],

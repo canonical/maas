@@ -1325,16 +1325,6 @@ class Node(CleanSave, TimestampedModel):
             event_action=action, event_description=description,
             system_id=self.system_id)
 
-    @property
-    def is_diskless(self):
-        """Return whether or not this node has any disks."""
-        return len(self.blockdevice_set.all()) == 0
-
-    @property
-    def ephemeral_deployment(self):
-        """Return if node is set to ephemeral deployment."""
-        return self.is_diskless
-
     def storage_layout_issues(self):
         """Return any errors with the storage layout.
 
@@ -1398,8 +1388,6 @@ class Node(CleanSave, TimestampedModel):
                 )
                 any_zfs |= (fs.fstype == FILESYSTEM_TYPE.ZFSROOT)
         issues = []
-        if self.ephemeral_deployment and self.get_osystem() == 'ubuntu':
-            return issues
         if not has_boot:
             issues.append(
                 "Specify a storage device to be able to deploy this node.")
@@ -1451,10 +1439,7 @@ class Node(CleanSave, TimestampedModel):
         storage_layout_issues = self.storage_layout_issues()
         if len(storage_layout_issues) > 0:
             raise ValidationError({"storage": storage_layout_issues})
-        # Ephemeral deployments need to be re-deployed on a power cycle
-        # and will already be in a DEPLOYED state.
-        if self.status == NODE_STATUS.ALLOCATED:
-            self.status = NODE_STATUS.DEPLOYING
+        self.status = NODE_STATUS.DEPLOYING
         script_set = ScriptSet.objects.create_installation_script_set(self)
         self.current_installation_script_set = script_set
         self.save()
@@ -4023,12 +4008,6 @@ class Node(CleanSave, TimestampedModel):
             set_deployment_timeout = True
             self._start_deployment()
             claimed_ips = True
-        elif self.status == NODE_STATUS.DEPLOYED and self.ephemeral_deployment:
-            # Ephemeral deployments need to be re-deployed on a power cycle
-            # and will already be in a DEPLOYED state.
-            set_deployment_timeout = True
-            self._start_deployment()
-            claimed_ips = False
         else:
             set_deployment_timeout = False
             claimed_ips = False
