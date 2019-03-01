@@ -1343,6 +1343,49 @@ class Node(CleanSave, TimestampedModel):
         """Return if node is set to ephemeral deployment."""
         return self.is_diskless
 
+    def retrieve_storage_layout_issues(
+            self, has_boot, root_mounted, root_on_bcache,
+            boot_mounted, arch, any_bcache, any_zfs):
+        """Create and retrieve storage layout issues error messages."""
+        issues = []
+        if self.ephemeral_deployment and self.get_osystem() == 'ubuntu':
+            return issues
+        if self.is_diskless:
+            issues.append(
+                "There are currently no storage devices.  Please add a "
+                "storage device to be able to deploy this node.")
+            return issues
+        if not has_boot:
+            issues.append(
+                "Specify a storage device to be able to deploy this node.")
+        if not root_mounted:
+            issues.append(
+                "Mount the root '/' filesystem to be able to deploy this "
+                "node.")
+        if root_mounted and root_on_bcache and not boot_mounted:
+            issues.append(
+                "This node cannot be deployed because it cannot boot from a "
+                "bcache volume. Mount /boot on a non-bcache device to be "
+                "able to deploy this node.")
+        if (not boot_mounted and arch == "arm64" and
+                self.get_bios_boot_method() != "uefi"):
+            issues.append(
+                "This node cannot be deployed because it needs a separate "
+                "/boot partition.  Mount /boot on a device to be able to "
+                "deploy this node.")
+        if self.osystem in ["centos", "rhel"]:
+            if any_bcache:
+                issues.append(
+                    "This node cannot be deployed because the selected "
+                    "deployment OS, %s, does not support Bcache." %
+                    self.osystem)
+            if any_zfs:
+                issues.append(
+                    "This node cannot be deployed because the selected "
+                    "deployment OS, %s, does not support ZFS." %
+                    self.osystem)
+        return issues
+
     def storage_layout_issues(self):
         """Return any errors with the storage layout.
 
@@ -1367,7 +1410,7 @@ class Node(CleanSave, TimestampedModel):
         any_bcache = False
         any_zfs = False
         boot_mounted = False
-        arch, subarch = self.split_arch()
+        arch, _ = self.split_arch()
 
         for block_device in self.blockdevice_set.all():
             if block_device.is_boot_disk():
@@ -1405,39 +1448,10 @@ class Node(CleanSave, TimestampedModel):
                     FILESYSTEM_TYPE.BCACHE_BACKING,
                 )
                 any_zfs |= (fs.fstype == FILESYSTEM_TYPE.ZFSROOT)
-        issues = []
-        if self.ephemeral_deployment and self.get_osystem() == 'ubuntu':
-            return issues
-        if not has_boot:
-            issues.append(
-                "Specify a storage device to be able to deploy this node.")
-        if not root_mounted:
-            issues.append(
-                "Mount the root '/' filesystem to be able to deploy this "
-                "node.")
-        if root_mounted and root_on_bcache and not boot_mounted:
-            issues.append(
-                "This node cannot be deployed because it cannot boot from a "
-                "bcache volume. Mount /boot on a non-bcache device to be "
-                "able to deploy this node.")
-        if (not boot_mounted and arch == "arm64" and
-                self.get_bios_boot_method() != "uefi"):
-            issues.append(
-                "This node cannot be deployed because it needs a separate "
-                "/boot partition.  Mount /boot on a device to be able to "
-                "deploy this node.")
-        if self.osystem in ["centos", "rhel"]:
-            if any_bcache:
-                issues.append(
-                    "This node cannot be deployed because the selected "
-                    "deployment OS, %s, does not support Bcache." %
-                    self.osystem)
-            if any_zfs:
-                issues.append(
-                    "This node cannot be deployed because the selected "
-                    "deployment OS, %s, does not support ZFS." %
-                    self.osystem)
-        return issues
+
+        return self.retrieve_storage_layout_issues(
+            has_boot, root_mounted, root_on_bcache,
+            boot_mounted, arch, any_bcache, any_zfs)
 
     def on_network(self):
         """Return true if the node is connected to a managed network."""

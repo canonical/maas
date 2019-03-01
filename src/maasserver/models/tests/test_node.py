@@ -4335,15 +4335,6 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
         self.assertFalse(node.on_network())
 
-    def test_storage_layout_issues_is_valid_when_flat(self):
-        node = factory.make_Node()
-        self.assertEqual([], node.storage_layout_issues())
-
-    def test_storage_layout_issues_is_valid_when_ephemeral_deployment(self):
-        # A diskless node is one that it is ephemerally deployed.
-        node = factory.make_Node(with_boot_disk=False)
-        self.assertEqual([], node.storage_layout_issues())
-
     def test_reset_status_expires(self):
         status = random.choice(MONITORED_STATUSES)
         node = factory.make_Node(status=status)
@@ -4364,6 +4355,10 @@ class TestNode(MAASServerTestCase):
         node.reset_status_expires()
         self.assertIsNone(node.status_expires)
 
+    def test_storage_layout_issues_is_valid_when_flat(self):
+        node = factory.make_Node()
+        self.assertEqual([], node.storage_layout_issues())
+
     def test_storage_layout_issues_returns_valid_with_boot_and_bcache(self):
         node = factory.make_Node(with_boot_disk=False)
         boot_partition = factory.make_Partition(node=node)
@@ -4374,15 +4369,29 @@ class TestNode(MAASServerTestCase):
         factory.make_Filesystem(block_device=bcache, mount_point="/")
         self.assertEqual([], node.storage_layout_issues())
 
-    def test_storage_layout_issues_returns_invalid_when_no_disk(self):
+    def test_storage_layout_issues_is_valid_when_ephemeral_deployment(self):
+        # A diskless node is one that it is ephemerally deployed.
         node = factory.make_Node(with_boot_disk=False)
+        self.assertEqual([], node.storage_layout_issues())
+
+    def test_storage_layout_issues_is_invalid_when_no_disks_non_ubuntu(self):
+        node = factory.make_Node(with_boot_disk=False)
+        node.osystem = 'rhel'
+        self.assertEqual(
+            ["There are currently no storage devices.  Please add a storage "
+             "device to be able to deploy this node."],
+            node.storage_layout_issues())
+
+    def test_storage_layout_issues_is_invalid_when_no_disk_specified(self):
+        node = factory.make_Node(with_boot_disk=False)
+        factory.make_BlockDevice(node=node)
         node.osystem = 'rhel'
         self.assertEqual(
             ["Specify a storage device to be able to deploy this node.",
              "Mount the root '/' filesystem to be able to deploy this node."],
             node.storage_layout_issues())
 
-    def test_storage_layout_issues_returns_invalid_when_root_on_bcache(self):
+    def test_storage_layout_issues_is_invalid_when_root_on_bcache(self):
         node = factory.make_Node(with_boot_disk=False)
         factory.make_Partition(node=node)
         fs_group = factory.make_FilesystemGroup(
@@ -4394,7 +4403,7 @@ class TestNode(MAASServerTestCase):
              "bcache volume. Mount /boot on a non-bcache device to be able to "
              "deploy this node."], node.storage_layout_issues())
 
-    def test_storage_layout_issues_returns_invalid_when_bcache_on_centos(self):
+    def test_storage_layout_issues_is_invalid_when_bcache_on_centos(self):
         osystem = random.choice(["centos", "rhel"])
         node = factory.make_Node(osystem=osystem)
         factory.make_FilesystemGroup(
@@ -4404,7 +4413,7 @@ class TestNode(MAASServerTestCase):
              "OS, %s, does not support Bcache." % osystem],
             node.storage_layout_issues())
 
-    def test_storage_layout_issues_returns_invalid_when_zfs_on_centos(self):
+    def test_storage_layout_issues_is_invalid_when_zfs_on_centos(self):
         osystem = random.choice(["centos", "rhel"])
         node = factory.make_Node(osystem=osystem)
         bd = factory.make_BlockDevice(node=node)
@@ -7035,7 +7044,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
             self.assertEquals(
                 SCRIPT_STATUS.ABORTED, reload_object(script_result).status)
 
-    def test_storage_layout_issues_returns_invalid_no_boot_arm64_non_efi(self):
+    def test_storage_layout_issues_is_invalid_no_boot_arm64_non_efi(self):
         node = factory.make_Node(
             architecture="arm64/generic", bios_boot_method="pxe")
         self.assertEqual(

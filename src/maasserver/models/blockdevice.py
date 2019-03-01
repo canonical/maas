@@ -279,7 +279,7 @@ class BlockDevice(CleanSave, TimestampedModel):
     def is_boot_disk(self):
         """Return true if block device is the boot disk."""
         boot_disk = self.node.get_boot_disk()
-        return boot_disk.id == self.id
+        return boot_disk.id == self.id if boot_disk else False
 
     def create_partition(self):
         """Creates a partition that uses the whole disk."""
