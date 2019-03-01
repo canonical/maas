@@ -9,10 +9,12 @@ __all__ = [
     "add_patches",
 ]
 
+from collections import OrderedDict
 import inspect
 import re
 
 from provisioningserver.monkey import add_patches_to_twisted
+import yaml
 
 
 fixed_re = re.compile(r"^([a-z0-9.-]+|\[[a-f0-9]*:[a-f0-9:\.]+\])(:\d+)?$")
@@ -68,8 +70,20 @@ def fix_piston_consumer_delete():
     signals.send_consumer_mail = lambda consumer: None
 
 
+def fix_ordereddict_yaml_representer():
+    """Fix PyYAML so an OrderedDict can be dumped."""
+
+    def dumper(dumper, data):
+        return dumper.represent_mapping(
+            'tag:yaml.org,2002:map', data.items())
+
+    yaml.add_representer(OrderedDict, dumper, Dumper=yaml.Dumper)
+    yaml.add_representer(OrderedDict, dumper, Dumper=yaml.SafeDumper)
+
+
 def add_patches():
     add_patches_to_twisted()
     fix_django_http_request()
     fix_piston_emitter_related()
     fix_piston_consumer_delete()
+    fix_ordereddict_yaml_representer()

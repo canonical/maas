@@ -5,6 +5,7 @@
 
 __all__ = []
 
+from collections import OrderedDict
 import random
 from textwrap import dedent
 
@@ -485,22 +486,43 @@ class TestNetplan(MAASServerTestCase):
     def _render_v1_dict(self, node):
         return NodeNetworkConfiguration(node, version=1).config
 
+    def get_line_number(self, content, match):
+        for line_num, line in enumerate(content.splitlines()):
+            if match in line:
+                return line_num
+
+    def test__yaml_output_is_ordered(self):
+        node = factory.make_Node()
+        eth0 = factory.make_Interface(
+            node=node, name='eth0', mac_address="00:01:02:03:04:05")
+        eth1 = factory.make_Interface(
+            node=node, name='eth1', mac_address="02:01:02:03:04:05")
+        factory.make_Interface(
+            INTERFACE_TYPE.BOND,
+            node=node, name='bond0', parents=[eth0, eth1],
+            mac_address=eth0.mac_address)
+        [output] = compose_curtin_network_config(node, version=2)
+        ethernets_line = self.get_line_number(output, 'ethernets:')
+        bonds_line = self.get_line_number(output, 'bonds:')
+        self.assertTrue(
+            ethernets_line < bonds_line, 'ethernets: must come before bonds:')
+
     def test__single_ethernet_interface(self):
         node = factory.make_Node()
         factory.make_Interface(
             node=node, name='eth0', mac_address="00:01:02:03:04:05")
         netplan = self._render_netplan_dict(node)
         expected_netplan = {
-            'network': {
-                'version': 2,
-                'ethernets': {
+            'network': OrderedDict([
+                ('version', 2),
+                ('ethernets', {
                     'eth0': {
                         'match': {'macaddress': '00:01:02:03:04:05'},
                         'mtu': 1500,
                         'set-name': 'eth0'
                     },
-                },
-            }
+                })
+            ]),
         }
         self.expectThat(netplan, Equals(expected_netplan))
 
@@ -512,9 +534,9 @@ class TestNetplan(MAASServerTestCase):
             node=node, name='eth1', mac_address="02:01:02:03:04:05")
         netplan = self._render_netplan_dict(node)
         expected_netplan = {
-            'network': {
-                'version': 2,
-                'ethernets': {
+            'network': OrderedDict([
+                ('version', 2),
+                ('ethernets', {
                     'eth0': {
                         'match': {'macaddress': '00:01:02:03:04:05'},
                         'mtu': 1500,
@@ -525,8 +547,8 @@ class TestNetplan(MAASServerTestCase):
                         'mtu': 1500,
                         'set-name': 'eth1'
                     },
-                },
-            },
+                }),
+            ]),
         }
         self.expectThat(netplan, Equals(expected_netplan))
 
@@ -542,9 +564,9 @@ class TestNetplan(MAASServerTestCase):
             mac_address=eth0.mac_address)
         netplan = self._render_netplan_dict(node)
         expected_netplan = {
-            'network': {
-                'version': 2,
-                'ethernets': {
+            'network': OrderedDict([
+                ('version', 2),
+                ('ethernets', {
                     'eth0': {
                         'match': {'macaddress': '00:01:02:03:04:05'},
                         'mtu': 1500,
@@ -555,15 +577,15 @@ class TestNetplan(MAASServerTestCase):
                         'mtu': 1500,
                         'set-name': 'eth1'
                     },
-                },
-                'bonds': {
+                }),
+                ('bonds', {
                     'bond0': {
                         'interfaces': ['eth0', 'eth1'],
                         'mtu': 1500,
                         'macaddress': '00:01:02:03:04:05'
                     },
-                },
-            }
+                }),
+            ]),
         }
         self.expectThat(netplan, Equals(expected_netplan))
 
@@ -585,9 +607,9 @@ class TestNetplan(MAASServerTestCase):
             })
         netplan = self._render_netplan_dict(node)
         expected_netplan = {
-            'network': {
-                'version': 2,
-                'ethernets': {
+            'network': OrderedDict([
+                ('version', 2),
+                ('ethernets', {
                     'eth0': {
                         'match': {'macaddress': '00:01:02:03:04:05'},
                         'mtu': 1500,
@@ -598,8 +620,8 @@ class TestNetplan(MAASServerTestCase):
                         'mtu': 1500,
                         'set-name': 'eth1'
                     },
-                },
-                'bonds': {
+                }),
+                ('bonds', {
                     'bond0': {
                         'interfaces': ['eth0', 'eth1'],
                         'mtu': 1500,
@@ -610,8 +632,8 @@ class TestNetplan(MAASServerTestCase):
                         },
                         'macaddress': '03:01:02:03:04:05'
                     },
-                },
-            }
+                }),
+            ]),
         }
         self.expectThat(netplan, Equals(expected_netplan))
 
@@ -633,9 +655,9 @@ class TestNetplan(MAASServerTestCase):
             })
         netplan = self._render_netplan_dict(node)
         expected_netplan = {
-            'network': {
-                'version': 2,
-                'ethernets': {
+            'network': OrderedDict([
+                ('version', 2),
+                ('ethernets', {
                     'eth0': {
                         'match': {'macaddress': '00:01:02:03:04:05'},
                         'mtu': 1500,
@@ -646,8 +668,8 @@ class TestNetplan(MAASServerTestCase):
                         'mtu': 1500,
                         'set-name': 'eth1'
                     },
-                },
-                'bonds': {
+                }),
+                ('bonds', {
                     'bond0': {
                         'interfaces': ['eth0', 'eth1'],
                         'mtu': 1500,
@@ -658,8 +680,8 @@ class TestNetplan(MAASServerTestCase):
                         },
                         'macaddress': '03:01:02:03:04:05'
                     },
-                },
-            }
+                }),
+            ]),
         }
         self.expectThat(netplan, Equals(expected_netplan))
 
@@ -679,9 +701,9 @@ class TestNetplan(MAASServerTestCase):
             })
         netplan = self._render_netplan_dict(node)
         expected_netplan = {
-            'network': {
-                'version': 2,
-                'ethernets': {
+            'network': OrderedDict([
+                ('version', 2),
+                ('ethernets', {
                     'eth0': {
                         'match': {'macaddress': '00:01:02:03:04:05'},
                         'mtu': 1500,
@@ -692,8 +714,8 @@ class TestNetplan(MAASServerTestCase):
                         'mtu': 1500,
                         'set-name': 'eth1'
                     },
-                },
-                'bonds': {
+                }),
+                ('bonds', {
                     'bond0': {
                         'interfaces': ['eth0', 'eth1'],
                         'mtu': 1500,
@@ -704,8 +726,8 @@ class TestNetplan(MAASServerTestCase):
                             "gratuitous-arp": 3
                         },
                     },
-                },
-            }
+                }),
+            ])
         }
         self.expectThat(netplan, Equals(expected_netplan))
 
@@ -720,9 +742,9 @@ class TestNetplan(MAASServerTestCase):
             node=node, name='br0', parents=[eth0, eth1])
         netplan = self._render_netplan_dict(node)
         expected_netplan = {
-            'network': {
-                'version': 2,
-                'ethernets': {
+            'network': OrderedDict([
+                ('version', 2),
+                ('ethernets', {
                     'eth0': {
                         'match': {'macaddress': '00:01:02:03:04:05'},
                         'mtu': 1500,
@@ -733,15 +755,15 @@ class TestNetplan(MAASServerTestCase):
                         'mtu': 1500,
                         'set-name': 'eth1'
                     },
-                },
-                'bridges': {
+                }),
+                ('bridges', {
                     'br0': {
                         'interfaces': ['eth0', 'eth1'],
                         'mtu': 1500,
                         'macaddress': br0.mac_address
                     },
-                },
-            }
+                }),
+            ]),
         }
         self.expectThat(netplan, Equals(expected_netplan))
 
@@ -759,9 +781,9 @@ class TestNetplan(MAASServerTestCase):
             })
         netplan = self._render_netplan_dict(node)
         expected_netplan = {
-            'network': {
-                'version': 2,
-                'ethernets': {
+            'network': OrderedDict([
+                ('version', 2),
+                ('ethernets', {
                     'eth0': {
                         'match': {'macaddress': '00:01:02:03:04:05'},
                         'mtu': 1500,
@@ -772,8 +794,8 @@ class TestNetplan(MAASServerTestCase):
                         'mtu': 1500,
                         'set-name': 'eth1'
                     },
-                },
-                'bridges': {
+                }),
+                ('bridges', {
                     'br0': {
                         'interfaces': ['eth0', 'eth1'],
                         'mtu': 1500,
@@ -783,10 +805,15 @@ class TestNetplan(MAASServerTestCase):
                             'stp': False,
                         },
                     },
-                },
-            }
+                }),
+            ])
         }
         self.expectThat(netplan, Equals(expected_netplan))
+        # Verify that stp is boolean value not an integer value.
+        [output] = compose_curtin_network_config(node, version=2)
+        self.assertTrue(
+            'stp: false' in output,
+            'stp: value must be a boolean not an integer')
 
     def test__bridged_bond(self):
         node = factory.make_Node()
@@ -802,9 +829,9 @@ class TestNetplan(MAASServerTestCase):
             node=node, name='br0', parents=[bond0])
         netplan = self._render_netplan_dict(node)
         expected_netplan = {
-            'network': {
-                'version': 2,
-                'ethernets': {
+            'network': OrderedDict([
+                ('version', 2),
+                ('ethernets', {
                     'eth0': {
                         'match': {'macaddress': '00:01:02:03:04:05'},
                         'mtu': 1500,
@@ -815,22 +842,22 @@ class TestNetplan(MAASServerTestCase):
                         'mtu': 1500,
                         'set-name': 'eth1'
                     },
-                },
-                'bonds': {
+                }),
+                ('bonds', {
                     'bond0': {
                         'interfaces': ['eth0', 'eth1'],
                         'macaddress': bond0.mac_address,
                         'mtu': 1500
                     },
-                },
-                'bridges': {
+                }),
+                ('bridges', {
                     'br0': {
                         'interfaces': ['bond0'],
                         'macaddress': br0.mac_address,
                         'mtu': 1500
                     },
-                },
-            }
+                }),
+            ])
         }
         self.expectThat(netplan, Equals(expected_netplan))
 
@@ -870,9 +897,9 @@ class TestNetplan(MAASServerTestCase):
         domain = Domain.objects.first()
         netplan = self._render_netplan_dict(node)
         expected_netplan = {
-            'network': {
-                'version': 2,
-                'ethernets': {
+            'network': OrderedDict([
+                ('version', 2),
+                ('ethernets', {
                     'eth0': {
                         'gateway4': '10.0.0.1',
                         'match': {'macaddress': '00:01:02:03:04:05'},
@@ -904,16 +931,16 @@ class TestNetplan(MAASServerTestCase):
                             'search': [domain.name]
                         },
                     },
-                },
-            },
+                }),
+            ]),
         }
         self.expectThat(netplan, Equals(expected_netplan))
         netplan_with_source_routing = self._render_netplan_dict(
             node, source_routing=True)
         expected_netplan_with_source_routing = {
-            'network': {
-                'version': 2,
-                'ethernets': {
+            'network': OrderedDict([
+                ('version', 2),
+                ('ethernets', {
                     'eth0': {
                         'gateway4': '10.0.0.1',
                         'match': {'macaddress': '00:01:02:03:04:05'},
@@ -964,8 +991,8 @@ class TestNetplan(MAASServerTestCase):
                             'search': [domain.name]
                         },
                     },
-                },
-            },
+                }),
+            ]),
         }
         self.expectThat(
             netplan_with_source_routing,
@@ -1050,9 +1077,9 @@ class TestNetplan(MAASServerTestCase):
         expected_search_list = [domain.name, domain2.name]
         netplan = self._render_netplan_dict(node)
         expected_netplan = {
-            'network': {
-                'version': 2,
-                'ethernets': {
+            'network': OrderedDict([
+                ('version', 2),
+                ('ethernets', {
                     'eth0': {
                         'gateway4': '10.0.0.1',
                         'nameservers': {
@@ -1074,8 +1101,8 @@ class TestNetplan(MAASServerTestCase):
                         'set-name': 'eth1',
                         'addresses': ['10.0.1.4/24'],
                     },
-                },
-            },
+                }),
+            ]),
         }
         self.expectThat(netplan, Equals(expected_netplan))
         v1 = self._render_v1_dict(node)

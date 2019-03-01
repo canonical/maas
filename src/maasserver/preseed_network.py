@@ -5,7 +5,10 @@
 
 __all__ = []
 
-from collections import defaultdict
+from collections import (
+    defaultdict,
+    OrderedDict,
+)
 from operator import attrgetter
 
 from maasserver.dns.zonegenerator import get_dns_search_paths
@@ -417,7 +420,7 @@ class InterfaceConfiguration:
                 "mac_address": str(self.iface.mac_address),
                 "bridge_interfaces": [parent.get_name() for parent in
                                       self.iface.parents.order_by('name')],
-                "params": self._get_bridge_params(),
+                "params": self._get_bridge_params(version=version),
             })
             if addrs:
                 bridge_operation["subnets"] = addrs
@@ -430,7 +433,7 @@ class InterfaceConfiguration:
                 ],
             })
             bridge_params = get_netplan_bridge_parameters(
-                self._get_bridge_params())
+                self._get_bridge_params(version=version))
             if len(bridge_params) > 0:
                 bridge_operation['parameters'] = bridge_params
             bridge_operation.update(addrs)
@@ -500,9 +503,9 @@ class NodeNetworkConfiguration:
         self.node = node
         self.matching_routes = set()
         self.v1_config = []
-        self.v2_config = {
-            "version": 2
-        }
+        self.v2_config = [
+            ("version", 2),
+        ]
         self.v2_ethernets = {}
         self.v2_vlans = {}
         self.v2_bonds = {}
@@ -579,19 +582,18 @@ class NodeNetworkConfiguration:
                 },
             }
         else:
-            network_config = {
-                "network": self.v2_config,
-            }
-            v2_config = network_config['network']
             if len(self.v2_ethernets) > 0:
-                v2_config.update({"ethernets": self.v2_ethernets})
+                self.v2_config.append(('ethernets', self.v2_ethernets))
             if len(self.v2_vlans) > 0:
-                v2_config.update({"vlans": self.v2_vlans})
+                self.v2_config.append(('vlans', self.v2_vlans))
             if len(self.v2_bonds) > 0:
-                v2_config.update({"bonds": self.v2_bonds})
+                self.v2_config.append(('bonds', self.v2_bonds))
             if len(self.v2_bridges) > 0:
-                v2_config.update({"bridges": self.v2_bridges})
+                self.v2_config.append(('bridges', self.v2_bridges))
             self.set_v2_default_dns()
+            network_config = {
+                "network": OrderedDict(self.v2_config),
+            }
         self.config = network_config
 
     def get_next_routing_table_id(self):
