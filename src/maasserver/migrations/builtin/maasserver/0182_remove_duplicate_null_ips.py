@@ -42,6 +42,20 @@ WITH deletions AS (
                 FROM maasserver_bmc
                 WHERE maasserver_bmc.ip_address_id IS NOT NULL
             )
+            AND maasserver_staticipaddress.id NOT IN (
+                SELECT maasserver_node.gateway_link_ipv4_id
+                FROM maasserver_node
+                WHERE maasserver_node.gateway_link_ipv4_id IS NOT NULL
+            )
+            AND maasserver_staticipaddress.id NOT IN (
+                SELECT maasserver_node.gateway_link_ipv6_id
+                FROM maasserver_node
+                WHERE maasserver_node.gateway_link_ipv6_id IS NOT NULL
+            )
+            AND maasserver_staticipaddress.id NOT IN (
+                SELECT maasserver_dnsresource_ip_addresses.staticipaddress_id
+                FROM maasserver_dnsresource_ip_addresses
+            )
         )
     RETURNING staticipaddress_id)
 
