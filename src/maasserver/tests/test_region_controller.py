@@ -43,6 +43,7 @@ from maastesting.matchers import (
     MockCallsMatch,
     MockNotCalled,
 )
+from provisioningserver.utils.events import Event
 from testtools import ExpectedException
 from testtools.matchers import MatchesStructure
 from twisted.internet import reactor
@@ -92,37 +93,18 @@ class TestRegionControllerService(MAASServerTestCase):
                 call("sys_proxy", service.markProxyForUpdate),
                 call("sys_rbac", service.markRBACForUpdate)))
 
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_startService_calls_markDNSForUpdate(self):
+    def test_startService_markAllForUpdate_on_connect(self):
         listener = MagicMock()
+        listener.events.connected = Event()
         service = self.make_service(listener)
-        mock_markDNSForUpdate = self.patch(service, "markDNSForUpdate")
+        mock_mark_dns_for_update = self.patch(service, 'markDNSForUpdate')
+        mock_mark_rbac_for_update = self.patch(service, 'markRBACForUpdate')
+        mock_mark_proxy_for_update = self.patch(service, 'markProxyForUpdate')
         service.startService()
-        yield service.processingDefer
-        self.assertThat(mock_markDNSForUpdate, MockCalledOnceWith(None, None))
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_startService_calls_markProxyForUpdate(self):
-        listener = MagicMock()
-        service = self.make_service(listener)
-        mock_markProxyForUpdate = self.patch(service, "markProxyForUpdate")
-        service.startService()
-        yield service.processingDefer
-        self.assertThat(
-            mock_markProxyForUpdate, MockCalledOnceWith(None, None))
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_startService_calls_markRBACForUpdate(self):
-        listener = MagicMock()
-        service = self.make_service(listener)
-        mock_markRBACForUpdate = self.patch(service, "markRBACForUpdate")
-        service.startService()
-        yield service.processingDefer
-        self.assertThat(
-            mock_markRBACForUpdate, MockCalledOnceWith(None, None))
+        service.postgresListener.events.connected.fire()
+        mock_mark_dns_for_update.assert_called_once()
+        mock_mark_rbac_for_update.assert_called_once()
+        mock_mark_proxy_for_update.assert_called_once()
 
     def test_stopService_calls_unregister_on_the_listener(self):
         listener = MagicMock()

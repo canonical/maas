@@ -115,6 +115,12 @@ try:
                 'HOST': config.database_host,
                 'PORT': str(config.database_port),
                 'CONN_MAX_AGE': config.database_conn_max_age,
+                'OPTIONS': {
+                    'keepalives': int(config.database_keepalive),
+                    'keepalives_idle': config.database_keepalive_idle,
+                    'keepalives_interval': config.database_keepalive_interval,
+                    'keepalives_count': config.database_keepalive_count
+                }
             }
         }
         DEBUG = config.debug

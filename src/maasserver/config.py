@@ -58,6 +58,22 @@ class RegionConfiguration(Configuration, metaclass=RegionConfigurationMeta):
         "database_conn_max_age",
         "The lifetime of a database connection, in seconds.",
         Int(if_missing=(5 * 60), accept_python=False, min=0))
+    database_keepalive = ConfigurationOption(
+        "database_keepalive",
+        "Whether keepalive for database connections is enabled.",
+        StringBool(if_missing=True))
+    database_keepalive_idle = ConfigurationOption(
+        "database_keepalive_idle",
+        "Time (in seconds) after which keepalives will be started.",
+        Int(if_missing=15))
+    database_keepalive_interval = ConfigurationOption(
+        "database_keepalive_interval",
+        "Interval (in seconds) between keepaliveds.",
+        Int(if_missing=15))
+    database_keepalive_count = ConfigurationOption(
+        "database_keepalive_count",
+        "Number of keeaplives that can be lost before connection is reset.",
+        Int(if_missing=2))
 
     # Worker options.
     num_workers = ConfigurationOption(

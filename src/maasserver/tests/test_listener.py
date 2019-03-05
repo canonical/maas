@@ -111,6 +111,23 @@ class TestPostgresListenerService(MAASServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
+    def test_event_on_connection(self):
+        listener = PostgresListenerService()
+        start_calls = []
+        stop_calls = []
+        listener.events.connected.registerHandler(
+            lambda: start_calls.append(True))
+        listener.events.disconnected.registerHandler(
+            lambda reason: stop_calls.append(reason))
+        yield listener.startService()
+        self.assertEqual(len(start_calls), 1)
+        yield listener.stopService()
+        self.assertEqual(len(stop_calls), 1)
+        [failure] = stop_calls
+        self.assertIsInstance(failure.value, error.ConnectionDone)
+
+    @wait_for_reactor
+    @inlineCallbacks
     def test__handles_missing_system_handler_on_notification(self):
         # Captured notifications from the database will go here.
         notices = DeferredQueue()
