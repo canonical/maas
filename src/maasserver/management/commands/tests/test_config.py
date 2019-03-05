@@ -116,11 +116,16 @@ class TestConfigurationSet(MAASTestCase):
         # Set the option to a random value.
         if self.option == "database_port":
             value = factory.pick_port()
-        elif self.option == "database_conn_max_age":
+        elif self.option in (
+                "database_conn_max_age", "database_keepalive_count",
+                "database_keepalive_interval",
+                "database_keepalive_idle"):
             value = random.randint(0, 60)
         elif self.option == "num_workers":
             value = random.randint(1, 16)
-        elif self.option in ["debug", "debug_queries", "debug_http"]:
+        elif self.option in [
+                "debug", "debug_queries", "debug_http",
+                "database_keepalive"]:
             value = random.choice(['true', 'false'])
         else:
             value = factory.make_name("foobar")

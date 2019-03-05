@@ -15,6 +15,7 @@ from errno import ENOENT
 from django.db import connections
 from django.db.utils import load_backend
 from provisioningserver.utils.enum import map_enum
+from provisioningserver.utils.events import EventGroup
 from provisioningserver.utils.twisted import (
     callOut,
     suppress,
@@ -98,6 +99,7 @@ class PostgresListenerService(Service, object):
         self.disconnecting = None
         self.registeredChannels = False
         self.log = Logger(__name__, self)
+        self.events = EventGroup("connected", "disconnected")
 
     def startService(self):
         """Start the listener."""
@@ -300,6 +302,7 @@ class PostgresListenerService(Service, object):
             def connect(interval=self.HANDLE_NOTIFY_DELAY):
                 d = deferToThread(self.startConnection)
                 d.addCallback(callOut, deferToThread, self.registerChannels)
+                d.addCallback(callOut, self.events.connected.fire)
                 d.addCallback(callOut, self.startReading)
                 d.addCallback(callOut, self.runHandleNotify, interval)
                 # On failure ensure that the database connection is stopped.
@@ -350,6 +353,7 @@ class PostgresListenerService(Service, object):
             self.log.failure("Connection lost.", reason)
         if self.autoReconnect:
             reactor.callLater(3, self.tryConnection)
+        self.events.disconnected.fire(reason)
 
     def registerChannel(self, channel):
         """Register the channel."""

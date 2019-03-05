@@ -119,16 +119,15 @@ class RegionControllerService(Service):
         self.postgresListener.register("sys_dns", self.markDNSForUpdate)
         self.postgresListener.register("sys_proxy", self.markProxyForUpdate)
         self.postgresListener.register("sys_rbac", self.markRBACForUpdate)
-
-        # Update DNS and proxy on first start.
-        self.markDNSForUpdate(None, None)
-        self.markProxyForUpdate(None, None)
-        self.markRBACForUpdate(None, None)
+        self.postgresListener.events.connected.registerHandler(
+            self.markAllForUpdate)
 
     @asynchronous(timeout=FOREVER)
     def stopService(self):
         """Close the controller."""
         super(RegionControllerService, self).stopService()
+        self.postgresListener.events.connected.unregisterHandler(
+            self.markAllForUpdate)
         self.postgresListener.unregister("sys_dns", self.markDNSForUpdate)
         self.postgresListener.unregister("sys_proxy", self.markProxyForUpdate)
         self.postgresListener.unregister("sys_rbac", self.markRBACForUpdate)
@@ -136,6 +135,11 @@ class RegionControllerService(Service):
             self.processingDefer, d = None, self.processingDefer
             self.processing.stop()
             return d
+
+    def markAllForUpdate(self):
+        self.markDNSForUpdate(None, None)
+        self.markProxyForUpdate(None, None)
+        self.markRBACForUpdate(None, None)
 
     def markDNSForUpdate(self, channel, message):
         """Called when the `sys_dns` message is received."""

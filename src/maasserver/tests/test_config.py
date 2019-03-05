@@ -74,6 +74,10 @@ class TestRegionConfigurationDatabaseOptions(MAASTestCase):
         "database_user": "maas",
         "database_pass": "",
         "database_conn_max_age": 5 * 60,
+        "database_keepalive": True,
+        "database_keepalive_idle": 15,
+        "database_keepalive_interval": 15,
+        "database_keepalive_count": 2
     }
 
     scenarios = tuple(
@@ -89,6 +93,8 @@ class TestRegionConfigurationDatabaseOptions(MAASTestCase):
         config = RegionConfiguration({})
         if isinstance(getattr(config, self.option), str):
             example_value = factory.make_name(self.option)
+        elif self.option == 'database_keepalive':
+            example_value = random.choice(['true', 'false'])
         else:
             example_value = factory.pick_port()
         # Argument values will most often be passed in from the command-line,
@@ -96,7 +102,12 @@ class TestRegionConfigurationDatabaseOptions(MAASTestCase):
         setattr(config, self.option, str(example_value))
         self.assertEqual(example_value, getattr(config, self.option))
         # It's also stored in the configuration database.
-        self.assertEqual({self.option: example_value}, config.store)
+        expected_value = example_value
+        if example_value == 'true':
+            expected_value = True
+        elif expected_value == 'false':
+            expected_value = False
+        self.assertEqual({self.option: expected_value}, config.store)
 
 
 class TestRegionConfigurationWorkerOptions(MAASTestCase):
