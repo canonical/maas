@@ -6754,7 +6754,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
 
     def make_acquired_node_with_interface(
             self, user, bmc_connected_to=None, power_type="virsh",
-            power_state=POWER_STATE.OFF, network=None):
+            power_state=POWER_STATE.OFF, network=None, with_boot_disk=True):
         if network is None:
             network = factory.make_ip4_or_6_network()
         cidr = str(network.cidr)
@@ -6771,7 +6771,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
                 'purpose': 'xinstall',
                 }]
         node = factory.make_Node_with_Interface_on_Subnet(
-            status=NODE_STATUS.READY, with_boot_disk=True,
+            status=NODE_STATUS.READY, with_boot_disk=with_boot_disk,
             bmc_connected_to=bmc_connected_to, power_type=power_type,
             power_state=power_state, cidr=cidr, osystem=osystem,
             distro_series=distro_series)
@@ -6799,6 +6799,15 @@ class TestNode_Start(MAASTransactionServerTestCase):
             gethost.return_value = "192.168.1.1"
         else:
             gethost.return_value = "2001:db8::3"
+        with ExpectedException(ValidationError):
+            node.start(admin)
+
+    def test__raises_ValidationError_if_ephemeral_deploy_and_install_kvm(self):
+        admin = factory.make_admin()
+        node = self.make_acquired_node_with_interface(
+            admin, power_type="manual", with_boot_disk=False)
+        node.install_kvm = True
+        node.save()
         with ExpectedException(ValidationError):
             node.start(admin)
 

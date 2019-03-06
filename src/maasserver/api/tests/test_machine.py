@@ -1,4 +1,4 @@
-# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the Machine API."""
@@ -481,6 +481,31 @@ class TestMachineAPI(APITestCase.ForUser):
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(response_info['osystem'], osystem)
         self.assertEqual(response_info['distro_series'], distro_series)
+
+    def test_POST_deploy_fails_when_install_kvm_set_for_ephemeral_deploy(self):
+        self.become_admin()
+        osystem = Config.objects.get_config('default_osystem')
+        distro_series = Config.objects.get_config('default_distro_series')
+        make_usable_osystem(
+            self, osystem_name=osystem, releases=[distro_series])
+        machine = factory.make_Node(
+            owner=self.user, interface=True,
+            status=NODE_STATUS.ALLOCATED,
+            power_type='manual',
+            distro_series=distro_series,
+            osystem=osystem,
+            architecture=make_usable_architecture(self))
+        for bd in machine.blockdevice_set.all():
+            bd.delete()
+        response = self.client.post(
+            self.get_machine_uri(machine), {
+                'op': 'deploy',
+                'install_kvm': True
+            })
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+        self.assertEqual(
+            b"Cannot install KVM host for ephemeral deployments.",
+            response.content)
 
     def test_POST_deploy_fails_when_preseed_not_rendered(self):
         mock_get_curtin_merged_config = self.patch(

@@ -698,6 +698,9 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         if (options.install_kvm and not
                 request.user.has_perm(NodePermission.admin, machine)):
             raise PermissionDenied()
+        if options.install_kvm and machine.ephemeral_deployment:
+            raise MAASAPIBadRequest(
+                "Cannot install KVM host for ephemeral deployments.")
         if not machine.distro_series and not series:
             series = Config.objects.get_config('default_distro_series')
         Form = get_machine_edit_form(request.user)

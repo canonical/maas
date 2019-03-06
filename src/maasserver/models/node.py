@@ -4295,6 +4295,9 @@ class Node(CleanSave, TimestampedModel):
                         "network": [
                             "Node has no address family in common with "
                             "the server"]})
+        if self.ephemeral_deployment and self.install_kvm:
+            raise ValidationError(
+                "Cannot install KVM host for ephemeral deployments.")
         self._register_request_event(
             user, event, action='start', comment=comment)
         return self._start(
