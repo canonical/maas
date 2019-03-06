@@ -7,6 +7,7 @@ from provisioningserver.prometheus.utils import (
     create_metrics,
     MetricDefinition,
 )
+from provisioningserver.utils.ipaddr import get_machine_default_gateway_ip
 
 
 METRICS_DEFINITIONS = [
@@ -19,4 +20,9 @@ METRICS_DEFINITIONS = [
 ]
 
 
-PROMETHEUS_METRICS = create_metrics(METRICS_DEFINITIONS)
+PROMETHEUS_METRICS = create_metrics(
+    METRICS_DEFINITIONS,
+    extra_labels={
+        'service': 'rackd',
+        'host': get_machine_default_gateway_ip
+    })

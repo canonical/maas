@@ -44,6 +44,20 @@ class TestPrometheusMetrics(MAASTestCase):
             'a_gauge{bar="BAR",foo="FOO"} 22.0',
             prometheus_metrics.generate_latest().decode('ascii'))
 
+    def test_update_with_extra_labels(self):
+        definitions = [
+            MetricDefinition('Gauge', 'a_gauge', 'A Gauge', ['foo', 'bar'])
+        ]
+        prometheus_metrics = PrometheusMetrics(
+            definitions=definitions,
+            extra_labels={'baz': 'BAZ', 'bza': 'BZA'},
+            registry=prometheus_client.CollectorRegistry())
+        prometheus_metrics.update(
+            'a_gauge', 'set', value=22, labels={'foo': 'FOO', 'bar': 'BAR'})
+        self.assertIn(
+            'a_gauge{bar="BAR",baz="BAZ",bza="BZA",foo="FOO"} 22.0',
+            prometheus_metrics.generate_latest().decode('ascii'))
+
     def test_register_atexit_global_registry(self):
         mock_register = self.patch(atexit, 'register')
         definitions = [
@@ -146,3 +160,23 @@ class TestCreateMetrics(MAASTestCase):
             self.metrics_definitions,
             registry=prometheus_client.CollectorRegistry())
         self.assertEqual(prometheus_metrics.available_metrics, [])
+
+    def test_extra_labels(self):
+        prometheus_metrics = create_metrics(
+            self.metrics_definitions,
+            extra_labels={'foo': 'FOO', 'bar': 'BAR'},
+            registry=prometheus_client.CollectorRegistry())
+        prometheus_metrics.update('sample_counter', 'inc')
+        content = prometheus_metrics.generate_latest().decode('ascii')
+        self.assertIn('sample_counter{bar="BAR",foo="FOO"} 1.0', content)
+
+    def test_extra_labels_callable(self):
+        values = ['a', 'b']
+        prometheus_metrics = create_metrics(
+            self.metrics_definitions, extra_labels={'foo': values.pop},
+            registry=prometheus_client.CollectorRegistry())
+        prometheus_metrics.update('sample_counter', 'inc')
+        prometheus_metrics.update('sample_counter', 'inc')
+        content = prometheus_metrics.generate_latest().decode('ascii')
+        self.assertIn('sample_counter{foo="a"} 1.0', content)
+        self.assertIn('sample_counter{foo="b"} 1.0', content)

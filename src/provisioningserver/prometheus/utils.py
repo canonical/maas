@@ -18,7 +18,8 @@ MetricDefinition = namedtuple(
 class PrometheusMetrics:
     """Wrapper for accessing and interacting with Prometheus metrics."""
 
-    def __init__(self, definitions=None, registry=None):
+    def __init__(self, definitions=None, extra_labels=None, registry=None):
+        self._extra_labels = extra_labels or {}
         if definitions is None:
             self.registry = None
             self._metrics = {}
@@ -31,7 +32,9 @@ class PrometheusMetrics:
     def _create_metrics(self, definitions):
         metrics = {}
         for definition in definitions:
-            labels = definition.labels
+            labels = definition.labels.copy()
+            if self._extra_labels:
+                labels.extend(self._extra_labels)
             cls = getattr(prom_cli, definition.type)
             metrics[definition.name] = cls(
                 definition.name, definition.description, labels,
@@ -49,8 +52,15 @@ class PrometheusMetrics:
             return
 
         metric = self._metrics[metric_name]
-        if labels:
-            metric = metric.labels(**labels)
+        all_labels = labels.copy() if labels else {}
+        if self._extra_labels:
+            extra_labels = {
+                key: value() if callable(value) else value
+                for key, value in self._extra_labels.items()
+            }
+            all_labels.update(extra_labels)
+        if all_labels:
+            metric = metric.labels(**all_labels)
         func = getattr(metric, action)
         if value is None:
             func()
@@ -119,7 +129,8 @@ class PrometheusMetrics:
         multiprocess.mark_process_dead(os.getpid())
 
 
-def create_metrics(metric_definitions, registry=None):
+def create_metrics(metric_definitions, extra_labels=None, registry=None):
     """Return a PrometheusMetrics from the specified definitions."""
     definitions = metric_definitions if PROMETHEUS_SUPPORTED else None
-    return PrometheusMetrics(definitions=definitions, registry=registry)
+    return PrometheusMetrics(
+        definitions=definitions, extra_labels=extra_labels, registry=registry)

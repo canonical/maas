@@ -16,6 +16,7 @@ from unittest.mock import sentinel
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
+import netifaces
 from provisioningserver.utils import ipaddr as ipaddr_module
 from provisioningserver.utils.ipaddr import (
     _add_additional_interface_properties,
@@ -27,6 +28,7 @@ from provisioningserver.utils.ipaddr import (
     get_ip_addr,
     get_ip_addr_json,
     get_mac_addresses,
+    get_machine_default_gateway_ip,
     get_settings_dict,
     parse_ip_addr,
 )
@@ -639,3 +641,72 @@ class TestGetIPAddr(MAASTestCase):
         patch_get_ip_addr.return_value = results
         observed = get_mac_addresses()
         self.assertItemsEqual(mac_addresses, observed)
+
+
+class TestGetMachineDefaultGatewayIP(MAASTestCase):
+
+    def test_get_machine_default_gateway_ip_no_defaults(self):
+        self.patch(netifaces, 'gateways').return_value = {}
+        self.assertIsNone(get_machine_default_gateway_ip())
+
+    def test_get_machine_default_gateway_ip_returns_ipv4(self):
+        gw_address = factory.make_ipv4_address()
+        ipv4_address = factory.make_ipv4_address()
+        iface_name = factory.make_name('eth')
+        self.patch(netifaces, 'gateways').return_value = {
+            'default': {
+                netifaces.AF_INET: (gw_address, iface_name),
+            }
+        }
+        self.patch(netifaces, 'ifaddresses').return_value = {
+            netifaces.AF_INET: [{'addr': ipv4_address}]
+        }
+        self.assertEqual(ipv4_address, get_machine_default_gateway_ip())
+
+    def test_get_machine_default_gateway_ip_returns_ipv6(self):
+        gw_address = factory.make_ipv6_address()
+        ipv6_address = factory.make_ipv6_address()
+        iface_name = factory.make_name('eth')
+        self.patch(netifaces, 'gateways').return_value = {
+            'default': {
+                netifaces.AF_INET6: (gw_address, iface_name)
+            }
+        }
+        self.patch(netifaces, 'ifaddresses').return_value = {
+            netifaces.AF_INET6: [{'addr': ipv6_address}]
+        }
+        self.assertEqual(ipv6_address, get_machine_default_gateway_ip())
+
+    def test_get_machine_default_gateway_ip_returns_ipv4_over_ipv6(self):
+        gw4_address = factory.make_ipv4_address()
+        gw6_address = factory.make_ipv6_address()
+        ipv4_address = factory.make_ipv4_address()
+        ipv6_address = factory.make_ipv6_address()
+        iface = factory.make_name('eth')
+        self.patch(netifaces, 'gateways').return_value = {
+            'default': {
+                netifaces.AF_INET: (gw4_address, iface),
+                netifaces.AF_INET6: (gw6_address, iface),
+            }
+        }
+        self.patch(netifaces, 'ifaddresses').return_value = {
+            netifaces.AF_INET: [{'addr': ipv4_address}],
+            netifaces.AF_INET6: [{'addr': ipv6_address}],
+        }
+        self.assertEqual(ipv4_address, get_machine_default_gateway_ip())
+
+    def test_get_machine_default_gateway_ip_returns_first_ip(self):
+        gw_address = factory.make_ipv4_address()
+        ipv4_address1 = factory.make_ipv4_address()
+        ipv4_address2 = factory.make_ipv4_address()
+        iface = factory.make_name('eth')
+        self.patch(netifaces, 'gateways').return_value = {
+            'default': {
+                netifaces.AF_INET: (gw_address, iface),
+            }
+        }
+        self.patch(netifaces, 'ifaddresses').return_value = {
+            netifaces.AF_INET: [
+                {'addr': ipv4_address1}, {'addr': ipv4_address2}]
+        }
+        self.assertEqual(ipv4_address1, get_machine_default_gateway_ip())

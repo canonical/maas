@@ -51,6 +51,7 @@ state UP mode DEFAULT group default qlen 1000
 __all__ = [
     'parse_ip_addr',
     'get_first_and_last_usable_host_in_network',
+    'get_machine_default_gateway_ip',
 ]
 
 import json
@@ -61,6 +62,7 @@ from netaddr import (
     IPAddress,
     IPNetwork,
 )
+import netifaces
 from provisioningserver.utils.shell import call_and_check
 
 
@@ -414,3 +416,21 @@ def get_mac_addresses():
     """
     ip_addr = get_ip_addr()
     return list({iface['mac'] for iface in ip_addr.values() if 'mac' in iface})
+
+
+def get_machine_default_gateway_ip():
+    """Return the default gateway IP for the machine."""
+    gateways = netifaces.gateways()
+    defaults = gateways.get('default')
+    if not defaults:
+        return
+
+    def default_ip(family):
+        gw_info = defaults.get(family)
+        if not gw_info:
+            return
+        addresses = netifaces.ifaddresses(gw_info[1]).get(family)
+        if addresses:
+            return addresses[0]['addr']
+
+    return default_ip(netifaces.AF_INET) or default_ip(netifaces.AF_INET6)
