@@ -135,6 +135,41 @@ describe("DomainsManager", function() {
         });
     });
 
+    describe("deleteDNSRecord", function() {
+        it("calls delete_dnsresource for A record", function() {
+            spyOn(RegionConnection, "callMethod");
+            var record = {
+                'rrtype': 'A',
+                'rrdata': '192.168.0.1'
+            };
+            DomainsManager.deleteDNSRecord(record);
+            expect(RegionConnection.callMethod).toHaveBeenCalledWith(
+                "domain.delete_dnsresource", record);
+        });
+
+        it("calls delete_dnsresource for AAAA record", function() {
+            spyOn(RegionConnection, "callMethod");
+            var record = {
+                'rrtype': 'AAAA',
+                'rrdata': '2001:db8::1, 10.0.0.1 127.0.0.1'
+            };
+            DomainsManager.deleteDNSRecord(record);
+            expect(RegionConnection.callMethod).toHaveBeenCalledWith(
+                "domain.delete_dnsresource", record);
+        });
+
+        it("calls update_dnsdata for other types", function() {
+            spyOn(RegionConnection, "callMethod");
+            var record = {
+                'rrtype': 'SRV'
+            };
+            DomainsManager.deleteDNSRecord(record);
+            expect(RegionConnection.callMethod).toHaveBeenCalledWith(
+                "domain.delete_dnsdata", record);
+        });
+
+    });
+
     describe("getDomainByName", function() {
         it("returns null when no domains", function() {
             expect(DomainsManager.getDomainByName('meh')).toBe(null);

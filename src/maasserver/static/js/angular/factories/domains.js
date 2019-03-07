@@ -71,7 +71,7 @@ angular.module('MAAS').factory(
             if(record.rrtype === 'A' || record.rrtype === 'AAAA') {
                 record.ip_addresses = record.rrdata.split(/[ ,]+/);
                 return RegionConnection.callMethod(
-                    "domain.delete_address_record", record);
+                    "domain.delete_dnsresource", record);
             } else {
                 return RegionConnection.callMethod(
                     "domain.delete_dnsdata", record);
