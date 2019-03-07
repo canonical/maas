@@ -210,6 +210,7 @@ AllocationOptions = namedtuple(
         'comment',
         'install_rackd',
         'install_kvm',
+        'ephemeral_deploy',
     )
 )
 
@@ -247,7 +248,9 @@ def get_allocation_options(request) -> AllocationOptions:
         request.POST, 'install_rackd', default=False, validator=StringBool)
     install_kvm = get_optional_param(
         request.POST, 'install_kvm', default=False, validator=StringBool)
-    if install_kvm:
+    ephemeral_deploy = get_optional_param(
+        request.POST, 'ephemeral_deploy', default=False, validator=StringBool)
+    if install_kvm and not ephemeral_deploy:
         default_bridge_all = True
     bridge_all = get_optional_param(
         request.POST, 'bridge_all', default=default_bridge_all,
@@ -265,7 +268,8 @@ def get_allocation_options(request) -> AllocationOptions:
         bridge_stp,
         comment,
         install_rackd,
-        install_kvm
+        install_kvm,
+        ephemeral_deploy
     )
 
 
@@ -643,6 +647,9 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         @param (boolean) "install_kvm" [required=false] If true, KVM will be
         installed on this machine and added to MAAS.
 
+        @param (boolean) "ephemeral_deploy" [required=false] If true, machine
+        will be deployed ephemerally even if it has disks.
+
         @success (http-status-code) "200" 200
         @success (json) "success-json" A JSON object containing information
         about the deployed machine.
@@ -698,7 +705,8 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         if (options.install_kvm and not
                 request.user.has_perm(NodePermission.admin, machine)):
             raise PermissionDenied()
-        if options.install_kvm and machine.ephemeral_deployment:
+        if options.install_kvm and (
+                machine.ephemeral_deployment or options.ephemeral_deploy):
             raise MAASAPIBadRequest(
                 "Cannot install KVM host for ephemeral deployments.")
         if not machine.distro_series and not series:
@@ -715,16 +723,22 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
             form.set_install_rackd(install_rackd=options.install_rackd)
         if options.install_kvm:
             form.set_install_kvm(install_kvm=options.install_kvm)
+        if options.ephemeral_deploy:
+            form.set_ephemeral_deploy(
+                ephemeral_deploy=options.ephemeral_deploy)
         if form.is_valid():
             form.save()
         else:
             raise MAASAPIValidationError(form.errors)
-        # Check that the curtin preseeds renders correctly.
-        try:
-            get_curtin_merged_config(request, machine)
-        except Exception as e:
-            raise MAASAPIBadRequest(
-                "Failed to render preseed: %s" % e)
+        # Check that the curtin preseeds renders correctly
+        # if not an ephemeral deployment.
+        if (not machine.ephemeral_deployment and
+                not options.ephemeral_deploy):
+            try:
+                    get_curtin_merged_config(request, machine)
+            except Exception as e:
+                raise MAASAPIBadRequest(
+                    "Failed to render preseed: %s" % e)
 
         return self.power_on(request, system_id)
 

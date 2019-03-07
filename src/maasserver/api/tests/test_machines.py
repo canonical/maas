@@ -2953,7 +2953,8 @@ class TestGetAllocationOptions(MAASTestCase):
         options = get_allocation_options(request)
         expected_options = AllocationOptions(
             agent_name='', bridge_all=False, bridge_fd=0, bridge_stp=False,
-            comment=None, install_rackd=False, install_kvm=False)
+            comment=None, install_rackd=False, install_kvm=False,
+            ephemeral_deploy=False)
         self.assertThat(options, Equals(expected_options))
 
     def test_sets_bridge_all_if_install_kvm(self):
@@ -2962,17 +2963,19 @@ class TestGetAllocationOptions(MAASTestCase):
         options = get_allocation_options(request)
         expected_options = AllocationOptions(
             agent_name='', bridge_all=True, bridge_fd=0, bridge_stp=False,
-            comment=None, install_rackd=False, install_kvm=True)
+            comment=None, install_rackd=False, install_kvm=True,
+            ephemeral_deploy=False)
         self.assertThat(options, Equals(expected_options))
 
     def test_non_defaults(self):
         request = factory.make_fake_request(method="POST", data=dict(
             install_rackd="true", install_kvm="true", bridge_all="true",
             bridge_stp="true", bridge_fd="42", agent_name="maas",
-            comment="don't panic"
+            comment="don't panic", ephemeral_deploy="true"
         ))
         options = get_allocation_options(request)
         expected_options = AllocationOptions(
             agent_name='maas', bridge_all=True, bridge_fd=42, bridge_stp=True,
-            comment="don't panic", install_rackd=True, install_kvm=True)
+            comment="don't panic", install_rackd=True, install_kvm=True,
+            ephemeral_deploy=True)
         self.assertThat(options, Equals(expected_options))

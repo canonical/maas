@@ -482,7 +482,7 @@ class TestMachineAPI(APITestCase.ForUser):
         self.assertEqual(response_info['osystem'], osystem)
         self.assertEqual(response_info['distro_series'], distro_series)
 
-    def test_POST_deploy_fails_when_install_kvm_set_for_ephemeral_deploy(self):
+    def test_POST_deploy_fails_when_install_kvm_set_for_diskless(self):
         self.become_admin()
         osystem = Config.objects.get_config('default_osystem')
         distro_series = Config.objects.get_config('default_distro_series')
@@ -506,6 +506,47 @@ class TestMachineAPI(APITestCase.ForUser):
         self.assertEqual(
             b"Cannot install KVM host for ephemeral deployments.",
             response.content)
+
+    def test_POST_deploy_fails_when_install_kvm_set_for_ephemeral_deploy(self):
+        self.become_admin()
+        osystem = Config.objects.get_config('default_osystem')
+        distro_series = Config.objects.get_config('default_distro_series')
+        make_usable_osystem(
+            self, osystem_name=osystem, releases=[distro_series])
+        machine = factory.make_Node(
+            owner=self.user, interface=True,
+            status=NODE_STATUS.ALLOCATED,
+            power_type='manual',
+            distro_series=distro_series,
+            osystem=osystem,
+            architecture=make_usable_architecture(self),
+            ephemeral_deploy=True)
+        response = self.client.post(
+            self.get_machine_uri(machine), {
+                'op': 'deploy',
+                'install_kvm': True
+            })
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+        self.assertEqual(
+            b"Cannot install KVM host for ephemeral deployments.",
+            response.content)
+
+    def test_POST_deploy_sets_ephemeral_deploy(self):
+        self.patch(node_module.Node, "_start")
+        machine = factory.make_Node(
+            owner=self.user, interface=True,
+            power_type='manual',
+            status=NODE_STATUS.READY,
+            architecture=make_usable_architecture(self))
+        self.assertFalse(machine.ephemeral_deploy)
+        response = self.client.post(
+            self.get_machine_uri(machine), {
+                'op': 'deploy',
+                'ephemeral_deploy': 'true',
+            })
+        self.assertEqual(http.client.OK, response.status_code)
+        machine = reload_object(machine)
+        self.assertTrue(machine.ephemeral_deploy)
 
     def test_POST_deploy_fails_when_preseed_not_rendered(self):
         mock_get_curtin_merged_config = self.patch(

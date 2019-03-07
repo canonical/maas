@@ -401,7 +401,7 @@ class Factory(maastesting.factory.Factory):
             power_state_updated=undefined, with_boot_disk=True, vlan=None,
             fabric=None, bmc_connected_to=None, owner_data={},
             hardware_uuid=None, with_empty_script_sets=False, bmc=None,
-            **kwargs):
+            ephemeral_deploy=False, **kwargs):
         """Make a :class:`Node`.
 
         :param sortable_name: If `True`, use a that will sort consistently
@@ -438,7 +438,8 @@ class Factory(maastesting.factory.Factory):
             min_hwe_kernel=min_hwe_kernel, hwe_kernel=hwe_kernel,
             node_type=node_type, zone=zone,
             power_state=power_state, power_state_updated=power_state_updated,
-            domain=domain, bmc=bmc, hardware_uuid=hardware_uuid, **kwargs)
+            domain=domain, bmc=bmc, hardware_uuid=hardware_uuid,
+            ephemeral_deploy=ephemeral_deploy, **kwargs)
         if bmc is None:
             # These setters will overwrite the BMC, so don't use them if the
             # BMC was specified.

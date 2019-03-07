@@ -92,6 +92,7 @@ class DeviceHandler(NodeHandler):
             "boot_disk",
             "token",
             "netboot",
+            "ephemeral_deploy",
             "agent_name",
             "cpu_count",
             "cpu_speed",

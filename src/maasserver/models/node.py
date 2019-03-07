@@ -1042,6 +1042,8 @@ class Node(CleanSave, TimestampedModel):
 
     netboot = BooleanField(default=True)
 
+    ephemeral_deploy = BooleanField(default=False)
+
     license_key = CharField(max_length=30, null=True, blank=True)
 
     # Only used by Machine. Set to the creation type based on how the machine
@@ -1341,7 +1343,7 @@ class Node(CleanSave, TimestampedModel):
     @property
     def ephemeral_deployment(self):
         """Return if node is set to ephemeral deployment."""
-        return self.is_diskless
+        return self.is_diskless or self.ephemeral_deploy
 
     def retrieve_storage_layout_issues(
             self, has_boot, root_mounted, root_on_bcache,
@@ -3001,6 +3003,7 @@ class Node(CleanSave, TimestampedModel):
         self.token = None
         self.agent_name = ''
         self.set_netboot()
+        self.set_ephemeral_deploy()
         self.osystem = ''
         self.distro_series = ''
         self.license_key = ''
@@ -3082,6 +3085,14 @@ class Node(CleanSave, TimestampedModel):
         log.info(
             "{hostname}: Turning on netboot for node", hostname=self.hostname)
         self.netboot = on
+        self.save()
+
+    def set_ephemeral_deploy(self, on=False):
+        """Set ephermal deploy on or off."""
+        log.info(
+            "{hostname}: Turning ephemeral deploy %s for node" % (
+                "off" if on is False else "on"), hostname=self.hostname)
+        self.ephemeral_deploy = on
         self.save()
 
     def split_arch(self):
@@ -4101,9 +4112,12 @@ class Node(CleanSave, TimestampedModel):
                 if osystem_obj is None:
                     return "xinstall"
 
-                purposes = osystem_obj.get_boot_image_purposes(arch, subarch,
-                                                               '', '*')
+                purposes = osystem_obj.get_boot_image_purposes(
+                    arch, subarch, '', '*')
                 if "ephemeral" in purposes:
+                    # If ephemeral is in purposes, this comes from Caringo OS.
+                    # Set the ephemeral_deploy field on the node.
+                    self.set_ephemeral_deploy(True)
                     return "ephemeral"
                 else:
                     return "xinstall"

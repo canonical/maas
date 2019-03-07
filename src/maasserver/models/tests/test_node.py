@@ -1022,11 +1022,31 @@ class TestNode(MAASServerTestCase):
         self.assertTrue(node.is_diskless)
 
     def test_is_not_diskless(self):
-        node = factory.make_Node()
+        node = factory.make_Node(with_boot_disk=True)
         self.assertFalse(node.is_diskless)
 
+    def test_no_ephemeral_deploy(self):
+        node = factory.make_Node(ephemeral_deploy=False)
+        self.assertFalse(node.ephemeral_deploy)
+
+    def test_ephemeral_deploy(self):
+        node = factory.make_Node(ephemeral_deploy=True)
+        self.assertTrue(node.ephemeral_deploy)
+
     def test_ephemeral_deployment_checks_diskless(self):
-        node = factory.make_Node()
+        node = factory.make_Node(with_boot_disk=True)
+        self.assertFalse(node.ephemeral_deployment)
+
+    def test_ephemeral_deployment_checks_not_diskless(self):
+        node = factory.make_Node(with_boot_disk=False)
+        self.assertTrue(node.ephemeral_deployment)
+
+    def test_ephemeral_deployment_checks_ephemeral_deploy(self):
+        node = factory.make_Node(ephemeral_deploy=True)
+        self.assertTrue(node.ephemeral_deployment)
+
+    def test_ephemeral_deployment_checks_no_ephemeral_deploy(self):
+        node = factory.make_Node(ephemeral_deploy=False)
         self.assertFalse(node.ephemeral_deployment)
 
     def test_system_id_is_a_valid_znum(self):
@@ -2234,6 +2254,7 @@ class TestNode(MAASServerTestCase):
         self.expectThat(node.agent_name, Equals(''))
         self.expectThat(node.token, Is(None))
         self.expectThat(node.netboot, Is(True))
+        self.expectThat(node.ephemeral_deploy, Is(False))
         self.expectThat(node.osystem, Equals(''))
         self.expectThat(node.distro_series, Equals(''))
         self.expectThat(node.license_key, Equals(''))
@@ -2273,6 +2294,7 @@ class TestNode(MAASServerTestCase):
         self.expectThat(node.agent_name, Equals(''))
         self.expectThat(node.token, Is(None))
         self.expectThat(node.netboot, Is(True))
+        self.expectThat(node.ephemeral_deploy, Is(False))
         self.expectThat(node.osystem, Equals(''))
         self.expectThat(node.distro_series, Equals(''))
         self.expectThat(node.license_key, Equals(''))
@@ -2301,6 +2323,7 @@ class TestNode(MAASServerTestCase):
         self.expectThat(node.agent_name, Equals(''))
         self.expectThat(node.token, Is(None))
         self.expectThat(node.netboot, Is(True))
+        self.expectThat(node.ephemeral_deploy, Is(False))
         self.expectThat(node.osystem, Equals(''))
         self.expectThat(node.distro_series, Equals(''))
         self.expectThat(node.license_key, Equals(''))
@@ -2465,6 +2488,16 @@ class TestNode(MAASServerTestCase):
         with post_commit_hooks:
             node.release()
         self.assertTrue(node.netboot)
+
+    def test_release_turns_off_ephemeral_deploy(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
+        self.patch(node, '_stop')
+        self.patch(node, '_set_status')
+        node.set_ephemeral_deploy(on=True)
+        with post_commit_hooks:
+            node.release()
+        self.assertFalse(node.ephemeral_deploy)
 
     def test_release_sets_install_rackd_false(self):
         node = factory.make_Node(
@@ -3485,6 +3518,10 @@ class TestNode(MAASServerTestCase):
     def test_netboot_defaults_to_True(self):
         node = Node()
         self.assertTrue(node.netboot)
+
+    def test_ephemeral_deploy_defaults_to_False(self):
+        node = Node()
+        self.assertFalse(node.ephemeral_deploy)
 
     def test_fqdn_validation_failure_if_nonexistant(self):
         hostname_with_domain = '%s.%s' % (
@@ -5402,6 +5439,16 @@ class NodeManagerTest(MAASServerTestCase):
         node = factory.make_Node(netboot=True)
         node.set_netboot(False)
         self.assertFalse(node.netboot)
+
+    def test_ephemeral_deploy_on(self):
+        node = factory.make_Node(ephemeral_deploy=False)
+        node.set_ephemeral_deploy(True)
+        self.assertTrue(node.ephemeral_deploy)
+
+    def test_ephemeral_deploy_off(self):
+        node = factory.make_Node(ephemeral_deploy=True)
+        node.set_ephemeral_deploy(False)
+        self.assertFalse(node.ephemeral_deploy)
 
 
 class NodeManagerGetNodesRBACTest(MAASServerTestCase):

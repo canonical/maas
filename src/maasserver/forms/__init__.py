@@ -1,4 +1,4 @@
-# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Forms."""
@@ -876,6 +876,11 @@ class MachineForm(NodeForm):
         self.is_bound = True
         self.data['install_kvm'] = install_kvm
 
+    def set_ephemeral_deploy(self, ephemeral_deploy=False):
+        """Sets whether to deploy this machine ephemerally."""
+        self.is_bound = True
+        self.data['ephemeral_deploy'] = ephemeral_deploy
+
     def save(self, *args, **kwargs):
         # Prevent circular imports
         from metadataserver.models import ScriptSet
@@ -909,6 +914,7 @@ class MachineForm(NodeForm):
             'hwe_kernel',
             'install_rackd',
             'install_kvm',
+            'ephemeral_deploy',
             'commission'
         )
 
