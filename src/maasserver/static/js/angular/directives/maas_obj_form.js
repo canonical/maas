@@ -596,7 +596,11 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                         infoWrapper.addClass('p-tooltip p-tooltip--btm-right');
 
                         var infoIcon = angular.element('<i/>');
-                        infoIcon.addClass('p-icon--information');
+                        if (attrs.labelInfoIcon) {
+                            infoIcon.addClass('p-icon--' + attrs.labelInfoIcon);
+                        } else {
+                            infoIcon.addClass('p-icon--information');
+                        }
                         infoIcon.attr(
                             'aria-describedby', attrs.key + '-tooptip');
 

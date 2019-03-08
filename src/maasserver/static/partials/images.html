@@ -13,13 +13,23 @@
         <div class="tablet-col-2 col-4">
             <div class="page-header__controls p-form--inline u-align--right" data-ng-if="!loading && isSuperUser() && autoImport">
                 <maas-obj-form obj="autoImport" manager="configManager" inline="true">
-                    <maas-obj-field type="onoffswitch" key="value" label="Automatically sync images"></maas-obj-field>
+                    <maas-obj-field type="onoffswitch" key="value" label="Automatically sync images" label-info="Enables hourly syncing of images, for the region controller
+based on the image stream configured below. Syncing at the
+rack controller level occurs every 5 minutes and cannot be
+disabled." label-info-icon="help"></maas-obj-field>
                 </maas-obj-form>
             </div>
         </div>
     </div>
 </header>
 <section class="p-strip">
+    <div class="row" data-ng-if="!autoImport.value">
+        <div class="col-8">
+            <div class="p-notification--caution">
+                <p class="p-notification__response">Hourly syncing of images for the region controller is disabled. This may pose security risks.</p>
+            </div>
+        </div>
+    </div>
     <div class="row">
         <maas-notifications></maas-notifications>
     </div>
