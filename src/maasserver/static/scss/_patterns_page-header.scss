@@ -39,4 +39,15 @@
       position: absolute;
     }
   }
+
+  .page-header__controls--discoveries {
+    button:last-child {
+      margin-left: 1.5rem;
+    }
+
+    .maas-p-switch {
+      position: relative;
+      top: .4rem;
+    }
+  }
 }

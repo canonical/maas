@@ -40,5 +40,15 @@ angular.module('MAAS').factory(
                 });
         };
 
+        DiscoveriesManager.prototype.removeDevices = function(devices) {
+            return $q.all(devices.map(function(device) {
+                return RegionConnection
+                    .callMethod("discovery.delete_by_mac_and_ip", {
+                        ip: device.ip,
+                        mac: device.mac_address
+                    });
+            }));
+        };
+
         return new DiscoveriesManager();
     }]);

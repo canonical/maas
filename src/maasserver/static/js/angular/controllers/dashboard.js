@@ -36,9 +36,39 @@ angular.module('MAAS').controller('DashboardController', [
         $scope.column = 'mac';
         $scope.selectedDevice = null;
         $scope.convertTo = null;
+        $scope.showClearDiscoveriesPanel = false;
+        $scope.removingDevices = false;
+
+        $scope.formatMAASVersionNumber = function() {
+            if (MAAS_config.version) {
+                var versionWithPoint = MAAS_config.version.split(" ")[0];
+
+                if (versionWithPoint) {
+                    if (versionWithPoint.split(".")[2] === "0") {
+                        return versionWithPoint.split(".")[0]
+                        + "."
+                        + versionWithPoint.split(".")[1];
+                    } else {
+                        return versionWithPoint;
+                    }
+                }
+            }
+        };
+
+        $scope.MAAS_VERSION_NUMBER = $scope.formatMAASVersionNumber();
 
         // Set default predicate to last_seen.
         $scope.predicate = $scope.last_seen;
+
+        // Open clear devices panel
+        $scope.openClearDiscoveriesPanel = function() {
+            $scope.showClearDiscoveriesPanel = true;
+        };
+
+        // Close clear devices panel
+        $scope.closeClearDiscoveriesPanel = function() {
+            $scope.showClearDiscoveriesPanel = false;
+        };
 
         // Sorts the table by predicate.
         $scope.sortTable = function(predicate) {
@@ -85,7 +115,18 @@ angular.module('MAAS').controller('DashboardController', [
         // Remove device
         $scope.removeDevice = function (device) {
             device.isBeingRemoved = true;
-            DiscoveriesManager.removeDevice(device);
+            DiscoveriesManager
+                .removeDevice(device);
+        };
+
+        // Remove all devices
+        $scope.removeAllDevices = function() {
+            $scope.removingDevices = true;
+            DiscoveriesManager
+                .removeDevices($scope.discoveredDevices)
+                .then(function() {
+                    $scope.discoveredDevices = DiscoveriesManager.getItems();
+                });
         };
 
         // Sets selected device
@@ -185,6 +226,11 @@ angular.module('MAAS').controller('DashboardController', [
                 $scope.discoveredDevices.forEach(function(device) {
                     var date = new Date(device.last_seen);
                     device.last_seen_timestamp = date.getTime();
+                });
+
+                $scope.$watchCollection('discoveredDevices', function() {
+                    $scope.removingDevices = false;
+                    $scope.closeClearDiscoveriesPanel();
                 });
             });
     }

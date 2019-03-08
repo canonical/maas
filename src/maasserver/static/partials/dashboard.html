@@ -1,17 +1,71 @@
 <header class="p-strip--light is-shallow u-no-padding--bottom page-header" media-query="min-width: 769px" window-width>
     <div class="row">
-        <div class="tablet-col-4 col-8">
+        <div class="tablet-col-3 col-6">
             <h1 class="page-header__title">Network discovery</h1>
             <ul class="p-inline-list page-header__status">
                 <li class="p-inline-list__item">{$ discoveredDevices.length $} items discovered</li>
                 <li class="p-inline-list__item" data-ng-if="!loaded"><i class="p-icon--spinner u-animation--spin"></i> Loading...</li>
             </ul>
         </div>
-        <div class="tablet-col-2 col-4">
-            <div class="page-header__controls p-form--inline u-align--right">
+        <div class="tablet-col-3 col-6">
+            <div class="page-header__controls page-header__controls--discoveries p-form--inline u-align--right">
                 <maas-obj-form obj="networkDiscovery" manager="configManager" inline="true">
                     <maas-obj-field type="onoffswitch" key="value" label="Discovery enabled" on-value="enabled" off-value="disabled" subtle="true" label-info="When enabled, MAAS will use passive techniques, such as listening to&#xa; ARP requests and DNS advertisements, to observe networks attached&#xa; to rack controllers. Active subnet mapping can also be enabled in the&#xa; Network Discovery section of the Settings page."></maas-obj-field>
                 </maas-obj-form>
+                <button class="p-button--neutral" data-ng-click="openClearDiscoveriesPanel()" data-ng-if="discoveredDevices.length">
+                    Clear all discoveries
+                </button>
+                <button class="p-button--neutral p-tooltip p-tooltip--btm-right" aria-describedby="clear-discoveries" disabled data-ng-if="!discoveredDevices.length">
+                    Clear all discoveries
+                    <span class="p-tooltip__message" role="tooltip" id="clear-discoveries">No items discovered</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div data-ng-if="showClearDiscoveriesPanel">
+        <hr>
+        <div class="p-strip is-shallow is-bordered">
+            <div class="row">
+                <div class="col-10">
+                    <div class="p-media-object">
+                        <div class="p-media-object__image">
+                            <i class="p-icon p-icon--warning"></i>
+                        </div>
+                        <div class="p-media-object__details">
+                            <div data-ng-if="networkDiscovery.value === 'enabled'">
+                                <p class="u-remove-max-width u-no-padding--top">Clearing all discoveries will remove all items from the list below.</p>
+                                <p class="u-remove-max-width">
+                                    MAAS will use passive techniques (such as listening to ARP requests and mDNS advertisements) to observe networks attached to rack controllers.
+                                    <br>
+                                    If active subnet mapping is enabled on the configured subnets, MAAS will actively scan them and ensure discovery information is accurate and complete.
+                                </p>
+                                <p class="u-remove-max-width u-no-margin--bottom">Learn more about <a class="p-link--external" href="https://docs.maas.io/{$ MAAS_VERSION_NUMBER $}/en/installconfig-networking">active mapping</a>.</p>
+                            </div>
+                            <div data-ng-if="networkDiscovery.value === 'disabled'">
+                                <p class="u-remove-max-width u-no-padding--top">Clearing all discoveries will remove all items from the list.</p>
+                                <p class="u-remove-max-width u-no-margin--bottom">Network discovery is disabled. The list of discovered items will not be repopulated.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="p-strip is-shallow">
+            <div class="row">
+                <div class="u-align--right">
+                    <button class="p-button--base u-no-margin--bottom" data-ng-click="closeClearDiscoveriesPanel()">
+                        Cancel
+                    </button>
+                    <button class="p-button--negative u-no-margin--bottom" data-ng-click="removeAllDevices()" data-ng-if="!removingDevices">
+                        Clear all discoveries
+                    </button>
+                    <button class="p-button--negative u-no-margin--bottom" data-ng-if="removingDevices">
+                        <i class="p-icon--spinner is-light u-animation--spin"></i>
+                        &nbsp;
+                        Deleting all network discoveries
+                    </button>
+                </div>
             </div>
         </div>
     </div>

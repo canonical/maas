@@ -1064,7 +1064,7 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                     if(value) {
                         inputWrapper.children(
                             ':first').addClass('u-border--information');
-                        inputWrapper.append(
+                        labelElement.prepend(
                             '<i class="obj-saving icon ' +
                             'p-icon--spinner u-animation--spin"></i>');
                         inputWrapper.addClass('p-tooltip');
@@ -1074,7 +1074,9 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                     } else {
                       inputWrapper.children(
                           ':first').removeClass('u-border--information');
-                        inputWrapper.find('i.obj-saving').remove();
+                        if (labelElement) {
+                            labelElement.find('i.obj-saving').remove();
+                        }
                         inputWrapper.removeClass('p-tooltip');
                         inputWrapper.removeClass('p-tooltip--right');
                         inputWrapper.addClass('u-no-margin--top');

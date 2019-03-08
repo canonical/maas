@@ -463,4 +463,37 @@ describe("DashboardController", function() {
                 .toHaveBeenCalledWith(device);
         });
     });
+
+    describe("removeAllDevices", function () {
+        it("calls `removeDevices` in `DiscoveriesManager`", function () {
+            var controller = makeController();
+            var device = {
+                ip: "127.0.0.1",
+                mac_address: "00:25:96:FF:FE:12:34:56"
+            };
+            $scope.discoveredDevices.push(device);
+            spyOn(DiscoveriesManager, "removeDevices").and.callFake(function() {
+                var deferred = $q.defer();
+                return deferred.promise;
+            });
+            $scope.removeAllDevices();
+            expect(DiscoveriesManager.removeDevices).toHaveBeenCalled();
+        });
+    });
+
+    describe("openClearDiscoveriesPanel", function() {
+        it("sets `showClearDiscoveriesPanel` to `true`", function() {
+            var controller = makeController();
+            $scope.openClearDiscoveriesPanel();
+            expect($scope.showClearDiscoveriesPanel).toBe(true);
+        });
+    });
+
+    describe("closeClearDiscoveriesPanel", function() {
+        it("sets `showClearDiscoveriesPanel` to `false`", function() {
+            var controller = makeController();
+            $scope.closeClearDiscoveriesPanel();
+            expect($scope.showClearDiscoveriesPanel).toBe(false);
+        });
+    });
 });
