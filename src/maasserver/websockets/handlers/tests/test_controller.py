@@ -1,4 +1,4 @@
-# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.controller`"""
@@ -101,10 +101,10 @@ class TestControllerHandler(MAASServerTestCase):
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
         self.assertEqual(
-            queries_one, 3,
+            queries_one, 4,
             "Number of queries has changed; make sure this is expected.")
         self.assertEqual(
-            queries_total, 3,
+            queries_total, 4,
             "Number of queries has changed; make sure this is expected.")
 
     def test_get_num_queries_is_the_expected_number(self):
@@ -180,6 +180,19 @@ class TestControllerHandler(MAASServerTestCase):
         self.assertEqual(
             "2.3.0~alpha1 (6000-gabc123) (snap)",
             result[0].get('version__long'))
+
+    def test_dehydrate_includes_tags(self):
+        owner = factory.make_admin()
+        handler = ControllerHandler(owner, {}, None)
+        region = factory.make_RegionRackController()
+        tags = []
+        for _ in range(3):
+            tag = factory.make_Tag(definition='')
+            tag.node_set.add(region)
+            tag.save()
+            tags.append(tag.name)
+        result = handler.list({})
+        self.assertEqual(tags, result[0].get('tags'))
 
 
 class TestControllerHandlerScenarios(MAASServerTestCase):
