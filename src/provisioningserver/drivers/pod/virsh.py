@@ -13,6 +13,7 @@ import os
 import string
 from tempfile import NamedTemporaryFile
 from textwrap import dedent
+from urllib.parse import urlparse
 from uuid import uuid4
 
 from lxml import etree
@@ -351,13 +352,20 @@ class VirshSSH(pexpect.spawn):
 
     def login(self, poweraddr, password=None):
         """Starts connection to virsh."""
+        # Extra paramaeters are not allowed as this is a security
+        # hole for allowing a user to run executables.
+        parsed = urlparse(poweraddr)
+        if parsed.query:
+            raise VirshError(
+                "Supplying extra parameters to the Virsh address"
+                " is not supported.")
+
         # Append unverified-ssh command if user has not
         # supplied their own extra parameters.  See,
         # https://bugs.launchpad.net/maas/+bug/1807231
         # for more details.
-        if '?' not in poweraddr:
-            poweraddr = poweraddr + '?command=' + get_path(
-                '/usr/lib/maas/unverified-ssh')
+        poweraddr = poweraddr + '?command=' + get_path(
+            '/usr/lib/maas/unverified-ssh')
         self._execute(poweraddr)
         i = self.expect(self.PROMPTS, timeout=self.timeout)
         if i == self.I_PROMPT_SSHKEY:

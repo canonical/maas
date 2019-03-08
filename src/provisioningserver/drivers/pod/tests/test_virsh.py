@@ -543,15 +543,24 @@ class TestVirshSSH(MAASTestCase):
             conn.login(poweraddr=factory.make_name('poweraddr')))
         self.assertThat(mock_close, MockCalledOnceWith())
 
-    def test_login_with_poweraddr_extra_parameters(self):
+    def test_login_errors_with_poweraddr_extra_parameters(self):
+        conn = virsh.VirshSSH(timeout=0.1)
+        self.addCleanup(conn.close)
+        poweraddr = "qemu+ssh://ubuntu@10.0.0.2/system?no_verify=1"
+        conn._spawn('cat')
+        self.assertRaises(
+            virsh.VirshError, conn.login, poweraddr)
+
+    def test_login_with_poweraddr_adds_extra_parameters(self):
         conn = virsh.VirshSSH(timeout=0.1)
         self.addCleanup(conn.close)
         mock_execute = self.patch(conn, '_execute')
         mock_close = self.patch(conn, 'close')
-        poweraddr = "qemu+ssh://ubuntu@10.0.0.2/system?no_verify=1"
+        poweraddr = "qemu+ssh://ubuntu@10.0.0.2/system"
         conn._spawn('cat')
         self.assertFalse(conn.login(poweraddr=poweraddr))
-        self.assertThat(mock_execute, MockCalledOnceWith(poweraddr))
+        new_poweraddr = poweraddr + "?command=/usr/lib/maas/unverified-ssh"
+        self.assertThat(mock_execute, MockCalledOnceWith(new_poweraddr))
         self.assertThat(mock_close, MockCalledOnceWith())
 
     def test_login_with_poweraddr_no_extra_parameters(self):
