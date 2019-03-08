@@ -1,4 +1,4 @@
-# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The node handler for the WebSocket connection."""
@@ -186,6 +186,10 @@ class NodeHandler(TimestampedModelHandler):
         data["actions"] = list(compile_node_actions(obj, self.user).keys())
         data["node_type_display"] = obj.get_node_type_display()
         data["link_type"] = NODE_TYPE_TO_LINK_TYPE[obj.node_type]
+        data["tags"] = [
+            tag.name
+            for tag in obj.tags.all()
+        ]
 
         if obj.node_type == NODE_TYPE.MACHINE or (
                 obj.is_controller and not for_list):
@@ -261,10 +265,6 @@ class NodeHandler(TimestampedModelHandler):
             data["subnets"] = [subnet.cidr for subnet in subnets]
             data["fabrics"] = self.get_all_fabric_names(obj, subnets)
             data["spaces"] = self.get_all_space_names(subnets)
-            data["tags"] = [
-                tag.name
-                for tag in obj.tags.all()
-            ]
             data["extra_macs"] = [
                 "%s" % mac_address
                 for mac_address in obj.get_extra_macs()
