@@ -1,11 +1,15 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Model for a filesystem group. Contains a set of filesystems that create
 a virtual block device. E.g. LVM Volume Group."""
 
 __all__ = [
+    'Bcache',
     'FilesystemGroup',
+    'RAID',
+    'VMFS',
+    'VolumeGroup',
     ]
 
 from uuid import uuid4
@@ -273,6 +277,24 @@ class BcacheManager(BaseFilesystemGroupManager):
         return bcache_filesystem_group
 
 
+class VMFSManager(BaseFilesystemGroupManager):
+    """VMFS filesystem group"""
+
+    extra_filters = {'group_type': FILESYSTEM_GROUP_TYPE.VMFS6}
+
+    def create_vmfs(self, name, partitions, uuid=None):
+        """Create a `VMFS` with the list of block devices and partitions."""
+        # Avoid circular imports.
+        from maasserver.models.filesystem import Filesystem
+        vmfs = self.create(name=name, uuid=uuid)
+        for partition in partitions:
+            Filesystem.objects.create(
+                fstype=FILESYSTEM_TYPE.VMFS6, partition=partition,
+                filesystem_group=vmfs)
+        vmfs.save(force_update=True)
+        return vmfs
+
+
 class FilesystemGroup(CleanSave, TimestampedModel):
     """A filesystem group. Contains a set of filesystems that create
     a virtual block device. E.g. LVM Volume Group.
@@ -350,6 +372,8 @@ class FilesystemGroup(CleanSave, TimestampedModel):
             return self.get_raid_size()
         elif self.is_bcache():
             return self.get_bcache_size()
+        elif self.is_vmfs():
+            return self.get_total_size()
         else:
             return 0
 
@@ -383,6 +407,13 @@ class FilesystemGroup(CleanSave, TimestampedModel):
                 filesystem.get_size()
                 for filesystem in filesystems
                 )
+
+    def get_total_size(self):
+        """Return the size of all filesystems combined."""
+        total = 0
+        for fs in self.filesystems.all():
+            total += fs.get_size()
+        return total
 
     def get_raid_size(self):
         """Size of this RAID.
@@ -521,6 +552,10 @@ class FilesystemGroup(CleanSave, TimestampedModel):
     def is_bcache(self):
         """Return True if `group_type` is BCACHE type."""
         return self.group_type == FILESYSTEM_GROUP_TYPE.BCACHE
+
+    def is_vmfs(self):
+        """Return True if `group_type` is VMFS."""
+        return self.group_type == FILESYSTEM_GROUP_TYPE.VMFS6
 
     def _get_all_fstypes(self, filesystems=None):
         """Return list of all filesystem types attached."""
@@ -702,6 +737,8 @@ class FilesystemGroup(CleanSave, TimestampedModel):
             return "RAID"
         elif self.is_bcache():
             return "Bcache"
+        elif self.is_vmfs():
+            return "VMFS"
         else:
             raise ValueError("Unknown group_type.")
 
@@ -714,6 +751,8 @@ class FilesystemGroup(CleanSave, TimestampedModel):
             return "md"
         elif self.is_bcache():
             return "bcache"
+        elif self.is_vmfs():
+            return "vmfs"
         else:
             raise ValidationError("Unknown group_type.")
 
@@ -729,6 +768,9 @@ class FilesystemGroup(CleanSave, TimestampedModel):
         elif self.is_bcache():
             # Bcache uses the block_size of the backing device.
             return self.get_bcache_backing_filesystem().get_block_size()
+        elif self.is_vmfs():
+            # By default VMFS uses a 1MB block size.
+            return 1024
         else:
             raise ValidationError("Unknown group_type.")
 
@@ -913,3 +955,16 @@ class Bcache(FilesystemGroup):
     def __init__(self, *args, **kwargs):
         super(Bcache, self).__init__(
             group_type=FILESYSTEM_GROUP_TYPE.BCACHE, *args, **kwargs)
+
+
+class VMFS(FilesystemGroup):
+    """A VMFS."""
+
+    objects = VMFSManager()
+
+    class Meta(DefaultMeta):
+        proxy = True
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(
+            group_type=FILESYSTEM_GROUP_TYPE.VMFS6, *args, **kwargs)

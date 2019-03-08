@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `FilesystemGroup`."""
@@ -827,6 +827,17 @@ class TestFilesystemGroup(MAASServerTestCase):
             filesystems=filesystems)
         self.assertEqual(backing_size, fsgroup.get_size())
 
+    def test_get_size_returns_total_size_with_vmfs(self):
+        vmfs = factory.make_VMFS()
+        self.assertEquals(vmfs.get_total_size(), vmfs.get_size())
+
+    def test_get_total_size(self):
+        vmfs = factory.make_VMFS()
+        size = 0
+        for fs in vmfs.filesystems.all():
+            size += fs.get_size()
+        self.assertEquals(size, vmfs.get_total_size())
+
     def test_is_lvm_returns_true_when_LVM_VG(self):
         fsgroup = FilesystemGroup(group_type=FILESYSTEM_GROUP_TYPE.LVM_VG)
         self.assertTrue(fsgroup.is_lvm())
@@ -862,6 +873,10 @@ class TestFilesystemGroup(MAASServerTestCase):
             group_type=factory.pick_enum(
                 FILESYSTEM_GROUP_TYPE, but_not=FILESYSTEM_GROUP_TYPE.BCACHE))
         self.assertFalse(fsgroup.is_bcache())
+
+    def test_is_vmfs(self):
+        vmfs = factory.make_VMFS()
+        self.assertTrue(vmfs.is_vmfs())
 
     def test_can_save_new_filesystem_group_without_filesystems(self):
         fsgroup = FilesystemGroup(
@@ -1419,6 +1434,10 @@ class TestFilesystemGroupGetNiceName(MAASServerTestCase):
             "group_type": FILESYSTEM_GROUP_TYPE.BCACHE,
             "name": "Bcache",
             }),
+        (FILESYSTEM_GROUP_TYPE.VMFS6, {
+            "group_type": FILESYSTEM_GROUP_TYPE.VMFS6,
+            "name": "VMFS",
+            }),
     ]
 
     def test__returns_prefix(self):
@@ -1459,6 +1478,10 @@ class TestFilesystemGroupGetNamePrefix(MAASServerTestCase):
             "group_type": FILESYSTEM_GROUP_TYPE.BCACHE,
             "prefix": "bcache",
             }),
+        (FILESYSTEM_GROUP_TYPE.VMFS6, {
+            "group_type": FILESYSTEM_GROUP_TYPE.VMFS6,
+            "prefix": "vmfs",
+            }),
     ]
 
     def test__returns_prefix(self):
@@ -1494,6 +1517,10 @@ class TestFilesystemGroupGetVirtualBlockDeviceBlockSize(MAASServerTestCase):
         (FILESYSTEM_GROUP_TYPE.RAID_10, {
             "group_type": FILESYSTEM_GROUP_TYPE.RAID_10,
             "block_size": 512,
+            }),
+        (FILESYSTEM_GROUP_TYPE.VMFS6, {
+            "group_type": FILESYSTEM_GROUP_TYPE.VMFS6,
+            "block_size": 1024,
             }),
         # For BCACHE see
         # `test_get_virtual_block_device_block_size_returns_backing_for_bc`

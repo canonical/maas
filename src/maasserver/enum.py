@@ -1,4 +1,4 @@
-# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Enumerations meaningful to the maasserver application."""
@@ -511,6 +511,9 @@ class FILESYSTEM_TYPE:
     #: ZFS
     ZFSROOT = "zfsroot"
 
+    #: VMFS6
+    VMFS6 = "vmfs6"
+
 
 # Django choices for FILESYSTEM_TYPE: sequence of tuples (key, UI
 # representation).
@@ -532,6 +535,7 @@ FILESYSTEM_TYPE_CHOICES = (
     (FILESYSTEM_TYPE.TMPFS, "tmpfs"),
     (FILESYSTEM_TYPE.BTRFS, "btrfs"),
     (FILESYSTEM_TYPE.ZFSROOT, "zfsroot"),
+    (FILESYSTEM_TYPE.VMFS6, "vmfs6"),
     )
 
 
@@ -581,6 +585,9 @@ class FILESYSTEM_GROUP_TYPE:
     #: Bcache
     BCACHE = 'bcache'
 
+    #: VMFS6
+    VMFS6 = 'vmfs6'
+
 
 FILESYSTEM_GROUP_RAID_TYPES = [
     FILESYSTEM_GROUP_TYPE.RAID_0,
@@ -605,6 +612,7 @@ FILESYSTEM_GROUP_RAID_TYPE_CHOICES = (
 FILESYSTEM_GROUP_TYPE_CHOICES = FILESYSTEM_GROUP_RAID_TYPE_CHOICES + (
     (FILESYSTEM_GROUP_TYPE.LVM_VG, "LVM VG"),
     (FILESYSTEM_GROUP_TYPE.BCACHE, "Bcache"),
+    (FILESYSTEM_GROUP_TYPE.VMFS6, "VMFS6"),
     )
 
 

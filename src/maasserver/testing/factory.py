@@ -2206,6 +2206,12 @@ class Factory(maastesting.factory.Factory):
                     fstype=FILESYSTEM_TYPE.BCACHE_BACKING,
                     block_device=backing_block_device)
                 group.filesystems.add(backing_filesystem)
+            elif group_type == FILESYSTEM_GROUP_TYPE.VMFS6:
+                for _ in range(2):
+                    partition = self.make_Partition(node=node)
+                    self.make_Filesystem(
+                        fstype=FILESYSTEM_TYPE.VMFS6, partition=partition,
+                        filesystem_group=group)
         else:
             for filesystem in filesystems:
                 group.filesystems.add(filesystem)
@@ -2220,6 +2226,10 @@ class Factory(maastesting.factory.Factory):
             kwargs['group_type'] = FILESYSTEM_GROUP_TYPE.LVM_VG
         filesystem_group = self.make_FilesystemGroup(*args, **kwargs)
         return VolumeGroup.objects.get(id=filesystem_group.id)
+
+    def make_VMFS(self, *args, **kwargs):
+        return self.make_FilesystemGroup(
+            *args, group_type=FILESYSTEM_GROUP_TYPE.VMFS6, **kwargs)
 
     def make_VirtualBlockDevice(
             self, name=None, size=None, block_size=None,

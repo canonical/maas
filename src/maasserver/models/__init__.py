@@ -1,4 +1,4 @@
-# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Model export and helpers for maasserver."""
@@ -87,6 +87,7 @@ __all__ = [
     'VLAN',
     'VLANInterface',
     'VolumeGroup',
+    'VMFS',
     'Zone',
 ]
 
@@ -131,6 +132,7 @@ from maasserver.models.filesystemgroup import (
     Bcache,
     FilesystemGroup,
     RAID,
+    VMFS,
     VolumeGroup,
 )
 from maasserver.models.globaldefault import GlobalDefault
