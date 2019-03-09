@@ -5579,5 +5579,182 @@
   },
   "raids-placeholder": {
     "message": "Information about this object is not available at this time."
+  },
+  "vmfs-datastores-read": [
+    {
+      "id": 22,
+      "system_id": "8f86dk",
+      "devices": [
+	{
+	  "uuid": "b376683f-27b6-4ee9-b51a-ec1b1bf3493d",
+	  "size": 45248151552,
+	  "bootable": false,
+	  "tags": [],
+	  "id": 75,
+	  "system_id": "8f86dk",
+	  "type": "partition",
+	  "device_id": 24,
+	  "filesystem": {
+	    "fstype": "vmfs6",
+	    "label": null,
+	    "uuid": "0894f25f-9514-488f-b5c8-e7eb4e8a7b88",
+	    "mount_point": null,
+	    "mount_options": null
+	  },
+	  "used_for": "VMFS extent for datastore1",
+	  "path": "/dev/disk/by-dname/sda-part9",
+	  "resource_uri": "/MAAS/api/2.0/nodes/8f86dk/blockdevices/24/partition/75"
+	}
+      ],
+      "name": "datastore1",
+      "size": 45248151552,
+      "human_size": "45.2 GB",
+      "uuid": "930a9453-e419-44e2-a7b9-b4541d94eb98",
+      "resource_uri": "/MAAS/api/2.0/nodes/8f86dk/vmfs-datastore/22/"
+    },
+    {
+      "id": 23,
+      "system_id": "8f86dk",
+      "devices": [
+	{
+	  "uuid": "1a456f4d-f204-459e-bba5-2e35f4ee6007",
+	  "size": 21466447872,
+	  "bootable": false,
+	  "tags": [],
+	  "id": 79,
+	  "system_id": "8f86dk",
+	  "type": "partition",
+	  "device_id": 25,
+	  "filesystem": {
+	    "fstype": "vmfs6",
+	    "label": null,
+	    "uuid": "69afdece-307a-4cd2-bd85-fbbfccddaa20",
+	    "mount_point": null,
+	    "mount_options": null
+	  },
+	  "used_for": "VMFS extent for datastore2",
+	  "path": "/dev/disk/by-dname/sdb-part2",
+	  "resource_uri": "/MAAS/api/2.0/nodes/8f86dk/blockdevices/25/partition/79"
+	}
+      ],
+      "name": "datastore2",
+      "size": 21466447872,
+      "human_size": "21.5 GB",
+      "uuid": "c6c28390-f341-4a7d-97d7-19e5b816a07b",
+      "resource_uri": "/MAAS/api/2.0/nodes/8f86dk/vmfs-datastore/23/"
+    }
+  ],
+  "vmfs-datastores-create": {
+    "devices": [
+      {
+	"uuid": "b376683f-27b6-4ee9-b51a-ec1b1bf3493d",
+	"size": 45248151552,
+	"bootable": false,
+	"tags": [],
+	"type": "partition",
+	"path": "/dev/disk/by-dname/sda-part9",
+	"device_id": 24,
+	"filesystem": {
+	  "fstype": "vmfs6",
+	  "label": null,
+	  "uuid": "3016ad2d-cb05-4640-bb2e-b6d3e0e244b0",
+	  "mount_point": null,
+	  "mount_options": null
+	},
+	"used_for": "VMFS extent for datastore1",
+	"id": 75,
+	"system_id": "8f86dk",
+	"resource_uri": "/MAAS/api/2.0/nodes/8f86dk/blockdevices/24/partition/75"
+      },
+      {
+	"uuid": "58259c3c-5bd1-4cab-8c5e-31a5fa10c314",
+	"size": 21466447872,
+	"bootable": false,
+	"tags": [],
+	"type": "partition",
+	"path": "/dev/disk/by-dname/sdb-part2",
+	"device_id": 25,
+	"filesystem": {
+	  "fstype": "vmfs6",
+	  "label": null,
+	  "uuid": "7ce3af06-b734-4a30-a65a-81e8d8ff948e",
+	  "mount_point": null,
+	  "mount_options": null
+	},
+	"used_for": "VMFS extent for datastore1",
+	"id": 80,
+	"system_id": "8f86dk",
+	"resource_uri": "/MAAS/api/2.0/nodes/8f86dk/blockdevices/25/partition/80"
+      }
+    ],
+    "size": 66714599424,
+    "uuid": "da2b83e5-8922-47f6-9498-0da5cd25e6ca",
+    "name": "datastore1",
+    "human_size": "66.7 GB",
+    "id": 24,
+    "system_id": "8f86dk",
+    "resource_uri": "/MAAS/api/2.0/nodes/8f86dk/vmfs-datastore/24/"
+  },
+  "vmfs-datastore-read": {
+    "name": "datastore1",
+    "system_id": "8f86dk",
+    "uuid": "7fb744d3-ff7b-4235-8a2b-aeecf96ad3d0",
+    "devices": [
+      {
+	"uuid": "b376683f-27b6-4ee9-b51a-ec1b1bf3493d",
+	"size": 45248151552,
+	"bootable": false,
+	"tags": [],
+	"used_for": "VMFS extent for datastore1",
+	"device_id": 24,
+	"path": "/dev/disk/by-dname/sda-part9",
+	"system_id": "8f86dk",
+	"type": "partition",
+	"filesystem": {
+	  "fstype": "vmfs6",
+	  "label": null,
+	  "uuid": "ad5a77ad-27bb-4144-9c38-29a51a8f966c",
+	  "mount_point": null,
+	  "mount_options": null
+	},
+	"id": 75,
+	"resource_uri": "/MAAS/api/2.0/nodes/8f86dk/blockdevices/24/partition/75"
+      }
+    ],
+    "human_size": "45.2 GB",
+    "id": 25,
+    "size": 45248151552,
+    "resource_uri": "/MAAS/api/2.0/nodes/8f86dk/vmfs-datastore/25/"
+  },
+  "vmfs-datastore-update": {
+    "name": "datastore1",
+    "system_id": "8f86dk",
+    "uuid": "7fb744d3-ff7b-4235-8a2b-aeecf96ad3d0",
+    "devices": [
+      {
+	"uuid": "b376683f-27b6-4ee9-b51a-ec1b1bf3493d",
+	"size": 45248151552,
+	"bootable": false,
+	"tags": [],
+	"used_for": "VMFS extent for datastore1",
+	"device_id": 24,
+	"path": "/dev/disk/by-dname/sda-part9",
+	"system_id": "8f86dk",
+	"type": "partition",
+	"filesystem": {
+	  "fstype": "vmfs6",
+	  "label": null,
+	  "uuid": "ad5a77ad-27bb-4144-9c38-29a51a8f966c",
+	  "mount_point": null,
+	  "mount_options": null
+	},
+	"id": 75,
+	"resource_uri": "/MAAS/api/2.0/nodes/8f86dk/blockdevices/24/partition/75"
+      }
+    ],
+    "human_size": "45.2 GB",
+    "id": 25,
+    "size": 45248151552,
+    "resource_uri": "/MAAS/api/2.0/nodes/8f86dk/vmfs-datastore/25/"
   }
 }

@@ -150,3 +150,9 @@ class TestUsedFor(MAASServerTestCase):
         self.assertEqual(
             ("Backing device for %s" % filesystem_group.name),
             used_for(filesystem_group.filesystems.first().block_device))
+
+    def test__vmfs(self):
+        vmfs = factory.make_VMFS()
+        part = vmfs.filesystems.first().partition
+        self.assertEquals(
+            "VMFS extent for %s" % vmfs.name, used_for(part))

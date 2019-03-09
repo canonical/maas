@@ -1,4 +1,4 @@
-# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """URL API routing configuration."""
@@ -184,6 +184,10 @@ from maasserver.api.vlans import (
     VlanHandler,
     VlansHandler,
 )
+from maasserver.api.vmfs_datastores import (
+    VmfsDatastoreHandler,
+    VmfsDatastoresHandler,
+)
 from maasserver.api.volume_groups import (
     VolumeGroupHandler,
     VolumeGroupsHandler,
@@ -271,6 +275,10 @@ bcache_cache_set_handler = RestrictedResource(
     BcacheCacheSetHandler, authentication=api_auth)
 bcache_cache_sets_handler = RestrictedResource(
     BcacheCacheSetsHandler, authentication=api_auth)
+vmfs_datastore_handler = RestrictedResource(
+    VmfsDatastoreHandler, authentication=api_auth)
+vmfs_datastores_handler = RestrictedResource(
+    VmfsDatastoresHandler, authentication=api_auth)
 interface_handler = RestrictedResource(
     InterfaceHandler, authentication=api_auth)
 interfaces_handler = RestrictedResource(
@@ -384,6 +392,10 @@ urlpatterns += [
         bcache_cache_sets_handler, name='bcache_cache_sets_handler'),
     url(r'^nodes/(?P<system_id>[^/]+)/bcache-cache-set/(?P<id>[^/]+)/$',
         bcache_cache_set_handler, name='bcache_cache_set_handler'),
+    url(r'^nodes/(?P<system_id>[^/]+)/vmfs-datastores/$',
+        vmfs_datastores_handler, name='vmfs_datastores_handler'),
+    url(r'^nodes/(?P<system_id>[^/]+)/vmfs-datastore/(?P<id>[^/]+)/$',
+        vmfs_datastore_handler, name='vmfs_datastore_handler'),
     url(r'^nodes/(?P<system_id>[^/]+)/interfaces/(?P<id>[^/]+)/$',
         interface_handler, name='interface_handler'),
     url(r'^nodes/(?P<system_id>[^/]+)/interfaces/$',

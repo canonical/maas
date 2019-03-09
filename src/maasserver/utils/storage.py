@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Utilities for working with the storage model."""
@@ -78,6 +78,8 @@ def used_for(model):
             return "Cache device for %s" % filesystem.cache_set.get_name()
         elif filesystem.fstype == FILESYSTEM_TYPE.BCACHE_BACKING:
             return "Backing device for %s" % filesystem.filesystem_group.name
+        elif filesystem.fstype == FILESYSTEM_TYPE.VMFS6:
+            return "VMFS extent for %s" % filesystem.filesystem_group.name
         else:
             return ("Unmounted %s formatted filesystem" % filesystem.fstype)
     elif isinstance(model, BlockDevice):
