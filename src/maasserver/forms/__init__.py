@@ -155,6 +155,7 @@ from maasserver.models import (
     SSLKey,
     Tag,
     VirtualBlockDevice,
+    VMFS,
     VolumeGroup,
     Zone,
 )
@@ -3768,3 +3769,62 @@ class CreateLogicalVolumeForm(Form):
             name=self.cleaned_data['name'],
             uuid=self.cleaned_data.get('uuid'),
             size=self.cleaned_data['size'])
+
+
+class CreateVMFSForm(CreateVolumeGroupForm):
+    """For validating and saving a new VMFS group."""
+
+    def save(self):
+        """Persist the `VMFS` into the database."""
+        block_devices = list(BlockDevice.objects.filter(
+            id__in=self.cleaned_data['block_devices']))
+        partitions = list(Partition.objects.filter(
+            id__in=self.cleaned_data['partitions']))
+        # VMware automatically creates a partition which fills the block
+        # device when adding a block device to the VMFS. Do this in the form
+        # so the model reflects what will be written.
+        for block_device in block_devices:
+            partitions.append(block_device.create_partition())
+        return VMFS.objects.create_vmfs(
+            name=self.cleaned_data['name'],
+            uuid=self.cleaned_data.get('uuid'),
+            partitions=partitions)
+
+
+class UpdateVMFSForm(UpdateVolumeGroupForm):
+    """For validating and updating a VMFS group."""
+
+    def save(self):
+        """Update the `VMFS` group.
+
+        This implementation of `save` does not support the `commit` argument.
+        """
+        if 'name' in self.cleaned_data and self.cleaned_data['name']:
+            self.volume_group.name = self.cleaned_data['name']
+        if 'uuid' in self.cleaned_data and self.cleaned_data['uuid']:
+            self.volume_group.uuid = self.cleaned_data['uuid']
+        # UpdateVMFSForm inherits from UpdateVolumeGroupForm as the field
+        # setup is identical. As such the parent class calls the object
+        # volume_group.
+        vmfs = self.volume_group
+        for block_device in BlockDevice.objects.filter(
+                id__in=self.cleaned_data['add_block_devices']):
+            # VMware automatically creates a partition which filles the block
+            # device when adding a block device to the VMFS. Do this in the
+            # form so the model reflects what will be written.
+            partition = block_device.create_partition()
+            Filesystem.objects.create(
+                fstype=FILESYSTEM_TYPE.VMFS6, partition=partition,
+                filesystem_group=vmfs)
+        for partition in Partition.objects.filter(
+                id__in=self.cleaned_data['add_partitions']):
+            Filesystem.objects.create(
+                fstype=FILESYSTEM_TYPE.VMFS6, partition=partition,
+                filesystem_group=vmfs)
+        for fs in Filesystem.objects.filter(
+                filesystem_group=vmfs,
+                partition_id__in=self.cleaned_data['remove_partitions']):
+            fs.delete()
+
+        self.volume_group.save()
+        return self.volume_group
