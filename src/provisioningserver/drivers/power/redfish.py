@@ -25,16 +25,12 @@ from provisioningserver.drivers.power import (
     PowerActionError,
     PowerDriver,
 )
+from provisioningserver.drivers.power.utils import WebClientContextFactory
 from provisioningserver.utils.twisted import asynchronous
 from twisted.internet import reactor
-from twisted.internet._sslverify import (
-    ClientTLSOptions,
-    OpenSSLCertificateOptions,
-)
 from twisted.internet.defer import inlineCallbacks
 from twisted.web.client import (
     Agent,
-    BrowserLikePolicyForHTTPS,
     FileBodyProducer,
     PartialDownloadError,
     readBody,
@@ -46,17 +42,6 @@ REDFISH_POWER_CONTROL_ENDPOINT = (
     b"redfish/v1/Systems/%s/Actions/ComputerSystem.Reset/")
 
 REDFISH_SYSTEMS_ENDPOINT = b"redfish/v1/Systems/"
-
-
-class WebClientContextFactory(BrowserLikePolicyForHTTPS):
-
-    def creatorForNetloc(self, hostname, port):
-        opts = ClientTLSOptions(
-            hostname.decode("ascii"),
-            OpenSSLCertificateOptions(verify=False).getContext())
-        # This forces Twisted to not validate the hostname of the certificate.
-        opts._ctx.set_info_callback(lambda *args: None)
-        return opts
 
 
 class RedfishPowerDriverBase(PowerDriver):
