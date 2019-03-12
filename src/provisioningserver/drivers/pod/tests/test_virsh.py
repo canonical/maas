@@ -1000,6 +1000,117 @@ class TestVirshSSH(MAASTestCase):
         self.assertFalse(discovered_machine.interfaces[1].boot)
         self.assertFalse(discovered_machine.interfaces[2].boot)
 
+    def test__get_discovered_machine_handles_no_storage_pools_found(self):
+        conn = self.configure_virshssh('')
+        hostname = factory.make_name('hostname')
+        architecture = factory.make_name('arch')
+        cores = random.randint(1, 8)
+        memory = random.randint(4096, 8192)
+
+        # Storage pool names and pools are only for setting the devices.
+        # Further down we will be setting the return value for
+        # find_storage_pool to None which happens if a storage pool
+        # cannot be found for a specific block device.
+        storage_pool_names = [
+            factory.make_name('storage')
+            for _ in range(3)
+        ]
+        storage_pools = [
+            DiscoveredPodStoragePool(
+                id=factory.make_name('uuid'),
+                type='dir',
+                name=name,
+                storage=random.randint(4096, 8192),
+                path='/var/lib/libvirt/%s/' % name)
+            for name in storage_pool_names
+        ]
+        device_names = [
+            factory.make_name('device')
+            for _ in range(3)
+        ]
+        devices = []
+        for name in device_names:
+            pool = random.choice(storage_pools)
+            name = factory.make_name('device')
+            devices.append((
+                name,
+                pool.path + '/' + name))
+        device_tags = [
+            [
+                factory.make_name('tag')
+                for _ in range(3)
+            ]
+            for _ in range(3)
+        ]
+        local_storage = [
+            random.randint(4096, 8192) for _ in range(3)
+        ]
+        mac_addresses = [
+            factory.make_mac_address() for _ in range(3)
+        ]
+        mock_get_pod_storage_pools = self.patch(
+            virsh.VirshSSH, 'get_pod_storage_pools')
+        mock_find_storage_pool = self.patch(
+            virsh.VirshSSH, 'find_storage_pool')
+        mock_get_machine_arch = self.patch(
+            virsh.VirshSSH, 'get_machine_arch')
+        mock_get_machine_cpu_count = self.patch(
+            virsh.VirshSSH, 'get_machine_cpu_count')
+        mock_get_machine_memory = self.patch(
+            virsh.VirshSSH, 'get_machine_memory')
+        mock_get_machine_state = self.patch(
+            virsh.VirshSSH, 'get_machine_state')
+        mock_list_machine_block_devices = self.patch(
+            virsh.VirshSSH, 'list_machine_block_devices')
+        mock_get_machine_local_storage = self.patch(
+            virsh.VirshSSH, 'get_machine_local_storage')
+        mock_get_machine_interface_info = self.patch(
+            virsh.VirshSSH, 'get_machine_interface_info')
+        mock_get_pod_storage_pools.return_value = storage_pools
+        mock_find_storage_pool.return_value = None
+        mock_get_machine_arch.return_value = architecture
+        mock_get_machine_cpu_count.return_value = cores
+        mock_get_machine_memory.return_value = memory
+        mock_get_machine_state.return_value = "shut off"
+        mock_list_machine_block_devices.return_value = devices
+        mock_get_machine_local_storage.side_effect = local_storage
+        mock_get_machine_interface_info.return_value = [
+            InterfaceInfo('bridge', 'br0', 'virtio', mac)
+            for mac in mac_addresses
+        ]
+
+        block_devices = [
+            RequestedMachineBlockDevice(
+                size=local_storage[idx], tags=device_tags[idx])
+            for idx in range(3)
+        ]
+        # None of the parameters matter in the RequestedMachine except for
+        # block_device. All other paramters are ignored by this method.
+        request = RequestedMachine(
+            hostname=None, architecture='', cores=0, memory=0, interfaces=[],
+            block_devices=block_devices)
+        discovered_machine = conn.get_discovered_machine(
+            hostname, request=request)
+        self.assertEquals(hostname, discovered_machine.hostname)
+        self.assertEquals(architecture, discovered_machine.architecture)
+        self.assertEquals(cores, discovered_machine.cores)
+        self.assertEquals(memory, discovered_machine.memory)
+        self.assertIsNone(discovered_machine.block_devices[0].storage_pool)
+        self.assertIsNone(discovered_machine.block_devices[1].storage_pool)
+        self.assertIsNone(discovered_machine.block_devices[2].storage_pool)
+        self.assertItemsEqual(
+            local_storage,
+            [bd.size for bd in discovered_machine.block_devices])
+        self.assertItemsEqual(
+            device_tags,
+            [bd.tags for bd in discovered_machine.block_devices])
+        self.assertItemsEqual(
+            mac_addresses,
+            [m.mac_address for m in discovered_machine.interfaces])
+        self.assertTrue(discovered_machine.interfaces[0].boot)
+        self.assertFalse(discovered_machine.interfaces[1].boot)
+        self.assertFalse(discovered_machine.interfaces[2].boot)
+
     def test__get_discovered_machine_handles_bad_storage_device(self):
         conn = self.configure_virshssh('')
         hostname = factory.make_name('hostname')
