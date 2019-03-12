@@ -23,6 +23,7 @@ describe("maasMachinesTable", function() {
     var MachinesManager, GeneralManager, ManagerHelperService;
     beforeEach(inject(function($injector) {
         MachinesManager = $injector.get('MachinesManager');
+        NotificationsManager = $injector.get('NotificationsManager');
         GeneralManager = $injector.get('GeneralManager');
         ManagerHelperService = $injector.get('ManagerHelperService');
     }));
@@ -582,27 +583,80 @@ describe("maasMachinesTable", function() {
 
         it(`executes MachinesManager.checkPowerState
             if action param is "check"`, () => {
-            var directive = compileDirective();
-            var scope = directive.isolateScope();
-            var machine = makeMachine();
+            const directive = compileDirective();
+            const scope = directive.isolateScope();
+            const machine = makeMachine();
+            const defer = $q.defer();
+
             spyOn(MachinesManager, "checkPowerState")
-                .and.returnValue($q.defer().promise);
+                .and.returnValue(defer.promise);
 
             scope.changePowerState(machine, "check");
             expect(MachinesManager.checkPowerState)
                 .toHaveBeenCalledWith(machine);
         });
 
+        it("creates an error notification if 'check' promise rejected", () => {
+            const directive = compileDirective();
+            const scope = directive.isolateScope();
+            const machine = makeMachine();
+            const defer = $q.defer();
+            const errorMsg = "Everything is broken";
+
+            spyOn(MachinesManager, "checkPowerState")
+                .and.returnValue(defer.promise);
+            spyOn(NotificationsManager, "createItem")
+                .and.returnValue(true);
+
+            scope.changePowerState(machine, "check");
+            defer.reject(errorMsg);
+            scope.$digest();
+            expect(NotificationsManager.createItem)
+                .toHaveBeenCalledWith({
+                    message: (
+                        `Unable to check machine's power state: ${errorMsg}`
+                    ),
+                    category: "error",
+                    admins: true,
+                    users: true,
+                });
+        });
+
         it("executes MachinesManager.performAction correctly", () => {
-            var directive = compileDirective();
-            var scope = directive.isolateScope();
-            var machine = makeMachine();
+            const directive = compileDirective();
+            const scope = directive.isolateScope();
+            const machine = makeMachine();
+            const defer = $q.defer();
             spyOn(MachinesManager, "performAction")
-                .and.returnValue($q.defer().promise);
+                .and.returnValue(defer.promise);
 
             scope.changePowerState(machine, "on");
             expect(MachinesManager.performAction)
                 .toHaveBeenCalledWith(machine, "on");
+        });
+
+        it("creates an error notification if action promise rejected", () => {
+            const directive = compileDirective();
+            const scope = directive.isolateScope();
+            const machine = makeMachine();
+            const defer = $q.defer();
+            const errorMsg = "Everything is broken";
+
+            spyOn(MachinesManager, "performAction")
+                .and.returnValue(defer.promise);
+            spyOn(NotificationsManager, "createItem")
+                .and.returnValue(true);
+
+            scope.changePowerState(machine, "on");
+            defer.reject(errorMsg);
+            scope.$digest();
+            expect(NotificationsManager.createItem)
+                .toHaveBeenCalledWith({
+                    message: `Unable to power machine on: ${errorMsg}`,
+                    category: "error",
+                    admins: true,
+                    users: true,
+                });
         });
     });
 });

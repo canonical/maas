@@ -10,8 +10,16 @@
 
 
 angular.module('MAAS').directive('maasMachinesTable', [
-  'MachinesManager', 'GeneralManager', 'ManagerHelperService',
-  function (MachinesManager, GeneralManager, ManagerHelperService) {
+  'MachinesManager',
+  'NotificationsManager',
+  'GeneralManager',
+  'ManagerHelperService',
+  function (
+    MachinesManager,
+    NotificationsManager,
+    GeneralManager,
+    ManagerHelperService
+  ) {
     return {
       restrict: "E",
       scope: {
@@ -38,6 +46,12 @@ angular.module('MAAS').directive('maasMachinesTable', [
           19,  // exiting rescue mode
           21   // testing
         ];
+
+        const actionMap = new Map([
+          ["check", "check machine's power state"],
+          ["off", "power machine off"],
+          ["on", "power machine on"],
+        ]);
 
         // Scope variables.
         scope.table = {
@@ -290,20 +304,38 @@ angular.module('MAAS').directive('maasMachinesTable', [
           machine.powerTransition = true;
 
           if (action === "check") {
-            MachinesManager.checkPowerState(machine).then(() => {
-              machine.action_failed = false;
-              machine.powerTransition = undefined;
-            }, error => {
-              machine.action_failed = true;
-              machine.powerTransition = undefined;
-            });
+            MachinesManager.checkPowerState(machine).then(
+              () => {
+                machine.action_failed = false;
+                machine.powerTransition = undefined;
+              },
+              error => {
+                NotificationsManager.createItem({
+                  message: `Unable to ${actionMap.get(action)}: ${error}`,
+                  category: "error",
+                  admins: true,
+                  users: true,
+                });
+                machine.action_failed = true;
+                machine.powerTransition = undefined;
+              }
+            );
           } else {
-            MachinesManager.performAction(machine, action).then(() => {
-              machine.action_failed = false;
-            }, error => {
-              machine.action_failed = true;
-              machine.powerTransition = undefined;
-            });
+            MachinesManager.performAction(machine, action).then(
+              () => {
+                machine.action_failed = false;
+              },
+              error => {
+                NotificationsManager.createItem({
+                  message: `Unable to ${actionMap.get(action)}: ${error}`,
+                  category: "error",
+                  admins: true,
+                  users: true,
+                });
+                machine.action_failed = true;
+                machine.powerTransition = undefined;
+              }
+            );
           }
         };
       }

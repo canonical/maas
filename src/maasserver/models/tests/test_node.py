@@ -7136,7 +7136,7 @@ class TestGetBMCClientConnectionInfo(MAASServerTestCase):
             name=EVENT_TYPES.NODE_POWER_QUERY_FAILED)
         event = node.event_set.get(type=event_type)
         self.assertEquals(
-            ('No rack controllers can access the BMC of node: %s' %
+            ('No rack controllers can access the BMC of node %s' %
              node.hostname), event.description)
 
 

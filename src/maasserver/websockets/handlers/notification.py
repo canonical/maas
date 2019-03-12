@@ -17,7 +17,7 @@ class NotificationHandler(TimestampedModelHandler):
 
     class Meta:
         object_class = Notification
-        allowed_methods = {'list', 'get', 'dismiss'}
+        allowed_methods = {'list', 'get', 'dismiss', 'create'}
         exclude = list_exclude = {"context"}
         listen_channels = {'notification', 'notificationdismissal'}
 
