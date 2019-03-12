@@ -726,14 +726,14 @@ class VirshSSH(pexpect.spawn):
                         machine, device))
                 return None
 
-            # Find the storage pool for this block device. Virsh doesn't
-            # tell you this information.
+            # Find the storage pool for this block device if it belongs to
+            # a storage pool. Virsh doesn't tell you this information.
             storage_pool = self.find_storage_pool(source, storage_pools)
             block_devices.append(
                 DiscoveredMachineBlockDevice(
                     model=None, serial=None, size=size,
                     id_path="/dev/%s" % device, tags=tags,
-                    storage_pool=storage_pool.id))
+                    storage_pool=storage_pool.id if storage_pool else None))
         discovered_machine.block_devices = block_devices
 
         # Discover interfaces.
