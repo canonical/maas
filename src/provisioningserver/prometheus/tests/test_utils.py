@@ -58,6 +58,18 @@ class TestPrometheusMetrics(MAASTestCase):
             'a_gauge{bar="BAR",baz="BAZ",bza="BZA",foo="FOO"} 22.0',
             prometheus_metrics.generate_latest().decode('ascii'))
 
+    def test_with_update_handlers(self):
+        def update_gauge(metrics):
+            metrics.update('a_gauge', 'set', value=33)
+
+        prometheus_metrics = PrometheusMetrics(
+            definitions=[MetricDefinition('Gauge', 'a_gauge', 'A Gauge', [])],
+            update_handlers=[update_gauge],
+            registry=prometheus_client.CollectorRegistry())
+        self.assertIn(
+            'a_gauge 33.0',
+            prometheus_metrics.generate_latest().decode('ascii'))
+
     def test_register_atexit_global_registry(self):
         mock_register = self.patch(atexit, 'register')
         definitions = [

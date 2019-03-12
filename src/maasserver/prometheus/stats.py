@@ -71,8 +71,8 @@ def prometheus_stats_handler(request):
 
     metrics = create_metrics(
         STATS_DEFINITIONS,
+        update_handlers=[update_prometheus_stats],
         registry=prom_cli.CollectorRegistry())
-    update_prometheus_stats(metrics)
     return HttpResponse(
         content=metrics.generate_latest(), content_type="text/plain")
 

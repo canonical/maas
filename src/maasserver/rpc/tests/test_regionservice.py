@@ -23,7 +23,6 @@ from maasserver.models import (
     RackController,
     RegionController,
 )
-from maasserver.prometheus.metrics import PROMETHEUS_METRICS
 from maasserver.rpc import regionservice
 from maasserver.rpc.regionservice import (
     RackClient,
@@ -48,6 +47,7 @@ from maastesting.twisted import (
     extract_result,
     TwistedLoggerFixture,
 )
+from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
 from provisioningserver.rpc import (
     cluster,
     exceptions,

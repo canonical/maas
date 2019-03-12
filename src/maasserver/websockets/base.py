@@ -18,11 +18,11 @@ from django.db.models import Model
 from django.utils.encoding import is_protected_type
 from maasserver import concurrency
 from maasserver.permissions import NodePermission
-from maasserver.prometheus.metrics import PROMETHEUS_METRICS
 from maasserver.rbac import rbac
 from maasserver.utils.forms import get_QueryDict
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
+from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
 from provisioningserver.utils.twisted import (
     asynchronous,
     IAsynchronous,

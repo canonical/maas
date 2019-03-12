@@ -24,7 +24,6 @@ from maasserver.dns.config import get_trusted_networks
 from maasserver.models.config import Config
 from maasserver.models.node import RackController
 from maasserver.models.subnet import Subnet
-from maasserver.prometheus.metrics import PROMETHEUS_METRICS
 from maasserver.rpc import (
     boot,
     configuration,
@@ -48,6 +47,7 @@ from netaddr import (
     IPAddress,
 )
 from provisioningserver.logger import LegacyLogger
+from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
 from provisioningserver.rpc import (
     cluster,
     common,

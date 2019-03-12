@@ -18,8 +18,11 @@ MetricDefinition = namedtuple(
 class PrometheusMetrics:
     """Wrapper for accessing and interacting with Prometheus metrics."""
 
-    def __init__(self, definitions=None, extra_labels=None, registry=None):
+    def __init__(
+            self, definitions=None, extra_labels=None, update_handlers=(),
+            registry=None):
         self._extra_labels = extra_labels or {}
+        self._update_handlers = update_handlers
         if definitions is None:
             self.registry = None
             self._metrics = {}
@@ -69,16 +72,21 @@ class PrometheusMetrics:
 
     def generate_latest(self):
         """Generate a bytestring with metric values."""
-        if self.registry is not None:
-            registry = self.registry
-            if registry is prom_cli.REGISTRY:
-                # when using the global registry, setup up multiprocess
-                # support. In this case, a separate registry needs to be used
-                # for generating the samples.
-                registry = prom_cli.CollectorRegistry()
-                from prometheus_client import multiprocess
-                multiprocess.MultiProcessCollector(registry)
-            return prom_cli.generate_latest(registry)
+        if self.registry is None:
+            return
+
+        registry = self.registry
+        if registry is prom_cli.REGISTRY:
+            # when using the global registry, setup up multiprocess
+            # support. In this case, a separate registry needs to be used
+            # for generating the samples.
+            registry = prom_cli.CollectorRegistry()
+            from prometheus_client import multiprocess
+            multiprocess.MultiProcessCollector(registry)
+
+        for handler in self._update_handlers:
+            handler(self)
+        return prom_cli.generate_latest(registry)
 
     def record_call_latency(
             self, metric_name, get_labels=lambda *args, **kwargs: {}):
@@ -129,8 +137,11 @@ class PrometheusMetrics:
         multiprocess.mark_process_dead(os.getpid())
 
 
-def create_metrics(metric_definitions, extra_labels=None, registry=None):
+def create_metrics(
+        metric_definitions, extra_labels=None, update_handlers=(),
+        registry=None):
     """Return a PrometheusMetrics from the specified definitions."""
     definitions = metric_definitions if PROMETHEUS_SUPPORTED else None
     return PrometheusMetrics(
-        definitions=definitions, extra_labels=extra_labels, registry=registry)
+        definitions=definitions, extra_labels=extra_labels,
+        update_handlers=update_handlers, registry=registry)

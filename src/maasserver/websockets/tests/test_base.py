@@ -25,7 +25,6 @@ from maasserver.models.node import (
 from maasserver.models.vlan import VLAN
 from maasserver.models.zone import Zone
 from maasserver.permissions import NodePermission
-from maasserver.prometheus.metrics import PROMETHEUS_METRICS
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
@@ -46,6 +45,7 @@ from maastesting.matchers import (
     MockNotCalled,
 )
 from maastesting.testcase import MAASTestCase
+from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
 from provisioningserver.utils.twisted import asynchronous
 from testtools.matchers import (
     Equals,

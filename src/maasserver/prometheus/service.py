@@ -1,4 +1,4 @@
-from maasserver.prometheus.metrics import PROMETHEUS_METRICS
+from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
 from provisioningserver.prometheus.resource import PrometheusMetricsResource
 from provisioningserver.utils.twisted import reducedWebLogFormatter
 from twisted.application.internet import StreamServerEndpointService

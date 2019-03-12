@@ -3,7 +3,7 @@
 
 from time import time
 
-from maasserver.prometheus.metrics import PROMETHEUS_METRICS
+from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
 
 
 class PrometheusRequestMetricsMiddleware:

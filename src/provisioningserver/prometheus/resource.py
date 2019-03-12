@@ -3,7 +3,7 @@ from twisted.web import resource
 
 
 class PrometheusMetricsResource(resource.Resource):
-    """A resource for exposing prometheus metrics. """
+    """A resource for exposing prometheus metrics."""
 
     isLeaf = True
 
