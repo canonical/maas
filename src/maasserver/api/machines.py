@@ -119,6 +119,7 @@ import yaml
 DISPLAYED_MACHINE_FIELDS = (
     'system_id',
     'hostname',
+    'description',
     'hardware_uuid',
     'domain',
     'fqdn',
@@ -519,6 +520,9 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
 
         @param (string) "hostname" [required=false] The new hostname for this
         machine.
+
+        @param (string) "description" [required=false] The new description for
+        this machine.
 
         @param (string) "domain" [required=false] The domain for this machine.
         If not given the default domain is used.
@@ -1760,6 +1764,8 @@ class MachinesHandler(NodesHandler, PowersMixin):
 
         @param (string) "hostname" [required=false] A hostname. If not given,
         one will be generated.
+
+        @param (string) "description" [required=false] A optional description.
 
         @param (string) "domain" [required=false] The domain of the machine. If
         not given the default domain is used.

@@ -44,10 +44,15 @@ class TestRackControllerAPI(APITransactionTestCase.ForUser):
         rack = factory.make_RackController(
             owner=self.user, power_type='manual')
         zone = factory.make_zone()
+        new_description = factory.make_name('description')
         response = self.client.put(
-            self.get_rack_uri(rack), {'zone': zone.name})
+            self.get_rack_uri(rack), {
+                'description': new_description,
+                'zone': zone.name})
         self.assertEqual(http.client.OK, response.status_code)
-        self.assertEqual(zone.name, reload_object(rack).zone.name)
+        rack = reload_object(rack)
+        self.assertEqual(zone.name, rack.zone.name)
+        self.assertEqual(new_description, rack.description)
 
     def test_PUT_requires_admin(self):
         rack = factory.make_RackController(owner=self.user)
@@ -186,6 +191,7 @@ class TestRackControllersAPI(APITestCase.ForUser):
             [
                 'system_id',
                 'hostname',
+                'description',
                 'hardware_uuid',
                 'domain',
                 'fqdn',

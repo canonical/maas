@@ -40,10 +40,15 @@ class TestRegionControllerAPI(APITestCase.ForUser):
         self.become_admin()
         region = factory.make_RegionController()
         zone = factory.make_zone()
+        new_description = factory.make_name('description')
         response = self.client.put(
-            self.get_region_uri(region), {'zone': zone.name})
+            self.get_region_uri(region), {
+                'description': new_description,
+                'zone': zone.name})
         self.assertEqual(http.client.OK, response.status_code)
-        self.assertEqual(zone.name, reload_object(region).zone.name)
+        region = reload_object(region)
+        self.assertEqual(zone.name, region.zone.name)
+        self.assertEqual(new_description, region.description)
 
     def test_PUT_requires_admin(self):
         region = factory.make_RegionController()
@@ -126,6 +131,7 @@ class TestRegionControllersAPI(APITestCase.ForUser):
             [
                 'system_id',
                 'hostname',
+                'description',
                 'hardware_uuid',
                 'domain',
                 'fqdn',

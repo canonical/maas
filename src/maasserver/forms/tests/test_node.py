@@ -114,6 +114,7 @@ class TestAdminNodeForm(MAASServerTestCase):
         self.assertItemsEqual(
             [
                 'hostname',
+                'description',
                 'domain',
                 'disable_ipv4',
                 'swap_size',

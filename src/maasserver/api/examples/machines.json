@@ -447,6 +447,7 @@
     "status_message": "desc-9blXOT",
     "cpu_test_status_name": "Failed",
     "hostname": "newname",
+    "description": "Optional description for the machine.",
     "testing_status_name": "Failed",
     "resource_uri": "/MAAS/api/2.0/machines/d8n3re/"
   },
@@ -895,6 +896,7 @@
     "status_message": "desc-9blXOT",
     "cpu_test_status_name": "Failed",
     "hostname": "newname",
+    "description": "Optional description for the machine.",
     "testing_status_name": "Failed",
     "resource_uri": "/MAAS/api/2.0/machines/d8n3re/"
   },
@@ -1781,6 +1783,7 @@
     "virtualblockdevice_set": [],
     "status_message": "desc-SRem4v",
     "hostname": "pretty-jackal",
+    "description": "Optional description for the machine.",
     "power_state": "on",
     "pod": {
       "id": 5,
@@ -1862,6 +1865,7 @@
       "resource_uri": "/MAAS/api/2.0/resourcepool/0/"
     },
     "hostname": "clever-turkey",
+    "description": "Optional description for the machine.",
     "locked": false,
     "testing_status": 0,
     "zone": {
@@ -2113,6 +2117,7 @@
       "resource_uri": "/MAAS/api/2.0/resourcepool/0/"
     },
     "hostname": "clever-turkey",
+    "description": "Optional description for the machine.",
     "locked": false,
     "testing_status": 0,
     "zone": {
@@ -3214,6 +3219,7 @@
     "memory": 8192,
     "power_state": "on",
     "hostname": "above-robin",
+    "description": "Optional description for the machine.",
     "resource_uri": "/MAAS/api/2.0/machines/thr3am/"
   },
   "machines-unmount-special": {
@@ -4126,6 +4132,7 @@
     "memory": 8192,
     "power_state": "on",
     "hostname": "above-robin",
+    "description": "Optional description for the machine.",
     "resource_uri": "/MAAS/api/2.0/machines/thr3am/"
   },
   "machines-clear-gateways": {
@@ -5019,6 +5026,7 @@
     "system_id": "thr3am",
     "status_name": "Ready",
     "hostname": "above-robin",
+    "description": "Optional description for the machine.",
     "hardware_info": {
       "system_vendor": "Unknown",
       "system_product": "Unknown",
@@ -5167,6 +5175,7 @@
     "status": 4,
     "virtualblockdevice_set": [],
     "hostname": "above-robin",
+    "description": "Optional description for the machine.",
     "testing_status_name": "Passed",
     "cpu_test_status": 2,
     "memory_test_status": 2,
@@ -5485,6 +5494,7 @@
     "memory": 8192,
     "volume_groups": [],
     "hostname": "above-robin",
+    "description": "Optional description for the machine.",
     "cpu_count": 3,
     "power_type": "virsh",
     "osystem": "",
@@ -5981,6 +5991,7 @@
     "osystem": "",
     "memory_test_status": 2,
     "hostname": "above-robin",
+    "description": "Optional description for the machine.",
     "pool": {
       "name": "default",
       "description": "Default pool",
@@ -6102,6 +6113,7 @@
   },
   "machines-mark-broken": {
     "hostname": "above-robin",
+    "description": "Optional description for the machine.",
     "cpu_speed": 0,
     "current_testing_result_id": 22,
     "status_action": "",
@@ -6461,6 +6473,7 @@
     "memory_test_status_name": "Passed",
     "storage_test_status_name": "Passed",
     "hostname": "above-robin",
+    "description": "Optional description for the machine.",
     "current_testing_result_id": 22,
     "testing_status": 2,
     "cpu_count": 3,
@@ -6872,6 +6885,7 @@
       "resource_uri": "/MAAS/api/2.0/resourcepool/0/"
     },
     "hostname": "new-tuna",
+    "description": "Optional description for the machine.",
     "locked": false,
     "testing_status": -1,
     "zone": {
@@ -7123,6 +7137,7 @@
       "resource_uri": "/MAAS/api/2.0/resourcepool/0/"
     },
     "hostname": "new-tuna",
+    "description": "Optional description for the machine.",
     "locked": false,
     "testing_status": -1,
     "zone": {
@@ -7982,6 +7997,7 @@
     "cpu_speed": 0,
     "owner": "admin",
     "hostname": "aware-elk",
+    "description": "Optional description for the machine.",
     "ip_addresses": [
       "172.16.1.81",
       "172.16.1.50",
@@ -9025,6 +9041,7 @@
     },
     "commissioning_status_name": "Passed",
     "hostname": "aware-elk",
+    "description": "Optional description for the machine.",
     "boot_interface": {
       "mac_address": "2f:00:35:fd:94:0a",
       "product": null,
@@ -9286,6 +9303,7 @@
     "bcaches": [],
     "memory": 0,
     "hostname": "ready-badger",
+    "description": "Optional description for the machine.",
     "testing_status_name": "Pending",
     "memory_test_status": -1,
     "raids": [],
@@ -9474,6 +9492,7 @@
     "swap_size": null,
     "cpu_count": 3,
     "hostname": "calm-cod",
+    "description": "Optional description for the machine.",
     "current_installation_result_id": null,
     "architecture": "i386/generic",
     "fqdn": "calm-cod.sample",

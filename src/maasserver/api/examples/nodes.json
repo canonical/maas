@@ -352,6 +352,7 @@
     "owner_data": {},
     "bcaches": [],
     "hostname": "causal-quagga",
+    "description": "Optional description for the node.",
     "raids": [],
     "other_test_status": 2,
     "status_action": "action-BqENyW",
@@ -463,6 +464,7 @@
       "storage_test_status": -1,
       "cpu_count": 4,
       "hostname": "mymaas",
+      "description": "Optional description for the node.",
       "domain": {
         "authoritative": true,
         "ttl": null,
@@ -1423,6 +1425,7 @@
     "fqdn": "clever-thrush.maas",
     "power_state": "unknown",
     "hostname": "clever-thrush",
+    "description": "Optional description for the node.",
     "ip_addresses": [
       "172.16.1.252"
     ],
@@ -1435,6 +1438,7 @@
     "cpu_count": 1,
     "fqdn": "node2.maas",
     "hostname": "node2",
+    "description": "Optional description for the node.",
     "power_state": "on",
     "cpu_test_status": -1,
     "storage": 8000,
@@ -1822,6 +1826,7 @@
     "cpu_count": 1,
     "fqdn": "node2.maas",
     "hostname": "node2",
+    "description": "Optional description for the node.",
     "power_state": "on",
     "cpu_test_status": -1,
     "storage": 8000,
@@ -2218,6 +2223,7 @@
     "netboot": false,
     "power_type": "virsh",
     "hostname": "node2",
+    "description": "Optional description for the node.",
     "node_type": 0,
     "testing_status": 0,
     "default_gateways": {

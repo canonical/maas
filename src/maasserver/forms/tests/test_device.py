@@ -36,6 +36,7 @@ class TestDeviceForm(MAASServerTestCase):
         self.assertItemsEqual(
             [
                 'hostname',
+                'description',
                 'domain',
                 'parent',
                 'disable_ipv4',

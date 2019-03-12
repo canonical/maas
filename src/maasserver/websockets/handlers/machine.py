@@ -332,6 +332,7 @@ class MachineHandler(NodeHandler):
         new_params["mac_addresses"] = self.get_mac_addresses(params)
         new_params["hostname"] = params.get("hostname")
         new_params["architecture"] = params.get("architecture")
+        new_params["description"] = params.get("description")
         new_params["power_type"] = params.get("power_type")
         new_params["power_parameters"] = params.get("power_parameters")
         if "zone" in params:

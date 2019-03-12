@@ -1205,14 +1205,19 @@ class TestMachineAPI(APITestCase.ForUser):
         machine = factory.make_Node(
             hostname='diane', owner=self.user,
             architecture=make_usable_architecture(self), power_type='manual')
+        new_description = factory.make_name('description')
         response = self.client.put(
-            self.get_machine_uri(machine), {'hostname': 'francis'})
+            self.get_machine_uri(machine), {
+                'hostname': 'francis',
+                'description': new_description})
         parsed_result = json_load_bytes(response.content)
 
         self.assertEqual(http.client.OK, response.status_code)
         domain_name = Domain.objects.get_default_domain().name
         self.assertEqual(
             'francis.%s' % domain_name, parsed_result['fqdn'])
+        self.assertEqual(new_description, parsed_result['description'])
+        self.assertEqual(new_description, reload_object(machine).description)
         self.assertEqual(0, Machine.objects.filter(hostname='diane').count())
         self.assertEqual(1, Machine.objects.filter(hostname='francis').count())
 

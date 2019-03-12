@@ -28,6 +28,7 @@ from piston3.utils import rc
 DISPLAYED_DEVICE_FIELDS = (
     'system_id',
     'hostname',
+    'description',
     'domain',
     'fqdn',
     'owner',
@@ -71,6 +72,9 @@ class DeviceHandler(NodeHandler, OwnerDataMixin):
 
         @param (string) "hostname" [required=false] The hostname for this
         device.
+
+        @param (string) "description" [required=false] The optional description
+        for this machine.
 
         @param (string) "domain" [required=false] The domain for this device.
 
@@ -210,6 +214,8 @@ class DevicesHandler(NodesHandler):
 
         @param (string) "hostname" [required=false] A hostname. If not given,
         one will be generated.
+
+        @param (string) "description" [required=false] A optional description.
 
         @param (string) "domain" [required=false] The domain of the device. If
         not given the default domain is used.

@@ -230,6 +230,7 @@ class TestMachineHandler(MAASServerTestCase):
             "cpu_count": node.cpu_count,
             "cpu_speed": node.cpu_speed,
             "created": dehydrate_datetime(node.created),
+            "description": node.description,
             "devices": sorted([
                 {
                     "fqdn": device.fqdn,
@@ -1978,6 +1979,7 @@ class TestMachineHandler(MAASServerTestCase):
         mac = factory.make_mac_address()
         hostname = factory.make_name("hostname")
         architecture = make_usable_architecture(self)
+        description = factory.make_name("description")
 
         self.patch(node_model, "start_commissioning")
 
@@ -1985,6 +1987,7 @@ class TestMachineHandler(MAASServerTestCase):
             "hostname": hostname,
             "pxe_mac": mac,
             "architecture": architecture,
+            "description": description,
             "zone": {
                 "name": zone.name,
             },
@@ -1995,6 +1998,7 @@ class TestMachineHandler(MAASServerTestCase):
         self.expectThat(created_node["pxe_mac"], Equals(mac))
         self.expectThat(created_node["extra_macs"], Equals([]))
         self.expectThat(created_node["architecture"], Equals(architecture))
+        self.expectThat(created_node["description"], Equals(description))
         self.expectThat(created_node["zone"]["id"], Equals(zone.id))
         self.expectThat(created_node["power_type"], Equals("manual"))
         self.expectThat(created_node["power_parameters"], Equals({}))
@@ -2063,11 +2067,13 @@ class TestMachineHandler(MAASServerTestCase):
         new_pool = factory.make_ResourcePool()
         new_hostname = factory.make_name("hostname")
         new_architecture = make_usable_architecture(self)
+        new_description = factory.make_name("description")
         power_id = factory.make_name('power_id')
         power_pass = factory.make_name('power_pass')
         power_address = factory.make_ipv4_address()
         node_data["hostname"] = new_hostname
         node_data["architecture"] = new_architecture
+        node_data["description"] = new_description
         node_data["zone"] = {
             "name": new_zone.name,
         }
@@ -2083,6 +2089,7 @@ class TestMachineHandler(MAASServerTestCase):
         updated_node = handler.update(node_data)
         self.expectThat(updated_node["hostname"], Equals(new_hostname))
         self.expectThat(updated_node["architecture"], Equals(new_architecture))
+        self.expectThat(updated_node["description"], Equals(new_description))
         self.expectThat(updated_node["zone"]["id"], Equals(new_zone.id))
         self.expectThat(updated_node["pool"]["id"], Equals(new_pool.id))
         self.expectThat(updated_node["power_type"], Equals("virsh"))

@@ -24,6 +24,7 @@ from piston3.utils import rc
 DISPLAYED_REGION_CONTROLLER_FIELDS = (
     'system_id',
     'hostname',
+    'description',
     'hardware_uuid',
     'domain',
     'fqdn',
@@ -117,6 +118,9 @@ class RegionControllerHandler(NodeHandler):
 
         @param (string) "{system_id}" [required=true] The region controller's
         system_id.
+
+        @param (string) "description" [required=false] The new description for
+        this given region controller.
 
         @param (string) "power_type" [required=false] The new power type for
         this region controller. If you use the default value, power_parameters

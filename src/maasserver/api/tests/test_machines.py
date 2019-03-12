@@ -292,6 +292,28 @@ class TestMachinesAPI(APITestCase.ForUser):
             power_address, machine.power_parameters['power_address'])
         self.assertEqual(power_id, machine.power_parameters['power_id'])
 
+    def test_POST_sets_description(self):
+        # Regression test for LP1707562
+        self.become_admin()
+        self.patch(Machine, "_start").return_value = None
+        make_usable_osystem(self)
+        power_address = factory.make_ip_address()
+        power_id = factory.make_name('power_id')
+        description = factory.make_name('description')
+        response = self.client.post(
+            reverse('machines_handler'),
+            {
+                'architecture': make_usable_architecture(self),
+                'mac_addresses': ['aa:bb:cc:dd:ee:ff'],
+                'power_type': 'virsh',
+                'power_parameters_power_address': power_address,
+                'power_parameters_power_id': power_id,
+                'description': description,
+            })
+        parsed_result = json.loads(response.content.decode())
+        self.assertEquals(NODE_STATUS.COMMISSIONING, parsed_result['status'])
+        self.assertEquals(description, parsed_result['description'])
+
     def test_POST_starts_commissioning_with_selected_test_scripts(self):
         # Regression test for LP1707562
         self.become_admin()

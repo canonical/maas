@@ -167,6 +167,7 @@ class TestDevicesAPI(APITestCase.ForUser):
             [
                 'address_ttl',
                 'hostname',
+                'description',
                 'domain',
                 'fqdn',
                 'owner',
@@ -250,6 +251,7 @@ class TestDevicesAPI(APITestCase.ForUser):
             [
                 'address_ttl',
                 'hostname',
+                'description',
                 'domain',
                 'fqdn',
                 'owner',
@@ -299,18 +301,22 @@ class TestDeviceAPI(APITestCase.ForUser):
         parsed_device = json_load_bytes(response.content)
         self.assertEqual(device.system_id, parsed_device["system_id"])
 
-    def test_PUT_updates_device_hostname(self):
+    def test_PUT_updates_device_hostname_description(self):
         device = factory.make_Node(
             node_type=NODE_TYPE.DEVICE, owner=self.user)
         new_hostname = factory.make_name('hostname')
+        new_description = factory.make_name('description')
 
         response = self.client.put(
-            get_device_uri(device), {'hostname': new_hostname})
+            get_device_uri(device), {
+                'hostname': new_hostname,
+                'description': new_description})
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
 
         device = reload_object(device)
         self.assertEqual(new_hostname, device.hostname)
+        self.assertEqual(new_description, device.description)
 
     def test_PUT_updates_device_parent(self):
         parent = factory.make_Node()

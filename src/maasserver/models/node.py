@@ -881,6 +881,8 @@ class Node(CleanSave, TimestampedModel):
     :ivar system_id: The unique identifier for this `Node`.
         (e.g. 'node-41eba45e-4cfa-11e1-a052-00225f89f211').
     :ivar hostname: This `Node`'s hostname.  Must conform to RFCs 952 and 1123.
+    :ivar description: This `Node`'s description.  Readable by all users only
+        editable by administrators or operators.
     :ivar node_type: The type of node. This is used to specify if the node is
         to be used as a node for deployment, as a device, or a rack controller
     :ivar parent: An optional parent `Node`.  This node will be deleted along
@@ -932,6 +934,8 @@ class Node(CleanSave, TimestampedModel):
     hostname = CharField(
         max_length=255, default='', blank=True, unique=True,
         validators=[validate_hostname])
+
+    description = TextField(blank=True, default='', editable=True)
 
     pool = ForeignKey(
         ResourcePool, default=None, null=True, blank=True, editable=True,

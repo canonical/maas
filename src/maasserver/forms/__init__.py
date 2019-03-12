@@ -935,6 +935,7 @@ class DeviceForm(NodeForm):
         permission_create = NodePermission.view
         permission_edit = NodePermission.edit
         fields = NodeForm.Meta.fields + (
+            'description',
             'parent',
             'zone',
         )
@@ -982,7 +983,7 @@ class ControllerForm(MAASModelForm, WithPowerTypeMixin):
     class Meta:
         model = Controller
         permission_edit = NodePermission.admin
-        fields = ['zone', 'domain']
+        fields = ['description', 'domain', 'zone']
 
     zone = forms.ModelChoiceField(
         label="Physical zone", required=False,
@@ -1045,6 +1046,7 @@ class AdminNodeForm(NodeForm):
         # model:
         fields = NodeForm.Meta.fields + (
             'cpu_count',
+            'description',
             'memory',
         )
 
@@ -1093,6 +1095,7 @@ class AdminMachineForm(MachineForm, AdminNodeForm, WithPowerTypeMixin):
         # Fields that the form should generate automatically from the
         # model:
         fields = MachineForm.Meta.fields + (
+            'description',
             'cpu_count',
             'memory',
         )

@@ -33,6 +33,7 @@ from piston3.utils import rc
 DISPLAYED_RACK_CONTROLLER_FIELDS = (
     'system_id',
     'hostname',
+    'description',
     'hardware_uuid',
     'domain',
     'fqdn',
@@ -132,6 +133,9 @@ class RackControllerHandler(NodeHandler, PowerMixin):
     def update(self, request, system_id):
         """@description-title Update a rack controller
         @description Updates a rack controller with the given system_id.
+
+        @param (string) "description" [required=false] The new description for
+        this given rack controller.
 
         @param (string) "power_type" [required=false] The new power type for
         the given rack controller. If you use the default value,

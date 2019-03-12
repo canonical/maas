@@ -248,6 +248,7 @@ class DeviceHandler(NodeHandler):
         new_params = {
             "mac_addresses": self.get_mac_addresses(params),
             "hostname": params.get("hostname"),
+            "description": params.get("description"),
             "parent": params.get("parent"),
             }
 

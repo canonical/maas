@@ -17,6 +17,7 @@ class TestControllerForm(MAASServerTestCase):
 
         self.assertItemsEqual(
             [
+                'description',
                 'zone',
                 'domain',
                 'power_type',

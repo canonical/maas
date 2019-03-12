@@ -30,6 +30,7 @@
       "172.16.99.11"
     ],
     "hostname": "maas-run",
+    "description": "Optional description for the controller.",
     "tag_names": [
       "virtual"
     ],

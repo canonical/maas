@@ -157,6 +157,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
                 ],
             "fqdn": node.fqdn,
             "hostname": node.hostname,
+            "description": node.description,
             "node_type_display": node.get_node_type_display(),
             "link_type": NODE_TYPE_TO_LINK_TYPE[node.node_type],
             "id": node.id,
@@ -434,8 +435,10 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         handler = DeviceHandler(user, {}, request)
         mac = factory.make_mac_address()
         hostname = factory.make_name("hostname")
+        description = factory.make_name("description")
         created_device = handler.create({
             "hostname": hostname,
+            "description": description,
             "primary_mac": mac,
             "interfaces": [{
                 "mac": mac,
@@ -443,6 +446,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
             }],
         })
         self.expectThat(created_device["hostname"], Equals(hostname))
+        self.expectThat(created_device["description"], Equals(description))
         self.expectThat(created_device["primary_mac"], Equals(mac))
         self.expectThat(created_device["extra_macs"], Equals([]))
         self.expectThat(
@@ -962,17 +966,20 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         node_data = self.dehydrate_device(node, user)
         new_zone = factory.make_Zone()
         new_hostname = factory.make_name("hostname")
+        new_description = factory.make_name("description")
         new_tags = [
             factory.make_name("tag")
             for _ in range(3)
         ]
         node_data["hostname"] = new_hostname
+        node_data["description"] = new_description
         node_data["zone"] = {
             "name": new_zone.name,
         }
         node_data["tags"] = new_tags
         updated_node = handler.update(node_data)
         self.assertEqual(updated_node["hostname"], new_hostname)
+        self.assertEqual(updated_node["description"], new_description)
         self.assertEqual(updated_node["zone"]["id"], new_zone.id)
         self.assertItemsEqual(updated_node["tags"], new_tags)
 

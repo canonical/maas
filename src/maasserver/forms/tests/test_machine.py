@@ -359,6 +359,7 @@ class TestAdminMachineForm(MAASServerTestCase):
         self.assertItemsEqual(
             [
                 'hostname',
+                'description',
                 'domain',
                 'architecture',
                 'osystem',

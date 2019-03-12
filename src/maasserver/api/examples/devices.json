@@ -64,6 +64,7 @@
     "node_type": 1,
     "ip_addresses": [],
     "hostname": "newhostname",
+    "description": "Optional description for the device.",
     "tag_names": [],
     "system_id": "shqe4g",
     "resource_uri": "/MAAS/api/2.0/devices/shqe4g/"
@@ -140,6 +141,7 @@
     "parent": null,
     "fqdn": "newhostname.maas",
     "hostname": "newhostname",
+    "description": "Optional description for the device.",
     "resource_uri": "/MAAS/api/2.0/devices/shqe4g/"
   },
   "devices-restore-default-conf": {
@@ -213,6 +215,7 @@
     "address_ttl": null,
     "fqdn": "newhostname.maas",
     "hostname": "newhostname",
+    "description": "Optional description for the device.",
     "node_type_name": "Device",
     "resource_uri": "/MAAS/api/2.0/devices/shqe4g/"
   },
@@ -243,6 +246,7 @@
     ],
     "owner": "admin",
     "hostname": "moral-buck",
+    "description": "Optional description for the device.",
     "parent": null,
     "node_type_name": "Device",
     "ip_addresses": [],
