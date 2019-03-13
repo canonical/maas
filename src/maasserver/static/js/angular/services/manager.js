@@ -742,6 +742,23 @@ angular.module('MAAS').service(
             });
         };
 
+        // Format maas version number
+        Manager.prototype.formatMAASVersionNumber = function () {
+            if (MAAS_config.version) {
+                var versionWithPoint = MAAS_config.version.split(" ")[0];
+
+                if (versionWithPoint) {
+                    if (versionWithPoint.split(".")[2] === "0") {
+                        return versionWithPoint.split(".")[0]
+                            + "."
+                            + versionWithPoint.split(".")[1];
+                    } else {
+                        return versionWithPoint;
+                    }
+                }
+            }
+        };
+
         // Default implementation of getName(): returns the default name for
         // this object, if it exists.
         Manager.prototype.getName = function(obj) {

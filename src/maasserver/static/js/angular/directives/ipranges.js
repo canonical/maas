@@ -25,6 +25,40 @@ angular.module('MAAS').directive('maasIpRanges', [
                 $scope.newRange = null;
                 $scope.editIPRange = null;
                 $scope.deleteIPRange = null;
+                $scope.MAAS_VERSION_NUMBER
+                    = IPRangesManager.formatMAASVersionNumber();
+
+                $scope.RESERVE_RANGE = {
+                    name: 'reserve_range',
+                    title: 'Reserve range',
+                    selectedTitle: 'Reserve range',
+                    objectName: 'reserveRange'
+                };
+
+                $scope.RESERVE_DYNAMIC_RANGE = {
+                    name: 'reserve_dynamic_range',
+                    title: 'Reserve dynamic range',
+                    selectedTitle: 'Reserve dynamic range',
+                    objectName: 'reserveDynamicRange'
+                };
+
+                $scope.actionOptions = [
+                    $scope.RESERVE_RANGE,
+                    $scope.RESERVE_DYNAMIC_RANGE
+                ];
+
+                $scope.actionChanged = function() {
+                    var actionOptionName =
+                        $scope.actionOption ? $scope.actionOption.name : null;
+
+                    if (actionOptionName === 'reserve_range') {
+                        $scope.addRange('reserved');
+                    }
+
+                    if (actionOptionName === 'reserve_dynamic_range') {
+                        $scope.addRange('dynamic');
+                    }
+                };
 
                 // Return true if the authenticated user is super user.
                 $scope.isSuperUser = function() {
@@ -53,6 +87,7 @@ angular.module('MAAS').directive('maasIpRanges', [
                 // Cancel adding the new IP range.
                 $scope.cancelAddRange = function() {
                     $scope.newRange = null;
+                    $scope.actionOption = null;
                 };
 
                 // Return true if the IP range can be modified by the

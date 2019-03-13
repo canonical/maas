@@ -63,4 +63,5 @@ $table-h-indent: $sph-intra--condensed;
 .u-disable {
   opacity: .5;
   pointer-events: none !important;
+  user-select: none;
 }

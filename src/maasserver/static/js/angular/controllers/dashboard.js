@@ -38,24 +38,8 @@ angular.module('MAAS').controller('DashboardController', [
         $scope.convertTo = null;
         $scope.showClearDiscoveriesPanel = false;
         $scope.removingDevices = false;
-
-        $scope.formatMAASVersionNumber = function() {
-            if (MAAS_config.version) {
-                var versionWithPoint = MAAS_config.version.split(" ")[0];
-
-                if (versionWithPoint) {
-                    if (versionWithPoint.split(".")[2] === "0") {
-                        return versionWithPoint.split(".")[0]
-                        + "."
-                        + versionWithPoint.split(".")[1];
-                    } else {
-                        return versionWithPoint;
-                    }
-                }
-            }
-        };
-
-        $scope.MAAS_VERSION_NUMBER = $scope.formatMAASVersionNumber();
+        $scope.MAAS_VERSION_NUMBER = DiscoveriesManager
+            .formatMAASVersionNumber();
 
         // Set default predicate to last_seen.
         $scope.predicate = $scope.last_seen;
