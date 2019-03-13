@@ -26,5 +26,15 @@ class TestPrometheusMetricsResource(MAASTestCase):
         resource = http.PrometheusMetricsResource(prometheus_metrics)
         request = Request(DummyChannel(), False)
         content = resource.render_GET(request).decode('utf-8')
+        self.assertEqual(request.code, 200)
         self.assertIn('TYPE sample_histogram histogram', content)
         self.assertIn('TYPE sample_counter counter', content)
+
+    def test_metrics_disabled(self):
+        prometheus_metrics = create_metrics(
+            None, registry=prometheus_client.CollectorRegistry())
+        resource = http.PrometheusMetricsResource(prometheus_metrics)
+        request = Request(DummyChannel(), False)
+        content = resource.render_GET(request).decode('utf-8')
+        self.assertEqual(request.code, 404)
+        self.assertEqual(content, '')
