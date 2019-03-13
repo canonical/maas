@@ -41,3 +41,15 @@ class TestPrometheusRequestMetricsMiddleware(MAASTestCase):
             'maas_http_request_latency_count{method="POST",op="do-bar",'
             'path="/MAAS/other/path",status="404"} 1.0',
             metrics_text)
+        self.assertIn(
+            'maas_http_response_size_count{method="GET",op="",'
+            'path="/MAAS/accounts/login/",status="200"} 2.0',
+            metrics_text)
+        self.assertIn(
+            'maas_http_response_size_count{method="GET",op="do-foo",'
+            'path="/MAAS/other/path",status="404"} 1.0',
+            metrics_text)
+        self.assertIn(
+            'maas_http_response_size_count{method="POST",op="do-bar",'
+            'path="/MAAS/other/path",status="404"} 1.0',
+            metrics_text)

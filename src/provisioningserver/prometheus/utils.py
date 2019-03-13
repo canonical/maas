@@ -1,5 +1,4 @@
 import atexit
-from collections import namedtuple
 from functools import wraps
 import os
 from time import time
@@ -10,9 +9,16 @@ from provisioningserver.prometheus import (
 )
 from twisted.internet.defer import Deferred
 
-# Definition for a Prometheus metric.
-MetricDefinition = namedtuple(
-    'MetricDefiniition', ['type', 'name', 'description', 'labels'])
+
+class MetricDefinition:
+    """Definition for a Prometheus metric."""
+
+    def __init__(self, type, name, description, labels=(), **kwargs):
+        self.type = type
+        self.name = name
+        self.description = description
+        self.labels = list(labels)
+        self.kwargs = kwargs
 
 
 class PrometheusMetrics:
@@ -41,7 +47,8 @@ class PrometheusMetrics:
             cls = getattr(prom_cli, definition.type)
             metrics[definition.name] = cls(
                 definition.name, definition.description, labels,
-                registry=self.registry)
+                registry=self.registry, **definition.kwargs)
+
         return metrics
 
     @property

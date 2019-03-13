@@ -28,6 +28,11 @@ class PrometheusRequestMetricsMiddleware:
             'status': response.status_code,
             'op': op
         }
+
         self.prometheus_metrics.update(
             'maas_http_request_latency', 'observe',
             value=end_time - start_time, labels=labels)
+        if not response.streaming:
+            self.prometheus_metrics.update(
+                'maas_http_response_size', 'observe',
+                value=len(response.content), labels=labels)
