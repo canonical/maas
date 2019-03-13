@@ -242,19 +242,6 @@ class TestPartitionTable(MAASServerTestCase):
         partition_table = factory.make_PartitionTable(block_device=other_disk)
         self.assertEqual(PARTITION_TABLE_TYPE.GPT, partition_table.table_type)
 
-    def test_save_force_mbr_on_boot_disk_pxe(self):
-        node = factory.make_Node(with_boot_disk=False, bios_boot_method="pxe")
-        boot_disk = factory.make_PhysicalBlockDevice(node=node)
-        error = self.assertRaises(
-            ValidationError,
-            factory.make_PartitionTable,
-            table_type=PARTITION_TABLE_TYPE.GPT, block_device=boot_disk)
-        self.assertEqual({
-            "table_type": [
-                "Partition table on this node's boot disk must "
-                "be using 'MBR'."],
-            }, error.message_dict)
-
     def test_save_allows_gpt_on_2tib_boot_disk_pxe(self):
         node = factory.make_Node(with_boot_disk=False, bios_boot_method="pxe")
         boot_disk = factory.make_PhysicalBlockDevice(

@@ -184,14 +184,6 @@ class PartitionTable(CleanSave, TimestampedModel):
                             self.table_type = PARTITION_TABLE_TYPE.GPT
                         else:
                             self.table_type = PARTITION_TABLE_TYPE.MBR
-                    elif (disk_size < GPT_REQUIRED_SIZE and
-                            self.table_type != PARTITION_TABLE_TYPE.MBR):
-                        raise ValidationError({
-                            "table_type": [
-                                "Partition table on this node's boot disk "
-                                "must be using '%s'." % (
-                                    PARTITION_TABLE_TYPE.MBR)]
-                            })
 
         # Force GPT for everything else.
         if not self.table_type:

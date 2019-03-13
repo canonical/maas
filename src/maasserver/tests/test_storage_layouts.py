@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test the storage layouts."""
@@ -37,6 +37,7 @@ from maasserver.storage_layouts import (
     StorageLayoutFieldsError,
     StorageLayoutForm,
     StorageLayoutMissingBootDiskError,
+    VMFS6Layout,
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -45,7 +46,7 @@ from maastesting.matchers import MockCalledOnceWith
 from testtools.matchers import MatchesStructure
 
 
-LARGE_BLOCK_DEVICE = 10 * 1024 * 1024 * 1024  # 10 GiB
+LARGE_BLOCK_DEVICE = 100 * 1024 * 1024 * 1024  # 100 GiB
 
 
 def make_Node_with_uefi_boot_method(*args, **kwargs):
@@ -82,6 +83,7 @@ class TestFormHelpers(MAASServerTestCase):
             ("flat", "Flat layout"),
             ("lvm", "LVM layout"),
             ("bcache", "Bcache layout"),
+            ("vmfs6", "VMFS6 layout"),
             ], get_storage_layout_choices())
 
     def test_get_storage_layout_for_node(self):
@@ -1601,3 +1603,48 @@ class TestBcacheStorageLayout(MAASServerTestCase):
                 label="root",
                 mount_point="/",
                 ))
+
+
+class TestVMFS6Layout(MAASServerTestCase):
+
+    def test__init_sets_up_all_fields(self):
+        node = factory.make_Node(with_boot_disk=False)
+        factory.make_PhysicalBlockDevice(
+            node=node, size=LARGE_BLOCK_DEVICE)
+        layout = VMFS6Layout(node)
+        self.assertItemsEqual([
+            'root_device',
+            'root_size',
+            'boot_size',
+            ], layout.fields.keys())
+
+    def test__creates_layout(self):
+        node = factory.make_Node(with_boot_disk=False)
+        node.boot_disk = factory.make_PhysicalBlockDevice(
+            node=node, size=LARGE_BLOCK_DEVICE)
+        layout = VMFS6Layout(node)
+        self.assertEqual('VMFS6', layout.configure())
+        pt = node.boot_disk.get_partitiontable()
+        self.assertDictEqual({
+            '%s-part1' % node.boot_disk.name: 3 * 1024 ** 2,
+            '%s-part2' % node.boot_disk.name: 4 * 1024 ** 3,
+            '%s-part3' % node.boot_disk.name: (
+                node.boot_disk.size - 3 * 1024 ** 2 - 4 * 1024 ** 3 -
+                249 * 1024 ** 2 - 249 * 1024 ** 2 - 109 * 1024 ** 2 -
+                285 * 1024 ** 2 - 2560 * 1024 ** 2 - 5 * 1024 ** 2),
+            '%s-part4' % node.boot_disk.name: 249 * 1024 ** 2,
+            '%s-part5' % node.boot_disk.name: 249 * 1024 ** 2,
+            '%s-part6' % node.boot_disk.name: 109 * 1024 ** 2,
+            '%s-part7' % node.boot_disk.name: 285 * 1024 ** 2,
+            '%s-part8' % node.boot_disk.name: 2560 * 1024 ** 2,
+        }, {part.name: part.size for part in pt.partitions.all()})
+
+    def test__clean_validates_min_size(self):
+        node = factory.make_Node(with_boot_disk=False)
+        node.boot_disk = factory.make_PhysicalBlockDevice(
+            node=node, size=1024 ** 3 - 1)
+        layout = VMFS6Layout(node)
+        error = self.assertRaises(StorageLayoutFieldsError, layout.configure)
+        self.assertEqual({
+            "size": ["Boot disk must be atleast 10G."],
+            }, error.message_dict)

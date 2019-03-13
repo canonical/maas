@@ -1355,7 +1355,9 @@ class Node(CleanSave, TimestampedModel):
         """Create and retrieve storage layout issues error messages."""
         issues = []
         if self.ephemeral_deployment and self.get_osystem() == 'ubuntu':
-            return issues
+            return []
+        elif self.osystem == 'esxi':
+            return []
         if self.is_diskless:
             issues.append(
                 "There are currently no storage devices.  Please add a "
@@ -1427,6 +1429,9 @@ class Node(CleanSave, TimestampedModel):
                     fs = partition.get_effective_filesystem()
                     if fs is None:
                         continue
+                    if (self.osystem == 'esxi' and
+                            fs.fstype != FILESYSTEM_TYPE.VMFS6):
+                        return ["VMware ESXi may only use VMFS6 filesystems."]
                     if fs.mount_point == '/':
                         root_mounted = True
                         if on_bcache(block_device):
@@ -1443,6 +1448,9 @@ class Node(CleanSave, TimestampedModel):
                 fs = block_device.get_effective_filesystem()
                 if fs is None:
                     continue
+                if (self.osystem == 'esxi' and
+                        fs.fstype != FILESYSTEM_TYPE.VMFS6):
+                    return ["VMware ESXi may only use VMFS6 filesystems."]
                 if fs.mount_point == '/':
                     root_mounted = True
                     if on_bcache(block_device):

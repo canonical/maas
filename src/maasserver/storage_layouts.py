@@ -1,10 +1,13 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Storage layouts."""
 
 __all__ = [
     ]
+
+from datetime import datetime
+from functools import partial
 
 from django import forms
 from django.core.exceptions import ValidationError
@@ -532,11 +535,82 @@ class BcacheStorageLayout(FlatStorageLayout, BcacheStorageLayoutBase):
         return "bcache"
 
 
+class VMFS6Layout(StorageLayoutBase):
+    """VMFS6 layout.
+
+    The VMware ESXi 6+ image is a DD. The image has 8 partitions which are
+    *not* in order. Users may only change the last partition which is partition
+    3 and stored at the end of the disk.
+
+    NAME                PARTITION   SIZE      START BLOCK   END BLOCK
+    EFI System          1           3MB       0             3
+    Basic Data          5           249MB     4             253
+    Basic Data          6           249MB     254           503
+    VMware Diagnostic   7           109MB     504           613
+    Basic Data          8           285MB     614           899
+    VMware Diagnostic   9           2.5GB     900           3459
+    Basic Data          2           4GB       3460          7554
+    VMFS                3           Remaining 7555          End of disk
+    """
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if self.boot_disk.size < 1024 ** 3:
+            set_form_error(self, "size", "Boot disk must be atleast 10G.")
+        return cleaned_data
+
+    def configure_storage(self, allow_fallback):
+        # Circular imports.
+        from maasserver.models import VMFS
+        from maasserver.models.partition import Partition
+        from maasserver.models.partitiontable import PartitionTable
+
+        boot_partition_table = PartitionTable.objects.create(
+            block_device=self.boot_disk,
+            table_type=PARTITION_TABLE_TYPE.GPT)
+        now = datetime.now()
+        new_part = partial(
+            Partition, partition_table=boot_partition_table,
+            created=now, updated=now)
+        # The model rounds partition sizes for performance and has a min size
+        # of 4MB. VMware ESXi does not conform to these constraints so add each
+        # partition directly to get around the model. VMware ESXi always uses
+        # the same UUIDs which is a constraint set at database level we can't
+        # get around so leave them unset.
+        # See https://kb.vmware.com/s/article/1036609
+        Partition.objects.bulk_create([
+            # EFI System
+            new_part(size=3 * 1024 ** 2, bootable=True),
+            # Basic Data
+            new_part(size=4 * 1024 ** 3),
+            # VMFS Datastore, size is 0 so the partition order is correct, its
+            # fixed below.
+            new_part(size=0),
+            # Basic Data
+            new_part(size=249 * 1024 ** 2),
+            # Basic Data
+            new_part(size=249 * 1024 ** 2),
+            # VMKCore Diagnostic
+            new_part(size=109 * 1024 ** 2),
+            # Basic Data
+            new_part(size=285 * 1024 ** 2),
+            # VMKCore Diagnostic
+            new_part(size=2560 * 1024 ** 2),
+        ])
+        vmfs_part = boot_partition_table.partitions.get(size=0)
+        vmfs_part.size = boot_partition_table.get_available_size()
+        vmfs_part.save()
+        # datastore1 is the default name VMware uses.
+        VMFS.objects.create_vmfs(name="datastore1", partitions=[vmfs_part])
+        return "VMFS6"
+
+
 # Holds all the storage layouts that can be used.
 STORAGE_LAYOUTS = {
     "flat": ("Flat layout", FlatStorageLayout),
     "lvm": ("LVM layout", LVMStorageLayout),
     "bcache": ("Bcache layout", BcacheStorageLayout),
+    "vmfs6": ("VMFS6 layout", VMFS6Layout),
     }
 
 

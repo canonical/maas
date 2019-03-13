@@ -141,6 +141,7 @@ import maasserver.server_address as server_address_module
 from maasserver.storage_layouts import (
     StorageLayoutError,
     StorageLayoutMissingBootDiskError,
+    VMFS6Layout,
 )
 from maasserver.testing.eventloop import (
     RegionEventLoopFixture,
@@ -7107,6 +7108,20 @@ class TestNode_Start(MAASTransactionServerTestCase):
             ["This node cannot be deployed because it needs a separate "
              "/boot partition.  Mount /boot on a device to be able to "
              "deploy this node."], node.storage_layout_issues())
+
+    def test_storage_layout_issues_invalid_non_vmfs_on_esxi(self):
+        node = factory.make_Node(osystem='esxi', distro_series='6.7')
+        self.assertItemsEqual([
+            "VMware ESXi may only use VMFS6 filesystems."],
+            node.storage_layout_issues())
+
+    def test_storage_layout_issues_none_for_esxi_default(self):
+        node = factory.make_Node(
+            osystem='esxi', distro_series='6.7', with_boot_disk=False)
+        factory.make_PhysicalBlockDevice(node=node, size=(100 * 1024 ** 3))
+        layout = VMFS6Layout(node)
+        layout.configure()
+        self.assertItemsEqual([], node.storage_layout_issues())
 
 
 class TestGetBMCClientConnectionInfo(MAASServerTestCase):
