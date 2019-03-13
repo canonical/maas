@@ -24,6 +24,7 @@ describe("maasMachinesTable", function() {
     beforeEach(inject(function($injector) {
         MachinesManager = $injector.get('MachinesManager');
         NotificationsManager = $injector.get('NotificationsManager');
+        UsersManager = $injector.get('UsersManager');
         GeneralManager = $injector.get('GeneralManager');
         ManagerHelperService = $injector.get('ManagerHelperService');
     }));
@@ -596,10 +597,12 @@ describe("maasMachinesTable", function() {
                 .toHaveBeenCalledWith(machine);
         });
 
-        it("creates an error notification if 'check' promise rejected", () => {
+        it(`creates an error notification for current user
+            if 'check' promise rejected`, () => {
             const directive = compileDirective();
             const scope = directive.isolateScope();
             const machine = makeMachine();
+            const user = { id: 1 };
             const defer = $q.defer();
             const errorMsg = "Everything is broken";
 
@@ -607,6 +610,8 @@ describe("maasMachinesTable", function() {
                 .and.returnValue(defer.promise);
             spyOn(NotificationsManager, "createItem")
                 .and.returnValue(true);
+            spyOn(UsersManager, "getAuthUser")
+                .and.returnValue(user);
 
             scope.changePowerState(machine, "check");
             defer.reject(errorMsg);
@@ -617,8 +622,7 @@ describe("maasMachinesTable", function() {
                         `Unable to check machine's power state: ${errorMsg}`
                     ),
                     category: "error",
-                    admins: true,
-                    users: true,
+                    user: user.id
                 });
         });
 
@@ -635,10 +639,12 @@ describe("maasMachinesTable", function() {
                 .toHaveBeenCalledWith(machine, "on");
         });
 
-        it("creates an error notification if action promise rejected", () => {
+        it(`creates an error notification for current user
+            if action promise rejected`, () => {
             const directive = compileDirective();
             const scope = directive.isolateScope();
             const machine = makeMachine();
+            const user = { id: 1 };
             const defer = $q.defer();
             const errorMsg = "Everything is broken";
 
@@ -646,6 +652,8 @@ describe("maasMachinesTable", function() {
                 .and.returnValue(defer.promise);
             spyOn(NotificationsManager, "createItem")
                 .and.returnValue(true);
+            spyOn(UsersManager, "getAuthUser")
+                .and.returnValue(user);
 
             scope.changePowerState(machine, "on");
             defer.reject(errorMsg);
@@ -654,9 +662,71 @@ describe("maasMachinesTable", function() {
                 .toHaveBeenCalledWith({
                     message: `Unable to power machine on: ${errorMsg}`,
                     category: "error",
-                    admins: true,
-                    users: true,
+                    user: user.id
                 });
+        });
+    });
+
+    describe("performAction", function() {
+
+        it("closes any open menus when run", () => {
+            const directive = compileDirective();
+            const scope = directive.isolateScope();
+            const machine = makeMachine();
+            const action = "on";
+            const defer = $q.defer();
+            spyOn(MachinesManager, "performAction")
+                .and.returnValue(defer.promise);
+
+            scope.performAction(machine, action);
+            expect(scope.openMenu).toEqual("");
+        });
+
+        it("sets machine's action transitional state to true", () => {
+            const directive = compileDirective();
+            const scope = directive.isolateScope();
+            const machine = makeMachine();
+            const action = "on";
+            const defer = $q.defer();
+            spyOn(MachinesManager, "performAction")
+                .and.returnValue(defer.promise);
+
+            scope.performAction(machine, action);
+            expect(machine[`${action}-transition`]).toEqual(true);
+        });
+
+        it("executes MachinesManager.performAction correctly", () => {
+            const directive = compileDirective();
+            const scope = directive.isolateScope();
+            const machine = makeMachine();
+            const action = "on";
+            const extra = { param: "parameter" };
+            const defer = $q.defer();
+            spyOn(MachinesManager, "performAction")
+                .and.returnValue(defer.promise);
+
+            scope.performAction(machine, action, extra);
+            expect(MachinesManager.performAction)
+                .toHaveBeenCalledWith(machine, action, extra);
+        });
+    });
+
+    describe("toggleMenu", function() {
+
+        it("opens menu if none are currently open", () => {
+            const directive = compileDirective();
+            const scope = directive.isolateScope();
+            scope.openMenu = "";
+            scope.toggleMenu("menu");
+            expect(scope.openMenu).toEqual("menu");
+        });
+
+        it("closes menu if it is currently open", () => {
+            const directive = compileDirective();
+            const scope = directive.isolateScope();
+            scope.openMenu = "menu";
+            scope.toggleMenu("menu");
+            expect(scope.openMenu).toEqual("");
         });
     });
 });

@@ -88,8 +88,8 @@
                 <a href="#/{$ node.link_type $}/{$ node.system_id $}" class="extra-macs" data-ng-show="node.extra_macs.length">(+{$ node.extra_macs.length $})</a>
             </td>
             <td class="p-table__col--power p-double-row" aria-label="Power state">
-                <span class="p-power-menu" toggle-ctrl>
-                    <div data-ng-click="toggleMenu()" class="p-double-row__icon-container">
+                <span class="p-table-menu">
+                    <div data-ng-click="toggleMenu(node.system_id + '-power')" class="p-double-row__icon-container">
                         <i
                             title="{$ node.power_state $}"
                             data-ng-class="{
@@ -110,18 +110,18 @@
                             <span title="{$ node.power_type $}">{$ node.power_type $}</span>
                         </div>
                     </div>
-                    <div class="p-power-menu__toggle p-icon--contextual-menu" data-ng-click="toggleMenu()"></div>
-                    <span class="p-power-menu__dropdown" data-ng-show="isToggled" data-ng-if="!node.powerTransition">
-                        <div class="p-power-menu__title">Take action:</div>
+                    <button class="p-table-menu__toggle p-icon--contextual-menu u-hide--br3" data-ng-click="toggleMenu(node.system_id + '-power')"></button>
+                    <span class="p-table-menu__dropdown" data-ng-show="openMenu === node.system_id + '-power'" data-ng-if="!node.powerTransition">
+                        <div class="p-table-menu__title--icon">Take action:</div>
                         <button
-                            class="p-power-menu__power-on"
+                            class="p-table-menu__power-on"
                             data-ng-click="changePowerState(node, 'on')"
                             data-ng-if="node.actions.indexOf('on') !== -1 && node.power_state !== 'on'"
                         >
                             Turn on
                         </button>
                         <button
-                            class="p-power-menu__power-off"
+                            class="p-table-menu__power-off"
                             data-ng-click="changePowerState(node, 'off')"
                             data-ng-if="node.actions.indexOf('off') !== -1 && node.power_state !== 'off'"
                         >
@@ -129,10 +129,17 @@
                         </button>
                         <button
                             data-ng-click="changePowerState(node, 'check')"
-                            class="p-power-menu__check-power"
+                            class="p-table-menu__check-power"
                             data-ng-if="node.power_state !== 'unknown'"
                         >
                             Check power
+                        </button>
+                        <button
+                            data-ng-if="node.actions.indexOf('on') === -1 && node.actions.indexOf('off') === -1 && node.power_state === 'unknown'"
+                            class="p-table-menu__check-power"
+                            disabled
+                        >
+                            No power actions available
                         </button>
                     </span>
                 </span>
@@ -161,26 +168,108 @@
                 </span>
             </td>
             <td class="p-table__col--owner p-double-row" aria-label="Owner, Tags" title="{$ node.owner $}">
-                <div class="p-double-row__rows-container">
-                    <div class="p-double-row__main-row" aria-label="Owner">
-                        <span data-ng-if="node.owner">{$ node.owner $}</span>
-                        <span data-ng-if="!node.owner">-</span>
+                <div class="p-table-menu">
+                    <div class="p-double-row__rows-container">
+                        <div class="p-double-row__main-row" aria-label="Owner">
+                            <i class="p-icon--spinner u-animation--spin" data-ng-if="node['acquire-transition'] || node['release-transition']">Changing owner</i>
+                            <span data-ng-if="node.owner">{$ node.owner $}</span>
+                            <span data-ng-if="!node.owner">-</span>
+                        </div>
+                        <div data-ng-if="node.tags.length !== 0" class="p-double-row__muted-row" aria-label="Tags" title="{$ node.tags.join(', ') $}">
+                            <span>{$ node.tags.join(', ') $}</span>
+                        </div>
                     </div>
-                    <div data-ng-if="node.tags.length !== 0" class="p-double-row__muted-row" aria-label="Tags" title="{$ node.tags.join(', ') $}">
-                        <span>{$ node.tags.join(', ') $}</span>
-                    </div>
+                    <button class="p-table-menu__toggle p-icon--contextual-menu u-hide--br2" data-ng-click="toggleMenu(node.system_id + '-owner')"></button>
+                    <span class="p-table-menu__dropdown" data-ng-if="openMenu === node.system_id + '-owner'">
+                        <div class="p-table-menu__title">Take action:</div>
+                        <button
+                            data-ng-if="node.actions.indexOf('acquire') !== -1"
+                            data-ng-click="performAction(node, 'acquire')"
+                            class="p-table-menu__link"
+                        >
+                            Acquire
+                        </button>
+                        <button
+                            data-ng-if="node.actions.indexOf('release') !== -1"
+                            data-ng-click="performAction(node, 'release')"
+                            class="p-table-menu__link"
+                        >
+                            Release
+                        </button>
+                        <button
+                            data-ng-if="node.actions.indexOf('acquire') === -1 && node.actions.indexOf('release') === -1"
+                            class="p-table-menu__link"
+                            disabled
+                        >
+                            No owner actions available
+                        </button>
+                    </span>
                 </div>
             </td>
             <td class="p-table__col--pool" aria-label="{$ node.pool.name $}">
-                <span data-ng-if="node.pool.name"><a class="p-link--soft" href="#/pools" title="{$ node.pool.name $}"> {$ node.pool.name $}</a></span>
-                <span data-ng-if="!node.pool.name">-</span>
+                <div class="p-table-menu">
+                    <i class="p-icon--spinner u-animation--spin" data-ng-if="node['set-pool-transition']">Setting pool</i>
+                    <span data-ng-if="node.pool.name"><a class="p-link--soft" href="#/pools" title="{$ node.pool.name $}"> {$ node.pool.name $}</a></span>
+                    <span data-ng-if="!node.pool.name">-</span>
+                    <button
+                        data-ng-if="node.actions.indexOf('set-pool') !== -1"
+                        data-ng-click="toggleMenu(node.system_id + '-pool')"
+                        class="p-table-menu__toggle p-icon--contextual-menu"
+                    >
+                    </button>
+                    <span class="p-table-menu__dropdown" data-ng-if="openMenu === node.system_id + '-pool'">
+                        <div class="p-table-menu__title">Change pool:</div>
+                        <button
+                            data-ng-repeat="pool in pools | orderBy:'name'"
+                            data-ng-if="node.pool.id !== pool.id && pools.length > 1 && node.actions.indexOf('set-pool') !== -1"
+                            data-ng-click="performAction(node, 'set-pool', { pool_id: pool.id })"
+                            class="p-table-menu__link"
+                        >
+                            {$ pool.name $}
+                        </button>
+                        <button
+                            data-ng-if="pools.length < 2 && node.actions.indexOf('set-pool') !== -1"
+                            class="p-table-menu__link"
+                            disabled
+                        >
+                            No other pools available
+                        </button>
+                    </span>
+                </div>
             </td>
             <td class="p-table__col--zone p-double-row" aria-label="Zone" title="{$ node.zone.name $}">
-                <div class="p-double-row__rows-container">
-                    <div class="p-double-row__main-row" aria-label="Zone">
-                        <span data-ng-if="node.zone.name"><a class="p-link--soft" href="#/zone/{$ node.zone.id $}" title="{$ node.zone.name $}">{$ node.zone.name $}</a></span>
-                        <span data-ng-if="!node.zone.name">-</span>
+                <div class="p-table-menu">
+                    <div class="p-double-row__rows-container">
+                        <div class="p-double-row__main-row" aria-label="Zone">
+                            <i class="p-icon--spinner u-animation--spin" data-ng-if="node['set-zone-transition']">Setting zone</i>
+                            <span data-ng-if="node.zone.name"><a class="p-link--soft" href="#/zone/{$ node.zone.id $}" title="{$ node.zone.name $}">{$ node.zone.name $}</a></span>
+                            <span data-ng-if="!node.zone.name">-</span>
+                        </div>
                     </div>
+                    <button
+                        data-ng-if="node.actions.indexOf('set-zone') !== -1"
+                        data-ng-click="toggleMenu(node.system_id + '-zone')"
+                        class="p-table-menu__toggle p-icon--contextual-menu"
+                    >
+                    </button>
+                    <span class="p-table-menu__dropdown" data-ng-if="openMenu === node.system_id + '-zone'">
+                        <div class="p-table-menu__title">Change AZ:</div>
+                        <button
+                            data-ng-repeat="zone in zones | orderBy:'name'"
+                            data-ng-if="node.zone.id !== zone.id && zones.length > 1 && node.actions.indexOf('set-zone') !== -1"
+                            data-ng-click="performAction(node, 'set-zone', { zone_id: zone.id })"
+                            class="p-table-menu__link"
+                        >
+                            {$ zone.name $}
+                        </button>
+                        <button
+                            data-ng-if="zones.length < 2 && node.actions.indexOf('set-zone') !== -1"
+                            class="p-table-menu__link"
+                            disabled
+                        >
+                            No other zones available
+                        </button>
+                    </span>
                 </div>
             </td>
             <td class="p-table__col--fabric p-double-row" aria-label="Fabric, VLAN" title="{$ node.fabric.name $}">

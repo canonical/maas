@@ -12,13 +12,17 @@
 angular.module('MAAS').directive('maasMachinesTable', [
   'MachinesManager',
   'NotificationsManager',
+  'UsersManager',
   'GeneralManager',
   'ManagerHelperService',
+  '$document',
   function (
     MachinesManager,
     NotificationsManager,
+    UsersManager,
     GeneralManager,
-    ManagerHelperService
+    ManagerHelperService,
+    $document
   ) {
     return {
       restrict: "E",
@@ -30,7 +34,9 @@ angular.module('MAAS').directive('maasMachinesTable', [
         hideCheckboxes: "=?",
         onListingChange: "&",
         onCheckAll: "&",
-        onCheck: "="
+        onCheck: "=",
+        pools: "=",
+        zones: "="
       },
       templateUrl: (
         'static/partials/machines-table.html?v=' + (
@@ -48,9 +54,13 @@ angular.module('MAAS').directive('maasMachinesTable', [
         ];
 
         const actionMap = new Map([
+          ["acquire", "acquire machine"],
           ["check", "check machine's power state"],
           ["off", "power machine off"],
           ["on", "power machine on"],
+          ["release", "release machine"],
+          ["set-pool", "set machine's pool"],
+          ["set-zone", "set machine's zone"],
         ]);
 
         // Scope variables.
@@ -63,6 +73,7 @@ angular.module('MAAS').directive('maasMachinesTable', [
           filteredMachines: [],
           osinfo: GeneralManager.getData("osinfo")
         };
+        scope.openMenu = "";
 
         // Ensures that the checkbox for select all is the correct value.
         scope.updateAllChecked = function() {
@@ -301,6 +312,7 @@ angular.module('MAAS').directive('maasMachinesTable', [
         };
 
         scope.changePowerState = (machine, action) => {
+          scope.closeMenu();
           machine.powerTransition = true;
 
           if (action === "check") {
@@ -310,12 +322,7 @@ angular.module('MAAS').directive('maasMachinesTable', [
                 machine.powerTransition = undefined;
               },
               error => {
-                NotificationsManager.createItem({
-                  message: `Unable to ${actionMap.get(action)}: ${error}`,
-                  category: "error",
-                  admins: true,
-                  users: true,
-                });
+                scope.createErrorNotification(action, error);
                 machine.action_failed = true;
                 machine.powerTransition = undefined;
               }
@@ -326,18 +333,64 @@ angular.module('MAAS').directive('maasMachinesTable', [
                 machine.action_failed = false;
               },
               error => {
-                NotificationsManager.createItem({
-                  message: `Unable to ${actionMap.get(action)}: ${error}`,
-                  category: "error",
-                  admins: true,
-                  users: true,
-                });
+                scope.createErrorNotification(action, error);
                 machine.action_failed = true;
                 machine.powerTransition = undefined;
               }
             );
           }
         };
+
+        scope.performAction = (machine, action, extra) => {
+          scope.closeMenu();
+          machine[`${action}-transition`] = true;
+
+          if(!angular.isObject(extra)) {
+            extra = {};
+          }
+
+          MachinesManager.performAction(machine, action, extra).then(() => {
+            machine.action_failed = false;
+          }, error => {
+            scope.createErrorNotification(action, error);
+            machine.action_failed = true;
+            machine[`${action}-transition`] = undefined;
+          });
+        };
+
+        scope.toggleMenu = menu => {
+          scope.openMenu = scope.openMenu === menu
+            ? ""
+            : menu;
+        };
+
+        scope.closeMenu = () => scope.openMenu = "";
+
+        scope.createErrorNotification = (action, error) => {
+          const authUser = UsersManager.getAuthUser();
+          if (angular.isObject(authUser)) {
+            NotificationsManager.createItem({
+              message: `Unable to ${actionMap.get(action)}: ${error}`,
+              category: "error",
+              user: authUser.id
+            });
+          } else {
+            console.error(error);
+          }
+        }
+
+        $document.on('click', event => {
+          const targetClasses = event.target.classList || [];
+          const parentClasses = event.target.parentNode.classList || [];
+
+          if (targetClasses.contains("p-table-menu__toggle")
+            || parentClasses.contains("p-table-menu__dropdown")
+            || parentClasses.contains("p-double-row__icon-container")) {
+            return;
+          }
+
+          scope.$apply(scope.closeMenu);
+        });
       }
     };
 }]);

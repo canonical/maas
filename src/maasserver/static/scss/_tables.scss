@@ -57,7 +57,7 @@
       background-color: $color-x-light;
       box-shadow: 0 1px 3px 0 transparentize($color-dark, .8);
 
-      .p-power-menu__toggle {
+      .p-table-menu__toggle {
         display: inline-block;
       }
     }
@@ -377,11 +377,11 @@
       }
 
       .p-table__col--power {
-        @include breakpoint-widths(8%, 8%, 4%, 10%, 8%);
+        @include breakpoint-widths(8%, 8%, 4%, 10%, 9%);
       }
 
       .p-table__col--status {
-        @include breakpoint-widths(46%, 44%, 22%, 22%, 19%);
+        @include breakpoint-widths(46%, 44%, 22%, 22%, 18%);
         position: relative;
 
         .p-tooltip {
@@ -395,6 +395,7 @@
 
       .p-table__col--pool {
         @include breakpoint-widths(0, 0, 0, 0, 7%);
+        overflow: visible;
       }
 
       .p-table__col--zone {
@@ -689,14 +690,14 @@
     }
   }
 
-  .p-power-menu {
+  .p-table-menu {
     @extend .p-contextual-menu;
     margin-bottom: -$sp-unit;
     width: 100%;
 
-    %power-menu-link {
+    %table-menu-link {
       @extend .p-contextual-menu__link;
-      padding: $spv-intra $sp-xx-large;
+      padding: $spv-intra $sph-intra;
       position: relative;
       transition: 0s;
 
@@ -713,31 +714,46 @@
       }
     }
 
-    .p-power-menu__title {
+    %table-menu-title {
       border-bottom: 1px solid $color-light-new;
       color: $color-mid-dark;
       font-size: .75rem;
       font-weight: 400;
-      padding: $spv-intra--condensed $sp-xx-large;
+      padding: $spv-intra--condensed $sph-intra;
       text-transform: uppercase;
     }
 
-    .p-power-menu__footer {
+    .p-table-menu__title {
+      @extend %table-menu-title;
+    }
+
+    .p-table-menu__title--icon {
+      @extend %table-menu-title;
+      padding-left: $sp-xx-large;
+    }
+
+    .p-table-menu__footer {
       border-top: 1px solid $color-light-new;
       color: $color-mid-dark;
       padding: $spv-intra--condensed $sp-xx-large;
     }
 
-    .p-power-menu__toggle {
+    .p-table-menu__toggle {
       background-color: transparentize($color-x-light, 0.25);
+      border: 0;
       cursor: pointer;
       display: none;
+      opacity: .25;
       position: absolute;
       right: 0;
       top: 2px;
+
+      td:hover & {
+        opacity: 1;
+      }
     }
 
-    .p-power-menu__dropdown {
+    .p-table-menu__dropdown {
       @extend .p-contextual-menu__dropdown;
       left: -#{$sph-intra};
       max-width: none;
@@ -747,20 +763,30 @@
       width: max-content;
     }
 
-    .p-power-menu__check-power {
-      @extend %power-menu-link;
+    .p-table-menu__link {
+      @extend %table-menu-link;
     }
 
-    .p-power-menu__power-on {
-      @extend %power-menu-link;
+    .p-table-menu__check-power {
+      @extend %table-menu-link;
+      padding-left: $sp-xx-large;
+      padding-right: $sp-xx-large;
+    }
+
+    .p-table-menu__power-on {
+      @extend %table-menu-link;
+      padding-left: $sp-xx-large;
+      padding-right: $sp-xx-large;
 
       &::before {
         @include maas-icon-power-on($color-positive);
       }
     }
 
-    .p-power-menu__power-off {
-      @extend %power-menu-link;
+    .p-table-menu__power-off {
+      @extend %table-menu-link;
+      padding-left: $sp-xx-large;
+      padding-right: $sp-xx-large;
 
       &::before {
         @include maas-icon-power-on($color-mid-light);

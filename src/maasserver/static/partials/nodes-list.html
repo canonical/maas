@@ -979,7 +979,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                     <maas-machines-table id="machines-listing" search="tabs.machines.search" action-option="tabs.machines.actionOption"
                     ng-disabled="hasActionsInProgress('machines')" machine-has-error="!supportsAction($machine, 'machines')"
                     on-listing-change="onNodeListingChanged($machines, 'machines')" on-check-all="toggleCheckAll('machines')"
-                    on-check="toggleChecked($machine, 'machines')"></maas-machines-table>
+                    on-check="toggleChecked($machine, 'machines')" pools="pools" zones="zones"></maas-machines-table>
                 </div>
             </form>
         </div>
