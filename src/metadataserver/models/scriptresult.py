@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 __all__ = [
     'ScriptResult',
@@ -12,6 +12,7 @@ from datetime import (
 
 from django.core.exceptions import ValidationError
 from django.db.models import (
+    BooleanField,
     CASCADE,
     CharField,
     DateTimeField,
@@ -99,6 +100,9 @@ class ScriptResult(CleanSave, TimestampedModel):
 
     # When the script finished running
     ended = DateTimeField(editable=False, null=True, blank=True)
+
+    # Whether or not the failed script result should be suppressed.
+    suppressed = BooleanField(default=False)
 
     @property
     def name(self):

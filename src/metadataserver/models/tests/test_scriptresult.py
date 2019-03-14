@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 __all__ = []
@@ -646,3 +646,11 @@ class TestScriptResult(MAASServerTestCase):
         factory.make_ScriptResult(script=script)
         script_result = script_results[-1]
         self.assertItemsEqual(script_results, script_result.history)
+
+    def test_not_suppressed_by_default(self):
+        script_result = factory.make_ScriptResult()
+        self.assertFalse(script_result.suppressed)
+
+    def test_suppressed(self):
+        script_result = factory.make_ScriptResult(suppressed=True)
+        self.assertTrue(script_result.suppressed)
