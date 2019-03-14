@@ -729,4 +729,34 @@ describe("maasMachinesTable", function() {
             expect(scope.openMenu).toEqual("");
         });
     });
+
+    describe("getActionTitle", () => {
+        it("returns the correct action title, given an action name", () => {
+            const directive = compileDirective();
+            const scope = directive.isolateScope();
+            const actions = [
+                { title: "this action title", name: "this_action" },
+                { title: "other action title", name: "other_action" }
+            ];
+
+            spyOn(GeneralManager, "getData")
+                .and.returnValue(actions);
+
+            expect(scope.getActionTitle(actions[0].name))
+                .toEqual(actions[0].title);
+        });
+    });
+
+    describe("getStatusActions", () => {
+        it(`returns the intersection of possible machine actions
+            and actions available in the status dropdown`, () => {
+            const directive = compileDirective();
+            const scope = directive.isolateScope();
+            const machine = makeMachine();
+            scope.statusMenuActions = ["action1", "action2"];
+            machine.actions = ["action2", "action3"];
+
+            expect(scope.getStatusActions(machine)).toEqual(["action2"]);
+        });
+    });
 });

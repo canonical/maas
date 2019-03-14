@@ -25,7 +25,7 @@
                 <div class="p-double-row__icon-container">
                     <i class="p-icon--placeholder"></i>
                 </div>
-                <div class="p-double-row__rows-container">
+                <div class="p-double-row__rows-container--icon">
                     <span role="columnheader" data-ng-click="sortTable('status')" data-ng-class="{'is-sorted': table.predicate === 'status', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="Status">Status</span>
                 </div>
             </th>
@@ -145,25 +145,50 @@
                 </span>
             </td>
             <td class="p-table__col--status p-double-row" aria-label="Status, Events" title="{$ getStatusText(node) $}">
-                <span class="p-tooltip p-tooltip--top-left" aria-describedby="latest-event-{$ node.fqdn $}">
-                    <div class="p-double-row__icon-container">
+                <span class="p-table-menu">
+                    <div class="p-double-row__icon-container" data-ng-click="toggleMenu(node.system_id + '-status')">
                         <i data-ng-if="showSpinner(node)" class="p-icon--spinner u-animation--spin"></i>
                         <i data-ng-if="showNodeStatus(node)" data-maas-script-status="script-status" data-script-status="node.other_test_status" aria-label="{$ node.other_test_status_tooltip $}"></i>
-                        <i data-ng-if="showFailedTestWarning(node)" class="p-icon--warning" aria-describedby="failed-test-warning-tooltip-{$ node.fqdn $}"></i>
+                        <span class="p-tooltip p-tooltip--top-left" data-ng-if="showFailedTestWarning(node)">
+                            <i class="p-icon--warning" aria-describedby="failed-test-warning-tooltip-{$ node.fqdn $}"></i>
+                            <span class="p-tooltip__message" role="tooltip" id="failed-test-warning-tooltip-{$ node.fqdn $}">Machine has failed tests; use with caution!</span>
+                        </span>
                         <i data-ng-if="!showSpinner(node) && !showNodeStatus(node) && !showFailedTestWarning(node)" class="p-icon--placeholder"></i>
                     </div>
                     <div class="p-double-row__rows-container--icon">
                         <div class="p-double-row__main-row" aria-label="Status">
                             <span>{$ getStatusText(node) $}</span>
                         </div>
-                        <div data-ng-if="node.latest_event.type.description" class="p-double-row__muted-row" aria-label="Latest event">
-                            <span>{$ node.latest_event.type.description $}</span>
+                        <div class="p-double-row__muted-row">
+                            <span>&nbsp;</span>
                         </div>
                     </div>
-                    <span data-ng-if="showFailedTestWarning(node)" class="p-tooltip__message" role="tooltip" id="failed-test-warning-tooltip-{$ node.fqdn $}">Machine has failed tests; use with caution!</span>
-                    <span data-ng-if="!showFailedTestWarning(node) && node.latest_event" class="p-tooltip__message p-tooltip__message--latest-event" role="tooltip" id="latest-event-{$ node.system_id $}">
-                        <span data-ng-if="node.latest_event.type.description">{$ node.latest_event.type.description $}</span>
-                        <span data-ng-if="node.latest_event.description"><br>{$ node.latest_event.description $}</span>
+                    <button class="p-table-menu__toggle p-icon--contextual-menu u-hide--br3" data-ng-click="toggleMenu(node.system_id + '-status')"></button>
+                    <span class="p-table-menu__dropdown" data-ng-show="openMenu === node.system_id + '-status'">
+                        <div class="p-table-menu__title">Take action:</div>
+                        <div class="p-contextual-menu__group" data-ng-if="getStatusActions(node).length">
+                            <button
+                                data-ng-repeat="action in getStatusActions(node)"
+                                data-ng-click="performAction(node, action)"
+                                class="p-table-menu__link"
+                            >
+                                {$ getActionTitle(action) $}
+                            </button>
+                        </div>
+                        <div class="p-contextual-menu__group">
+                            <a
+                                href="#/machine/{$ node.system_id $}?area=logs"
+                                class="p-table-menu__link"
+                            >
+                                See logs
+                            </a>
+                            <a
+                                href="#/machine/{$ node.system_id $}?area=events"
+                                class="p-table-menu__link"
+                            >
+                                See events
+                            </a>
+                        </div>
                     </span>
                 </span>
             </td>
@@ -187,14 +212,14 @@
                             data-ng-click="performAction(node, 'acquire')"
                             class="p-table-menu__link"
                         >
-                            Acquire
+                            {$ getActionTitle('acquire') $}
                         </button>
                         <button
                             data-ng-if="node.actions.indexOf('release') !== -1"
                             data-ng-click="performAction(node, 'release')"
                             class="p-table-menu__link"
                         >
-                            Release
+                            {$ getActionTitle('release') $}
                         </button>
                         <button
                             data-ng-if="node.actions.indexOf('acquire') === -1 && node.actions.indexOf('release') === -1"

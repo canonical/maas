@@ -54,13 +54,24 @@ angular.module('MAAS').directive('maasMachinesTable', [
         ];
 
         const actionMap = new Map([
+          ["abort", "abort action in progress"],
           ["acquire", "acquire machine"],
           ["check", "check machine's power state"],
+          ["commission", "commission machine"],
+          ["deploy", "deploy machine"],
+          ["exit-rescue-mode", "exit rescue mode"],
+          ["lock", "lock machine"],
+          ["mark-broken", "mark machine as broken"],
+          ["mark-fixed", "mark machine as fixed"],
           ["off", "power machine off"],
           ["on", "power machine on"],
+          ["override-failed-testing", "override failed testing"],
           ["release", "release machine"],
+          ["rescue-mode", "enter rescue mode"],
           ["set-pool", "set machine's pool"],
           ["set-zone", "set machine's zone"],
+          ["test", "test machine"],
+          ["unlock", "unlock machine"],
         ]);
 
         // Scope variables.
@@ -73,6 +84,19 @@ angular.module('MAAS').directive('maasMachinesTable', [
           filteredMachines: [],
           osinfo: GeneralManager.getData("osinfo")
         };
+        scope.statusMenuActions = [
+          "commission",
+          "deploy",
+          "abort",
+          "test",
+          "rescue-mode",
+          "exit-rescue-mode",
+          "mark-broken",
+          "mark-fixed",
+          "override-failed-testing",
+          "lock",
+          "unlock"
+        ];
         scope.openMenu = "";
 
         // Ensures that the checkbox for select all is the correct value.
@@ -358,6 +382,20 @@ angular.module('MAAS').directive('maasMachinesTable', [
           });
         };
 
+        scope.getActionTitle = actionName => {
+          const machineActions = GeneralManager.getData('machine_actions');
+          if (machineActions.length) {
+            return machineActions
+              .find(action => action.name === actionName)
+              .title;
+          }
+        };
+
+        scope.getStatusActions = machine => {
+          return scope.statusMenuActions
+            .filter(action => machine.actions.includes(action));
+        };
+
         scope.toggleMenu = menu => {
           scope.openMenu = scope.openMenu === menu
             ? ""
@@ -384,6 +422,7 @@ angular.module('MAAS').directive('maasMachinesTable', [
           const parentClasses = event.target.parentNode.classList || [];
 
           if (targetClasses.contains("p-table-menu__toggle")
+            || targetClasses.contains("p-double-row__icon-container")
             || parentClasses.contains("p-table-menu__dropdown")
             || parentClasses.contains("p-double-row__icon-container")) {
             return;
