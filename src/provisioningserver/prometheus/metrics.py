@@ -4,7 +4,8 @@
 """Prometheus metrics."""
 
 from provisioningserver.prometheus.collectors import (
-    memory_metrics_definitions,
+    node_metrics_definitions,
+    update_cpu_metrics,
     update_memory_metrics,
 )
 from provisioningserver.prometheus.utils import (
@@ -37,7 +38,7 @@ METRICS_DEFINITIONS = [
         'Histogram', 'maas_websocket_call_latency',
         'Latency of a Websocket handler call', ['call']),
     # Common metrics
-    *memory_metrics_definitions()
+    *node_metrics_definitions()
 ]
 
 
@@ -46,4 +47,4 @@ PROMETHEUS_METRICS = create_metrics(
     extra_labels={
         'host': get_machine_default_gateway_ip
     },
-    update_handlers=[update_memory_metrics])
+    update_handlers=[update_cpu_metrics, update_memory_metrics])
