@@ -39,6 +39,7 @@ describe("maasMachinesTable", function() {
     function makeMachine() {
         var machine = {
             system_id: makeName("system_id"),
+            hostname: makeName("name"),
             $selected: false
         };
         MachinesManager._items.push(machine);
@@ -618,9 +619,9 @@ describe("maasMachinesTable", function() {
             scope.$digest();
             expect(NotificationsManager.createItem)
                 .toHaveBeenCalledWith({
-                    message: (
-                        `Unable to check machine's power state: ${errorMsg}`
-                    ),
+                    message: `Unable to check power state of ${
+                        machine.hostname
+                    }: ${errorMsg}`,
                     category: "error",
                     user: user.id
                 });
@@ -660,7 +661,8 @@ describe("maasMachinesTable", function() {
             scope.$digest();
             expect(NotificationsManager.createItem)
                 .toHaveBeenCalledWith({
-                    message: `Unable to power machine on: ${errorMsg}`,
+                    message:
+                        `Unable to power on ${machine.hostname}: ${errorMsg}`,
                     category: "error",
                     user: user.id
                 });
@@ -757,6 +759,31 @@ describe("maasMachinesTable", function() {
             machine.actions = ["action2", "action3"];
 
             expect(scope.getStatusActions(machine)).toEqual(["action2"]);
+        });
+    });
+
+    describe("getActionSentence", () => {
+        it("returns generic sentence if no action param present", () => {
+            const directive = compileDirective();
+            const scope = directive.isolateScope();
+
+            expect(scope.getActionSentence()).toEqual("perform action");
+        });
+
+        it("returns correctly formatted sentence without machine param", () => {
+            const directive = compileDirective();
+            const scope = directive.isolateScope();
+
+            expect(scope.getActionSentence("on")).toEqual("power on machine");
+        });
+
+        it("returns correctly formatted sentence with machine param", () => {
+            const directive = compileDirective();
+            const scope = directive.isolateScope();
+            const machine = makeMachine();
+
+            expect(scope.getActionSentence("on", machine))
+                .toEqual(`power on ${machine.hostname}`);
         });
     });
 });

@@ -53,27 +53,6 @@ angular.module('MAAS').directive('maasMachinesTable', [
           21   // testing
         ];
 
-        const actionMap = new Map([
-          ["abort", "abort action in progress"],
-          ["acquire", "acquire machine"],
-          ["check", "check machine's power state"],
-          ["commission", "commission machine"],
-          ["deploy", "deploy machine"],
-          ["exit-rescue-mode", "exit rescue mode"],
-          ["lock", "lock machine"],
-          ["mark-broken", "mark machine as broken"],
-          ["mark-fixed", "mark machine as fixed"],
-          ["off", "power machine off"],
-          ["on", "power machine on"],
-          ["override-failed-testing", "override failed testing"],
-          ["release", "release machine"],
-          ["rescue-mode", "enter rescue mode"],
-          ["set-pool", "set machine's pool"],
-          ["set-zone", "set machine's zone"],
-          ["test", "test machine"],
-          ["unlock", "unlock machine"],
-        ]);
-
         // Scope variables.
         scope.table = {
           column: 'fqdn',
@@ -98,6 +77,55 @@ angular.module('MAAS').directive('maasMachinesTable', [
           "unlock"
         ];
         scope.openMenu = "";
+
+        scope.getActionSentence = (action, machine) => {
+          let name = "machine";
+          if (machine && machine.hostname) {
+            name = machine.hostname;
+          }
+          switch (action) {
+            case "abort":
+              return `abort current action of ${name}`;
+            case "acquire":
+              return `acquire ${name}`;
+            case "check":
+              return `check power state of ${name}`;
+            case "commission":
+              return `commission ${name}`;
+            case "deploy":
+              return `deploy ${name}`;
+            case "exit-rescue-mode":
+              return `exit rescue mode of ${name}`;
+            case "lock":
+              return `lock ${name}`;
+            case "mark-broken":
+              return `mark ${name} as broken`;
+            case "mark-fixed":
+              return `mark ${name} as fixed`;
+            case "off":
+              return `power off ${name}`;
+            case "on":
+              return `power on ${name}`;
+            case "override-failed-testing":
+              return `override failed testing of ${name}`;
+            case "release":
+              return `release ${name}`;
+            case "rescue-mode":
+              return `enter rescue mode of ${name}`;
+            case "release":
+              return `release ${name}`;
+            case "set-pool":
+              return `set pool of ${name}`;
+            case "set-zone":
+              return `set zone of ${name}`;
+            case "test":
+              return `test ${name}`;
+            case "unlock":
+              return `unlock ${name}`;
+            default:
+              return "perform action";
+          }
+        };
 
         // Ensures that the checkbox for select all is the correct value.
         scope.updateAllChecked = function() {
@@ -346,7 +374,7 @@ angular.module('MAAS').directive('maasMachinesTable', [
                 machine.powerTransition = undefined;
               },
               error => {
-                scope.createErrorNotification(action, error);
+                scope.createErrorNotification(machine, action, error);
                 machine.action_failed = true;
                 machine.powerTransition = undefined;
               }
@@ -357,7 +385,7 @@ angular.module('MAAS').directive('maasMachinesTable', [
                 machine.action_failed = false;
               },
               error => {
-                scope.createErrorNotification(action, error);
+                scope.createErrorNotification(machine, action, error);
                 machine.action_failed = true;
                 machine.powerTransition = undefined;
               }
@@ -376,7 +404,7 @@ angular.module('MAAS').directive('maasMachinesTable', [
           MachinesManager.performAction(machine, action, extra).then(() => {
             machine.action_failed = false;
           }, error => {
-            scope.createErrorNotification(action, error);
+            scope.createErrorNotification(machine, action, error);
             machine.action_failed = true;
             machine[`${action}-transition`] = undefined;
           });
@@ -404,11 +432,13 @@ angular.module('MAAS').directive('maasMachinesTable', [
 
         scope.closeMenu = () => scope.openMenu = "";
 
-        scope.createErrorNotification = (action, error) => {
+        scope.createErrorNotification = (machine, action, error) => {
           const authUser = UsersManager.getAuthUser();
           if (angular.isObject(authUser)) {
             NotificationsManager.createItem({
-              message: `Unable to ${actionMap.get(action)}: ${error}`,
+              message: `Unable to ${
+                scope.getActionSentence(action, machine)
+              }: ${error}`,
               category: "error",
               user: authUser.id
             });
