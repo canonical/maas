@@ -1,9 +1,39 @@
 # Copyright 2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from contextlib import contextmanager
 from time import time
 
+from django.db import connections
+from django.db.backends.utils import CursorWrapper
 from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
+
+
+class QueryCountCursorWrapper(CursorWrapper):
+    """Track execution times for queries."""
+
+    def __init__(self, cursor, db, times):
+        super().__init__(cursor, db)
+        self.times = times
+
+    def execute(self, sql, params=None):
+        with self._track_time():
+            return super().execute(sql, params=params)
+
+    # XXX this doesn't support executemany as it's not really possible to get
+    # times for each call, and it's not used in MAAS anyway.
+
+    def callproc(self, procname, params=None, kparams=None):
+        with self._track_time():
+            return super().callproc(procname, params=None, kparams=None)
+
+    @contextmanager
+    def _track_time(self):
+        start = time()
+        try:
+            yield
+        finally:
+            self.times.append(time() - start)
 
 
 class PrometheusRequestMetricsMiddleware:
@@ -14,13 +44,17 @@ class PrometheusRequestMetricsMiddleware:
         self.prometheus_metrics = prometheus_metrics
 
     def __call__(self, request):
-        start_time = time()
-        response = self.get_response(request)
-        end_time = time()
-        self._process_metrics(request, response, start_time, end_time)
+        query_latencies = []
+
+        with self._wrap_cursor(connections['default'], query_latencies):
+            start_time = time()
+            response = self.get_response(request)
+            latency = time() - start_time
+
+        self._process_metrics(request, response, latency, query_latencies)
         return response
 
-    def _process_metrics(self, request, response, start_time, end_time):
+    def _process_metrics(self, request, response, latency, query_latencies):
         op = request.POST.get('op', request.GET.get('op', ''))
         labels = {
             'method': request.method,
@@ -28,11 +62,27 @@ class PrometheusRequestMetricsMiddleware:
             'status': response.status_code,
             'op': op
         }
-
         self.prometheus_metrics.update(
             'maas_http_request_latency', 'observe',
-            value=end_time - start_time, labels=labels)
+            value=latency, labels=labels)
         if not response.streaming:
             self.prometheus_metrics.update(
                 'maas_http_response_size', 'observe',
                 value=len(response.content), labels=labels)
+        self.prometheus_metrics.update(
+            'maas_http_request_query_count', 'observe',
+            value=len(query_latencies), labels=labels)
+        for latency in query_latencies:
+            self.prometheus_metrics.update(
+                'maas_http_request_query_latency', 'observe',
+                value=latency, labels=labels)
+
+    @contextmanager
+    def _wrap_cursor(self, dbconn, query_latencies):
+        orig_make_cursor = dbconn.make_cursor
+        dbconn.make_cursor = lambda cursor: QueryCountCursorWrapper(
+            cursor, dbconn, query_latencies)
+        try:
+            yield
+        finally:
+            dbconn.make_cursor = orig_make_cursor

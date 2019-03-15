@@ -32,6 +32,13 @@ METRICS_DEFINITIONS = [
         ['method', 'path', 'status', 'op'],
         buckets=[5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000]),
     MetricDefinition(
+        'Histogram', 'maas_http_request_query_count',
+        'HTTP request query count', ['method', 'path', 'status', 'op'],
+        buckets=[10, 25, 50, 100, 200, 500]),
+    MetricDefinition(
+        'Histogram', 'maas_http_request_query_latency',
+        'HTTP request query latency', ['method', 'path', 'status', 'op']),
+    MetricDefinition(
         'Histogram', 'maas_region_rack_rpc_call_latency',
         'Latency of Region-Rack RPC call', ['call']),
     MetricDefinition(
