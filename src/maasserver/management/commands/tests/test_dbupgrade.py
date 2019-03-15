@@ -89,7 +89,7 @@ class TestDBUpgrade(MAASTestCase):
             self.addDetail(name, Content(UTF8_TEXT, lambda: [output]))
         self.assertEqual(0, process.wait(), "(return code is not zero)")
 
-    def execute_dbupgrade(self, always_south=False):
+    def execute_dbupgrade(self):
         env = os.environ.copy()
         env["MAAS_PREVENT_MIGRATIONS"] = "0"
         mra = os.path.join(root, "bin", "maas-region")
@@ -97,29 +97,19 @@ class TestDBUpgrade(MAASTestCase):
             mra, "dbupgrade", "--settings",
             "maasserver.djangosettings.settings",
         ]
-        if always_south:
-            cmd.append("--always-south")
         self.execute(cmd, env=env)
 
-    def test_dbupgrade_with_always_south(self):
-        """Test ensures that dbupdate always works by performing the south
-        migrations first. This ensures that nothing in the MAAS code prevents
-        upgrades from pre-MAAS 2.0 versions from upgrading to 2.0+."""
+    def test_dbupgrade(self):
+        """Test ensures that dbupdate works."""
         self.cluster.createdb(self.dbname)
-        self.execute_dbupgrade(always_south=True)
-
-    def test_dbupgrade_without_south(self):
-        """Test ensures that dbupdate works without performing the south
-        migrations first."""
-        self.cluster.createdb(self.dbname)
-        self.execute_dbupgrade(always_south=False)
+        self.execute_dbupgrade()
 
     def test_dbupgrade_installs_plpgsql(self):
         self.cluster.createdb(self.dbname)
         with closing(self.cluster.connect(self.dbname)) as conn:
             function_names = get_plpgsql_function_names(conn)
             self.assertThat(function_names, HasLength(0))
-        self.execute_dbupgrade(always_south=False)
+        self.execute_dbupgrade()
         with closing(self.cluster.connect(self.dbname)) as conn:
             function_names = get_plpgsql_function_names(conn)
             self.assertThat(function_names, Not(HasLength(0)))
@@ -128,7 +118,7 @@ class TestDBUpgrade(MAASTestCase):
         self.cluster.createdb(self.dbname)
         with closing(self.cluster.connect(self.dbname)) as conn:
             trigger_name = create_trigger_to_delete(conn, "maasserver")
-        self.execute_dbupgrade(always_south=False)
+        self.execute_dbupgrade()
         with closing(self.cluster.connect(self.dbname)) as conn:
             triggers = get_all_triggers(conn)
             self.assertNotIn(trigger_name, triggers)
@@ -137,7 +127,7 @@ class TestDBUpgrade(MAASTestCase):
         self.cluster.createdb(self.dbname)
         with closing(self.cluster.connect(self.dbname)) as conn:
             trigger_name = create_trigger_to_delete(conn, "metadataserver")
-        self.execute_dbupgrade(always_south=False)
+        self.execute_dbupgrade()
         with closing(self.cluster.connect(self.dbname)) as conn:
             triggers = get_all_triggers(conn)
             self.assertNotIn(trigger_name, triggers)
@@ -146,7 +136,7 @@ class TestDBUpgrade(MAASTestCase):
         self.cluster.createdb(self.dbname)
         with closing(self.cluster.connect(self.dbname)) as conn:
             trigger_name = create_trigger_to_delete(conn, "auth")
-        self.execute_dbupgrade(always_south=False)
+        self.execute_dbupgrade()
         with closing(self.cluster.connect(self.dbname)) as conn:
             triggers = get_all_triggers(conn)
             self.assertNotIn(trigger_name, triggers)

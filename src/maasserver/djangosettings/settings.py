@@ -287,18 +287,12 @@ MIDDLEWARE = (
 
 ROOT_URLCONF = 'maasserver.djangosettings.urls'
 
-SOUTH_MIGRATION_MODULES = {
-    # Migrations before MAAS 2.0 are located in south sub-directory.
-    'maasserver': 'maasserver.migrations.south.migrations',
-    'metadataserver': 'metadataserver.migrations.south',
-}
-
 MIGRATION_MODULES = {
     # Migrations for MAAS >=2.0.
-    'auth': 'maasserver.migrations.builtin.auth',
-    'piston3': 'maasserver.migrations.builtin.piston3',
-    'maasserver': 'maasserver.migrations.builtin.maasserver',
-    'metadataserver': 'metadataserver.migrations.builtin',
+    'auth': 'maasserver.migrations.auth',
+    'piston3': 'maasserver.migrations.piston3',
+    'maasserver': 'maasserver.migrations.maasserver',
+    'metadataserver': 'metadataserver.migrations',
 }
 
 INSTALLED_APPS = (

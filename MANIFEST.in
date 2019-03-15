@@ -3,6 +3,5 @@ graft src/maasserver/templates
 graft src/metadataserver/fixtures
 graft src/metadataserver/user_data/templates
 graft src/provisioningserver/templates
-include src/maasserver/migrations/south/django16_south_maas19.tar.gz
 include src/provisioningserver/drivers/power/*.xml
 include src/metadataserver/builtin_scripts/*.sh

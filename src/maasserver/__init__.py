@@ -25,8 +25,7 @@ class DefaultMeta:
     """Base class for model `Meta` classes in the maasserver app.
 
     Each model in the models package outside of __init__.py needs a nested
-    `Meta` class that defines `app_label`.  Otherwise, South won't recognize
-    the model and will fail to generate schema migrations for it.
+    `Meta` class that defines `app_label`.
     """
     app_label = 'maasserver'
 

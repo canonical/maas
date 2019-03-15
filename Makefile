@@ -151,10 +151,10 @@ bin/test.e2e: \
 	$(buildout) install e2e-test
 	@touch --no-create $@
 
-# bin/maas-region is needed for South migration tests. bin/flake8 is needed for
-# checking lint and bin/node-sass is needed for checking css.
+# bin/flake8 is needed for checking lint and bin/node-sass is needed for
+# checking css.
 bin/test.testing: \
-  bin/maas-region bin/flake8 bin/node-sass bin/buildout \
+  bin/flake8 bin/node-sass bin/buildout \
   buildout.cfg versions.cfg setup.py
 	$(buildout) install testing-test
 	@touch --no-create $@
@@ -355,8 +355,7 @@ lint-css:
 lint-py: sources = setup.py src
 lint-py: bin/flake8
 	@find $(sources) -name '*.py' \
-	  ! -path '*/migrations/*' ! -path '*/south_migrations/*' -print0 \
-	    | xargs -r0 bin/flake8 --config=.flake8
+	  ! -path '*/migrations/*' -print0 | xargs -r0 bin/flake8 --config=.flake8
 
 # Ignore tests when checking complexity. The maximum complexity ought to
 # be close to 10 but MAAS has many functions that are over that so we
@@ -365,7 +364,7 @@ lint-py-complexity: maximum=26
 lint-py-complexity: sources = setup.py src
 lint-py-complexity: bin/flake8
 	@find $(sources) -name '*.py' \
-	  ! -path '*/migrations/*' ! -path '*/south_migrations/*' \
+	  ! -path '*/migrations/*' \
 	  ! -path '*/tests/*' ! -path '*/testing/*' ! -name 'testing.py' \
 	  -print0 | xargs -r0 bin/flake8 --config=.flake8 --max-complexity=$(maximum)
 
@@ -374,7 +373,7 @@ lint-py-imports: sources = setup.py src
 lint-py-imports:
 	@utilities/check-imports
 	@find $(sources) -name '*.py' \
-	  ! -path '*/migrations/*' ! -path '*/south_migrations/*' \
+	  ! -path '*/migrations/*' \
 	  -print0 | xargs -r0 utilities/find-early-imports
 
 lint-doc:

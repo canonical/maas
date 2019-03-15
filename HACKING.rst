@@ -614,35 +614,6 @@ Once the operations have been added, apply that migration with::
     $ make syncdb
 
 
-Migrations before MAAS 2.0
-^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Previous version before MAAS 2.0 used South_ to perform database migrations. To
-support upgrading from any previous version of MAAS before 2.0 the South_
-migrations are run. On upgrade of MAAS those migrations will be
-run before the new Django_ migrations are run. On a fresh installation of MAAS
-the South_ migrations will be skipped because the Django_ migrations already
-provide the entire schema in the initial migration. All of this logic is
-performed on upgrade by the `dbupgrade` command.::
-
-    $ bin/maas-region dbupgrade
-
-In some testing case you might need to always run the South_ migrations before
-the Django_ migrations on a clean database. Using the `always-south` option on
-the `dbupgrade` command allows this testing scenario.::
-
-    $ bin/maas-region dbupgrade --always-south
-
-.. Note::
-
-   When the South_ migrations run they are actually being ran under Django 1.6
-   and South that is provided in the MAAS source code in a tarball. Located
-   at ``src/maasserver/migrations/south/django16_south.tar.gz`` this file is
-   extracted into a temporary folder and imported by MAAS to run the South
-   migrations.
-
-.. _South: http://south.aeracode.org/
-
 Examining the database manually
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

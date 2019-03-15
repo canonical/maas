@@ -236,18 +236,15 @@ RackControllerRule = Rule(
 )
 
 
-RegionMigrationsSouth = files(
-    "src/maasserver/migrations/south/**/*.py",
-    "src/metadataserver/migrations/south/**/*.py")
-RegionMigrationsBuiltin = files(
-    "src/maasserver/migrations/builtin/**/*.py",
-    "src/metadataserver/migrations/builtin/**/*.py")
+RegionMigrations = files(
+    "src/maasserver/migrations/**/*.py",
+    "src/metadataserver/migrations/*.py")
 RegionUserDataSnippets = files(
     "src/metadataserver/user_data/templates/"
     "snippets/**/*.py")
 RegionController = (
     files("src/maasserver/**/*.py", "src/metadataserver/**/*.py") -
-    RegionMigrationsSouth - RegionMigrationsBuiltin - RegionUserDataSnippets)
+    RegionMigrations - RegionUserDataSnippets)
 RegionControllerRule = Rule(
     Allow("apiclient.creds.*"),
     Allow("apiclient.multipart.*"),
@@ -395,22 +392,7 @@ checks = [
         ),
     ),
     (
-        RegionMigrationsSouth,
-        Rule(
-            Allow("django|django.**"),
-            Allow("lxml|lxml.**"),
-            Allow("netaddr|netaddr.**"),
-            Allow("south|south.**"),
-            Allow(StandardLibraries),
-
-            # XXX: The following three permissions are temporary;
-            # they MUST be eliminated before MAAS 2.0 release.
-            Allow("maasserver|maasserver.**"),
-            Allow("metadataserver|metadataserver.**"),
-        )
-    ),
-    (
-        RegionMigrationsBuiltin,
+        RegionMigrations,
         Rule(
             Allow("django|django.**"),
             Allow("netaddr|netaddr.**"),
