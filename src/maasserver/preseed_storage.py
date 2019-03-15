@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Preseed generation for curtin storage."""
@@ -48,6 +48,7 @@ class CurtinStorageGenerator:
             "lvm_partition": [],
             "raid": [],
             "bcache": [],
+            "vmfs": [],
         }
 
     def generate(self):
@@ -66,6 +67,7 @@ class CurtinStorageGenerator:
         self._generate_logical_volume_operations()
         self._generate_raid_operations()
         self._generate_bcache_operations()
+        self._generate_vmfs_operations()
         self._generate_partition_operations()
         self._generate_format_operations()
 
@@ -110,6 +112,8 @@ class CurtinStorageGenerator:
                     self.operations["raid"].append(filesystem_group)
                 elif filesystem_group.is_bcache():
                     self.operations["bcache"].append(filesystem_group)
+                elif filesystem_group.is_vmfs():
+                    self.operations["vmfs"].append(filesystem_group)
                 else:
                     raise ValueError(
                         "Unknown filesystem group type: %s" % (
@@ -259,10 +263,12 @@ class CurtinStorageGenerator:
                 node_arch == "ppc64el" and
                 bios_boot_method in ("uefi", "powernv", "powerkvm"))
 
-        # always add a boot partition for GPT without UEFI
+        # always add a boot partition for GPT without UEFI. ESXi doesn't
+        # need a partition added as one is already in the DD format.
         add_bios_grub_partition = (
             disk_operation.get("ptable") == "gpt" and
-            node_arch == "amd64" and bios_boot_method != "uefi")
+            node_arch == "amd64" and bios_boot_method != "uefi" and
+            self.node.osystem != "esxi")
 
         # Set this disk to be the grub device if it's the boot disk and doesn't
         # require a prep partition. When a prep partition is required grub
@@ -525,6 +531,24 @@ class CurtinStorageGenerator:
             bcache_operation["ptable"] = self._get_ptable_type(partition_table)
         self.storage_config.append(bcache_operation)
 
+    def _generate_vmfs_operations(self):
+        """Generate all vmfs operations."""
+        for vmfs in self.operations["vmfs"]:
+            self.storage_config.append({
+                "id": vmfs.name,
+                "name": vmfs.name,
+                "type": "vmfs6",
+                "devices": sorted([
+                    fs.get_parent().name for fs in vmfs.filesystems.all()]),
+            })
+
+    def _reorder_devices(self, ids_above, operation):
+        for device in operation["devices"]:
+            if device not in ids_above:
+                self._reorder_operation(operation, device)
+                return True
+        return False
+
     def _order_config_dependency(self):
         """Re-order the storage config so dependencies appear before
         dependents."""
@@ -548,13 +572,7 @@ class CurtinStorageGenerator:
                         self._reorder_operation(operation, volume)
                         break
                 elif operation_type == "lvm_volgroup":
-                    exit_early = False
-                    for device in operation["devices"]:
-                        if device not in ids_above:
-                            self._reorder_operation(operation, device)
-                            exit_early = True
-                            break
-                    if exit_early:
+                    if self._reorder_devices(ids_above, operation):
                         break
                 elif operation_type == "lvm_partition":
                     volgroup = operation["volgroup"]
@@ -562,14 +580,9 @@ class CurtinStorageGenerator:
                         self._reorder_operation(operation, volgroup)
                         break
                 elif operation_type == "raid":
-                    exit_early = False
-                    for device in operation["devices"]:
-                        if device not in ids_above:
-                            self._reorder_operation(operation, device)
-                            exit_early = True
-                            break
-                    if exit_early:
+                    if self._reorder_devices(ids_above, operation):
                         break
+                    exit_early = False
                     for device in operation["spare_devices"]:
                         if device not in ids_above:
                             self._reorder_operation(operation, device)
@@ -585,6 +598,9 @@ class CurtinStorageGenerator:
                     cache_device = operation["cache_device"]
                     if cache_device not in ids_above:
                         self._reorder_operation(operation, cache_device)
+                        break
+                elif operation_type == "vmfs6":
+                    if self._reorder_devices(ids_above, operation):
                         break
                 else:
                     raise ValueError(

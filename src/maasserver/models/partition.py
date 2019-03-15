@@ -216,9 +216,15 @@ class Partition(CleanSave, TimestampedModel):
             if (arch == "ppc64el" and block_device.id == boot_disk.id):
                 return idx + 2
             elif arch == "amd64" and bios_boot_method != "uefi":
-                # Delay the `type` check because it can cause a query. Only
-                # physical block devices get the bios_grub partition.
-                if block_device.type == 'physical':
+                if node.osystem == 'esxi':
+                    # VMware ESXi is a DD image but MAAS allows partitions to
+                    # be added to the end of the disk as well as resize the
+                    # datastore partition. The EFI partition is already in the
+                    # image so there is no reason to account for it.
+                    return idx + 1
+                elif block_device.type == 'physical':
+                    # Delay the `type` check because it can cause a query. Only
+                    # physical block devices get the bios_grub partition.
                     return idx + 2
                 else:
                     return idx + 1

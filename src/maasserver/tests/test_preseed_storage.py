@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test `maasserver.preseed_storage`."""
@@ -16,9 +16,11 @@ from maasserver.enum import (
     NODE_STATUS,
     PARTITION_TABLE_TYPE,
 )
+from maasserver.models import Filesystem
 from maasserver.models.filesystemgroup import (
     Bcache,
     RAID,
+    VMFS,
     VolumeGroup,
 )
 from maasserver.models.partitiontable import (
@@ -27,6 +29,7 @@ from maasserver.models.partitiontable import (
     PREP_PARTITION_SIZE,
 )
 from maasserver.preseed_storage import compose_curtin_storage_config
+from maasserver.storage_layouts import VMFS6Layout
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from testtools.content import text_content
@@ -2069,3 +2072,157 @@ class TestBootableRaidLayoutGPTWithPartition(
         node._create_acquired_filesystems()
         config = compose_curtin_storage_config(node)
         self.assertStorageConfig(self.STORAGE_CONFIG, config)
+
+
+class TestVMFS(MAASServerTestCase, AssertStorageConfigMixin):
+
+    STORAGE_CONFIG = dedent("""\
+        config:
+          - id: sda
+            model: vendor
+            name: sda
+            ptable: gpt
+            serial: serial-a
+            type: disk
+            wipe: superblock
+            grub_device: true
+          - id: sdb
+            model: vendor
+            name: sdb
+            ptable: gpt
+            serial: serial-b
+            type: disk
+            wipe: superblock
+          - id: sdc
+            model: vendor
+            name: sdc
+            ptable: gpt
+            serial: serial-c
+            type: disk
+            wipe: superblock
+          - id: sda-part1
+            name: sda-part1
+            device: sda
+            number: 1
+            type: partition
+            size: 3145728B
+            uuid: 7f79841c-9f57-4ab7-ada2-b2774e3908a3
+            wipe: superblock
+            flag: boot
+          - id: sda-part2
+            name: sda-part2
+            device: sda
+            number: 2
+            type: partition
+            size: 4294967296B
+            uuid: b1a04342-60a2-47ca-8773-32b3af24c73e
+            wipe: superblock
+          - id: sda-part3
+            name: sda-part3
+            device: sda
+            number: 3
+            type: partition
+            size: 99451142144B
+            uuid: 54e698a9-e15d-409b-9e0a-2791374f6c12
+            wipe: superblock
+          - id: sda-part4
+            name: sda-part4
+            device: sda
+            number: 4
+            type: partition
+            size: 261095424B
+            uuid: af8404ca-5d62-402c-8f11-604dc0ba30a6
+            wipe: superblock
+          - id: sda-part5
+            name: sda-part5
+            device: sda
+            number: 5
+            type: partition
+            size: 261095424B
+            uuid: 34949af8-dc2f-4f9a-b81a-f26e12499f7b
+            wipe: superblock
+          - id: sda-part6
+            name: sda-part6
+            device: sda
+            number: 6
+            type: partition
+            size: 114294784B
+            uuid: e29dd323-671e-4e8f-81fe-f1f71492f231
+            wipe: superblock
+          - id: sda-part7
+            name: sda-part7
+            device: sda
+            number: 7
+            type: partition
+            size: 298844160B
+            uuid: 817ddd58-f5af-4d9a-8896-c20c06cf0f7f
+            wipe: superblock
+          - id: sda-part8
+            name: sda-part8
+            device: sda
+            number: 8
+            type: partition
+            size: 2684354560B
+            uuid: b5a745b6-7247-4397-a9a9-d484de69e35c
+            wipe: superblock
+          - id: sdb-part1
+            name: sdb-part1
+            device: sdb
+            number: 1
+            type: partition
+            offset: 4194304B
+            size: 107365793792B
+            uuid: e2565df0-8ec8-4d0e-88a6-92836fce3f58
+            wipe: superblock
+          - id: datastore1
+            name: datastore1
+            type: vmfs6
+            devices:
+              - sda-part3
+              - sdb-part1
+          - id: sdc-part1
+            name: sdc-part1
+            device: sdc
+            number: 1
+            type: partition
+            offset: 4194304B
+            size: 107365793792B
+            uuid: c803220b-7533-4276-a9b4-bfebb68813d0
+            wipe: superblock
+          - id: datastore2
+            name: datastore2
+            type: vmfs6
+            devices:
+              - sdc-part1
+    """)
+
+    def test__renders_expected_output(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, architecture="amd64/generic",
+            osystem='esxi', distro_series='6.7', with_boot_disk=False)
+        boot_disk = factory.make_PhysicalBlockDevice(
+            node=node, size=100 * 1024 ** 3, name='sda',
+            model='vendor', serial='serial-a')
+        layout = VMFS6Layout(node)
+        layout.configure()
+        extra_disk = factory.make_PhysicalBlockDevice(
+            node=node, size=100 * 1024 ** 3, name='sdb', model='vendor',
+            serial='serial-b')
+        for vmfs_part in boot_disk.get_partitiontable().partitions.all():
+            if 'part3' in vmfs_part.name:
+                break
+        vmfs = vmfs_part.get_effective_filesystem().filesystem_group
+        partition = extra_disk.create_partition()
+        Filesystem.objects.create(
+            fstype=FILESYSTEM_TYPE.VMFS6, partition=partition,
+            filesystem_group=vmfs)
+        extra_datastore_disk = factory.make_PhysicalBlockDevice(
+            node=node, size=100 * 1024 ** 3, name='sdc', model='vendor',
+            serial='serial-c')
+        extra_datastore_part = extra_datastore_disk.create_partition()
+        VMFS.objects.create_vmfs(
+            name="datastore2", partitions=[extra_datastore_part])
+
+        node._create_acquired_filesystems()
+        config = compose_curtin_storage_config(node)
+        self.assertStorageConfig(self.STORAGE_CONFIG, config, True)
