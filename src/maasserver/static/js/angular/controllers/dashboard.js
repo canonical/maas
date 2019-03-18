@@ -3,16 +3,15 @@
  *
  * MAAS Dashboard Controller
  */
-
-angular.module('MAAS').controller('DashboardController', [
+ angular.module('MAAS').controller('DashboardController', [
     '$scope', '$window', '$rootScope', '$routeParams', '$location',
     'DiscoveriesManager', 'DomainsManager', 'MachinesManager',
     'DevicesManager', 'SubnetsManager', 'VLANsManager', 'ConfigsManager',
-    'ManagerHelperService',
+    'ManagerHelperService', 'SearchService',
     function($scope, $window, $rootScope, $routeParams, $location,
              DiscoveriesManager, DomainsManager, MachinesManager,
              DevicesManager, SubnetsManager, VLANsManager, ConfigsManager,
-             ManagerHelperService) {
+             ManagerHelperService, SearchService) {
 
         // Default device IP options.
         var deviceIPOptions = [
@@ -40,6 +39,118 @@ angular.module('MAAS').controller('DashboardController', [
         $scope.removingDevices = false;
         $scope.MAAS_VERSION_NUMBER = DiscoveriesManager
             .formatMAASVersionNumber();
+        $scope.search = "";
+        $scope.searchValid = true;
+        $scope.actionOption = null;
+        $scope.filters = SearchService.getEmptyFilter();
+        $scope.metadata = {};
+        $scope.filteredDevices = [];
+
+        $scope.clearSearch = function() {
+            $scope.search = "";
+            $scope.updateFilters();
+        };
+
+        $scope.filteredDevices = [];
+
+        $scope.updateFilters = function() {
+            var searchQuery = $scope.search;
+            var filters = SearchService.getCurrentFilters(searchQuery);
+            if (filters === null) {
+                $scope.filters = SearchService.getEmptyFilter();
+                $scope.searchValid = false;
+            } else {
+                $scope.filters = filters;
+                $scope.searchValid = true;
+            }
+        };
+
+        $scope.dedupeMetadata = function(prop) {
+            return $scope.discoveredDevices.filter(function(item, pos, arr) {
+                return arr.map(function(obj) {
+                    return obj[prop];
+                }).indexOf(item[prop]) === pos;
+            });
+        }
+
+        $scope.getCount = function(prop, value) {
+            return $scope.discoveredDevices.filter(function(item) {
+                return item[prop] === value;
+            }).length;
+        };
+
+        $scope.setMetadata = function() {
+            var fabrics = $scope.dedupeMetadata("fabric_name")
+                .map(function(item) {
+                    return {
+                        name: item.fabric_name,
+                        count: $scope.getCount("fabric_name", item.fabric_name)
+                    };
+                });
+
+            var vlans = $scope.dedupeMetadata("vlan")
+                .map(function(item) {
+                    return {
+                        name: item.vlan,
+                        count: $scope.getCount("vlan", item.vlan)
+                    };
+                });
+
+            var racks = $scope.dedupeMetadata("observer_hostname")
+                .map(function(item) {
+                    return {
+                        name: item.observer_hostname,
+                        count: $scope
+                        .getCount("observer_hostname", item.observer_hostname)
+                    };
+                });
+
+            var subnets = $scope.dedupeMetadata("subnet_cidr")
+                .map(function(item) {
+                    return {
+                        name: item.subnet_cidr,
+                        count: $scope.getCount("subnet_cidr", item.subnet_cidr)
+                    };
+                });
+
+            $scope.metadata = {
+                fabric: fabrics,
+                vlan: vlans,
+                rack: racks,
+                subnet: subnets
+            };
+        };
+
+        // Adds or removes a filter to the search.
+        $scope.toggleFilter = function (type, value) {
+            $scope.filters =
+                SearchService.toggleFilter($scope.filters, type, value, true);
+            $scope.search = SearchService.filtersToString($scope.filters);
+        };
+
+        // Return True if the filter is active.
+        $scope.isFilterActive = function (type, value) {
+            return SearchService
+                .isFilterActive($scope.filters, type, value, true);
+        };
+
+        $scope.formatMAASVersionNumber = function() {
+            if (MAAS_config.version) {
+                var versionWithPoint = MAAS_config.version.split(" ")[0];
+
+                if (versionWithPoint) {
+                    if (versionWithPoint.split(".")[2] === "0") {
+                        return versionWithPoint.split(".")[0]
+                        + "."
+                        + versionWithPoint.split(".")[1];
+                    } else {
+                        return versionWithPoint;
+                    }
+                }
+            }
+        };
+
+        $scope.MAAS_VERSION_NUMBER = $scope.formatMAASVersionNumber();
 
         // Set default predicate to last_seen.
         $scope.predicate = $scope.last_seen;
@@ -206,6 +317,8 @@ angular.module('MAAS').controller('DashboardController', [
                 $scope.loaded = true;
                 $scope.networkDiscovery = ConfigsManager.getItemFromList(
                     'network_discovery');
+
+                $scope.setMetadata();
 
                 $scope.discoveredDevices.forEach(function(device) {
                     var date = new Date(device.last_seen);

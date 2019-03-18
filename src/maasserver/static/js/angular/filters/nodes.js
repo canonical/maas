@@ -50,6 +50,18 @@ angular.module('MAAS').filter('nodesFilter', ['$filter', 'SearchService',
                 } else {
                     return '';
                 }
+            },
+            hostname: function(node) {
+                return node.hostname;
+            },
+            vlan: function(node) {
+                return node.vlan;
+            },
+            rack: function(node) {
+                return node.observer_hostname;
+            },
+            subnet: function(node) {
+                return node.subnet_cidr;
             }
         };
 

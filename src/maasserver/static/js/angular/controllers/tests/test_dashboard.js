@@ -32,6 +32,7 @@ describe("DashboardController", function() {
         VLANsManager = $injector.get("VLANsManager");
         ConfigsManager = $injector.get("ConfigsManager");
         ManagerHelperService = $injector.get("ManagerHelperService");
+        SearchService = $injector.get("SearchService");
     }));
 
     // Makes the DashboardController
@@ -495,5 +496,166 @@ describe("DashboardController", function() {
             $scope.closeClearDiscoveriesPanel();
             expect($scope.showClearDiscoveriesPanel).toBe(false);
         });
+    });
+
+    describe("getCount", function() {
+        it("gets count of specified objects", function() {
+            var controller = makeController();
+            var device = {
+                ip: "127.0.0.1",
+                mac_address: "00:25:96:FF:FE:12:34:56"
+            };
+            $scope.discoveredDevices.push(device);
+
+            expect($scope.getCount("ip", "127.0.0.1")).toBe(1);
+            expect($scope.getCount("ip", "213.0.0.1")).toBe(0);
+        });
+    });
+
+    describe("dedupeMetadata", function() {
+        it("dedupes metadata", function() {
+            var controller = makeController();
+            $scope.discoveredDevices = [
+                {
+                    fabric_name: "fabric-0",
+                    vlan: 5001,
+                    rack: "bionic-maas",
+                    subnet: "172.16.1.0/24"
+                },
+                {
+                    fabric_name: "fabric-0",
+                    vlan: 5001,
+                    rack: "bionic-maas",
+                    subnet: "172.16.1.0/24"
+                }
+            ];
+
+            expect($scope.dedupeMetadata("fabric_name")).toEqual([
+                {
+                    fabric_name: "fabric-0",
+                    vlan: 5001,
+                    rack: "bionic-maas",
+                    subnet: "172.16.1.0/24"
+                }
+            ]);
+        });
+    });
+
+    describe("toggleFilter", function() {
+        it("calls SearchService.toggleFilter", function () {
+            var controller = makeController();
+            spyOn(SearchService, "toggleFilter").and.returnValue(
+                SearchService.getEmptyFilter());
+            $scope.toggleFilter("hostname", "test");
+            expect(SearchService.toggleFilter).toHaveBeenCalled();
+        });
+
+        it("sets $scope.filters", function() {
+            var controller = makeController();
+            var filters = { _: [], other: [] };
+            spyOn(SearchService, "toggleFilter").and.returnValue(
+                filters);
+            $scope.toggleFilter("hostname", "test");
+            expect($scope.filters).toBe(filters);
+        });
+
+        it("calls SearchService.filtersToString", function() {
+            var controller = makeController();
+            spyOn(SearchService, "filtersToString").and.returnValue("");
+            $scope.toggleFilter("hostname", "test");
+            expect(SearchService.filtersToString).toHaveBeenCalled();
+        });
+
+        it("sets $scope.search", function() {
+            var controller = makeController();
+            $scope.toggleFilter("hostname", "test");
+            expect($scope.search).toBe("hostname:(=test)");
+        });
+    });
+
+    describe("setMetadata", function() {
+        it("sets metadata for fabrics, vlans, racks and subnets", function() {
+            var controller = makeController();
+            $scope.discoveredDevices = [
+                {
+                    fabric_name: "fabric-01",
+                    vlan: 5001,
+                    observer_hostname: "happy-rack",
+                    subnet_cidr: "127.0.0.1/24"
+                },
+                {
+                    fabric_name: "fabric-02",
+                    vlan: 5002,
+                    observer_hostname: "happy-rack",
+                    subnet_cidr: "127.0.0.1/25"
+                },
+                {
+                    fabric_name: "fabric-03",
+                    vlan: 5002,
+                    observer_hostname: "happy-rack",
+                    subnet_cidr: "127.0.0.1/24"
+                }
+            ];
+
+            $scope.setMetadata();
+
+            expect($scope.metadata).toEqual({
+                fabric: [
+                    { name: "fabric-01", count: 1 },
+                    { name: "fabric-02", count: 1 },
+                    { name: "fabric-03", count: 1 }
+                ],
+                vlan: [
+                    { name: 5001, count: 1 },
+                    { name: 5002, count: 2 }
+                ],
+                rack: [
+                    { name: "happy-rack", count: 3 }
+                ],
+                subnet: [
+                    { name: "127.0.0.1/24", count: 2 },
+                    { name: "127.0.0.1/25", count: 1 }
+                ]
+            });
+        });
+    });
+
+    describe("isFilterActive", function() {
+        it("returns true when active", function() {
+            var controller = makeController();
+            $scope.toggleFilter("hostname", "test");
+            expect($scope.isFilterActive("hostname", "test")).toBe(true);
+        });
+
+        it("returns false when inactive", function() {
+            var controller = makeController();
+            $scope.toggleFilter("hostname", "test2");
+            expect($scope.isFilterActive("hostname", "test")).toBe(false);
+        });
+    });
+
+    describe("updateFilters", function () {
+
+        it("updates filters and sets searchValid to true", function () {
+            var controller = makeController();
+            $scope.search = "test hostname:name";
+            $scope.updateFilters();
+            expect($scope.filters).toEqual({
+                _: ["test"],
+                hostname: ["name"]
+            });
+            expect($scope.searchValid).toBe(true);
+        });
+
+        it("updates sets filters empty and sets searchValid to false",
+            function () {
+                var controller = makeController();
+                $scope.search = "test hostname:(name";
+                $scope.updateFilters();
+                expect(
+                    $scope.filters).toEqual(
+                        SearchService.getEmptyFilter());
+                expect($scope.searchValid).toBe(false);
+            });
     });
 });
