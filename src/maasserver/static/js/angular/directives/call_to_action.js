@@ -75,7 +75,7 @@ angular.module('MAAS').directive('maasCta', function() {
             // Return the title of the dropdown button.
             scope.getTitle = function() {
                 if(angular.isObject(ngModelCtrl.$modelValue)) {
-                    option = ngModelCtrl.$modelValue;
+                    let option = ngModelCtrl.$modelValue;
                     scope.secondary = true;
                     // Some designs have the requirement that the title of
                     // the menu option change if it is selected.

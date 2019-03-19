@@ -664,7 +664,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
             } else if ($scope.action.option.name === "delete" &&
                        $scope.type_name === "controller" &&
                        !$scope.action.showing_confirmation) {
-                for(i=0;i<$scope.vlans.length;i++) {
+                for(let i = 0;i<$scope.vlans.length;i++) {
                     var vlan = $scope.vlans[i];
                     if(vlan.primary_rack === $scope.node.system_id) {
                         $scope.action.confirmation_details.push(

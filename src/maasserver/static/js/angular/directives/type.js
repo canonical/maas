@@ -12,7 +12,7 @@ angular.module('MAAS').directive('ngType', function() {
         },
         link: function(scope, element, attrs) {
             scope.$watch('ngType', function() {
-                valid_types = [
+                let valid_types = [
                     'button',
                     'checkbox',
                     'color',

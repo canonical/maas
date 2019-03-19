@@ -24,7 +24,7 @@ angular.module('MAAS').filter('nodesFilter', ['$filter', 'SearchService',
                 return node.memory;
             },
             mac: function(node) {
-                macs = [];
+                let macs = [];
                 macs.push(node.pxe_mac);
                 macs.push.apply(macs, node.extra_macs);
                 return macs;

@@ -488,7 +488,7 @@ angular.module('MAAS').controller('AddHardwareController', [
         // information.
         $scope.machineHasError = function() {
             // Early-out for errors.
-            in_error = (
+            let in_error = (
                 $scope.machine === null ||
                 $scope.machine.zone === null ||
                 $scope.machine.pool === null ||
@@ -520,7 +520,7 @@ angular.module('MAAS').controller('AddHardwareController', [
         // Return true if the chassis has errors.
         $scope.chassisHasErrors = function() {
             // Early-out for errors.
-            in_error = (
+            let in_error = (
                 $scope.chassis === null ||
                 $scope.chassis.power.type === null);
             if(in_error) {

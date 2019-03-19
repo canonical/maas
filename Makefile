@@ -187,7 +187,7 @@ bin/coverage: bin/buildout buildout.cfg versions.cfg setup.py
 
 include/nodejs/bin/node:
 	mkdir -p include/nodejs
-	wget -O include/nodejs/nodejs.tar.gz https://nodejs.org/dist/v8.9.3/node-v8.9.3-linux-x64.tar.gz
+	wget -O include/nodejs/nodejs.tar.gz https://nodejs.org/dist/v8.10.0/node-v8.10.0-linux-x64.tar.gz
 	tar -C include/nodejs/ -xf include/nodejs/nodejs.tar.gz --strip-components=1
 
 include/nodejs/yarn.tar.gz:

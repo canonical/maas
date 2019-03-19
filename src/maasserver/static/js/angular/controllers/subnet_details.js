@@ -88,7 +88,7 @@ angular.module('MAAS').controller('SubnetDetailsController', [
 
         // Updates the page title.
         function updateTitle() {
-            subnet = $scope.subnet;
+            const subnet = $scope.subnet;
             if(subnet && subnet.cidr) {
                 $rootScope.title = subnet.cidr;
                 if(subnet.name && subnet.cidr !== subnet.name) {

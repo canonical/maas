@@ -40,7 +40,7 @@ module.exports = {
             test: /\.js$/,
             loader: 'babel-loader',
             query: {
-                presets: ['@babel/preset-es2015', '@babel/preset-react']
+                presets: ['@babel/preset-env', '@babel/preset-react']
             }
         }]
     },

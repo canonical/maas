@@ -243,6 +243,7 @@ angular.module('MAAS').service(
 
         // Create a new partition.
         NodesManager.prototype.createPartition = function(partition) {
+            let params;
             if(angular.isObject(partition['params'])) {
                 params = partition['params'];
             } else {

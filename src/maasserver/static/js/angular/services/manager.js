@@ -11,7 +11,7 @@
 angular.module('MAAS').service(
     'Manager',
     ['$q', '$rootScope', '$timeout', 'RegionConnection', function(
-            $q, $rootScope, $timeout, RegionConnection) {
+        $q, $rootScope, $timeout, RegionConnection) {
 
         // Actions that are used to update the statuses metadata.
         var METADATA_ACTIONS = {
@@ -100,8 +100,9 @@ angular.module('MAAS').service(
         // Return index of the item in the given array.
         Manager.prototype._getIndexOfItem = function(array, pk_value) {
             var i;
-            for(i = 0, len = array.length; i < len; i++) {
-                if(array[i][this._pk] === pk_value) {
+            var len;
+            for (i = 0, len = array.length; i < len; i++) {
+                if (array[i][this._pk] === pk_value) {
                     return i;
                 }
             }
@@ -111,7 +112,7 @@ angular.module('MAAS').service(
         // Replace the item in the array at the same index.
         Manager.prototype._replaceItemInArray = function(array, item) {
             var idx = this._getIndexOfItem(array, item[this._pk]);
-            if(idx >= 0) {
+            if (idx >= 0) {
                 // Keep the current selection on the item.
                 item.$selected = array[idx].$selected;
                 angular.copy(item, array[idx]);
@@ -122,7 +123,7 @@ angular.module('MAAS').service(
         Manager.prototype._removeItemByIdFromArray = function(
             array, pk_value) {
             var idx = this._getIndexOfItem(array, pk_value);
-            if(idx >= 0) {
+            if (idx >= 0) {
                 array.splice(idx, 1);
             }
         };
@@ -146,20 +147,20 @@ angular.module('MAAS').service(
 
                 // Get the last batchKey in the list so the region knows to
                 // start at that offset.
-                if(array.length > 0) {
-                    params.start = array[array.length-1][self._batchKey];
+                if (array.length > 0) {
+                    params.start = array[array.length - 1][self._batchKey];
                 }
                 RegionConnection.callMethod(
                     method, params).then(function(items) {
                         // Pass each item to extra_func function if given.
-                        if(angular.isFunction(extra_func)) {
+                        if (angular.isFunction(extra_func)) {
                             angular.forEach(items, function(item) {
                                 extra_func(item);
                             });
                         }
 
                         array.push.apply(array, items);
-                        if(items.length === 50) {
+                        if (items.length === 50) {
                             // Could be more items, request the next 50.
                             callLoad(array);
                         } else {
@@ -205,13 +206,13 @@ angular.module('MAAS').service(
         Manager.prototype.loadItems = function() {
             // If the items have already been loaded then, we need to
             // reload the items list not load the initial list.
-            if(this._loaded) {
+            if (this._loaded) {
                 return this.reloadItems();
             }
 
             // If its already loading then the caller just needs to be informed
             // of when it has finished loading.
-            if(this._isLoading) {
+            if (this._isLoading) {
                 var defer = $q.defer();
                 this._extraLoadDefers.push(defer);
                 return defer.promise;
@@ -241,13 +242,13 @@ angular.module('MAAS').service(
         Manager.prototype.reloadItems = function() {
             // If the items have not been loaded then, we need to
             // load the initial list.
-            if(!this._loaded) {
+            if (!this._loaded) {
                 return this.loadItems();
             }
 
             // If its already reloading then the caller just needs to be
             // informed of when it has refinished loading.
-            if(this._isLoading) {
+            if (this._isLoading) {
                 var defer = $q.defer();
                 this._extraReloadDefers.push(defer);
                 return defer.promise;
@@ -259,11 +260,11 @@ angular.module('MAAS').service(
                 // Iterate in reverse so we can remove items inline, without
                 // having to adjust the index.
                 var i = self._items.length;
-                while(i--) {
+                while (i--) {
                     var item = self._items[i];
                     var updatedIdx = self._getIndexOfItem(
                         items, item[self._pk]);
-                    if(updatedIdx === -1) {
+                    if (updatedIdx === -1) {
                         self._updateMetadata(item, METADATA_ACTIONS.DELETE);
                         self._items.splice(i, 1);
                         self._removeItemByIdFromArray(
@@ -299,7 +300,7 @@ angular.module('MAAS').service(
 
                 // Set the activeItem again so the region knows that its
                 // the active item.
-                if(angular.isObject(self._activeItem)) {
+                if (angular.isObject(self._activeItem)) {
                     self.setActiveItem(self._activeItem[self._pk]);
                 }
 
@@ -315,7 +316,7 @@ angular.module('MAAS').service(
 
         // Enables auto reloading of the item list on connection to region.
         Manager.prototype.enableAutoReload = function() {
-            if(!this._autoReload) {
+            if (!this._autoReload) {
                 this._autoReload = true;
                 var self = this;
                 this._reloadFunc = function() {
@@ -327,7 +328,7 @@ angular.module('MAAS').service(
 
         // Disable auto reloading of the item list on connection to region.
         Manager.prototype.disableAutoReload = function() {
-            if(this._autoReload) {
+            if (this._autoReload) {
                 RegionConnection.unregisterHandler("open", this._reloadFunc);
                 this._reloadFunc = null;
                 this._autoReload = false;
@@ -357,7 +358,7 @@ angular.module('MAAS').service(
         // Remove item in the items and selectedItems list.
         Manager.prototype._removeItem = function(pk_value) {
             var idx = this._getIndexOfItem(this._items, pk_value);
-            if(idx >= 0) {
+            if (idx >= 0) {
                 this._updateMetadata(this._items[idx], METADATA_ACTIONS.DELETE);
             }
             this._removeItemByIdFromArray(this._items, pk_value);
@@ -368,7 +369,7 @@ angular.module('MAAS').service(
         // region to load more data.
         Manager.prototype.getItemFromList = function(pk_value) {
             var idx = this._getIndexOfItem(this._items, pk_value);
-            if(idx >= 0) {
+            if (idx >= 0) {
                 return this._items[idx];
             } else {
                 return null;
@@ -433,12 +434,12 @@ angular.module('MAAS').service(
 
         // Set the active item.
         Manager.prototype.setActiveItem = function(pk_value) {
-            if(!this._loaded) {
+            if (!this._loaded) {
                 throw new Error(
                     "Cannot set active item unless the manager is loaded.");
             }
             var idx = this._getIndexOfItem(this._items, pk_value);
-            if(idx === -1) {
+            if (idx === -1) {
                 this._activeItem = null;
                 // Item with pk_value does not exists. Reject the returned
                 // deferred.
@@ -484,22 +485,22 @@ angular.module('MAAS').service(
             });
             // Processing incoming actions is enabled. Otherwise they
             // will be queued until processActions is called.
-            if(this.canProcessActions()) {
-               $rootScope.$apply(this.processActions());
+            if (this.canProcessActions()) {
+                $rootScope.$apply(this.processActions());
             }
         };
 
         // Process all actions to keep the item information up-to-date.
         Manager.prototype.processActions = function() {
-            while(this._actionQueue.length > 0) {
+            while (this._actionQueue.length > 0) {
                 var action = this._actionQueue.shift();
-                if(action.action === "create") {
+                if (action.action === "create") {
                     // Check that the received data doesn't already exists
                     // in the _items list. If it does then this is actually
                     // an update action not a create action.
                     var idx = this._getIndexOfItem(
                         this._items, action.data[this._pk]);
-                    if(idx >= 0) {
+                    if (idx >= 0) {
                         // Actually this is an update action not a create
                         // action. So replace the item instead of adding it.
                         this._replaceItem(action.data);
@@ -510,10 +511,10 @@ angular.module('MAAS').service(
                         this._items.push(action.data);
                     }
                     this._processItem(action.data);
-                } else if(action.action === "update") {
+                } else if (action.action === "update") {
                     this._replaceItem(action.data);
                     this._processItem(action.data);
-                } else if(action.action === "delete") {
+                } else if (action.action === "delete") {
                     this._removeItem(action.data);
                 }
             }
@@ -527,7 +528,7 @@ angular.module('MAAS').service(
         // Mark the given item as selected.
         Manager.prototype.selectItem = function(pk_value) {
             var idx = this._getIndexOfItem(this._items, pk_value);
-            if(idx === -1) {
+            if (idx === -1) {
                 console.log(
                     "WARN: selection of " + this._handler + "(" + pk_value +
                     ") failed because its missing in the items list.");
@@ -538,7 +539,7 @@ angular.module('MAAS').service(
             item.$selected = true;
 
             idx = this._selectedItems.indexOf(item);
-            if(idx === -1) {
+            if (idx === -1) {
                 this._selectedItems.push(item);
             }
         };
@@ -546,7 +547,7 @@ angular.module('MAAS').service(
         // Mark the given item as unselected.
         Manager.prototype.unselectItem = function(pk_value) {
             var idx = this._getIndexOfItem(this._items, pk_value);
-            if(idx === -1) {
+            if (idx === -1) {
                 console.log(
                     "WARN: de-selection of " + this._handler + "(" +
                     pk_value + ") failed because its missing in the " +
@@ -558,7 +559,7 @@ angular.module('MAAS').service(
             item.$selected = false;
 
             idx = this._selectedItems.indexOf(item);
-            if(idx >= 0) {
+            if (idx >= 0) {
                 this._selectedItems.splice(idx, 1);
             }
         };
@@ -566,7 +567,7 @@ angular.module('MAAS').service(
         // Determine if a item is selected.
         Manager.prototype.isSelected = function(pk_value) {
             var idx = this._getIndexOfItem(this._items, pk_value);
-            if(idx === -1) {
+            if (idx === -1) {
                 console.log(
                     "WARN: unable to determine if " + this._handler + "(" +
                     pk_value + ") is selected because its missing in the " +
@@ -580,8 +581,8 @@ angular.module('MAAS').service(
         // Return the metadata object value from `metadatas` matching `name`.
         Manager.prototype._getMetadataValue = function(metadatas, name) {
             var i;
-            for(i = 0; i < metadatas.length; i++) {
-                if(metadatas[i].name === name) {
+            for (i = 0; i < metadatas.length; i++) {
+                if (metadatas[i].name === name) {
                     return metadatas[i];
                 }
             }
@@ -592,7 +593,7 @@ angular.module('MAAS').service(
         // count if it already does.
         Manager.prototype._addMetadataValue = function(metadatas, value) {
             var metadata = this._getMetadataValue(metadatas, value);
-            if(metadata) {
+            if (metadata) {
                 metadata.count += 1;
             } else {
                 metadata = {
@@ -606,9 +607,9 @@ angular.module('MAAS').service(
         // Remove value from metadatas.
         Manager.prototype._removeMetadataValue = function(metadatas, value) {
             var metadata = this._getMetadataValue(metadatas, value);
-            if(metadata) {
+            if (metadata) {
                 metadata.count -= 1;
-                if(metadata.count <= 0) {
+                if (metadata.count <= 0) {
                     metadatas.splice(metadatas.indexOf(metadata), 1);
                 }
             }
@@ -617,22 +618,22 @@ angular.module('MAAS').service(
         // Update the metadata entry in `metadatas` for the array value and
         // based on the action.
         Manager.prototype._updateMetadataArrayEntry = function(
-                metadatas, newValue, action, oldValue) {
+            metadatas, newValue, action, oldValue) {
             var self = this;
 
-            if(action === METADATA_ACTIONS.CREATE) {
+            if (action === METADATA_ACTIONS.CREATE) {
                 angular.forEach(newValue, function(value) {
                     // On create ignore empty values.
-                    if(value === '') {
+                    if (value === '') {
                         return;
                     }
                     self._addMetadataValue(metadatas, value);
                 });
-            } else if(action === METADATA_ACTIONS.DELETE) {
+            } else if (action === METADATA_ACTIONS.DELETE) {
                 angular.forEach(newValue, function(value) {
                     self._removeMetadataValue(metadatas, value);
                 });
-            } else if(action === METADATA_ACTIONS.UPDATE &&
+            } else if (action === METADATA_ACTIONS.UPDATE &&
                 angular.isDefined(oldValue)) {
                 // Any values in added are new on the item, and any values left
                 // in oldArray have been removed.
@@ -640,7 +641,7 @@ angular.module('MAAS').service(
                 var oldArray = angular.copy(oldValue);
                 angular.forEach(newValue, function(value) {
                     var idx = oldArray.indexOf(value);
-                    if(idx === -1) {
+                    if (idx === -1) {
                         // Value not in oldArray so it has been added.
                         added.push(value);
                     } else {
@@ -665,19 +666,19 @@ angular.module('MAAS').service(
         // on the action. Method does not work with array values, use
         // _updateMetadataArrayEntry for values that are arrays.
         Manager.prototype._updateMetadataValueEntry = function(
-                metadatas, newValue, action, oldValue) {
-            if(action === METADATA_ACTIONS.CREATE) {
+            metadatas, newValue, action, oldValue) {
+            if (action === METADATA_ACTIONS.CREATE) {
                 // On create ignore empty values.
-                if(newValue === '') {
+                if (newValue === '') {
                     return;
                 }
                 this._addMetadataValue(metadatas, newValue);
-            } else if(action === METADATA_ACTIONS.DELETE) {
+            } else if (action === METADATA_ACTIONS.DELETE) {
                 this._removeMetadataValue(metadatas, newValue);
-            } else if(action === METADATA_ACTIONS.UPDATE &&
+            } else if (action === METADATA_ACTIONS.UPDATE &&
                 angular.isDefined(oldValue)) {
-                if(oldValue !== newValue) {
-                    if(oldValue !== "") {
+                if (oldValue !== newValue) {
+                    if (oldValue !== "") {
                         // Decrement the old value
                         this._removeMetadataValue(metadatas, oldValue);
                     }
@@ -694,8 +695,8 @@ angular.module('MAAS').service(
         // on the action. Update action will use the oldValue to remove it from
         // the metadata.
         Manager.prototype._updateMetadataEntry = function(
-                metadatas, newValue, action, oldValue) {
-            if(angular.isArray(newValue)) {
+            metadatas, newValue, action, oldValue) {
+            if (angular.isArray(newValue)) {
                 this._updateMetadataArrayEntry(
                     metadatas, newValue, action, oldValue);
             } else {
@@ -713,27 +714,27 @@ angular.module('MAAS').service(
         Manager.prototype._updateMetadata = function(item, action) {
             var self = this;
             var oldItem, idx;
-            if(action === METADATA_ACTIONS.UPDATE) {
+            if (action === METADATA_ACTIONS.UPDATE) {
                 // Update actions require the oldItem if it exist in the
                 // current item listing.
                 idx = this._getIndexOfItem(this._items, item[this._pk]);
-                if(idx >= 0) {
+                if (idx >= 0) {
                     oldItem = this._items[idx];
                 }
             }
             angular.forEach(this._metadataAttributes, function(func, attr) {
-                if(angular.isUndefined(self._metadata[attr])) {
+                if (angular.isUndefined(self._metadata[attr])) {
                     self._metadata[attr] = [];
                 }
                 var newValue, oldValue;
-                if(angular.isFunction(func)) {
+                if (angular.isFunction(func)) {
                     newValue = func(item);
-                    if(angular.isObject(oldItem)) {
+                    if (angular.isObject(oldItem)) {
                         oldValue = func(oldItem);
                     }
                 } else {
                     newValue = item[attr];
-                    if(angular.isObject(oldItem)) {
+                    if (angular.isObject(oldItem)) {
                         oldValue = oldItem[attr];
                     }
                 }
@@ -762,10 +763,10 @@ angular.module('MAAS').service(
         // Default implementation of getName(): returns the default name for
         // this object, if it exists.
         Manager.prototype.getName = function(obj) {
-            if(!angular.isObject(obj)) {
+            if (!angular.isObject(obj)) {
                 return;
             }
-            if(angular.isString(obj[this._name_field])) {
+            if (angular.isString(obj[this._name_field])) {
                 return obj[this._name_field];
             }
         };

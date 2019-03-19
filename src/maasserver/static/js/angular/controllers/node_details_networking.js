@@ -892,7 +892,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                 // 'link_up'.
                 form.updateValue('mode', LINK_MODE.LINK_UP);
             }
-            mode = form.getValue('mode');
+            const mode = form.getValue('mode');
             form.updateValue('ip_address', null);
             $scope.modeChangedForm('mode', mode, form);
         };
@@ -1772,13 +1772,13 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                     $scope.selectedMode = SELECTION_MODE.NONE;
                 },
                 function(errorStr) {
-                    error = JSONService.tryParse(errorStr);
+                    const error = JSONService.tryParse(errorStr);
                     if(!angular.isObject(error)) {
                         // Was not a JSON error. This is wrong here as it
                         // should be, so just log to the console.
                         console.log(errorStr);
                     } else {
-                        macError = error.mac_address;
+                        const macError = error.mac_address;
                         if(angular.isArray(macError)) {
                             $scope.newInterface.macError = true;
                             $scope.newInterface.errorMsg = macError[0];

@@ -21,7 +21,7 @@ angular.module('MAAS').directive('maasReleaseName', [
             // Gets the release name.
             var getName = function() {
                 if(angular.isArray(scope.osinfo.releases)) {
-                  for(i = 0; i < scope.osinfo.releases.length; i++) {
+                  for(let i = 0; i < scope.osinfo.releases.length; i++) {
                       var release = scope.osinfo.releases[i];
                       if(release[0] === scope.releaseName) {
                           return release[1];

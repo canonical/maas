@@ -104,7 +104,7 @@ describe("Manager", function() {
                 name: makeName("zone")
             }
         };
-        if(angular.isDefined(selected)) {
+        if (angular.isDefined(selected)) {
             node.$selected = selected;
         }
         return node;
@@ -113,7 +113,7 @@ describe("Manager", function() {
     // Make a list of nodes.
     function makeNodes(count, selected) {
         var i, nodes = [];
-        for(i = 0; i < count; i++) {
+        for (i = 0; i < count; i++) {
             nodes.push(makeNode(selected));
         }
         return nodes;
@@ -122,7 +122,7 @@ describe("Manager", function() {
     describe("getItems", function() {
 
         it("returns items array", function() {
-            var array = [ makeNode() ];
+            var array = [makeNode()];
             NodesManager._items = array;
             expect(NodesManager.getItems()).toBe(array);
         });
@@ -159,7 +159,7 @@ describe("Manager", function() {
 
         it("batch calls in groups of 50", function(done) {
             var i, fakeNodes = [];
-            for(i = 0; i < 3; i++) {
+            for (i = 0; i < 3; i++) {
                 var groupOfNodes = makeNodes(50);
                 fakeNodes.push.apply(fakeNodes, groupOfNodes);
                 webSocket.returnData.push(makeFakeResponse(groupOfNodes));
@@ -183,7 +183,7 @@ describe("Manager", function() {
 
         it("batch calls with the last id", function(done) {
             var fakeNodes = makeNodes(50);
-            var node_id = fakeNodes[fakeNodes.length-1].id;
+            var node_id = fakeNodes[fakeNodes.length - 1].id;
             webSocket.returnData.push(makeFakeResponse(fakeNodes));
             // A total of 2 calls should be completed, with the last one
             // being an empty list of nodes.
@@ -230,7 +230,7 @@ describe("Manager", function() {
             var count = 0;
             var loadDone = function() {
                 count += 1;
-                if(count === 2) {
+                if (count === 2) {
                     expect(NodesManager._extraLoadDefers).toEqual([]);
                     done();
                 }
@@ -273,7 +273,7 @@ describe("Manager", function() {
             var count = 0;
             var errorDone = function() {
                 count += 1;
-                if(count === 2) {
+                if (count === 2) {
                     expect(NodesManager._extraLoadDefers).toEqual([]);
                     done();
                 }
@@ -337,14 +337,14 @@ describe("Manager", function() {
             webSocket.returnData.push(makeFakeResponse([node]));
             NodesManager.loadItems().then(function(nodes) {
                 expect(NodesManager._metadata.tags).toEqual([
-                {
-                    name: node.tags[0],
-                    count: 1
-                },
-                {
-                    name: node.tags[1],
-                    count: 1
-                }]);
+                    {
+                        name: node.tags[0],
+                        count: 1
+                    },
+                    {
+                        name: node.tags[1],
+                        count: 1
+                    }]);
                 done();
             });
         });
@@ -407,7 +407,7 @@ describe("Manager", function() {
             var count = 0;
             var reloadDone = function() {
                 count += 1;
-                if(count === 2) {
+                if (count === 2) {
                     expect(NodesManager._extraReloadDefers).toEqual([]);
                     done();
                 }
@@ -441,7 +441,7 @@ describe("Manager", function() {
             var count = 0;
             var errorDone = function() {
                 count += 1;
-                if(count === 2) {
+                if (count === 2) {
                     expect(NodesManager._extraReloadDefers).toEqual([]);
                     done();
                 }
@@ -730,7 +730,9 @@ describe("Manager", function() {
     describe("setActiveItem", function() {
 
         it("raises error if not loaded", function() {
-            expect(NodesManager.setActiveItem).toThrow(
+            expect(function() {
+                NodesManager.setActiveItem()
+            }).toThrow(
                 new Error(
                     "Cannot set active item unless the manager is loaded."));
         });
@@ -1007,7 +1009,7 @@ describe("Manager", function() {
             // Helper that gets the value from the node.
             function getValueFromNode(node, attr) {
                 var func = NodesManager._metadataAttributes[attr];
-                if(angular.isFunction(func)) {
+                if (angular.isFunction(func)) {
                     return func(node);
                 } else {
                     return node[attr];
@@ -1126,7 +1128,7 @@ describe("Manager", function() {
                 NodesManager._updateMetadata(node, "create");
                 NodesManager._items.push(node);
                 var updatedNode = angular.copy(node);
-                if(scenario === "zone") {
+                if (scenario === "zone") {
                     updatedNode.zone.name = "";
                 } else {
                     updatedNode[scenario] = "";
@@ -1143,48 +1145,48 @@ describe("Manager", function() {
             var node = makeNode();
             NodesManager._updateMetadata(node, "create");
             expect(NodesManager._metadata.tags).toEqual([
-            {
-                name: node.tags[0],
-                count: 1
-            },
-            {
-                name: node.tags[1],
-                count: 1
-            }]);
+                {
+                    name: node.tags[0],
+                    count: 1
+                },
+                {
+                    name: node.tags[1],
+                    count: 1
+                }]);
         });
 
         it("increments count for items in array", function() {
             var node = makeNode();
             NodesManager._updateMetadata(node, "create");
             expect(NodesManager._metadata.tags).toEqual([
-            {
-                name: node.tags[0],
-                count: 1
-            },
-            {
-                name: node.tags[1],
-                count: 1
-            }]);
+                {
+                    name: node.tags[0],
+                    count: 1
+                },
+                {
+                    name: node.tags[1],
+                    count: 1
+                }]);
             NodesManager._updateMetadata(node, "create");
             expect(NodesManager._metadata.tags).toEqual([
-            {
-                name: node.tags[0],
-                count: 2
-            },
-            {
-                name: node.tags[1],
-                count: 2
-            }]);
+                {
+                    name: node.tags[0],
+                    count: 2
+                },
+                {
+                    name: node.tags[1],
+                    count: 2
+                }]);
             NodesManager._updateMetadata(node, "create");
             expect(NodesManager._metadata.tags).toEqual([
-            {
-                name: node.tags[0],
-                count: 3
-            },
-            {
-                name: node.tags[1],
-                count: 3
-            }]);
+                {
+                    name: node.tags[0],
+                    count: 3
+                },
+                {
+                    name: node.tags[1],
+                    count: 3
+                }]);
         });
 
         it("decrements count for an item in the array", function() {
@@ -1193,14 +1195,14 @@ describe("Manager", function() {
             NodesManager._updateMetadata(node, "create");
             NodesManager._updateMetadata(node, "delete");
             expect(NodesManager._metadata.tags).toEqual([
-            {
-                name: node.tags[0],
-                count: 1
-            },
-            {
-                name: node.tags[1],
-                count: 1
-            }]);
+                {
+                    name: node.tags[0],
+                    count: 1
+                },
+                {
+                    name: node.tags[1],
+                    count: 1
+                }]);
         });
 
         it("removes items in array when count is 0", function() {
@@ -1249,17 +1251,17 @@ describe("Manager", function() {
             updatedNode.tags = [
                 makeName("tag"),
                 makeName("tag")
-                ];
+            ];
             NodesManager._updateMetadata(updatedNode, "update");
             expect(NodesManager._metadata.tags).toEqual([
-            {
-                name: updatedNode.tags[0],
-                count: 1
-            },
-            {
-                name: updatedNode.tags[1],
-                count: 1
-            }]);
+                {
+                    name: updatedNode.tags[0],
+                    count: 1
+                },
+                {
+                    name: updatedNode.tags[1],
+                    count: 1
+                }]);
         });
 
         it("ignores empty arrays", function() {
@@ -1278,17 +1280,17 @@ describe("Manager", function() {
             updatedNode.tags = [
                 makeName("tag"),
                 makeName("tag")
-                ];
+            ];
             NodesManager._updateMetadata(updatedNode, "update");
             expect(NodesManager._metadata.tags).toEqual([
-            {
-                name: updatedNode.tags[0],
-                count: 1
-            },
-            {
-                name: updatedNode.tags[1],
-                count: 1
-            }]);
+                {
+                    name: updatedNode.tags[0],
+                    count: 1
+                },
+                {
+                    name: updatedNode.tags[1],
+                    count: 1
+                }]);
         });
 
         it("update handlers empty new values", function() {
