@@ -49,9 +49,16 @@ METRICS_DEFINITIONS = [
 ]
 
 
+def _get_maas_id():
+    # Wrap the call in a function to avoid circular imports
+    from provisioningserver.utils.env import get_maas_id
+    return get_maas_id()
+
+
 PROMETHEUS_METRICS = create_metrics(
     METRICS_DEFINITIONS,
     extra_labels={
-        'host': get_machine_default_gateway_ip
+        'host': get_machine_default_gateway_ip,
+        'maas_id': _get_maas_id
     },
     update_handlers=[update_cpu_metrics, update_memory_metrics])
