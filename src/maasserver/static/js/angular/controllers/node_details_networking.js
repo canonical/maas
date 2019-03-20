@@ -33,6 +33,7 @@ angular.module('MAAS').filter('filterByUnusedForInterface', function() {
 });
 
 
+
 // Filter that is specific to the NodeNetworkingController. Filters the
 // list of interfaces to not include the current parent interfaces being
 // bonded together.
@@ -1510,11 +1511,20 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             if(mac_address === "") {
                 mac_address = $scope.newBondInterface.primary.mac_address;
             }
-            var vlan_id, vlan = $scope.newBondInterface.primary.vlan;
+            var vlan_id, vlan = $scope.newBondInterface.vlan;
             if(angular.isObject(vlan)) {
+                vlan_id = vlan.id;
+            } else if(angular.isObject($scope.newBondInterface.primary.vlan)) {
+                vlan = $scope.newBondInterface.primary.vlan;
                 vlan_id = vlan.id;
             } else {
                 vlan_id = null;
+            }
+            var subnet_id, subnet = $scope.newBondInterface.subnet;
+            if(angular.isObject(subnet)) {
+                subnet_id = subnet.id;
+            } else {
+                subnet_id = null;
             }
             var params = {
                 name: $scope.newBondInterface.name,
@@ -1522,10 +1532,13 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                 tags: $scope.newBondInterface.tags.map(
                     function(tag) { return tag.text; }),
                 parents: parents,
-                vlan: vlan_id,
                 bond_mode: $scope.newBondInterface.bond_mode,
                 bond_lacp_rate: $scope.newBondInterface.lacpRate,
-                bond_xmit_hash_policy: $scope.newBondInterface.xmitHashPolicy
+                bond_xmit_hash_policy: $scope.newBondInterface.xmitHashPolicy,
+                vlan: vlan_id,
+                subnet: subnet_id,
+                mode: $scope.newBondInterface.mode,
+                ip_address: $scope.newBondInterface.ip_address
             };
             $scope.$parent.nodesManager.createBondInterface(
                 $scope.node, params).then(null, function(error) {
@@ -1647,16 +1660,25 @@ angular.module('MAAS').controller('NodeNetworkingController', [
 
             var parents = [$scope.newBridgeInterface.primary.id];
             var mac_address = $scope.newBridgeInterface.mac_address;
-            var fabric = $scope.newBridgeInterface.fabric;
-            var vlan = $scope.newBridgeInterface.vlan;
             if(mac_address === "") {
                 mac_address = $scope.newBridgeInterface.primary.mac_address;
             }
-            if(fabric === "") {
-                fabric = $scope.newBridgeInterface.primary.fabric;
-            }
-            if(vlan === "") {
+
+            var vlan_id, vlan = $scope.newBridgeInterface.vlan;
+            if(angular.isObject(vlan)) {
+                vlan_id = vlan.id;
+            } else if(angular.isObject(
+                $scope.newBridgeInterface.primary.vlan)) {
                 vlan = $scope.newBridgeInterface.primary.vlan;
+                vlan_id = vlan.id;
+            } else {
+                vlan_id = null;
+            }
+            var subnet_id, subnet = $scope.newBridgeInterface.subnet;
+            if(angular.isObject(subnet)) {
+                subnet_id = subnet.id;
+            } else {
+                subnet_id = null;
             }
 
             var params = {
@@ -1665,10 +1687,12 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                 tags: $scope.newBridgeInterface.tags.map(
                     function(tag) { return tag.text; }),
                 parents: parents,
-                vlan: vlan.id,
-                fabric: fabric.id,
                 bridge_stp: $scope.newBridgeInterface.bridge_stp,
-                bridge_fd: $scope.newBridgeInterface.bridge_fd
+                bridge_fd: $scope.newBridgeInterface.bridge_fd,
+                vlan: vlan_id,
+                subnet: subnet_id,
+                mode: $scope.newBridgeInterface.mode,
+                ip_address: $scope.newBridgeInterface.ip_address
             };
             $scope.$parent.nodesManager.createBridgeInterface(
                 $scope.node, params).then(null, function(error) {
@@ -1757,7 +1781,8 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                         function(tag) { return tag.text; }),
                     mac_address: $scope.newInterface.mac_address,
                     vlan: $scope.newInterface.vlan.id,
-                    mode: $scope.newInterface.mode
+                    mode: $scope.newInterface.mode,
+                    ip_address: $scope.newInterface.ip_address
                 };
             }
             if(angular.isObject($scope.newInterface.subnet)) {

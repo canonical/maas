@@ -3716,6 +3716,9 @@ describe("NodeNetworkingController", function() {
             var vlan = {
                 id: makeInteger(0, 100)
             };
+            var subnet = {
+                id: makeInteger(0, 100)
+            };
             var nic1 = {
                 id: makeInteger(0, 100),
                 link_id: makeInteger(0, 100),
@@ -3743,6 +3746,10 @@ describe("NodeNetworkingController", function() {
             spyOn($scope, "cannotAddBond").and.returnValue(false);
             $scope.newBondInterface.name = "bond0";
             $scope.newBondInterface.mac_address = "00:11:22:33:44:55";
+            $scope.newBondInterface.vlan = vlan;
+            $scope.newBondInterface.subnet = subnet;
+            $scope.newBondInterface.mode = "static";
+            $scope.newBondInterface.ip_address = "192.168.1.100";
             $scope.addBond();
 
             expect(MachinesManager.createBondInterface).toHaveBeenCalledWith(
@@ -3751,10 +3758,13 @@ describe("NodeNetworkingController", function() {
                     mac_address: "00:11:22:33:44:55",
                     tags: [],
                     parents: [nic1.id, nic2.id],
-                    vlan: vlan.id,
                     bond_mode: "active-backup",
                     bond_lacp_rate: "fast",
-                    bond_xmit_hash_policy: "layer2"
+                    bond_xmit_hash_policy: "layer2",
+                    vlan: vlan.id,
+                    subnet: subnet.id,
+                    mode: "static",
+                    ip_address: "192.168.1.100"
                 });
             expect($scope.interfaces).toEqual([]);
             expect($scope.newBondInterface).toEqual({});
@@ -3799,10 +3809,13 @@ describe("NodeNetworkingController", function() {
                     mac_address: "00:11:22:33:44:55",
                     tags: [],
                     parents: [nic1.id, nic2.id],
-                    vlan: null,
                     bond_mode: "active-backup",
                     bond_lacp_rate: "fast",
-                    bond_xmit_hash_policy: "layer2"
+                    bond_xmit_hash_policy: "layer2",
+                    vlan: undefined,
+                    subnet: null,
+                    mode: undefined,
+                    ip_address: undefined
                 });
             expect($scope.interfaces).toEqual([]);
             expect($scope.newBondInterface).toEqual({});
@@ -4023,6 +4036,9 @@ describe("NodeNetworkingController", function() {
             var vlan = {
                 id: makeInteger(0, 100)
             };
+            var subnet = {
+                id: makeInteger(0, 100)
+            };
             var fabric = {
                 id: makeInteger(0, 100)
             };
@@ -4033,6 +4049,7 @@ describe("NodeNetworkingController", function() {
                 vlan: vlan,
                 fabric: fabric
             };
+
             $scope.interfaces = [nic1];
             $scope.interfaceLinksMap = {};
             $scope.interfaceLinksMap[nic1.id] = {};
@@ -4045,6 +4062,10 @@ describe("NodeNetworkingController", function() {
             spyOn($scope, "cannotAddBridge").and.returnValue(false);
             $scope.newBridgeInterface.name = "br0";
             $scope.newBridgeInterface.mac_address = "00:11:22:33:44:55";
+            $scope.newBridgeInterface.vlan = vlan;
+            $scope.newBridgeInterface.subnet = subnet;
+            $scope.newBridgeInterface.mode = "static";
+            $scope.newBridgeInterface.ip_address = "192.168.1.100";
             $scope.addBridge();
 
             expect(MachinesManager.createBridgeInterface).toHaveBeenCalledWith(
@@ -4053,10 +4074,12 @@ describe("NodeNetworkingController", function() {
                     mac_address: "00:11:22:33:44:55",
                     tags: [],
                     parents: [nic1.id],
-                    vlan: vlan.id,
-                    fabric: fabric.id,
                     bridge_stp: false,
-                    bridge_fd: 15
+                    bridge_fd: 15,
+                    vlan: vlan.id,
+                    subnet: subnet.id,
+                    mode: "static",
+                    ip_address: "192.168.1.100"
                 });
             expect($scope.interfaces).toEqual([]);
             expect($scope.newBridgeInterface).toEqual({});
@@ -4296,7 +4319,8 @@ describe("NodeNetworkingController", function() {
                         tags: [],
                         vlan: vlan.id,
                         subnet: subnet.id,
-                        mode: "auto"
+                        mode: "auto",
+                        ip_address: undefined
                     });
             expect($scope.newInterface).toEqual({});
             expect($scope.selectedMode).toBeNull();
