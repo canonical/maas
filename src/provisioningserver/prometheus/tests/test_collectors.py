@@ -5,7 +5,6 @@ from maastesting.fixtures import TempDirectory
 from maastesting.testcase import MAASTestCase
 import prometheus_client
 from provisioningserver.prometheus.collectors import (
-    CPU_TIME_FIELDS,
     MEMINFO_FIELDS,
     node_metrics_definitions,
     update_cpu_metrics,
@@ -18,10 +17,14 @@ class TestNodeMetricsDefinitions(MAASTestCase):
 
     def test_definitions(self):
         definitions = node_metrics_definitions()
-        metrics_count = len(MEMINFO_FIELDS) + len(CPU_TIME_FIELDS)
+        # only one metric for memory
+        metrics_count = len(MEMINFO_FIELDS) + 1
         self.assertEqual(len(definitions), metrics_count)
         for definition in definitions:
-            self.assertEqual('Gauge', definition.type)
+            if definition.name.startswith('maas_node_mem'):
+                self.assertEqual('Gauge', definition.type)
+            else:
+                self.assertEqual('Counter', definition.type)
 
 
 class TestUpdateMemoryMetrics(MAASTestCase):
@@ -65,13 +68,13 @@ class TestUpdateCPUMetrics(MAASTestCase):
             registry=prometheus_client.CollectorRegistry())
         update_cpu_metrics(prometheus_metrics, path=stat)
         output = prometheus_metrics.generate_latest().decode('ascii')
-        self.assertIn('maas_node_cpu_time_user 111.0', output)
-        self.assertIn('maas_node_cpu_time_nice 222.0', output)
-        self.assertIn('maas_node_cpu_time_system 333.0', output)
-        self.assertIn('maas_node_cpu_time_idle 444.0', output)
-        self.assertIn('maas_node_cpu_time_iowait 555.0', output)
-        self.assertIn('maas_node_cpu_time_irq 666.0', output)
-        self.assertIn('maas_node_cpu_time_softirq 7.0', output)
-        self.assertIn('maas_node_cpu_time_steal 888.0', output)
-        self.assertIn('maas_node_cpu_time_guest 9.0', output)
-        self.assertIn('maas_node_cpu_time_guest_nice 11.0', output)
+        self.assertIn('maas_node_cpu_time{state="user"} 1.11', output)
+        self.assertIn('maas_node_cpu_time{state="nice"} 2.22', output)
+        self.assertIn('maas_node_cpu_time{state="system"} 3.33', output)
+        self.assertIn('maas_node_cpu_time{state="idle"} 4.44', output)
+        self.assertIn('maas_node_cpu_time{state="iowait"} 5.55', output)
+        self.assertIn('maas_node_cpu_time{state="irq"} 6.66', output)
+        self.assertIn('maas_node_cpu_time{state="softirq"} 0.07', output)
+        self.assertIn('maas_node_cpu_time{state="steal"} 8.88', output)
+        self.assertIn('maas_node_cpu_time{state="guest"} 0.09', output)
+        self.assertIn('maas_node_cpu_time{state="guest_nice"} 0.11', output)

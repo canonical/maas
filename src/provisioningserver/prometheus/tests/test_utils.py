@@ -44,6 +44,16 @@ class TestPrometheusMetrics(MAASTestCase):
             'a_gauge{bar="BAR",foo="FOO"} 22.0',
             prometheus_metrics.generate_latest().decode('ascii'))
 
+    def test_update_call_value_class(self):
+        definitions = [MetricDefinition('Counter', 'a_counter', 'A Counter')]
+        prometheus_metrics = PrometheusMetrics(
+            definitions=definitions,
+            registry=prometheus_client.CollectorRegistry())
+        prometheus_metrics.update('a_counter', 'set', value=22)
+        self.assertIn(
+            'a_counter 22.0',
+            prometheus_metrics.generate_latest().decode('ascii'))
+
     def test_update_with_extra_labels(self):
         definitions = [
             MetricDefinition('Gauge', 'a_gauge', 'A Gauge', ['foo', 'bar'])

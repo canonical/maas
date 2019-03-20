@@ -37,25 +37,34 @@ MEMINFO_FIELDS = [
     'WritebackTmp',
 ]
 
+# Fields for the "cpu" row in /proc/stat, in the order they appear in
 CPU_TIME_FIELDS = [
     'user', 'nice', 'system', 'idle', 'iowait', 'irq', 'softirq', 'steal',
     'guest', 'guest_nice',
 ]
 
 
+# CPU counters are based on the system clock multiplier. This it technically
+# dynamic and can be retrieved via sysconf(), but it's currently 100 on most
+# platforms and recent kernels.
+#
+# Prometheus libraries also hardcodes it the same way (see
+# https://github.com/prometheus/procfs)
+USER_HZ = 100
+
+
 def node_metrics_definitions():
     """Return a list of MetricDefinitions for memory and cpu metrics."""
-    mem_defs = [
+    definitions = [
         MetricDefinition(
             'Gauge', 'maas_node_mem_{}'.format(field),
-            'Memory information field {}'.format(field), [])
+            'Memory information field {}'.format(field))
         for field in MEMINFO_FIELDS]
-    cpu_defs = [
+    definitions.append(
         MetricDefinition(
-            'Gauge', 'maas_node_cpu_time_{}'.format(field),
-            'CPU "{}" time'.format(field), [])
-        for field in CPU_TIME_FIELDS]
-    return mem_defs + cpu_defs
+            'Counter', 'maas_node_cpu_time', 'CPU time',
+            labels=['state']))
+    return definitions
 
 
 def update_memory_metrics(prometheus_metrics: PrometheusMetrics, path=None):
@@ -75,7 +84,8 @@ def update_cpu_metrics(prometheus_metrics: PrometheusMetrics, path=None):
         value = cpu_values.get(field)
         if value is not None:
             prometheus_metrics.update(
-                'maas_node_cpu_time_{}'.format(field), 'set', value=value)
+                'maas_node_cpu_time',
+                'set', value=value / USER_HZ, labels={'state': field})
 
 
 def _collect_memory_values(path=None):

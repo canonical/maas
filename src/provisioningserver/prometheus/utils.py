@@ -71,7 +71,10 @@ class PrometheusMetrics:
             all_labels.update(extra_labels)
         if all_labels:
             metric = metric.labels(**all_labels)
-        func = getattr(metric, action)
+        func = getattr(metric, action, None)
+        if func is None:
+            # access the ValueClass directly
+            func = getattr(metric._value, action)
         if value is None:
             func()
         else:
