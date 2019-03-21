@@ -2945,7 +2945,8 @@
           "estimated_runtime": "1:03:28",
           "parameters": {},
           "script_id": null,
-          "script_revision_id": null
+          "script_revision_id": null,
+          "suppressed": false
         },
         {
           "id": 344,
@@ -2963,7 +2964,8 @@
           "estimated_runtime": "0:44:30",
           "parameters": {},
           "script_id": null,
-          "script_revision_id": null
+          "script_revision_id": null,
+          "suppressed": false
         },
         {
           "id": 343,
@@ -2981,16 +2983,17 @@
           "estimated_runtime": "1:55:49",
           "parameters": {},
           "script_id": null,
-          "script_revision_id": null
+          "script_revision_id": null,
+          "suppressed": false
         },
         {
           "id": 345,
           "created": "Thu, 06 Dec 2018 20:41:55 -0000",
           "updated": "Thu, 06 Dec 2018 20:41:56 -0000",
           "name": "00-maas-02-virtuality",
-          "status": 2,
-          "status_name": "Passed",
-          "exit_status": 0,
+          "status": 3,
+          "status_name": "Failed",
+          "exit_status": 1,
           "started": "Tue, 09 May 2017 14:02:19 -0000",
           "ended": "Tue, 09 May 2017 15:08:21 -0000",
           "runtime": "1:06:02",
@@ -2999,16 +3002,17 @@
           "estimated_runtime": "1:06:02",
           "parameters": {},
           "script_id": null,
-          "script_revision_id": null
+          "script_revision_id": null,
+          "suppressed": true
         },
         {
           "id": 346,
           "created": "Thu, 06 Dec 2018 20:41:55 -0000",
           "updated": "Thu, 06 Dec 2018 20:41:56 -0000",
           "name": "00-maas-03-install-lldpd",
-          "status": 2,
-          "status_name": "Passed",
-          "exit_status": 0,
+          "status": 3,
+          "status_name": "Failed",
+          "exit_status": 1,
           "started": "Tue, 07 Nov 2017 15:05:05 -0000",
           "ended": "Tue, 07 Nov 2017 15:59:57 -0000",
           "runtime": "0:54:52",
@@ -3017,7 +3021,8 @@
           "estimated_runtime": "0:54:52",
           "parameters": {},
           "script_id": null,
-          "script_revision_id": null
+          "script_revision_id": null,
+          "suppressed": true
         },
         {
           "id": 347,
@@ -3035,7 +3040,8 @@
           "estimated_runtime": "2:20:19",
           "parameters": {},
           "script_id": null,
-          "script_revision_id": null
+          "script_revision_id": null,
+          "suppressed": false
         },
         {
           "id": 348,
@@ -3053,16 +3059,17 @@
           "estimated_runtime": "0:01:06",
           "parameters": {},
           "script_id": null,
-          "script_revision_id": null
+          "script_revision_id": null,
+          "suppressed": false
         },
         {
           "id": 349,
           "created": "Thu, 06 Dec 2018 20:41:55 -0000",
           "updated": "Thu, 06 Dec 2018 20:41:56 -0000",
           "name": "00-maas-06-get-fruid-api-data",
-          "status": 2,
-          "status_name": "Passed",
-          "exit_status": 0,
+          "status": 3,
+          "status_name": "Failed",
+          "exit_status": 1,
           "started": "Wed, 04 Jan 2017 19:25:11 -0000",
           "ended": "Wed, 04 Jan 2017 19:33:04 -0000",
           "runtime": "0:07:53",
@@ -3071,7 +3078,8 @@
           "estimated_runtime": "0:07:53",
           "parameters": {},
           "script_id": null,
-          "script_revision_id": null
+          "script_revision_id": null,
+          "suppressed": true
         },
         {
           "id": 350,
@@ -5591,26 +5599,26 @@
       "id": 22,
       "system_id": "8f86dk",
       "devices": [
-	{
-	  "uuid": "b376683f-27b6-4ee9-b51a-ec1b1bf3493d",
-	  "size": 45248151552,
-	  "bootable": false,
-	  "tags": [],
-	  "id": 75,
-	  "system_id": "8f86dk",
-	  "type": "partition",
-	  "device_id": 24,
-	  "filesystem": {
-	    "fstype": "vmfs6",
-	    "label": null,
-	    "uuid": "0894f25f-9514-488f-b5c8-e7eb4e8a7b88",
-	    "mount_point": null,
-	    "mount_options": null
-	  },
-	  "used_for": "VMFS extent for datastore1",
-	  "path": "/dev/disk/by-dname/sda-part9",
-	  "resource_uri": "/MAAS/api/2.0/nodes/8f86dk/blockdevices/24/partition/75"
-	}
+        {
+          "uuid": "b376683f-27b6-4ee9-b51a-ec1b1bf3493d",
+          "size": 45248151552,
+          "bootable": false,
+          "tags": [],
+          "id": 75,
+          "system_id": "8f86dk",
+          "type": "partition",
+          "device_id": 24,
+          "filesystem": {
+            "fstype": "vmfs6",
+            "label": null,
+            "uuid": "0894f25f-9514-488f-b5c8-e7eb4e8a7b88",
+            "mount_point": null,
+            "mount_options": null
+          },
+          "used_for": "VMFS extent for datastore1",
+          "path": "/dev/disk/by-dname/sda-part9",
+          "resource_uri": "/MAAS/api/2.0/nodes/8f86dk/blockdevices/24/partition/75"
+        }
       ],
       "name": "datastore1",
       "size": 45248151552,
@@ -5622,26 +5630,26 @@
       "id": 23,
       "system_id": "8f86dk",
       "devices": [
-	{
-	  "uuid": "1a456f4d-f204-459e-bba5-2e35f4ee6007",
-	  "size": 21466447872,
-	  "bootable": false,
-	  "tags": [],
-	  "id": 79,
-	  "system_id": "8f86dk",
-	  "type": "partition",
-	  "device_id": 25,
-	  "filesystem": {
-	    "fstype": "vmfs6",
-	    "label": null,
-	    "uuid": "69afdece-307a-4cd2-bd85-fbbfccddaa20",
-	    "mount_point": null,
-	    "mount_options": null
-	  },
-	  "used_for": "VMFS extent for datastore2",
-	  "path": "/dev/disk/by-dname/sdb-part2",
-	  "resource_uri": "/MAAS/api/2.0/nodes/8f86dk/blockdevices/25/partition/79"
-	}
+        {
+          "uuid": "1a456f4d-f204-459e-bba5-2e35f4ee6007",
+          "size": 21466447872,
+          "bootable": false,
+          "tags": [],
+          "id": 79,
+          "system_id": "8f86dk",
+          "type": "partition",
+          "device_id": 25,
+          "filesystem": {
+            "fstype": "vmfs6",
+            "label": null,
+            "uuid": "69afdece-307a-4cd2-bd85-fbbfccddaa20",
+            "mount_point": null,
+            "mount_options": null
+          },
+          "used_for": "VMFS extent for datastore2",
+          "path": "/dev/disk/by-dname/sdb-part2",
+          "resource_uri": "/MAAS/api/2.0/nodes/8f86dk/blockdevices/25/partition/79"
+        }
       ],
       "name": "datastore2",
       "size": 21466447872,
@@ -5653,44 +5661,44 @@
   "vmfs-datastores-create": {
     "devices": [
       {
-	"uuid": "b376683f-27b6-4ee9-b51a-ec1b1bf3493d",
-	"size": 45248151552,
-	"bootable": false,
-	"tags": [],
-	"type": "partition",
-	"path": "/dev/disk/by-dname/sda-part9",
-	"device_id": 24,
-	"filesystem": {
-	  "fstype": "vmfs6",
-	  "label": null,
-	  "uuid": "3016ad2d-cb05-4640-bb2e-b6d3e0e244b0",
-	  "mount_point": null,
-	  "mount_options": null
-	},
-	"used_for": "VMFS extent for datastore1",
-	"id": 75,
-	"system_id": "8f86dk",
-	"resource_uri": "/MAAS/api/2.0/nodes/8f86dk/blockdevices/24/partition/75"
+        "uuid": "b376683f-27b6-4ee9-b51a-ec1b1bf3493d",
+        "size": 45248151552,
+        "bootable": false,
+        "tags": [],
+        "type": "partition",
+        "path": "/dev/disk/by-dname/sda-part9",
+        "device_id": 24,
+        "filesystem": {
+          "fstype": "vmfs6",
+          "label": null,
+          "uuid": "3016ad2d-cb05-4640-bb2e-b6d3e0e244b0",
+          "mount_point": null,
+          "mount_options": null
+        },
+        "used_for": "VMFS extent for datastore1",
+        "id": 75,
+        "system_id": "8f86dk",
+        "resource_uri": "/MAAS/api/2.0/nodes/8f86dk/blockdevices/24/partition/75"
       },
       {
-	"uuid": "58259c3c-5bd1-4cab-8c5e-31a5fa10c314",
-	"size": 21466447872,
-	"bootable": false,
-	"tags": [],
-	"type": "partition",
-	"path": "/dev/disk/by-dname/sdb-part2",
-	"device_id": 25,
-	"filesystem": {
-	  "fstype": "vmfs6",
-	  "label": null,
-	  "uuid": "7ce3af06-b734-4a30-a65a-81e8d8ff948e",
-	  "mount_point": null,
-	  "mount_options": null
-	},
-	"used_for": "VMFS extent for datastore1",
-	"id": 80,
-	"system_id": "8f86dk",
-	"resource_uri": "/MAAS/api/2.0/nodes/8f86dk/blockdevices/25/partition/80"
+        "uuid": "58259c3c-5bd1-4cab-8c5e-31a5fa10c314",
+        "size": 21466447872,
+        "bootable": false,
+        "tags": [],
+        "type": "partition",
+        "path": "/dev/disk/by-dname/sdb-part2",
+        "device_id": 25,
+        "filesystem": {
+          "fstype": "vmfs6",
+          "label": null,
+          "uuid": "7ce3af06-b734-4a30-a65a-81e8d8ff948e",
+          "mount_point": null,
+          "mount_options": null
+        },
+        "used_for": "VMFS extent for datastore1",
+        "id": 80,
+        "system_id": "8f86dk",
+        "resource_uri": "/MAAS/api/2.0/nodes/8f86dk/blockdevices/25/partition/80"
       }
     ],
     "size": 66714599424,
@@ -5707,24 +5715,24 @@
     "uuid": "7fb744d3-ff7b-4235-8a2b-aeecf96ad3d0",
     "devices": [
       {
-	"uuid": "b376683f-27b6-4ee9-b51a-ec1b1bf3493d",
-	"size": 45248151552,
-	"bootable": false,
-	"tags": [],
-	"used_for": "VMFS extent for datastore1",
-	"device_id": 24,
-	"path": "/dev/disk/by-dname/sda-part9",
-	"system_id": "8f86dk",
-	"type": "partition",
-	"filesystem": {
-	  "fstype": "vmfs6",
-	  "label": null,
-	  "uuid": "ad5a77ad-27bb-4144-9c38-29a51a8f966c",
-	  "mount_point": null,
-	  "mount_options": null
-	},
-	"id": 75,
-	"resource_uri": "/MAAS/api/2.0/nodes/8f86dk/blockdevices/24/partition/75"
+        "uuid": "b376683f-27b6-4ee9-b51a-ec1b1bf3493d",
+        "size": 45248151552,
+        "bootable": false,
+        "tags": [],
+        "used_for": "VMFS extent for datastore1",
+        "device_id": 24,
+        "path": "/dev/disk/by-dname/sda-part9",
+        "system_id": "8f86dk",
+        "type": "partition",
+        "filesystem": {
+          "fstype": "vmfs6",
+          "label": null,
+          "uuid": "ad5a77ad-27bb-4144-9c38-29a51a8f966c",
+          "mount_point": null,
+          "mount_options": null
+        },
+        "id": 75,
+        "resource_uri": "/MAAS/api/2.0/nodes/8f86dk/blockdevices/24/partition/75"
       }
     ],
     "human_size": "45.2 GB",
@@ -5738,24 +5746,24 @@
     "uuid": "7fb744d3-ff7b-4235-8a2b-aeecf96ad3d0",
     "devices": [
       {
-	"uuid": "b376683f-27b6-4ee9-b51a-ec1b1bf3493d",
-	"size": 45248151552,
-	"bootable": false,
-	"tags": [],
-	"used_for": "VMFS extent for datastore1",
-	"device_id": 24,
-	"path": "/dev/disk/by-dname/sda-part9",
-	"system_id": "8f86dk",
-	"type": "partition",
-	"filesystem": {
-	  "fstype": "vmfs6",
-	  "label": null,
-	  "uuid": "ad5a77ad-27bb-4144-9c38-29a51a8f966c",
-	  "mount_point": null,
-	  "mount_options": null
-	},
-	"id": 75,
-	"resource_uri": "/MAAS/api/2.0/nodes/8f86dk/blockdevices/24/partition/75"
+        "uuid": "b376683f-27b6-4ee9-b51a-ec1b1bf3493d",
+        "size": 45248151552,
+        "bootable": false,
+        "tags": [],
+        "used_for": "VMFS extent for datastore1",
+        "device_id": 24,
+        "path": "/dev/disk/by-dname/sda-part9",
+        "system_id": "8f86dk",
+        "type": "partition",
+        "filesystem": {
+          "fstype": "vmfs6",
+          "label": null,
+          "uuid": "ad5a77ad-27bb-4144-9c38-29a51a8f966c",
+          "mount_point": null,
+          "mount_options": null
+        },
+        "id": 75,
+        "resource_uri": "/MAAS/api/2.0/nodes/8f86dk/blockdevices/24/partition/75"
       }
     ],
     "human_size": "45.2 GB",

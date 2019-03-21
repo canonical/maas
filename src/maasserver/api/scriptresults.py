@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `ScriptResults`."""
@@ -23,6 +23,7 @@ from django.shortcuts import get_object_or_404
 from formencode.validators import (
     Bool,
     String,
+    StringBool,
 )
 from maasserver.api.support import (
     admin_method,
@@ -168,11 +169,12 @@ class NodeScriptResultHandler(OperationsHandler):
         'ended',
         'runtime',
         'results',
+        'suppressed',
     )
 
     model = ScriptSet
 
-    create = update = None
+    create = None
 
     @classmethod
     def resource_uri(cls, script_set=None):
@@ -231,6 +233,7 @@ class NodeScriptResultHandler(OperationsHandler):
                 'parameters': script_result.parameters,
                 'script_id': script_result.script_id,
                 'script_revision_id': script_result.script_version_id,
+                'suppressed': script_result.suppressed,
             }
             if script_set.include_output:
                 result['output'] = b64encode(script_result.output)
@@ -473,3 +476,66 @@ class NodeScriptResultHandler(OperationsHandler):
         else:
             raise MAASAPIValidationError(
                 'Unknown filetype "%s" must be txt or tar.xz' % filetype)
+
+    @admin_method
+    def update(self, request, system_id, id):
+        """@description-title Update specific script result
+        @description Update a set of test results for a given system_id and
+        script id.
+
+        "id" can either be the script set id, ``current-commissioning``,
+        ``current-testing``, or ``current-installation``.
+
+        @param (string) "{system_id}" [required=true] The machine's system_id.
+        @param (string) "{id}" [required=true] The script result id.
+
+        @param (string) "hardware_type" [required=false] Only return scripts
+        for the given hardware type.  Can be ``node``, ``cpu``, ``memory``, or
+        ``storage``.  Defaults to all.
+
+        @param (string) "filters" [required=false] A comma seperated list to
+        show only results that ran with a script name, tag, or id.
+
+        @param (string) "include_output" [required=false] Include the base64
+        encoded output from the script if any value for include_output is
+        given.
+
+        @param (boolean) "suppressed" [required=false] Set whether or not
+        this script result should be suppressed using 'true' or 'false'.
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing the requested
+        script result object.
+        @success-example "success-json" [exkey=script-results-read-by-id]
+        placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine or script result is
+        not found.
+        @error-example "not-found"
+            Not Found
+        """
+        script_set = self._get_script_set(request, system_id, id)
+        include_output = get_optional_param(
+            request.PUT, 'include_output', False, Bool)
+        filters = get_optional_param(request.PUT, 'filters', None, String)
+        if filters is not None:
+            filters = filters.split(',')
+        hardware_type = get_optional_param(request.PUT, 'hardware_type')
+        if hardware_type is not None:
+            try:
+                hardware_type = translate_hardware_type(hardware_type)
+            except ValidationError as e:
+                raise MAASAPIValidationError(e)
+        script_set.include_output = include_output
+        script_set.filters = filters
+        script_set.hardware_type = hardware_type
+        suppressed = get_optional_param(
+            request.data, 'suppressed', None, StringBool)
+        # Set the suppressed flag for the script results.
+        if suppressed is not None:
+            for script_result in filter_script_results(
+                    script_set, filters, hardware_type):
+                script_result.suppressed = suppressed
+                script_result.save()
+        return script_set

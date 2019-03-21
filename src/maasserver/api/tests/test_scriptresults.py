@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the script result API."""
@@ -277,6 +277,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
                 'parameters': script_result.parameters,
                 'script_id': script_result.script_id,
                 'script_revision_id': script_result.script_version_id,
+                'suppressed': script_result.suppressed,
                 }, result)
 
     def test_GET_include_output(self):
@@ -326,6 +327,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
                 'parameters': script_result.parameters,
                 'script_id': script_result.script_id,
                 'script_revision_id': script_result.script_version_id,
+                'suppressed': script_result.suppressed,
                 'output': b64encode(script_result.output).decode(),
                 'stdout': b64encode(script_result.stdout).decode(),
                 'stderr': b64encode(script_result.stderr).decode(),
@@ -392,6 +394,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
                 'parameters': script_result.parameters,
                 'script_id': script_result.script_id,
                 'script_revision_id': script_result.script_version_id,
+                'suppressed': script_result.suppressed,
                 }, result)
 
     def test_GET_filters_by_hardware_type(self):
@@ -436,6 +439,277 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
         response = self.client.delete(self.get_script_result_uri(script_set))
         self.assertThat(response, HasStatusCode(http.client.FORBIDDEN))
         self.assertIsNotNone(reload_object(script_set))
+
+    def test_PUT_admin_only(self):
+        script_set = self.make_scriptset()
+        response = self.client.put(
+            self.get_script_result_uri(script_set))
+        self.assertThat(response, HasStatusCode(http.client.FORBIDDEN))
+        self.assertIsNotNone(reload_object(script_set))
+
+    def test_PUT_include_output(self):
+        self.become_admin()
+        script_set = self.make_scriptset()
+        script_results = {}
+        for _ in range(3):
+            script_result = factory.make_ScriptResult(script_set=script_set)
+            script_results[script_result.name] = script_result
+
+        response = self.client.put(
+            self.get_script_result_uri(script_set),
+            {'include_output': True})
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        parsed_result = json_load_bytes(response.content)
+        results = parsed_result.pop('results')
+
+        self.assertDictEqual({
+            'id': script_set.id,
+            'system_id': script_set.node.system_id,
+            'type': script_set.result_type,
+            'type_name': script_set.result_type_name,
+            'last_ping': fmt_time(script_set.last_ping),
+            'status': script_set.status,
+            'status_name': script_set.status_name,
+            'started': fmt_time(script_set.started),
+            'ended': fmt_time(script_set.ended),
+            'runtime': script_set.runtime,
+            'resource_uri': '/MAAS/api/2.0/nodes/%s/results/%d/' % (
+                script_set.node.system_id, script_set.id),
+            }, parsed_result)
+        for result in results:
+            script_result = script_results[result['name']]
+            self.assertDictEqual({
+                'id': script_result.id,
+                'name': script_result.name,
+                'created': fmt_time(script_result.created),
+                'updated': fmt_time(script_result.updated),
+                'status': script_result.status,
+                'status_name': script_result.status_name,
+                'exit_status': script_result.exit_status,
+                'started': fmt_time(script_result.started),
+                'ended': fmt_time(script_result.ended),
+                'runtime': script_result.runtime,
+                'starttime': script_result.starttime,
+                'endtime': script_result.endtime,
+                'estimated_runtime': script_result.estimated_runtime,
+                'parameters': script_result.parameters,
+                'script_id': script_result.script_id,
+                'script_revision_id': script_result.script_version_id,
+                'suppressed': script_result.suppressed,
+                'output': b64encode(script_result.output).decode(),
+                'stdout': b64encode(script_result.stdout).decode(),
+                'stderr': b64encode(script_result.stderr).decode(),
+                'result': b64encode(script_result.result).decode(),
+                }, result)
+
+    def test_PUT_filters(self):
+        self.become_admin()
+        scripts = [factory.make_Script() for _ in range(10)]
+        script_set = self.make_scriptset()
+        script_results = {}
+        for script in scripts:
+            script_result = factory.make_ScriptResult(
+                script_set=script_set, script=script)
+            script_results[script_result.name] = script_result
+        results_list = list(script_results.values())
+        filtered_results = [random.choice(results_list) for _ in range(3)]
+
+        response = self.client.get(
+            self.get_script_result_uri(script_set),
+            {'filters': '%s,%s,%d' % (
+                filtered_results[0].name,
+                random.choice([
+                    tag for tag in filtered_results[1].script.tags
+                    if 'tag' in tag
+                    ]),
+                filtered_results[2].id)})
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        parsed_result = json_load_bytes(response.content)
+        results = parsed_result.pop('results')
+
+        self.assertDictEqual({
+            'id': script_set.id,
+            'system_id': script_set.node.system_id,
+            'type': script_set.result_type,
+            'type_name': script_set.result_type_name,
+            'last_ping': fmt_time(script_set.last_ping),
+            'status': script_set.status,
+            'status_name': script_set.status_name,
+            'started': fmt_time(script_set.started),
+            'ended': fmt_time(script_set.ended),
+            'runtime': script_set.runtime,
+            'resource_uri': '/MAAS/api/2.0/nodes/%s/results/%d/' % (
+                script_set.node.system_id, script_set.id),
+            }, parsed_result)
+        for result in results:
+            self.assertIn(
+                result['name'],
+                [script_result.name for script_result in filtered_results])
+            script_result = script_results[result['name']]
+            self.assertDictEqual({
+                'id': script_result.id,
+                'name': script_result.name,
+                'created': fmt_time(script_result.created),
+                'updated': fmt_time(script_result.updated),
+                'status': script_result.status,
+                'status_name': script_result.status_name,
+                'exit_status': script_result.exit_status,
+                'started': fmt_time(script_result.started),
+                'ended': fmt_time(script_result.ended),
+                'runtime': script_result.runtime,
+                'starttime': script_result.starttime,
+                'endtime': script_result.endtime,
+                'estimated_runtime': script_result.estimated_runtime,
+                'parameters': script_result.parameters,
+                'script_id': script_result.script_id,
+                'script_revision_id': script_result.script_version_id,
+                'suppressed': script_result.suppressed,
+                }, result)
+
+    def test_PUT_updates_suppressed(self):
+        # This test does two passes.
+        # On the first pass, we set the default false suppressed field
+        # of all the script results to True, while on the second pass
+        # we set them all back to False.
+        self.become_admin()
+        node = factory.make_Node()
+        hardware_type = factory.pick_choice(HARDWARE_TYPE_CHOICES)
+        script_set = self.make_scriptset(node=node)
+        scripts = [
+            factory.make_Script(hardware_type=hardware_type)
+            for _ in range(3)
+        ]
+        for script in scripts:
+            factory.make_ScriptResult(script_set=script_set, script=script)
+        response = self.client.put(
+            self.get_script_result_uri(script_set), {'suppressed': True})
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        script_set = reload_object(script_set)
+        self.assertIsNotNone(script_set)
+        for script_result in script_set:
+            self.assertTrue(script_result.suppressed)
+        response = self.client.put(
+            self.get_script_result_uri(script_set), {'suppressed': False})
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        script_set = reload_object(script_set)
+        self.assertIsNotNone(script_set)
+        for script_result in script_set:
+            self.assertFalse(script_result.suppressed)
+
+    def test_PUT_suppressed_raises_validation_error(self):
+        self.become_admin()
+        node = factory.make_Node()
+        factory.pick_choice(HARDWARE_TYPE_CHOICES)
+        script_set = self.make_scriptset(node=node)
+        response = self.client.put(
+            self.get_script_result_uri(script_set), {'suppressed': 'testing'})
+        self.assertThat(response, HasStatusCode(http.client.BAD_REQUEST))
+
+    def test_PUT_suppressed_and_filters_by_script_result_id(self):
+        self.become_admin()
+        node = factory.make_Node()
+        hardware_type = factory.pick_choice(HARDWARE_TYPE_CHOICES)
+        script_set = self.make_scriptset(node=node)
+        script = factory.make_Script(hardware_type=hardware_type)
+        script_result = factory.make_ScriptResult(script_set, script=script)
+
+        # Make some additional scripts and script results
+        scripts = [
+            factory.make_Script(hardware_type=hardware_type)
+            for _ in range(3)
+        ]
+        script_results = []
+        for script in scripts:
+            script_results.append(
+                factory.make_ScriptResult(
+                    script_set=script_set, script=script))
+
+        response = self.client.put(
+            self.get_script_result_uri(script_set), {
+                'suppressed': True,
+                'filters': script_result.id
+            })
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        script_set = reload_object(script_set)
+        self.assertIsNotNone(script_set)
+        self.assertEquals(script_set.id, script_result.id)
+        script_result = reload_object(script_result)
+        self.assertTrue(script_result.suppressed)
+        for script_result in script_results:
+            script_result = reload_object(script_result)
+            self.assertFalse(script_result.suppressed)
+
+    def test_PUT_suppressed_and_filters_by_script_result_script_name(self):
+        self.become_admin()
+        node = factory.make_Node()
+        hardware_type = factory.pick_choice(HARDWARE_TYPE_CHOICES)
+        script_set = self.make_scriptset(node=node)
+        script = factory.make_Script(hardware_type=hardware_type)
+        script_result = factory.make_ScriptResult(script_set, script=script)
+
+        # Make some additional scripts and script results
+        scripts = [
+            factory.make_Script(hardware_type=hardware_type)
+            for _ in range(3)
+        ]
+        script_results = []
+        for script in scripts:
+            script_results.append(
+                factory.make_ScriptResult(
+                    script_set=script_set, script=script))
+
+        response = self.client.put(
+            self.get_script_result_uri(script_set), {
+                'suppressed': True,
+                'filters': script_result.script_name,
+            })
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        script_set = reload_object(script_set)
+        self.assertIsNotNone(script_set)
+        self.assertEquals(script_set.id, script_result.id)
+        script_result = reload_object(script_result)
+        self.assertTrue(script_result.suppressed)
+        for script_result in script_results:
+            script_result = reload_object(script_result)
+            self.assertFalse(script_result.suppressed)
+
+    def test_PUT_suppressed_and_filters_by_hardware_type(self):
+        self.become_admin()
+        node = factory.make_Node()
+        hardware_type = factory.pick_choice(HARDWARE_TYPE_CHOICES)
+        script_set = self.make_scriptset(node=node)
+        script = factory.make_Script(hardware_type=hardware_type)
+        script_result = factory.make_ScriptResult(script_set, script=script)
+
+        # Make some additional scripts and script results
+        scripts = [
+            factory.make_Script(
+                hardware_type=factory.pick_choice(
+                    HARDWARE_TYPE_CHOICES, but_not=[hardware_type]))
+            for _ in range(3)
+        ]
+        script_results = []
+        for script in scripts:
+            script_results.append(
+                factory.make_ScriptResult(
+                    script_set=script_set, script=script))
+
+        response = self.client.put(
+            self.get_script_result_uri(script_set), {
+                'suppressed': True,
+                'hardware_type': hardware_type,
+            })
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        script_set = reload_object(script_set)
+        self.assertIsNotNone(script_set)
+        self.assertEquals(script_set.id, script_result.id)
+        script_result = reload_object(script_result)
+        self.assertTrue(script_result.suppressed)
+        self.assertEquals(
+            hardware_type, script_result.script.hardware_type)
+        for script_result in script_results:
+            script_result = reload_object(script_result)
+            self.assertFalse(script_result.suppressed)
 
     def test_download(self):
         script_set = self.make_scriptset()
