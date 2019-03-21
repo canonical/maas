@@ -178,7 +178,6 @@ class cmd_init(Command):
         parser.add_argument(
             '--enable-candid', default=False, action="store_true",
             help=("Enable configuring the use of an external Candid server. "
-                  "This feature is currently experimental. "
                   "If this isn't enabled, all --candid-* arguments "
                   "will be ignored."))
         parser.add_argument(
