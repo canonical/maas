@@ -66,6 +66,7 @@ from maasserver.rbac import (
     FakeRBACClient,
     rbac,
 )
+from maasserver.storage_layouts import get_storage_layout_choices
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import (
@@ -2432,6 +2433,78 @@ class TestMachineHandler(MAASServerTestCase):
         self.assertRaises(
             HandlerPermissionError, handler.delete_filesystem, params)
 
+    def test_delete_vmfs_datastore(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {}, None)
+        node = factory.make_Node()
+        vmfs = factory.make_VMFS(node=node)
+        params = {
+            'system_id': node.system_id,
+            'vmfs_datastore_id': vmfs.id,
+        }
+        handler.delete_vmfs_datastore(params)
+        self.assertIsNone(reload_object(vmfs))
+
+    def test_delete_vmfs_datastore_invalid_id(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {}, None)
+        node = factory.make_Node()
+        vmfs = factory.make_VMFS(node=node)
+        params = {
+            'system_id': node.system_id,
+            'vmfs_datastore_id': 999,
+        }
+        self.assertRaises(
+            HandlerDoesNotExistError,
+            handler.delete_vmfs_datastore, params)
+        self.assertIsNotNone(reload_object(vmfs))
+
+    def test_update_vmfs_datastore(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {}, None)
+        node = factory.make_Node()
+        vmfs = factory.make_VMFS(node=node)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device)
+        partition = factory.make_Partition(partition_table=partition_table)
+        factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.LVM_PV, partition=partition,
+            filesystem_group=vmfs)
+        params = {
+            'system_id': node.system_id,
+            'vmfs_datastore_id': vmfs.id,
+            'remove_partitions': [partition.id],
+        }
+        handler.update_vmfs_datastore(params)
+        self.assertIsNone(partition.get_effective_filesystem())
+
+    def test_update_vmfs_datastore_invalid_id(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {}, None)
+        node = factory.make_Node()
+        vmfs = factory.make_VMFS(node=node)
+        params = {
+            'system_id': node.system_id,
+            'vmfs_datastore_id': 999,
+        }
+        self.assertRaises(
+            HandlerDoesNotExistError,
+            handler.update_vmfs_datastore, params)
+        self.assertIsNotNone(reload_object(vmfs))
+
+    def test_update_vmfs_datastore_raises_errors(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {}, None)
+        node = factory.make_Node()
+        vmfs = factory.make_VMFS(node=node)
+        params = {
+            'system_id': node.system_id,
+            'vmfs_datastore_id': vmfs.id,
+            'remove_partitions': [999],
+        }
+        self.assertRaises(HandlerError, handler.update_vmfs_datastore, params)
+
     def test_create_partition(self):
         user = factory.make_admin()
         handler = MachineHandler(user, {}, None)
@@ -2881,6 +2954,37 @@ class TestMachineHandler(MAASServerTestCase):
         self.assertRaises(
             HandlerPermissionError, handler.create_logical_volume, params)
 
+    def test_create_vmfs_datastore(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {}, None)
+        node = factory.make_Node()
+        bd_ids = [
+            factory.make_PhysicalBlockDevice(node=node).id
+            for _ in range(3)
+        ]
+        params = {
+            'system_id': node.system_id,
+            'name': 'datastore1',
+            'block_devices': bd_ids,
+        }
+        handler.create_vmfs_datastore(params)
+        vbd = node.virtualblockdevice_set.get(name='datastore1')
+        vmfs = vbd.filesystem_group
+        self.assertItemsEqual(
+            bd_ids,
+            [
+                fs.get_parent().partition_table.block_device.id
+                for fs in vmfs.filesystems.all()
+            ])
+
+    def test_create_vmfs_datastore_raises_errors(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {}, None)
+        node = factory.make_Node()
+        self.assertRaises(
+            HandlerError, handler.create_vmfs_datastore,
+            {'system_id': node.system_id})
+
     def test_set_boot_disk(self):
         user = factory.make_admin()
         handler = MachineHandler(user, {}, None)
@@ -2916,6 +3020,54 @@ class TestMachineHandler(MAASServerTestCase):
             'block_id': boot_disk.id}
         self.assertRaises(
             HandlerPermissionError, handler.set_boot_disk, params)
+
+    def test_apply_storage_layout(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {}, None)
+        node = factory.make_Node(with_boot_disk=False)
+        node.boot_disk = factory.make_PhysicalBlockDevice(
+            node=node, size=10 * 1024 ** 3)
+        factory.make_PhysicalBlockDevice(node=node, size=10 * 2024 ** 3)
+        params = {
+            'system_id': node.system_id,
+            'storage_layout': factory.pick_choice(get_storage_layout_choices())
+        }
+        handler.apply_storage_layout(params)
+        self.assertTrue(node.boot_disk.partitiontable_set.exists())
+
+    def test_apply_storage_layout_validates_layout_name(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {}, None)
+        node = factory.make_Node()
+        params = {
+            'system_id': node.system_id,
+            'storage_layout': factory.make_name('storage_layout'),
+        }
+        self.assertRaises(
+            HandlerError, handler.apply_storage_layout, params)
+
+    def test_apply_storage_layout_raises_missing_boot_disk_error(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {}, None)
+        node = factory.make_Node(with_boot_disk=False)
+        params = {
+            'system_id': node.system_id,
+            'storage_layout': factory.pick_choice(get_storage_layout_choices())
+        }
+        self.assertRaises(
+            HandlerError, handler.apply_storage_layout, params)
+
+    def test_apply_storage_layout_raises_errors(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {}, None)
+        node = factory.make_Node(with_boot_disk=False)
+        factory.make_PhysicalBlockDevice(size=1024 ** 3)
+        params = {
+            'system_id': node.system_id,
+            'storage_layout': factory.pick_choice(get_storage_layout_choices())
+        }
+        self.assertRaises(
+            HandlerError, handler.apply_storage_layout, params)
 
     def test_update_raise_HandlerError_if_tag_has_definition(self):
         user = factory.make_admin()

@@ -10,7 +10,10 @@ __all__ = [
 from functools import partial
 from operator import itemgetter
 
-from django.core.exceptions import ValidationError
+from django.core.exceptions import (
+    ObjectDoesNotExist,
+    ValidationError,
+)
 from maasserver.enum import (
     BMC_TYPE,
     INTERFACE_LINK_TYPE,
@@ -30,11 +33,13 @@ from maasserver.forms import (
     CreateCacheSetForm,
     CreateLogicalVolumeForm,
     CreateRaidForm,
+    CreateVMFSForm,
     CreateVolumeGroupForm,
     FormatBlockDeviceForm,
     FormatPartitionForm,
     UpdatePhysicalBlockDeviceForm,
     UpdateVirtualBlockDeviceForm,
+    UpdateVMFSForm,
 )
 from maasserver.forms.filesystem import (
     MountFilesystemForm,
@@ -64,9 +69,15 @@ from maasserver.models.partition import Partition
 from maasserver.models.subnet import Subnet
 from maasserver.node_action import compile_node_actions
 from maasserver.permissions import NodePermission
+from maasserver.storage_layouts import (
+    StorageLayoutError,
+    StorageLayoutForm,
+    StorageLayoutMissingBootDiskError,
+)
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from maasserver.websockets.base import (
+    HandlerDoesNotExistError,
     HandlerError,
     HandlerPermissionError,
     HandlerValidationError,
@@ -138,13 +149,17 @@ class MachineHandler(NodeHandler):
             'delete_volume_group',
             'delete_cache_set',
             'delete_filesystem',
+            'delete_vmfs_datastore',
+            'update_vmfs_datastore',
             'create_partition',
             'create_cache_set',
             'create_bcache',
             'create_raid',
             'create_volume_group',
             'create_logical_volume',
+            'create_vmfs_datastore',
             'set_boot_disk',
+            'apply_storage_layout',
             'default_user',
             'get_summary_xml',
             'get_summary_yaml',
@@ -620,6 +635,34 @@ class MachineHandler(NodeHandler):
             fs = Filesystem.objects.get(partition=partition, id=filesystem_id)
         fs.delete()
 
+    def _get_vmfs_datastore(self, params):
+        """Get the VMFS datastore from the given system_id and id."""
+        node = self._get_node_or_permission_error(
+            params, permission=self._meta.edit_permission)
+        vmfs_datastore_id = params.get('vmfs_datastore_id')
+        try:
+            vbd = node.virtualblockdevice_set.get(
+                filesystem_group_id=vmfs_datastore_id)
+        except ObjectDoesNotExist:
+            raise HandlerDoesNotExistError(vmfs_datastore_id)
+        if not vbd.filesystem_group:
+            raise HandlerDoesNotExistError(vmfs_datastore_id)
+        return vbd.filesystem_group
+
+    def delete_vmfs_datastore(self, params):
+        """Delete a VMFS datastore."""
+        vmfs = self._get_vmfs_datastore(params)
+        vmfs.delete()
+
+    def update_vmfs_datastore(self, params):
+        """Add or remove block devices or partitions from a datastore."""
+        vmfs = self._get_vmfs_datastore(params)
+        form = UpdateVMFSForm(vmfs, data=params)
+        if not form.is_valid():
+            raise HandlerError(form.errors)
+        else:
+            form.save()
+
     def create_partition(self, params):
         """Create a partition."""
         node = self._get_node_or_permission_error(
@@ -744,6 +787,16 @@ class MachineHandler(NodeHandler):
                 logical_volume, params.get("fstype"),
                 params.get("mount_point"), params.get("mount_options"))
 
+    def create_vmfs_datastore(self, params):
+        """Create a VMFS datastore."""
+        node = self._get_node_or_permission_error(
+            params, permission=self._meta.edit_permission)
+        form = CreateVMFSForm(node, data=params)
+        if not form.is_valid():
+            raise HandlerError(form.errors)
+        else:
+            form.save()
+
     def set_boot_disk(self, params):
         """Set the disk as the boot disk."""
         node = self._get_node_or_permission_error(
@@ -755,6 +808,25 @@ class MachineHandler(NodeHandler):
                 "Only a physical disk can be set as the boot disk.")
         node.boot_disk = device
         node.save()
+
+    def apply_storage_layout(self, params):
+        """Apply the specified storage layout."""
+        node = self._get_node_or_permission_error(
+            params, permission=self._meta.edit_permission)
+        form = StorageLayoutForm(required=True, data=params)
+        if not form.is_valid():
+            raise HandlerError(form.errors)
+        storage_layout = params.get('storage_layout')
+        try:
+            node.set_storage_layout(storage_layout)
+        except StorageLayoutMissingBootDiskError:
+            raise HandlerError(
+                "Machine is missing a boot disk; no storage layout can be "
+                "applied.")
+        except StorageLayoutError as e:
+            raise HandlerError(
+                "Failed to configure storage layout '%s': %s" % (
+                    storage_layout, str(e)))
 
     def action(self, params):
         """Perform the action on the object."""
