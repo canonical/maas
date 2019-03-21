@@ -26,7 +26,6 @@ from maascli.init import (
     add_candid_options,
     add_create_admin_options,
     add_rbac_options,
-    deprecated_for,
     init_maas,
 )
 from maascli.utils import (
@@ -180,9 +179,6 @@ class cmd_init(Command):
             help=("Enable configuring the use of an external Candid server. "
                   "If this isn't enabled, all --candid-* arguments "
                   "will be ignored."))
-        parser.add_argument(
-            '--enable-idm', nargs=0,
-            action=deprecated_for('--enable-candid'))
         add_candid_options(parser)
         add_rbac_options(parser)
 

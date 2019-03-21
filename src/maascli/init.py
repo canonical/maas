@@ -60,22 +60,6 @@ def add_candid_options(parser):
     parser.add_argument(
         '--candid-admin-group', default=None,
         help="Group of users whose members are made admins in MAAS")
-    parser.add_argument(
-        '--idm-url', default=None, dest='candid_url',
-        help=argparse.SUPPRESS)
-    parser.add_argument(
-        '--idm-user', default=None, dest='candid_user',
-        help=argparse.SUPPRESS)
-    parser.add_argument(
-        '--idm-key', default=None, dest='candid_key',
-        help=argparse.SUPPRESS)
-    # deprecated aliases
-    parser.add_argument(
-        '--idm-agent-file', action=deprecated_for('--candid-agent-file'))
-    parser.add_argument(
-        '--idm-domain', action=deprecated_for('--candid-domain'))
-    parser.add_argument(
-        '--idm-admin-group', action=deprecated_for('--candid-admin-group'))
 
 
 def add_rbac_options(parser):
@@ -179,12 +163,6 @@ def configure_authentication(options):
         cmd.extend(['--rbac-url', options.rbac_url])
     if options.rbac_service_name is not None:
         cmd.extend(['--rbac-service-name', options.rbac_service_name])
-    if options.candid_url is not None:
-        cmd.extend(['--idm-url', options.candid_url])
-    if options.candid_user is not None:
-        cmd.extend(['--idm-user', options.candid_user])
-    if options.candid_key is not None:
-        cmd.extend(['--idm-key', options.candid_key])
     if options.candid_domain is not None:
         cmd.extend(['--candid-domain', options.candid_domain])
     if options.candid_agent_file is not None:

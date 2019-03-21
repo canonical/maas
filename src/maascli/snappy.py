@@ -32,7 +32,6 @@ from maascli.init import (
     add_candid_options,
     add_create_admin_options,
     add_rbac_options,
-    deprecated_for,
     init_maas,
     print_msg,
 )
@@ -590,9 +589,6 @@ class cmd_init(SnappyCommand):
                   "This feature is currently experimental. "
                   "If this isn't enabled, all --candid-* arguments "
                   "will be ignored."))
-        parser.add_argument(
-            '--enable-idm', nargs=0,
-            action=deprecated_for('--enable-candid'))
         add_candid_options(parser)
         add_rbac_options(parser)
         parser.add_argument(

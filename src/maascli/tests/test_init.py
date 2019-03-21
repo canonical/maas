@@ -28,41 +28,16 @@ class TestAddCandidOptions(MAASTestCase):
 
     def test_add_candid_options_empty(self):
         options = self.parser.parse_args([])
-        self.assertIsNone(options.candid_url)
-        self.assertIsNone(options.candid_user)
-        self.assertIsNone(options.candid_key)
         self.assertIsNone(options.candid_agent_file)
-
-    def test_add_candid_options_candid_url(self):
-        options = self.parser.parse_args(
-            ['--idm-url', 'http://candid.example.com/'])
-        self.assertEqual(
-            'http://candid.example.com/', options.candid_url)
 
     def test_add_candid_options_candid_domain(self):
         options = self.parser.parse_args(
             ['--candid-domain', 'mydomain'])
         self.assertEqual('mydomain', options.candid_domain)
 
-    def test_add_candid_options_candid_user(self):
-        options = self.parser.parse_args(['--idm-user', 'my-user'])
-        self.assertEqual('my-user', options.candid_user)
-
-    def test_add_candid_options_candid_key(self):
-        options = self.parser.parse_args(['--idm-key', 'my-key'])
-        self.assertEqual('my-key', options.candid_key)
-
     def test_add_candid_options_candid_agent_file(self):
         options = self.parser.parse_args(['--candid-agent-file', 'agent.file'])
         self.assertEqual(options.candid_agent_file, 'agent.file')
-
-    def test_add_candid_options_deprecated_idm_agent_file(self):
-        options = self.parser.parse_args(['--idm-agent-file', 'agent.file'])
-        self.assertEqual(options.candid_agent_file, 'agent.file')
-        self.assertIn(
-            'Note: "--idm-agent-file" is deprecated and will be removed, '
-            'please use "--candid-agent-file" instead',
-            self.mock_stderr.getvalue())
 
     def test_add_candid_options_candid_admin_group(self):
         options = self.parser.parse_args(
@@ -227,60 +202,10 @@ class TestConfigureAuthentication(MAASTestCase):
             ([self.maas_bin_path, 'configauth'] + config_auth_args,), args)
         self.assertEqual({}, kwargs)
 
-    def test_idm_url(self):
-        config_auth_args = ['--idm-url', 'http://candid.example.com/']
-        options = self.parser.parse_args(config_auth_args)
-        init.configure_authentication(options)
-        [config_call] = self.mock_subprocess.mock_calls
-        method, args, kwargs = config_call
-        self.assertEqual('call', method)
-        self.assertEqual(
-            ([self.maas_bin_path, 'configauth'] + config_auth_args,), args)
-        self.assertEqual({}, kwargs)
-
-    def test_idm_user(self):
-        config_auth_args = ['--idm-user', 'some-user']
-        options = self.parser.parse_args(config_auth_args)
-        init.configure_authentication(options)
-        [config_call] = self.mock_subprocess.mock_calls
-        method, args, kwargs = config_call
-        self.assertEqual('call', method)
-        self.assertEqual(
-            ([self.maas_bin_path, 'configauth'] + config_auth_args,), args)
-        self.assertEqual({}, kwargs)
-
-    def test_idm_key(self):
-        config_auth_args = ['--idm-key', 'some-key']
-        options = self.parser.parse_args(config_auth_args)
-        init.configure_authentication(options)
-        [config_call] = self.mock_subprocess.mock_calls
-        method, args, kwargs = config_call
-        self.assertEqual('call', method)
-        self.assertEqual(
-            ([self.maas_bin_path, 'configauth'] + config_auth_args,), args)
-        self.assertEqual({}, kwargs)
-
     def test_candid_agent_file(self):
         _, agent_file_path = tempfile.mkstemp()
         self.addCleanup(os.remove, agent_file_path)
         config_auth_args = ['--candid-agent-file', agent_file_path]
-        options = self.parser.parse_args(config_auth_args)
-        init.configure_authentication(options)
-        [config_call] = self.mock_subprocess.mock_calls
-        method, args, kwargs = config_call
-        self.assertEqual('call', method)
-        self.assertEqual(
-            ([self.maas_bin_path, 'configauth'] + config_auth_args,), args)
-        self.assertEqual({}, kwargs)
-
-    def test_full(self):
-        _, agent_file = tempfile.mkstemp()
-        self.addCleanup(os.remove, agent_file)
-        config_auth_args = [
-            '--idm-url', 'http://candid.example.com/',
-            '--idm-user', 'candid-user',
-            '--idm-key', 'candid-key',
-            '--candid-agent-file', agent_file]
         options = self.parser.parse_args(config_auth_args)
         init.configure_authentication(options)
         [config_call] = self.mock_subprocess.mock_calls

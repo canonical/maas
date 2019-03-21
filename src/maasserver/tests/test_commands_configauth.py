@@ -3,6 +3,7 @@
 
 """Test the configauth command."""
 
+from contextlib import contextmanager
 from datetime import (
     datetime,
     timedelta,
@@ -36,6 +37,18 @@ class TestConfigAuthCommand(MAASServerTestCase):
         mock_client = self.patch(configauth, 'RBACUserClient')
         mock_client.return_value = self.rbac_user_client
 
+    @contextmanager
+    def agent_file(self):
+        with tempfile.NamedTemporaryFile(mode='w+') as agent_file:
+            config = {
+                'key': {'public': 'public-key', 'private': 'private-key'},
+                'agents': [
+                    {'url': 'http://example.com:1234',
+                     'username': 'user@admin'}]}
+            json.dump(config, agent_file)
+            agent_file.flush()
+            yield agent_file.name
+
     def printout(self):
         prints = []
         for call in self.mock_print.mock_calls:
@@ -45,72 +58,18 @@ class TestConfigAuthCommand(MAASServerTestCase):
             prints.append(output)
         return '\n'.join(prints)
 
-    def test_configauth_changes_external_auth_url_local_empty_string(self):
+    def test_configauth_changes_empty_string(self):
         Config.objects.set_config(
             'external_auth_url', 'http://example.com/candid')
-        call_command('configauth', candid_url='')
+        call_command('configauth', candid_agent_file='')
         self.assertEqual(
             '', Config.objects.get_config('external_auth_url'))
-        self.assertIn(
-            'Warning: "--idm-*" options are deprecated', self.printout())
-
-    def test_configauth_changes_external_auth_url_local_none(self):
-        Config.objects.set_config(
-            'external_auth_url', 'http://example.com/candid')
-        call_command('configauth', candid_url='none')
-        self.assertEqual(
-            '', Config.objects.get_config('external_auth_url'))
-
-    def test_configauth_changes_external_auth_url_url(self):
-        call_command('configauth', candid_url='http://example.com/candid')
-        self.assertEqual(
-            'http://example.com/candid',
-            Config.objects.get_config('external_auth_url'))
-
-    def test_configauth_changes_auth_prompts_no_rbac_legacy(self):
-        self.read_input.side_effect = [
-            '', 'user@admin', 'private-key', 'mydomain', 'admins']
-        # legacy options are only prompted if at least one is provided
-        call_command('configauth', candid_url='http://candid.example.com/')
-        self.assertEqual('', Config.objects.get_config('rbac_url'))
-        self.assertEqual(
-            'http://candid.example.com/',
-            Config.objects.get_config('external_auth_url'))
-        self.assertEqual(
-            'user@admin',
-            Config.objects.get_config('external_auth_user'))
-        self.assertEqual(
-            'private-key',
-            Config.objects.get_config('external_auth_key'))
-        self.assertEqual(
-            'mydomain',
-            Config.objects.get_config('external_auth_domain'))
-        self.assertEqual(
-            'admins',
-            Config.objects.get_config('external_auth_admin_group'))
 
     def test_configauth_changes_auth_prompt_default(self):
         self.read_input.return_value = ''
         call_command('configauth')
         self.assertEqual('', Config.objects.get_config('rbac_url'))
         self.assertEqual('', Config.objects.get_config('external_auth_url'))
-        self.assertNotIn(
-            'Warning: "--idm-*" options are deprecated', self.printout())
-
-    def test_configauth_changes_auth_prompt_default_existing(self):
-        Config.objects.set_config(
-            'external_auth_url', 'http://example.com/candid')
-        self.read_input.return_value = ''
-        # legacy options are only prompted if at least one is provided
-        call_command('configauth', candid_user='user')
-        self.assertEqual(
-            'http://example.com/candid',
-            Config.objects.get_config('external_auth_url'))
-
-    def test_configauth_changes_auth_invalid_url(self):
-        self.assertRaises(
-            configauth.InvalidURLError,
-            call_command, 'configauth', candid_url='example.com')
 
     def test_configauth_changes_auth_invalid_rbac_url(self):
         self.assertRaises(
@@ -122,41 +81,26 @@ class TestConfigAuthCommand(MAASServerTestCase):
             session_key='session_key',
             expire_date=datetime.utcnow() + timedelta(days=1))
         session.save()
-        call_command('configauth', candid_url='')
+        call_command('configauth', rbac_url='')
         self.assertFalse(Session.objects.all().exists())
 
     def test_update_auth_details(self):
         auth_details = configauth.AuthDetails()
-        config = {
-            'key': {'public': 'public-key', 'private': 'private-key'},
-            'agents': [
-                {'url': 'http://example.com:1234', 'username': 'user@admin'}]}
-        with tempfile.NamedTemporaryFile(mode='w+') as agent_file:
-            json.dump(config, agent_file)
-            agent_file.flush()
-
+        with self.agent_file() as agent_file_name:
             configauth.update_auth_details_from_agent_file(
-                agent_file.name, auth_details)
-            self.assertEqual(auth_details.url, 'http://example.com:1234')
-            self.assertEqual(auth_details.user, 'user@admin')
-            self.assertEqual(auth_details.key, 'private-key')
+                agent_file_name, auth_details)
+        self.assertEqual(auth_details.url, 'http://example.com:1234')
+        self.assertEqual(auth_details.user, 'user@admin')
+        self.assertEqual(auth_details.key, 'private-key')
 
     def test_configauth_interactive(self):
-        with tempfile.NamedTemporaryFile(mode='w+') as agent_file:
-            config = {
-                'key': {'public': 'public-key', 'private': 'private-key'},
-                'agents': [
-                    {'url': 'http://candid.example.com',
-                     'username': 'user@admin'}]}
-            json.dump(config, agent_file)
-            agent_file.flush()
+        with self.agent_file() as agent_file_name:
             self.read_input.side_effect = [
-                '', agent_file.name, 'mydomain', 'admins']
-
+                '', agent_file_name, 'mydomain', 'admins']
             call_command('configauth')
         self.assertEqual('', Config.objects.get_config('rbac_url'))
         self.assertEqual(
-            'http://candid.example.com',
+            'http://example.com:1234',
             Config.objects.get_config('external_auth_url'))
         self.assertEqual(
             'mydomain', Config.objects.get_config('external_auth_domain'))
@@ -168,10 +112,10 @@ class TestConfigAuthCommand(MAASServerTestCase):
             'admins', Config.objects.get_config('external_auth_admin_group'))
 
     def test_configauth_interactive_domain(self):
-        self.read_input.return_value = 'mydomain'
-        call_command(
-            'configauth', rbac_url='', candid_url='http://example.com:1234',
-            candid_user='user@admin', candid_key='private-key')
+        with self.agent_file() as agent_file_name:
+            self.read_input.return_value = 'mydomain'
+            call_command(
+                'configauth', rbac_url='', candid_agent_file=agent_file_name)
         self.assertEqual(
             'http://example.com:1234',
             Config.objects.get_config('external_auth_url'))
@@ -183,10 +127,10 @@ class TestConfigAuthCommand(MAASServerTestCase):
             'private-key', Config.objects.get_config('external_auth_key'))
 
     def test_configauth_interactive_domain_empty(self):
-        self.read_input.return_value = ''
-        call_command(
-            'configauth', rbac_url='', candid_url='http://example.com:1234',
-            candid_user='user@admin', candid_key='private-key')
+        with self.agent_file() as agent_file_name:
+            self.read_input.return_value = ''
+            call_command(
+                'configauth', rbac_url='', candid_agent_file=agent_file_name)
         self.assertEqual(
             'http://example.com:1234',
             Config.objects.get_config('external_auth_url'))
@@ -197,26 +141,12 @@ class TestConfigAuthCommand(MAASServerTestCase):
         self.assertEqual(
             'private-key', Config.objects.get_config('external_auth_key'))
 
-    def test_configauth_interactive_user(self):
-        self.read_input.return_value = 'user@admin'
-        call_command(
-            'configauth', rbac_url='', candid_url='http://example.com:1234',
-            candid_domain='mydomain', candid_key='private-key')
-        self.assertEqual(
-            'http://example.com:1234',
-            Config.objects.get_config('external_auth_url'))
-        self.assertEqual(
-            'mydomain', Config.objects.get_config('external_auth_domain'))
-        self.assertEqual(
-            'user@admin', Config.objects.get_config('external_auth_user'))
-        self.assertEqual(
-            'private-key', Config.objects.get_config('external_auth_key'))
-
     def test_configauth_interactive_key(self):
-        self.read_input.return_value = 'private-key'
-        call_command(
-            'configauth', rbac_url='', candid_url='http://example.com:1234',
-            candid_domain='mydomain', candid_user='user@admin')
+        with self.agent_file() as agent_file_name:
+            self.read_input.return_value = 'private-key'
+            call_command(
+                'configauth', rbac_url='', candid_agent_file=agent_file_name,
+                candid_domain='mydomain')
         self.assertEqual(
             'http://example.com:1234',
             Config.objects.get_config('external_auth_url'))
@@ -227,17 +157,10 @@ class TestConfigAuthCommand(MAASServerTestCase):
         self.assertEqual(
             'private-key', Config.objects.get_config('external_auth_key'))
 
-    def test_configauth_not_interactive_with_agent_file(self):
-        config = {
-            'key': {'public': 'public-key', 'private': 'private-key'},
-            'agents': [
-                {'url': 'http://example.com:1234', 'username': 'user@admin'}]}
-        with tempfile.NamedTemporaryFile(mode='w+') as agent_file:
-            json.dump(config, agent_file)
-            agent_file.flush()
-
+    def test_configauth_not_interactive(self):
+        with self.agent_file() as agent_file_name:
             call_command(
-                'configauth', rbac_url='', candid_agent_file=agent_file.name,
+                'configauth', rbac_url='', candid_agent_file=agent_file_name,
                 candid_domain='mydomain', candid_admin_group='admins')
         self.assertEqual('', Config.objects.get_config('rbac_url'))
         self.assertEqual(
@@ -252,8 +175,6 @@ class TestConfigAuthCommand(MAASServerTestCase):
         self.assertEqual(
             'admins', Config.objects.get_config('external_auth_admin_group'))
         self.read_input.assert_not_called()
-        self.assertNotIn(
-            'Warning: "--idm-*" options are deprecated', self.printout())
 
     def test_configauth_agentfile_not_found(self):
         error = self.assertRaises(
@@ -264,10 +185,10 @@ class TestConfigAuthCommand(MAASServerTestCase):
             "[Errno 2] No such file or directory: '/not/here'")
 
     def test_configauth_domain_none(self):
-        call_command(
-            'configauth', rbac_url='', candid_url='http://example.com:1234',
-            candid_domain='none', candid_user='user@admin',
-            candid_key='private-key')
+        with self.agent_file() as agent_file_name:
+            call_command(
+                'configauth', rbac_url='', candid_agent_file=agent_file_name,
+                candid_domain='none')
         self.assertEqual('', Config.objects.get_config('external_auth_domain'))
 
     def test_configauth_json_empty(self):
@@ -313,9 +234,7 @@ class TestConfigAuthCommand(MAASServerTestCase):
              'pending': True,
              'product': {'$ref' '/api/rbac/v1/product/2'}}]
         call_command(
-            'configauth', candid_url='http://example.com:1234',
-            candid_user='user@admin', candid_key='private-key',
-            rbac_url='http://rbac.example.com',
+            'configauth', rbac_url='http://rbac.example.com',
             rbac_service_name='mymaas')
         self.read_input.assert_not_called()
         self.assertEqual(
@@ -337,9 +256,7 @@ class TestConfigAuthCommand(MAASServerTestCase):
              'product': {'$ref' '/api/rbac/v1/product/2'}}]
         error = self.assertRaises(
             CommandError, call_command,
-            'configauth', candid_url='http://example.com:1234',
-            candid_user='user@admin', candid_key='private-key',
-            rbac_url='http://rbac.example.com',
+            'configauth', rbac_url='http://rbac.example.com',
             rbac_service_name='unknown')
         self.assertEqual(
             str(error),
@@ -392,32 +309,24 @@ class TestConfigAuthCommand(MAASServerTestCase):
     def test_configauth_rbac_no_registerable(self):
         error = self.assertRaises(
             CommandError,
-            call_command,
-            'configauth', candid_url='http://example.com:1234',
-            candid_user='user@admin', candid_key='private-key',
-            rbac_url='http://rbac.example.com')
+            call_command, 'configauth', rbac_url='http://rbac.example.com')
         self.assertEqual(
             str(error),
             'No registerable MAAS service on the specified RBAC server')
 
     def test_configauth_rbac_url_none(self):
-        call_command(
-            'configauth', rbac_url='none',
-            candid_url='http://example.com:1234',
-            candid_user='user@admin', candid_key='private-key',
-            candid_domain='domain', candid_admin_group='admins')
+        with self.agent_file() as agent_file_name:
+            call_command(
+                'configauth', rbac_url='none',
+                candid_agent_file=agent_file_name,
+                candid_domain='domain', candid_admin_group='admins')
         self.read_input.assert_not_called()
         self.assertEqual('', Config.objects.get_config('rbac_url'))
 
     def test_configauth_rbac_url_none_clears_lastsync_and_sync(self):
         RBACLastSync.objects.create(resource_type='resource-pool', sync_id=0)
         RBACSync.objects.create(resource_type='')
-        call_command(
-            'configauth', rbac_url='none',
-            candid_url='http://example.com:1234',
-            candid_user='user@admin', candid_key='private-key',
-            candid_domain='domain', candid_admin_group='admins')
-        self.read_input.assert_not_called()
+        call_command('configauth', rbac_url='none', candid_agent_file='none')
         self.assertEqual('', Config.objects.get_config('rbac_url'))
         self.assertFalse(RBACLastSync.objects.all().exists())
         self.assertFalse(RBACSync.objects.all().exists())
@@ -430,9 +339,7 @@ class TestConfigAuthCommand(MAASServerTestCase):
              'pending': True,
              'product': {'$ref' '/api/rbac/v1/product/2'}}]
         call_command(
-            'configauth', candid_url='http://example.com:1234',
-            candid_user='user@admin', candid_key='private-key',
-            rbac_url='http://rbac.example.com',
+            'configauth', rbac_url='http://rbac.example.com',
             rbac_service_name='mymaas')
         self.read_input.assert_not_called()
         self.assertEqual(
