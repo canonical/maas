@@ -15,6 +15,7 @@ import sys
 
 import attr
 from netaddr import IPAddress
+from provisioningserver import services
 from provisioningserver.events import (
     EVENT_TYPES,
     send_node_event_ip_address,
@@ -30,12 +31,19 @@ from provisioningserver.utils import (
 )
 from provisioningserver.utils.fs import atomic_write
 from provisioningserver.utils.twisted import callOut
+from tftp.errors import (
+    AccessViolation,
+    FileNotFound,
+)
 from twisted.application.internet import TimerService
 from twisted.internet import reactor
 from twisted.internet.defer import maybeDeferred
 from twisted.internet.task import deferLater
 from twisted.internet.threads import deferToThread
+from twisted.python import context
 from twisted.web import resource
+from twisted.web.server import NOT_DONE_YET
+from twisted.web.static import NoRangeStaticProducer
 
 
 log = LegacyLogger()
@@ -226,11 +234,100 @@ class HTTPLogResource(resource.Resource):
         return b''
 
 
+class HTTPBootResource(resource.Resource):
+    isLeaf = True
+
+    def render_GET(self, request):
+        # Be sure that the TFTP endpoint is running.
+        try:
+            tftp = services.getServiceNamed('tftp')
+        except KeyError:
+            # TFTP service is not installed cannot handle a boot request.
+            request.setResponseCode(503)
+            return b'HTTP boot service not ready.'
+
+        # Extract the local servers IP/port of the request.
+        localHost = request.getHeader('X-Server-Addr')
+        try:
+            localPort = int(request.getHeader('X-Server-Port'))
+        except (TypeError, ValueError):
+            localPort = 0
+
+        # Extract the original clients IP/port of the request.
+        remoteHost = request.getHeader('X-Forwarded-For')
+        try:
+            remotePort = int(request.getHeader('X-Forwarded-Port'))
+        except (TypeError, ValueError):
+            remotePort = 0
+
+        # localHost and remoteHost are required headers.
+        if not localHost or not remoteHost:
+            request.setResponseCode(400)
+            return b'Missing X-Server-Addr and X-Forwarded-For HTTP headers.'
+
+        def handleFailure(failure):
+            if failure.check(AccessViolation):
+                request.setResponseCode(403)
+                request.write(b'')
+            elif failure.check(FileNotFound):
+                request.setResponseCode(404)
+                request.write(b'')
+            else:
+                log.err(failure, "Failed to handle boot HTTP request.")
+                request.setResponseCode(500)
+                request.write(str(failure.value).encode('utf-8'))
+            request.finish()
+
+        def writeResponse(reader):
+            # Some readers from `tftp` do not provide a way to get the size
+            # of the generated content. Only set `Content-Length` when size
+            # can be determined for the response.
+            if hasattr(reader, 'size'):
+                request.setHeader(b'Content-Length', reader.size)
+
+            # The readers from `tftp` use `finish` instead of `close`, but
+            # `NoRangeStaticProducer` expects `close` instead of `finish`. Map
+            # `finish` to `close` so the file handlers are cleaned up.
+            reader.close = reader.finish
+
+            # Produce the result without allowing range. This producer will
+            # call `close` on the reader and `finish` on the request when done.
+            producer = NoRangeStaticProducer(request, reader)
+            producer.start()
+
+        path = b'/'.join(request.postpath)
+        d = context.call(
+            {
+                "local": (localHost, localPort),
+                "remote": (remoteHost, remotePort),
+            },
+            tftp.backend.get_reader, path, skip_logging=True)
+        d.addCallback(writeResponse)
+        d.addErrback(handleFailure)
+        d.addErrback(log.err, "Failed to handle boot HTTP request.")
+
+        # Log the HTTP request to rackd.log and push that event to the
+        # region controller.
+        log_path = path.decode('utf-8')
+        log.info(
+            "{path} requested by {remoteHost}",
+            path=log_path, remoteHost=remoteHost)
+        d = deferLater(
+            reactor, 0, send_node_event_ip_address,
+            event_type=EVENT_TYPES.NODE_HTTP_REQUEST,
+            ip_address=remoteHost, description=log_path)
+        d.addErrback(log.err, "Logging HTTP request failed.")
+
+        # Response is handled in the defer.
+        return NOT_DONE_YET
+
+
 class HTTPResource(resource.Resource):
     """The root resource for HTTP."""
 
     def __init__(self):
         super().__init__()
+        self.putChild(b'boot', HTTPBootResource())
         self.putChild(b'log', HTTPLogResource())
         self.putChild(
             b'metrics', PrometheusMetricsResource(PROMETHEUS_METRICS))

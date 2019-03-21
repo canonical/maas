@@ -27,6 +27,7 @@ from maastesting.twisted import (
     TwistedLoggerFixture,
 )
 from provisioningserver import services
+from provisioningserver.boot import BytesReader
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.rackdservices import http
 from provisioningserver.rpc import (
@@ -41,11 +42,26 @@ from testtools.matchers import (
     IsInstance,
     MatchesStructure,
 )
+from tftp.errors import (
+    AccessViolation,
+    FileNotFound,
+)
+from twisted.application.service import Service
 from twisted.internet import reactor
-from twisted.internet.defer import inlineCallbacks
+from twisted.internet.defer import (
+    fail,
+    inlineCallbacks,
+    succeed,
+)
 from twisted.web.http_headers import Headers
-from twisted.web.server import Request
-from twisted.web.test.test_web import DummyChannel
+from twisted.web.server import (
+    NOT_DONE_YET,
+    Request,
+)
+from twisted.web.test.test_web import (
+    DummyChannel,
+    DummyRequest,
+)
 
 
 def prepareRegion(test):
@@ -295,6 +311,247 @@ class TestHTTPLogResource(MAASTestCase):
             MockCalledOnceWith(
                 "{path} requested by {remote_host}",
                 path=path, remote_host=ip))
+        self.assertThat(
+            mock_deferLater,
+            MockCalledOnceWith(
+                ANY, 0, http.send_node_event_ip_address,
+                event_type=EVENT_TYPES.NODE_HTTP_REQUEST,
+                ip_address=ip, description=path))
+
+
+class TestHTTPBootResource(MAASTestCase):
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    def setUp(self):
+        super().setUp()
+        self.tftp = Service()
+        self.tftp.setName('tftp')
+        self.tftp.backend = Mock()
+        self.tftp.backend.get_reader = Mock()
+        self.tftp.setServiceParent(services)
+
+        def teardown():
+            if self.tftp:
+                self.tftp.disownServiceParent()
+                self.tftp = None
+
+        self.addCleanup(teardown)
+
+    def render_GET(self, resource, request):
+        result = resource.render_GET(request)
+        if isinstance(result, bytes):
+            request.write(result)
+            request.finish()
+            return succeed(None)
+        elif result is NOT_DONE_YET:
+            if request.finished:
+                return succeed(None)
+            else:
+                return request.notifyFinish()
+        else:
+            raise ValueError("Unexpected return value: %r" % (result,))
+
+    @inlineCallbacks
+    def test_render_GET_503_when_no_tftp_service(self):
+        # Remove the fake 'tftp' service.
+        self.tftp.disownServiceParent()
+        self.tftp = None
+
+        path = factory.make_name('path')
+        ip = factory.make_ip_address()
+        request = DummyRequest([path.encode('utf-8')])
+        request.requestHeaders = Headers({
+            'X-Server-Addr': ['192.168.1.1'],
+            'X-Server-Port': ['5248'],
+            'X-Forwarded-For': [ip],
+            'X-Forwarded-Port': ['%s' % factory.pick_port()],
+        })
+
+        self.patch(http.log, 'info')
+        mock_deferLater = self.patch(http, 'deferLater')
+        mock_deferLater.side_effect = always_succeed_with(None)
+
+        resource = http.HTTPBootResource()
+        yield self.render_GET(resource, request)
+
+        self.assertEquals(503, request.responseCode)
+        self.assertEquals(
+            b'HTTP boot service not ready.', b''.join(request.written))
+
+    @inlineCallbacks
+    def test_render_GET_400_when_no_local_addr(self):
+        path = factory.make_name('path')
+        ip = factory.make_ip_address()
+        request = DummyRequest([path.encode('utf-8')])
+        request.requestHeaders = Headers({
+            'X-Forwarded-For': [ip],
+            'X-Forwarded-Port': ['%s' % factory.pick_port()],
+        })
+
+        self.patch(http.log, 'info')
+        mock_deferLater = self.patch(http, 'deferLater')
+        mock_deferLater.side_effect = always_succeed_with(None)
+
+        resource = http.HTTPBootResource()
+        yield self.render_GET(resource, request)
+
+        self.assertEquals(400, request.responseCode)
+        self.assertEquals(
+            b'Missing X-Server-Addr and X-Forwarded-For HTTP headers.',
+            b''.join(request.written))
+
+    @inlineCallbacks
+    def test_render_GET_400_when_no_remote_addr(self):
+        path = factory.make_name('path')
+        request = DummyRequest([path.encode('utf-8')])
+        request.requestHeaders = Headers({
+            'X-Server-Addr': ['192.168.1.1'],
+            'X-Server-Port': ['5248'],
+        })
+
+        self.patch(http.log, 'info')
+        mock_deferLater = self.patch(http, 'deferLater')
+        mock_deferLater.side_effect = always_succeed_with(None)
+
+        resource = http.HTTPBootResource()
+        yield self.render_GET(resource, request)
+
+        self.assertEquals(400, request.responseCode)
+        self.assertEquals(
+            b'Missing X-Server-Addr and X-Forwarded-For HTTP headers.',
+            b''.join(request.written))
+
+    @inlineCallbacks
+    def test_render_GET_403_access_violation(self):
+        path = factory.make_name('path')
+        ip = factory.make_ip_address()
+        request = DummyRequest([path.encode('utf-8')])
+        request.requestHeaders = Headers({
+            'X-Server-Addr': ['192.168.1.1'],
+            'X-Server-Port': ['5248'],
+            'X-Forwarded-For': [ip],
+            'X-Forwarded-Port': ['%s' % factory.pick_port()],
+        })
+
+        self.patch(http.log, 'info')
+        mock_deferLater = self.patch(http, 'deferLater')
+        mock_deferLater.side_effect = always_succeed_with(None)
+
+        self.tftp.backend.get_reader.return_value = fail(AccessViolation())
+
+        resource = http.HTTPBootResource()
+        yield self.render_GET(resource, request)
+
+        self.assertEquals(403, request.responseCode)
+        self.assertEquals(
+            b'', b''.join(request.written))
+
+    @inlineCallbacks
+    def test_render_GET_404_file_not_found(self):
+        path = factory.make_name('path')
+        ip = factory.make_ip_address()
+        request = DummyRequest([path.encode('utf-8')])
+        request.requestHeaders = Headers({
+            'X-Server-Addr': ['192.168.1.1'],
+            'X-Server-Port': ['5248'],
+            'X-Forwarded-For': [ip],
+            'X-Forwarded-Port': ['%s' % factory.pick_port()],
+        })
+
+        self.patch(http.log, 'info')
+        mock_deferLater = self.patch(http, 'deferLater')
+        mock_deferLater.side_effect = always_succeed_with(None)
+
+        self.tftp.backend.get_reader.return_value = fail(FileNotFound(path))
+
+        resource = http.HTTPBootResource()
+        yield self.render_GET(resource, request)
+
+        self.assertEquals(404, request.responseCode)
+        self.assertEquals(
+            b'', b''.join(request.written))
+
+    @inlineCallbacks
+    def test_render_GET_500_server_error(self):
+        path = factory.make_name('path')
+        ip = factory.make_ip_address()
+        request = DummyRequest([path.encode('utf-8')])
+        request.requestHeaders = Headers({
+            'X-Server-Addr': ['192.168.1.1'],
+            'X-Server-Port': ['5248'],
+            'X-Forwarded-For': [ip],
+            'X-Forwarded-Port': ['%s' % factory.pick_port()],
+        })
+
+        self.patch(http.log, 'info')
+        mock_deferLater = self.patch(http, 'deferLater')
+        mock_deferLater.side_effect = always_succeed_with(None)
+
+        exc = factory.make_exception("internal error")
+        self.tftp.backend.get_reader.return_value = fail(exc)
+
+        resource = http.HTTPBootResource()
+        yield self.render_GET(resource, request)
+
+        self.assertEquals(500, request.responseCode)
+        self.assertEquals(
+            str(exc).encode('utf-8'), b''.join(request.written))
+
+    @inlineCallbacks
+    def test_render_GET_produces_from_reader(self):
+        path = factory.make_name('path')
+        ip = factory.make_ip_address()
+        request = DummyRequest([path.encode('utf-8')])
+        request.requestHeaders = Headers({
+            'X-Server-Addr': ['192.168.1.1'],
+            'X-Server-Port': ['5248'],
+            'X-Forwarded-For': [ip],
+            'X-Forwarded-Port': ['%s' % factory.pick_port()],
+        })
+
+        self.patch(http.log, 'info')
+        mock_deferLater = self.patch(http, 'deferLater')
+        mock_deferLater.side_effect = always_succeed_with(None)
+
+        content = factory.make_string(size=100).encode('utf-8')
+        reader = BytesReader(content)
+        self.tftp.backend.get_reader.return_value = succeed(reader)
+
+        resource = http.HTTPBootResource()
+        yield self.render_GET(resource, request)
+
+        self.assertEquals(
+            [100], request.responseHeaders.getRawHeaders(b'Content-Length'))
+        self.assertEquals(
+            content, b''.join(request.written))
+
+    @inlineCallbacks
+    def test_render_GET_logs_node_event_with_original_path_ip(self):
+        path = factory.make_name('path')
+        ip = factory.make_ip_address()
+        request = DummyRequest([path.encode('utf-8')])
+        request.requestHeaders = Headers({
+            'X-Server-Addr': ['192.168.1.1'],
+            'X-Server-Port': ['5248'],
+            'X-Forwarded-For': [ip],
+            'X-Forwarded-Port': ['%s' % factory.pick_port()],
+        })
+
+        log_info = self.patch(http.log, 'info')
+        mock_deferLater = self.patch(http, 'deferLater')
+        mock_deferLater.side_effect = always_succeed_with(None)
+
+        self.tftp.backend.get_reader.return_value = fail(AccessViolation())
+
+        resource = http.HTTPBootResource()
+        yield self.render_GET(resource, request)
+
+        self.assertThat(
+            log_info,
+            MockCalledOnceWith(
+                "{path} requested by {remoteHost}",
+                path=path, remoteHost=ip))
         self.assertThat(
             mock_deferLater,
             MockCalledOnceWith(

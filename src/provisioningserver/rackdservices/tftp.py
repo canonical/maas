@@ -360,7 +360,7 @@ class TFTPBackend(FilesystemSynchronousBackend):
 
     @deferred
     @typed
-    def get_reader(self, file_name: TFTPPath):
+    def get_reader(self, file_name: TFTPPath, skip_logging: bool=False):
         """See `IBackend.get_reader()`.
 
         If `file_name` matches a boot method then the response is obtained
@@ -371,7 +371,10 @@ class TFTPBackend(FilesystemSynchronousBackend):
         # of '/', example being 'bootx64.efi'. Convert all '\' to '/' to be
         # unix compatiable.
         file_name = file_name.replace(b'\\', b'/')
-        log_request(file_name)
+        if not skip_logging:
+            # HTTP handler will call with `skip_logging` set to True so that
+            # 2 log messages are not created.
+            log_request(file_name)
         d = self.get_boot_method(file_name)
         d.addCallback(partial(self.handle_boot_method, file_name))
         d.addErrback(self.no_response_errback, file_name)
