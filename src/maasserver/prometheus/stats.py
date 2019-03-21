@@ -33,6 +33,7 @@ from provisioningserver.prometheus.utils import (
     MetricDefinition,
     PrometheusMetrics,
 )
+from provisioningserver.utils.env import get_maas_id
 from twisted.application.internet import TimerService
 
 
@@ -40,24 +41,49 @@ log = LegacyLogger()
 
 STATS_DEFINITIONS = [
     MetricDefinition(
-        'Gauge', 'machine_status', 'Number of machines per status',
+        'Gauge', 'maas_machines', 'Number of machines by status',
         ['status']),
     MetricDefinition(
-        'Gauge', 'nodes',
+        'Gauge', 'maas_nodes',
         'Number of nodes per type (e.g. racks, machines, etc)',
         ['type']),
     MetricDefinition(
-        'Gauge', 'networks', 'General statistics for subnets',
-        ['type']),
+        'Gauge', 'maas_net_spaces', 'Number of network spaces'),
     MetricDefinition(
-        'Gauge', 'machine_resources',
-        'Amount of combined resources for all machines',
-        ['resource']),
+        'Gauge', 'maas_net_fabrics', 'Number of network fabrics'),
     MetricDefinition(
-        'Gauge', 'kvm_pods', 'General stats for KVM pods',
-        ['type']),
+        'Gauge', 'maas_net_vlans', 'Number of network VLANs'),
     MetricDefinition(
-        'Gauge', 'machine_arches', 'Number of machines per architecture',
+        'Gauge', 'maas_net_subnets_v4', 'Number of IPv4 subnets'),
+    MetricDefinition(
+        'Gauge', 'maas_net_subnets_v6', 'Number of IPv6 subnets'),
+    MetricDefinition(
+        'Gauge', 'maas_machines_total_mem',
+        'Amount of combined memory for all machines'),
+    MetricDefinition(
+        'Gauge', 'maas_machines_total_cpu',
+        'Amount of combined CPU counts for all machines'),
+    MetricDefinition(
+        'Gauge', 'maas_machines_total_storage',
+        'Amount of combined storage for all machines'),
+    MetricDefinition('Gauge', 'maas_kvm_pods', 'Number of KVM pods'),
+    MetricDefinition(
+        'Gauge', 'maas_kvm_machines', 'Number of KVM virtual machines'),
+    MetricDefinition(
+        'Gauge', 'maas_kvm_cores', 'Number of KVM cores', ['status']),
+    MetricDefinition(
+        'Gauge', 'maas_kvm_memory', 'Memory for KVM pods', ['status']),
+    MetricDefinition(
+        'Gauge', 'maas_kvm_storage', 'Size of storage for KVM pods',
+        ['status']),
+    MetricDefinition(
+        'Gauge', 'maas_kvm_overcommit_cores',
+        'Number of KVM cores with overcommit'),
+    MetricDefinition(
+        'Gauge', 'maas_kvm_overcommit_memory',
+        'KVM memory size with overcommit'),
+    MetricDefinition(
+        'Gauge', 'maas_machine_arches', 'Number of machines per architecture',
         ['arches'])
 ]
 
@@ -71,6 +97,7 @@ def prometheus_stats_handler(request):
 
     metrics = create_metrics(
         STATS_DEFINITIONS,
+        extra_labels={'maas_id': get_maas_id},
         update_handlers=[update_prometheus_stats],
         registry=prom_cli.CollectorRegistry())
     return HttpResponse(
@@ -86,44 +113,49 @@ def update_prometheus_stats(metrics: PrometheusMetrics):
     # Gather counter for machines per status
     for status, machines in stats['machine_status'].items():
         metrics.update(
-            'machine_status', 'set', value=machines, labels={'status': status})
+            'maas_machines', 'set', value=machines,
+            labels={'status': status})
 
     # Gather counter for number of nodes (controllers/machine/devices)
     for ctype, number in stats['controllers'].items():
         metrics.update(
-            'nodes', 'set', value=number, labels={'type': ctype})
+            'maas_nodes', 'set', value=number, labels={'type': ctype})
     for ctype, number in stats['nodes'].items():
         metrics.update(
-            'nodes', 'set', value=number, labels={'type': ctype})
+            'maas_nodes', 'set', value=number, labels={'type': ctype})
 
     # Gather counter for networks
     for stype, number in stats['network_stats'].items():
-        metrics.update(
-            'networks', 'set', value=number, labels={'type': stype})
+        metrics.update('maas_net_{}'.format(stype), 'set', value=number)
 
     # Gather overall amount of machine resources
     for resource, value in stats['machine_stats'].items():
-        metrics.update(
-            'machine_resources', 'set', value=value,
-            labels={'resource': resource})
+        metrics.update('maas_machines_{}'.format(resource), 'set', value=value)
 
     # Gather all stats for pods
-    for resource, value in pods.items():
-        if isinstance(value, dict):
-            for r, v in value.items():
-                metrics.update(
-                    'kvm_pods', 'set', value=v,
-                    labels={'type': '{}_{}'.format(resource, r)})
-        else:
-            metrics.update(
-                'kvm_pods', 'set', value=value,
-                labels={'type': resource})
+    metrics.update('maas_kvm_pods', 'set', value=pods['kvm_pods'])
+    metrics.update('maas_kvm_machines', 'set', value=pods['kvm_machines'])
+    for metric in ('cores', 'memory', 'storage'):
+        metrics.update(
+            'maas_kvm_{}'.format(metric), 'set',
+            value=pods['kvm_available_resources'][metric],
+            labels={'status': 'available'})
+        metrics.update(
+            'maas_kvm_{}'.format(metric), 'set',
+            value=pods['kvm_utilized_resources'][metric],
+            labels={'status': 'used'})
+    metrics.update(
+        'maas_kvm_overcommit_cores', 'set',
+        value=pods['kvm_available_resources']['over_cores'])
+    metrics.update(
+        'maas_kvm_overcommit_memory', 'set',
+        value=pods['kvm_available_resources']['over_memory'])
 
     # Gather statistics for architectures
     if len(architectures.keys()) > 0:
         for arch, machines in architectures.items():
             metrics.update(
-                'machine_arches', 'set', value=machines,
+                'maas_machine_arches', 'set', value=machines,
                 labels={'arches': arch})
 
     return metrics

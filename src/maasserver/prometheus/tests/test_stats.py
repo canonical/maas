@@ -65,9 +65,41 @@ class TestPrometheusHandler(MAASServerTestCase):
         Config.objects.set_config('prometheus_enabled', True)
         response = self.client.get(reverse('metrics'))
         content = response.content.decode("utf-8")
-        metrics = ('nodes', 'machine_resources', 'kvm_pods', 'machine_arches')
+        metrics = (
+            'maas_machines', 'maas_nodes',
+            'maas_net_spaces', 'maas_net_fabrics', 'maas_net_vlans',
+            'maas_net_subnets_v4', 'maas_net_subnets_v6',
+            'maas_machines_total_mem', 'maas_machines_total_cpu',
+            'maas_machines_total_storage',
+            'maas_kvm_pods', 'maas_kvm_machines', 'maas_kvm_cores',
+            'maas_kvm_memory', 'maas_kvm_storage', 'maas_kvm_overcommit_cores',
+            'maas_kvm_overcommit_memory', 'maas_machine_arches')
         for metric in metrics:
             self.assertIn('TYPE {} gauge'.format(metric), content)
+
+    def test_prometheus_stats_handler_include_maas_id_label(self):
+        self.patch(
+            stats, "get_machines_by_architecture").return_value = {
+                "amd64": 2,
+                "i386": 1,
+            }
+        self.patch(stats, 'get_maas_id').return_value = 'abcde'
+        Config.objects.set_config('prometheus_enabled', True)
+        response = self.client.get(reverse('metrics'))
+        content = response.content.decode("utf-8")
+        metrics = (
+            'maas_machines', 'maas_nodes',
+            'maas_net_spaces', 'maas_net_fabrics', 'maas_net_vlans',
+            'maas_net_subnets_v4', 'maas_net_subnets_v6',
+            'maas_machines_total_mem', 'maas_machines_total_cpu',
+            'maas_machines_total_storage',
+            'maas_kvm_pods', 'maas_kvm_machines', 'maas_kvm_cores',
+            'maas_kvm_memory', 'maas_kvm_storage', 'maas_kvm_overcommit_cores',
+            'maas_kvm_overcommit_memory', 'maas_machine_arches')
+        for metric in metrics:
+            for line in content.splitlines():
+                if line.startswith('maas_'):
+                    self.assertIn('maas_id="abcde"'.format(metric), line)
 
 
 class TestPrometheus(MAASServerTestCase):
@@ -89,7 +121,7 @@ class TestPrometheus(MAASServerTestCase):
                 "spaces": 0,
             },
             "machine_stats": {
-                "total_cpus": 0,
+                "total_cpu": 0,
             },
         }
         mock = self.patch(stats, "get_maas_stats")
@@ -105,6 +137,18 @@ class TestPrometheus(MAASServerTestCase):
         pods = {
             "kvm_pods": 0,
             "kvm_machines": 0,
+            "kvm_available_resources": {
+                "cores": 10,
+                "memory": 20,
+                "storage": 30,
+                "over_cores": 100,
+                "over_memory": 200
+            },
+            "kvm_utilized_resources": {
+                "cores": 5,
+                "memory": 10,
+                "storage": 15
+            }
         }
         mock_pods = self.patch(stats, "get_kvm_pods_stats")
         mock_pods.return_value = pods
