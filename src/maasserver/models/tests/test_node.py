@@ -1099,9 +1099,15 @@ class TestNode(MAASServerTestCase):
         node.save()
         self.assertEqual(node.pool, pool)
 
-    def test_lock(self):
+    def test_lock_deployed(self):
         user = factory.make_User()
         node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
+        node.lock(user)
+        self.assertTrue(node.locked)
+
+    def test_lock_deploying(self):
+        user = factory.make_User()
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
         node.lock(user)
         self.assertTrue(node.locked)
 
@@ -1120,9 +1126,9 @@ class TestNode(MAASServerTestCase):
             user, EVENT_TYPES.REQUEST_NODE_LOCK, action='lock',
             comment='lock my node'))
 
-    def test_lock_not_allocated_fails(self):
+    def test_lock_invalid_status_fails(self):
         user = factory.make_User()
-        node = factory.make_Node()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         self.assertRaises(NodeStateViolation, node.lock, user)
         self.assertFalse(node.locked)
 

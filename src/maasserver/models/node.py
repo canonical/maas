@@ -1169,8 +1169,9 @@ class Node(CleanSave, TimestampedModel):
         if self.locked:
             return
 
-        if self.status != NODE_STATUS.DEPLOYED:
-            raise NodeStateViolation("Can't lock, node is not deployed")
+        if self.status not in (NODE_STATUS.DEPLOYED, NODE_STATUS.DEPLOYING):
+            raise NodeStateViolation(
+                "Can't lock, node is not deployed or deploying")
 
         maaslog.info('%s: Node locked by %s', self.hostname, user)
         self.locked = True

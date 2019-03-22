@@ -691,7 +691,7 @@ class Lock(NodeAction):
     name = "lock"
     display = "Lock"
     display_sentence = "Lock"
-    actionable_statuses = (NODE_STATUS.DEPLOYED,)
+    actionable_statuses = (NODE_STATUS.DEPLOYED, NODE_STATUS.DEPLOYING)
     permission = NodePermission.lock
     for_type = {NODE_TYPE.MACHINE}
     action_type = NODE_ACTION_TYPE.LOCK

@@ -1065,7 +1065,7 @@ class TestPowerOffAction(MAASServerTestCase):
 
 class TestLockAction(MAASServerTestCase):
 
-    def test_changes_locked_status(self):
+    def test_changes_locked_status_deployed(self):
         user = factory.make_User()
         request = factory.make_fake_request('/')
         request.user = user
@@ -1078,7 +1078,20 @@ class TestLockAction(MAASServerTestCase):
         self.assertEqual(
             audit_event.description, "Locked '%s'." % node.hostname)
 
-    def test_not_actionable_if_not_deployed(self):
+    def test_changes_locked_status_deploying(self):
+        user = factory.make_User()
+        request = factory.make_fake_request('/')
+        request.user = user
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYING, owner=user)
+        action = Lock(node, user, request)
+        self.assertTrue(action.is_permitted())
+        action.execute()
+        self.assertTrue(reload_object(node).locked)
+        audit_event = Event.objects.get(type__level=AUDIT)
+        self.assertEqual(
+            audit_event.description, "Locked '%s'." % node.hostname)
+
+    def test_not_actionable_if_wrong_status(self):
         user = factory.make_User()
         request = factory.make_fake_request('/')
         request.user = user
