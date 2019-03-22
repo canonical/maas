@@ -40,6 +40,7 @@ server {
 
     location / {
         proxy_pass http://localhost:5249/boot/;
+        proxy_buffering off;
         proxy_set_header X-Server-Addr $server_addr;
         proxy_set_header X-Server-Port $server_port;
         proxy_set_header X-Forwarded-For $remote_addr;

@@ -36,11 +36,6 @@ max-lease-time 600;
 {{endfor}}
 
 #
-# Bootloaders
-#
-{{bootloader}}
-
-#
 # Failover Peers
 #
 {{for failover_peer in failover_peers}}
@@ -90,6 +85,13 @@ shared-network {{shared_network["name"]}} {
            {{endif}}
            {{if shared_network['mtu'] and shared_network['mtu'] != 1500}}
            option interface-mtu {{shared_network['mtu']}};
+           {{endif}}
+
+           {{if dhcp_subnet.get('bootloader')}}
+           #
+           # Bootloaders
+           #
+           {{dhcp_subnet['bootloader']}}
            {{endif}}
 
            #

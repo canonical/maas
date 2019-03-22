@@ -146,6 +146,15 @@ class BootMethod(metaclass=ABCMeta):
     # relative to tftpboot directory.
     path_prefix = None
 
+    # Set to `True` to have the path_prefix to be an absolute prefix
+    # for the HTTP boot endpoint. It is not required that `path_prefix`
+    # also be set.
+    path_prefix_http = False
+
+    # Force that the path_prefix is sent over DHCP even if the client didn't
+    # request that information.
+    path_prefix_force = False
+
     # Arches for which this boot method needs to install boot loaders.
     bootloader_arches = []
 

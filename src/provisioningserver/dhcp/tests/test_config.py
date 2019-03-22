@@ -517,7 +517,8 @@ class TestComposeConditionalBootloader(MAASTestCase):
     """Tests for `compose_conditional_bootloader`."""
 
     def test__composes_bootloader_section_v4(self):
-        output = config.compose_conditional_bootloader(False)
+        ip = factory.make_ipv4_address()
+        output = config.compose_conditional_bootloader(False, ip)
         for name, method in BootMethodRegistry:
             if name == "pxe":
                 self.assertThat(output, Contains("else"))
@@ -532,9 +533,17 @@ class TestComposeConditionalBootloader(MAASTestCase):
                 # No DHCP configuration is rendered for boot methods that have
                 # no `arch_octet`, with the solitary exception of PXE.
                 pass
+            if method.path_prefix_http:
+                self.assertThat(output, Contains("http://%s:5248/" % ip))
+            if method.path_prefix_force:
+                self.assertThat(output, Contains(
+                    "option dhcp-parameter-request-list = concat("))
+                self.assertThat(output, Contains(
+                    "option dhcp-parameter-request-list,d2);"))
 
     def test__composes_bootloader_section_v6(self):
-        output = config.compose_conditional_bootloader(True)
+        ip = factory.make_ipv6_address()
+        output = config.compose_conditional_bootloader(True, ip)
         for name, method in BootMethodRegistry:
             if name == "uefi":
                 self.assertThat(output, Contains("else"))
@@ -549,6 +558,11 @@ class TestComposeConditionalBootloader(MAASTestCase):
                 # No DHCP configuration is rendered for boot methods that have
                 # no `arch_octet`, with the solitary exception of PXE.
                 pass
+            if method.path_prefix_http:
+                self.assertThat(output, Contains("http://[%s]:5248/" % ip))
+            if method.path_prefix_force:
+                self.assertThat(output, Contains(
+                    "option dhcp6.oro = concat(option dhcp6.oro,00d2);"))
 
 
 class TestGetAddresses(MAASTestCase):

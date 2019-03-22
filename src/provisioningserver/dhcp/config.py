@@ -48,16 +48,27 @@ logger = logging.getLogger(__name__)
 # Used to generate the conditional bootloader behaviour
 CONDITIONAL_BOOTLOADER = tempita.Template("""
 {{if ipv6}}
-           {{behaviour}} exists dhcp6.client-arch-type and
-             option dhcp6.client-arch-type = {{arch_octet}} {
-               option dhcp6.bootfile-url \"{{url}}\";
-           }
+{{behaviour}} exists dhcp6.client-arch-type and
+  option dhcp6.client-arch-type = {{arch_octet}} {
+    option dhcp6.bootfile-url \"{{url}}\";
+    if exists dhcp6.oro {
+        # Always send the PXELINUX option (path-prefix)
+        option dhcp6.oro = concat(option dhcp6.oro,00d2);
+    }
+}
 {{else}}
 {{behaviour}} option arch = {{arch_octet}} {
     # {{name}}
     filename \"{{bootloader}}\";
     {{if path_prefix}}
     option path-prefix \"{{path_prefix}}\";
+    {{endif}}
+    {{if path_prefix_force}}
+    if exists dhcp-parameter-request-list {
+        # Always send the PXELINUX option (path-prefix)
+        option dhcp-parameter-request-list = concat(
+            option dhcp-parameter-request-list,d2);
+    }
     {{endif}}
 }
 {{endif}}
@@ -66,15 +77,22 @@ CONDITIONAL_BOOTLOADER = tempita.Template("""
 # Used to generate the PXEBootLoader special case
 DEFAULT_BOOTLOADER = tempita.Template("""
 {{if ipv6}}
-            else {
-               option dhcp6.bootfile-url \"{{url}}\";
-           }
+else {
+    option dhcp6.bootfile-url \"{{url}}\";
+}
 {{else}}
 else {
     # {{name}}
     filename \"{{bootloader}}\";
     {{if path_prefix}}
     option path-prefix \"{{path_prefix}}\";
+    {{endif}}
+    {{if path_prefix_force}}
+    if exists dhcp-parameter-request-list {
+        # Always send the PXELINUX option (path-prefix)
+        option dhcp-parameter-request-list = concat(
+            option dhcp-parameter-request-list,d2);
+    }
     {{endif}}
 }
 {{endif}}
@@ -90,9 +108,16 @@ def compose_conditional_bootloader(ipv6, rack_ip=None):
     behaviour = chain(["if"], repeat("elsif"))
     for name, method in BootMethodRegistry:
         if method.arch_octet is not None:
-            url = ('tftp://[%s]/' if ipv6 else 'tftp://%s/') % rack_ip
-            if method.path_prefix:
-                url += method.path_prefix
+            schema = 'http' if method.path_prefix_http else 'tftp'
+            port = ':5248' if method.path_prefix_http else ''
+            url = ('%s://[%s]%s/' if ipv6 else '%s://%s%s/') % (
+                schema, rack_ip, port)
+            path_prefix = method.path_prefix
+            if path_prefix:
+                url += path_prefix
+            if method.path_prefix_http:
+                # Force an absolute URL as the path prefix.
+                path_prefix = url
             url += '/%s' % method.bootloader_path
             if isinstance(method.arch_octet, str):
                 method.arch_octet = [method.arch_octet]
@@ -102,7 +127,8 @@ def compose_conditional_bootloader(ipv6, rack_ip=None):
                     behaviour=next(behaviour),
                     arch_octet=arch_octet,
                     bootloader=method.bootloader_path,
-                    path_prefix=method.path_prefix,
+                    path_prefix=path_prefix,
+                    path_prefix_force=method.path_prefix_force,
                     name=method.name,
                     ).strip() + ' '
 
@@ -112,14 +138,22 @@ def compose_conditional_bootloader(ipv6, rack_ip=None):
     # uefi_amd64 or pxelinux can still boot.
     method = BootMethodRegistry.get_item('uefi_amd64' if ipv6 else 'pxe')
     if method is not None:
-        url = ('tftp://[%s]/' if ipv6 else 'tftp://%s/') % rack_ip
-        if method.path_prefix:
-            url += method.path_prefix
+        schema = 'http' if method.path_prefix_http else 'tftp'
+        port = ':5248' if method.path_prefix_http else ''
+        url = ('%s://[%s]%s/' if ipv6 else '%s://%s%s/') % (
+            schema, rack_ip, port)
+        path_prefix = method.path_prefix
+        if path_prefix:
+            url += path_prefix
+        if method.path_prefix_http:
+            # Force an absolute URL as the path prefix.
+            path_prefix = url
         url += '/%s' % method.bootloader_path
         output += DEFAULT_BOOTLOADER.substitute(
             ipv6=ipv6, rack_ip=rack_ip, url=url,
             bootloader=method.bootloader_path,
-            path_prefix=method.path_prefix,
+            path_prefix=path_prefix,
+            path_prefix_force=method.path_prefix_force,
             name=method.name,
             ).strip()
     return output.strip()
@@ -261,7 +295,6 @@ def get_config_v4(
         IPv4 template.
     :return: A full configuration, as a string.
     """
-    bootloader = compose_conditional_bootloader(False)
     platform_codename = linux_distribution()[2]
     template = load_template('dhcp', template_name)
     dhcp_socket = get_data_path('/var/lib/maas/dhcpd.sock')
@@ -288,6 +321,8 @@ def get_config_v4(
             ]
             if len(rack_ips) > 0:
                 subnet["next_server"] = rack_ips[0]
+                subnet["bootloader"] = compose_conditional_bootloader(
+                    False, rack_ips[0])
             ntp_servers = subnet["ntp_servers"]  # Is a list.
             ntp_servers_ipv4, ntp_servers_ipv6 = _get_addresses(*ntp_servers)
             subnet["ntp_servers_ipv4"] = ", ".join(ntp_servers_ipv4)
@@ -297,7 +332,7 @@ def get_config_v4(
         return template.substitute(
             global_dhcp_snippets=global_dhcp_snippets, hosts=hosts,
             failover_peers=failover_peers, shared_networks=shared_networks,
-            bootloader=bootloader, platform_codename=platform_codename,
+            platform_codename=platform_codename,
             omapi_key=omapi_key, dhcp_helper=(
                 get_path('/usr/sbin/maas-dhcp-helper')),
             dhcp_socket=dhcp_socket, **helpers)
