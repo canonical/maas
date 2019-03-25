@@ -1714,7 +1714,7 @@
                             </tbody>
                         </table>
 
-                        <button class="p-button--neutral" data-ng-click="toggleInterfaces()">
+                        <button class="p-button--neutral" data-ng-click="toggleInterfaces()" data-ng-if="interfaces.length > newBondInterface.parents.length">
                             <span data-ng-if="isShowingInterfaces">Hide interfaces</span>
                             <span data-ng-if="!isShowingInterfaces">Show all interfaces</span>
                         </button>
