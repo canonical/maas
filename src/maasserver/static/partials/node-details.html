@@ -912,11 +912,6 @@
                                             {$ getInterfaceTypeText(interface) $}
                                         </span>
                                     </td>
-                                    <td aria-label="Type">
-                                        <span title="{$ getInterfaceTypeText(interface) $}">
-                                            {$ getInterfaceTypeText(interface) $}
-                                        </span>
-                                    </td>
                                     <td class="p-double-row" aria-label="Fabric">
                                         <div class="p-double-row__rows-container">
                                             <div class="p-double-row__main-row">
@@ -941,6 +936,15 @@
                                         </div>
                                         <div data-ng-if="interface.subnet.name" class="p-double-row__muted-row" aria-label="Subnet name" title="{$ interface.subnet.name $}">
                                             <a class="p-muted-text p-link--muted" href="/#/subnet/{$ interface.subnet.id $}">{$ interface.subnet.name $}</a>
+                                        </div>
+                                    </td>
+                                    <td class="p-double-row" aria-label="IP">
+                                        <div class="p-double-row__main-row" aria-label="IP address" title="{$ interface.ip_address $}">
+                                            <span data-ng-if="interface.ip_address">{$ interface.ip_address $}</span>
+                                            <span data-ng-if="!interface.ip_address">Unconfigured</span>
+                                        </div>
+                                        <div class="p-double-row__muted-row" aria-label="IP mode" title="{$ interface.ip_mode $}">
+                                            {$ interface.mode $}
                                         </div>
                                     </td>
                                 </tr>
