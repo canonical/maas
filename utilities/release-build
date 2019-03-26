@@ -95,3 +95,9 @@ if echo "$PACKAGE_DISTROS" | grep -q "cosmic"; then
     sed -i "s/) UNRELEASED;/~18.10.1) cosmic;/i" debian/changelog
     debuild -S -sa
 fi
+
+if echo "$PACKAGE_DISTROS" | grep -q "disco"; then
+    cp $ROOTDIR/debian/changelog debian/changelog
+    sed -i "s/) UNRELEASED;/~19.04.1) disco;/i" debian/changelog
+    debuild -S -sa
+fi
