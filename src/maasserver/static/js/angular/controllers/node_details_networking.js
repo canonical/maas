@@ -227,6 +227,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
         $scope.newBridgeInterface = {};
         $scope.editInterface = null;
         $scope.bondOptions = GeneralManager.getData("bond_options");
+        $scope.createBondError = null;
         $scope.modes = [
             {
                 mode: LINK_MODE.AUTO,
@@ -1175,6 +1176,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             $scope.newInterface = {};
             $scope.newBondInterface = {};
             $scope.newBridgeInterface = {};
+            $scope.clearCreateBondError();
             if($scope.selectedMode === SELECTION_MODE.CREATE_BOND) {
                 $scope.selectedMode = SELECTION_MODE.MULTI;
             } else if($scope.selectedMode === SELECTION_MODE.CREATE_PHYSICAL) {
@@ -1378,6 +1380,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
 
         // Show the create bond view.
         $scope.showCreateBond = function() {
+            $scope.clearCreateBondError();
             if($scope.selectedMode === SELECTION_MODE.MULTI &&
                 $scope.canCreateBond()) {
                 $scope.selectedMode = SELECTION_MODE.CREATE_BOND;
@@ -1540,26 +1543,34 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                 mode: $scope.newBondInterface.mode,
                 ip_address: $scope.newBondInterface.ip_address
             };
-            $scope.$parent.nodesManager.createBondInterface(
-                $scope.node, params).then(null, function(error) {
-                    // Should do something better but for now just log
-                    // the error.
-                    console.log(error);
+            $scope.$parent.nodesManager
+                .createBondInterface($scope.node, params)
+                .then(function() {
+                    // Remove the parent interfaces so that they don't show up
+                    // in the listing unti the new bond appears.
+                    var parents = $scope.newBondInterface.parents;
+                    angular.forEach(parents, function(parent) {
+                        var idx = $scope.interfaces.indexOf(parent);
+                        if (idx > -1) {
+                            $scope.interfaces.splice(idx, 1);
+                        }
+                    });
+                })
+                .catch(function(error) {
+                    var parsedError = JSON.parse(error);
+                    $scope.createBondError
+                        = parsedError[Object.keys(parsedError)[0]][0];
                 });
 
-            // Remove the parent interfaces so that they don't show up
-            // in the listing unti the new bond appears.
-            angular.forEach($scope.newBondInterface.parents, function(parent) {
-                var idx = $scope.interfaces.indexOf(parent);
-                if(idx > -1) {
-                    $scope.interfaces.splice(idx, 1);
-                }
-            });
 
             // Clear the bond interface and reset the mode.
             $scope.newBondInterface = {};
             $scope.selectedInterfaces = [];
             $scope.selectedMode = SELECTION_MODE.NONE;
+        };
+
+        $scope.clearCreateBondError = function() {
+            $scope.createBondError = null;
         };
 
         // Return true when a bridge can be created based on the current

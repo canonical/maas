@@ -860,6 +860,12 @@
                                 <span class="p-notification__status">Important:</span> Custom images may require special preparation to support custom network configuration.
                             </p>
                         </div>
+                        <div class="p-notification--negative" data-ng-if="createBondError">
+                            <p class="p-notification__response">
+                                <span class="p-notification__status">Error:</span> {$ createBondError $}
+                                <a class="p-notification__action" data-ng-click="clearCreateBondError()">Dismiss</a>
+                            </p>
+                        </div>
                     </div>
                 </div>
 

@@ -3766,7 +3766,6 @@ describe("NodeNetworkingController", function() {
                     mode: "static",
                     ip_address: "192.168.1.100"
                 });
-            expect($scope.interfaces).toEqual([]);
             expect($scope.newBondInterface).toEqual({});
             expect($scope.selectedInterfaces).toEqual([]);
             expect($scope.selectedMode).toBeNull();
@@ -3817,7 +3816,6 @@ describe("NodeNetworkingController", function() {
                     mode: undefined,
                     ip_address: undefined
                 });
-            expect($scope.interfaces).toEqual([]);
             expect($scope.newBondInterface).toEqual({});
             expect($scope.selectedInterfaces).toEqual([]);
             expect($scope.selectedMode).toBeNull();
