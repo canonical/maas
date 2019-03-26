@@ -6,10 +6,10 @@
 
 angular.module('MAAS').filter('orderByDate', function() {
     return function(items, field, field2) {
-        var sorted = items.slice();
+        let sorted = items.slice();
         sorted.sort(function(a, b) {
-            aDate = new Date(a[field]);
-            bDate = new Date(b[field]);
+            const aDate = new Date(a[field]);
+            const bDate = new Date(b[field]);
 
             // Sort by ID as well if equal.
             if(angular.isString(field2) &&
