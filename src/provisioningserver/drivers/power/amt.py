@@ -51,7 +51,7 @@ AMT_ERRORS = {
 }
 
 
-REQUIRED_PACKAGES = [["amttool", "amtterm"], ["wsman", "wsmancli"]]
+REQUIRED_PACKAGES = [["wsman", "wsmancli"]]
 
 
 class AMTPowerDriver(PowerDriver):
