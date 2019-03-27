@@ -2025,6 +2025,10 @@ class Node(CleanSave, TimestampedModel):
                 allow_power_cycle=True, config=config)
         except Exception as error:
             self.status = old_status
+            self.enable_ssh = False
+            self.skip_bmc_config = False
+            self.skip_networking = False
+            self.skip_storage = False
             self.save()
             maaslog.error(
                 "%s: Could not start node for commissioning: %s",
@@ -2146,6 +2150,7 @@ class Node(CleanSave, TimestampedModel):
             cycling = self._power_cycle()
         except Exception as error:
             self.status = old_status
+            self.enable_ssh = False
             self.save()
             maaslog.error(
                 "%s: Could not start testing for node: %s",

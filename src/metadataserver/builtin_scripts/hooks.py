@@ -164,6 +164,9 @@ def update_node_network_information(node, output, exit_status):
 
     # Skip network configuration if set by the user.
     if node.skip_networking:
+        # Turn off skip_networking now that the hook has been called.
+        node.skip_networking = False
+        node.save(update_fields=['skip_networking'])
         return
 
     # Get the MAC addresses of all connected interfaces.
@@ -498,6 +501,9 @@ def update_node_physical_block_devices(node, output, exit_status):
 
     # Skip storage configuration if set by the user.
     if node.skip_storage:
+        # Turn off skip_storage now that the hook has been called.
+        node.skip_storage = False
+        node.save(update_fields=['skip_storage'])
         return
 
     try:

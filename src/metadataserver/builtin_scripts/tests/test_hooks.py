@@ -1039,6 +1039,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         block_device = factory.make_PhysicalBlockDevice(node=node)
         update_node_physical_block_devices(node, b"garbage", exit_status=0)
         self.assertIsNotNone(reload_object(block_device))
+        self.assertFalse(reload_object(node).skip_storage)
 
     def test__removes_previous_physical_block_devices(self):
         node = factory.make_Node()
@@ -1452,6 +1453,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         boot_interface = node.get_boot_interface()
         update_node_network_information(node, self.IP_ADDR_OUTPUT, 0)
         self.assertIsNotNone(reload_object(boot_interface))
+        self.assertFalse(reload_object(node).skip_networking)
 
     def test__add_all_interfaces(self):
         """Test a node that has no previously known interfaces on which we
