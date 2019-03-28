@@ -89,14 +89,14 @@ describe("DomainDetailsController", function() {
     }
 
     it("sets title and page on $rootScope", function() {
-        var controller = makeController();
+        makeController();
         expect($rootScope.title).toBe("Loading...");
         expect($rootScope.page).toBe("domains");
     });
 
     it("calls loadManagers with [DomainsManager, UsersManager]" +
         function() {
-            var controller = makeController();
+            makeController();
             expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
                 $scope, [DomainsManager, UsersManager]);
     });
@@ -107,7 +107,7 @@ describe("DomainDetailsController", function() {
         spyOn(ErrorService, "raiseError").and.returnValue(
             $q.defer().promise);
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
         $routeParams.domain_id = 'xyzzy';
 
         defer.resolve();
@@ -123,7 +123,7 @@ describe("DomainDetailsController", function() {
         spyOn(DomainsManager, "setActiveItem").and.returnValue(
             $q.defer().promise);
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
         DomainsManager._activeItem = domain;
         $routeParams.domain_id = domain.id;
 
@@ -139,7 +139,7 @@ describe("DomainDetailsController", function() {
         spyOn(DomainsManager, "setActiveItem").and.returnValue(
             $q.defer().promise);
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
         $routeParams.domain_id = domain.id;
 
         defer.resolve();
@@ -150,32 +150,32 @@ describe("DomainDetailsController", function() {
     });
 
     it("sets domain and loaded once setActiveItem resolves", function() {
-        var controller = makeControllerResolveSetActiveItem();
+        makeControllerResolveSetActiveItem();
         expect($scope.domain).toBe(domain);
         expect($scope.loaded).toBe(true);
     });
 
     it("title is updated once setActiveItem resolves", function() {
-        var controller = makeControllerResolveSetActiveItem();
+        makeControllerResolveSetActiveItem();
         expect($rootScope.title).toBe(domain.displayname);
     });
 
     describe("canBeDeleted", function() {
 
         it("returns false if domain is null", function() {
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             $scope.domain = null;
             expect($scope.canBeDeleted()).toBe(false);
         });
 
         it("returns false if domain has resources", function() {
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             $scope.domain.rrsets = [makeInteger()];
             expect($scope.canBeDeleted()).toBe(false);
         });
 
         it("returns true if domain has no resources", function() {
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             $scope.domain.rrsets = [];
             expect($scope.canBeDeleted()).toBe(true);
         });
@@ -184,13 +184,13 @@ describe("DomainDetailsController", function() {
     describe("deleteButton", function() {
 
         it("confirms delete", function() {
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             $scope.deleteButton();
             expect($scope.actionInProgress).toBe(true);
         });
 
         it("clears error", function() {
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             $scope.error = makeName("error");
             $scope.deleteButton();
             expect($scope.error).toBeNull();
@@ -200,7 +200,7 @@ describe("DomainDetailsController", function() {
     describe("cancelAction", function() {
 
         it("cancels delete", function() {
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             $scope.deleteButton();
             $scope.cancelAction();
             expect($scope.actionInProgress).toBe(false);
@@ -210,7 +210,7 @@ describe("DomainDetailsController", function() {
     describe("deleteDomain", function() {
 
         it("calls deleteDomain", function() {
-            var controller = makeController();
+            makeController();
             var deleteDomain = spyOn(DomainsManager, "deleteDomain");
             var defer = $q.defer();
             deleteDomain.and.returnValue(defer.promise);

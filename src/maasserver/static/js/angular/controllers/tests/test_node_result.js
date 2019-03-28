@@ -94,12 +94,12 @@ describe("NodeResultController", function() {
     }
 
     it("sets title to loading and page to nodes", function() {
-        var controller = makeController();
+        makeController();
         expect($rootScope.title).toBe("Loading...");
     });
 
     it("sets the initial $scope values", function() {
-        var controller = makeController();
+        makeController();
         expect($scope.loaded).toBe(false);
         expect($scope.resultLoaded).toBe(false);
         expect($scope.node).toBeNull();
@@ -111,7 +111,7 @@ describe("NodeResultController", function() {
 
     it("sets the initial $scope values when controller", function() {
         $location.path('/controller');
-        var controller = makeController();
+        makeController();
         expect($scope.loaded).toBe(false);
         expect($scope.resultLoaded).toBe(false);
         expect($scope.node).toBeNull();
@@ -122,14 +122,14 @@ describe("NodeResultController", function() {
     });
 
     it("calls loadManager with MachinesManager", function() {
-        var controller = makeController();
+        makeController();
         expect(ManagerHelperService.loadManager).toHaveBeenCalledWith(
             $scope, MachinesManager);
     });
 
     it("doesnt call setActiveItem if node already loaded", function() {
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
         MachinesManager._activeItem = node;
         spyOn(MachinesManager, "setActiveItem");
 
@@ -143,7 +143,7 @@ describe("NodeResultController", function() {
 
     it("calls setActiveItem if node not loaded", function() {
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
         var setActiveDefer = $q.defer();
         spyOn(MachinesManager, "setActiveItem").and.returnValue(
             setActiveDefer.promise);
@@ -162,7 +162,7 @@ describe("NodeResultController", function() {
 
     it("loads result on load", function(done) {
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
         MachinesManager._activeItem = node;
         var script_result = makeResult();
         webSocket.returnData.push(makeFakeResponse(script_result));
@@ -186,7 +186,7 @@ describe("NodeResultController", function() {
 
     it("calls raiseError if setActiveItem is rejected", function() {
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
         var setActiveDefer = $q.defer();
         spyOn(MachinesManager, "setActiveItem").and.returnValue(
             setActiveDefer.promise);
@@ -204,7 +204,7 @@ describe("NodeResultController", function() {
 
     it("watches node.fqdn updates $rootScope.title", function() {
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
         MachinesManager._activeItem = node;
         $scope.result = script_result;
 
@@ -220,7 +220,7 @@ describe("NodeResultController", function() {
 
         it("sets initial variables", function() {
             var defer = $q.defer();
-            var controller = makeController(defer);
+            makeController(defer);
             var output = makeName("output");
             MachinesManager._activeItem = node;
             $scope.result = script_result;
@@ -235,7 +235,7 @@ describe("NodeResultController", function() {
 
         it("returns result", function() {
             var defer = $q.defer();
-            var controller = makeController();
+            makeController();
             var output = makeName("output");
             var data = makeName("data");
             $scope.node = node;
@@ -255,7 +255,7 @@ describe("NodeResultController", function() {
 
         it("returns empty file when empty", function() {
             var defer = $q.defer();
-            var controller = makeController();
+            makeController();
             var output = makeName("output");
             $scope.node = node;
             $scope.result = script_result;

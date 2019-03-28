@@ -385,7 +385,7 @@ describe("NodeNetworkingController", function() {
     }
 
     it("sets initial values", function() {
-        var controller = makeController();
+        makeController();
         expect($scope.loaded).toBe(false);
         expect($scope.nodeHasLoaded).toBe(false);
         expect($scope.managersHaveLoaded).toBe(false);
@@ -408,7 +408,7 @@ describe("NodeNetworkingController", function() {
 
     it("sets loaded once node loaded then managers loaded", function() {
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
 
         // All should false.
         expect($scope.loaded).toBe(false);
@@ -431,7 +431,7 @@ describe("NodeNetworkingController", function() {
 
     it("sets loaded once managers loaded then node loaded", function() {
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
 
         // All should false.
         expect($scope.loaded).toBe(false);
@@ -454,7 +454,7 @@ describe("NodeNetworkingController", function() {
 
     it("loads bond_options if not yet loaded", function() {
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
 
         defer.resolve();
         $rootScope.$digest();
@@ -464,7 +464,7 @@ describe("NodeNetworkingController", function() {
     });
 
     it("watches interfaces and subnets once nodeLoaded called", function() {
-        var controller = makeController();
+        makeController();
         spyOn($scope, "$watch");
         spyOn($scope, "$watchCollection");
         $scope.nodeLoaded();
@@ -485,7 +485,7 @@ describe("NodeNetworkingController", function() {
     });
 
     it("watches interfaces and subnets once nodeLoaded called", function() {
-        var controller = makeController();
+        makeController();
         spyOn($scope, "$watch");
         spyOn($scope, "$watchCollection");
         $parentScope.isController = true;
@@ -507,7 +507,7 @@ describe("NodeNetworkingController", function() {
     });
 
     it("edit device subnet correctly when subnet is set", function() {
-        var controller = makeController();
+        makeController();
         $parentScope.isDevice = true;
         $scope.subnets = [{ id: 0, vlan: 0 }, { id: 1, vlan: 0}];
         var nic = {
@@ -526,7 +526,7 @@ describe("NodeNetworkingController", function() {
     });
 
     it("edit device subnet correctly when subnet is not set", function() {
-        var controller = makeController();
+        makeController();
         $parentScope.isDevice = true;
         $scope.subnets = [{ id: 0, vlan: 0 }, { id: 1, vlan: 0}];
         var nic = {
@@ -1423,7 +1423,7 @@ describe("NodeNetworkingController", function() {
     describe("isBootInterface", function() {
 
         it("returns true if is_boot is true", function() {
-            var controller = makeController();
+            makeController();
             var nic = {
                 type: "physical",
                 is_boot: true
@@ -1432,7 +1432,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("returns true if is_boot is true and alias", function() {
-            var controller = makeController();
+            makeController();
             var nic = {
                 type: "alias",
                 is_boot: true
@@ -1441,7 +1441,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("returns false if is_boot is false", function() {
-            var controller = makeController();
+            makeController();
             var nic = {
                 type: "physical",
                 is_boot: false
@@ -1450,7 +1450,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("returns false if bond has no members with is_boot", function() {
-            var controller = makeController();
+            makeController();
             var nic = {
                 type: "bond",
                 is_boot: false,
@@ -1467,7 +1467,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("returns true if bond has member with is_boot", function() {
-            var controller = makeController();
+            makeController();
             var nic = {
                 type: "bond",
                 is_boot: false,
@@ -1495,7 +1495,7 @@ describe("NodeNetworkingController", function() {
 
         angular.forEach(INTERFACE_TYPE_TEXTS, function(value, type) {
             it("returns correct value for '" + type + "'", function() {
-                var controller = makeController();
+                makeController();
                 var nic = {
                     type: type
                 };
@@ -1515,7 +1515,7 @@ describe("NodeNetworkingController", function() {
 
         angular.forEach(LINK_MODE_TEXTS, function(value, mode) {
             it("returns correct value for '" + mode + "'", function() {
-                var controller = makeController();
+                makeController();
                 var nic = {
                     mode: mode
                 };
@@ -1527,12 +1527,12 @@ describe("NodeNetworkingController", function() {
     describe("getVLANText", function() {
 
         it("returns empty if vlan undefined", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.getVLANText()).toBe("");
         });
 
         it("returns just vid", function() {
-            var controller = makeController();
+            makeController();
             var vlan = {
                 vid: 5
             };
@@ -1540,7 +1540,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("returns vid + name", function() {
-            var controller = makeController();
+            makeController();
             var name = makeName("vlan");
             var vlan = {
                 vid: 5,
@@ -1553,12 +1553,12 @@ describe("NodeNetworkingController", function() {
     describe("getSubnetText", function() {
 
         it("returns 'Unconfigured' for null", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.getSubnetText(null)).toBe("Unconfigured");
         });
 
         it("returns just cidr if no name", function() {
-            var controller = makeController();
+            makeController();
             var cidr = makeName("cidr");
             var subnet = {
                 cidr: cidr
@@ -1567,7 +1567,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("returns just cidr if name same as cidr", function() {
-            var controller = makeController();
+            makeController();
             var cidr = makeName("cidr");
             var subnet = {
                 cidr: cidr,
@@ -1577,7 +1577,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("returns cidr + name", function() {
-            var controller = makeController();
+            makeController();
             var cidr = makeName("cidr");
             var name = makeName("name");
             var subnet = {
@@ -1592,7 +1592,7 @@ describe("NodeNetworkingController", function() {
     describe("getSubnet", function() {
 
         it("calls SubnetsManager.getItemFromList", function() {
-            var controller = makeController();
+            makeController();
             var subnetId = makeInteger(0, 100);
             var subnet = {};
             spyOn(SubnetsManager, "getItemFromList").and.returnValue(subnet);
@@ -1606,7 +1606,7 @@ describe("NodeNetworkingController", function() {
     describe("saveInterface", function() {
 
         it("calls MachinesManager.updateInterface if name changed", function() {
-            var controller = makeController();
+            makeController();
             var id = makeInteger(0, 100);
             var name = makeName("nic");
             var vlan = { id: makeInteger(0, 100) };
@@ -1640,7 +1640,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("calls MachinesManager.updateInterface if vlan changed", function() {
-            var controller = makeController();
+            makeController();
             var id = makeInteger(0, 100);
             var name = makeName("nic");
             var vlan = { id: makeInteger(0, 100) };
@@ -1674,7 +1674,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("calls MachinesManager.updateInterface if vlan set", function() {
-            var controller = makeController();
+            makeController();
             var id = makeInteger(0, 100);
             var name = makeName("nic");
             var vlan = { id: makeInteger(0, 100) };
@@ -1708,7 +1708,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("calls MachinesManager.updateInterface if vlan unset", function() {
-            var controller = makeController();
+            makeController();
             var id = makeInteger(0, 100);
             var name = makeName("nic");
             var vlan = { id: makeInteger(0, 100) };
@@ -1745,7 +1745,7 @@ describe("NodeNetworkingController", function() {
     describe("isInterfaceNameInvalid", function() {
 
         it("returns true if name is empty", function() {
-            var controller = makeController();
+            makeController();
             var nic = {
                 name: ""
             };
@@ -1753,19 +1753,19 @@ describe("NodeNetworkingController", function() {
         });
 
         it("returns true if name is missing", function() {
-            var controller = makeController();
+            makeController();
             var nic = {};
             expect($scope.isInterfaceNameInvalid(nic)).toBe(true);
         });
 
         it("returns true if nic is null", function() {
-            var controller = makeController();
+            makeController();
             var nic = null;
             expect($scope.isInterfaceNameInvalid(nic)).toBe(true);
         });
 
         it("returns true if name is same as another interface", function() {
-            var controller = makeController();
+            makeController();
             var name = makeName("nic");
             var nic = {
                 id: 0,
@@ -1780,7 +1780,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("returns false if name is same name as self", function() {
-            var controller = makeController();
+            makeController();
             var name = makeName("nic");
             var nic = {
                 id: 0,
@@ -1791,7 +1791,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("returns false if name is different", function() {
-            var controller = makeController();
+            makeController();
             var name = makeName("nic");
             var newName = makeName("newNic");
             var nic = {
@@ -1810,7 +1810,7 @@ describe("NodeNetworkingController", function() {
     describe("fabricChanged", function() {
 
         it("sets vlan on interface", function() {
-            var controller = makeController();
+            makeController();
             var fabric = {
                 id: 0,
                 default_vlan_id: 0,
@@ -1832,7 +1832,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("sets vlan to null", function() {
-            var controller = makeController();
+            makeController();
             var nic = {
                 vlan: {},
                 fabric: null
@@ -1846,7 +1846,7 @@ describe("NodeNetworkingController", function() {
     describe("isLinkModeDisabled", function() {
 
         it("enabled when subnet", function() {
-            var controller = makeController();
+            makeController();
             var nic = {
                 subnet : {}
             };
@@ -1854,7 +1854,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("disabled when not subnet", function() {
-            var controller = makeController();
+            makeController();
             var nic = {
                 subnet : null
             };
@@ -1862,7 +1862,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("enabled when subnet with getValue", function() {
-            var controller = makeController();
+            makeController();
             var nic = {
                 getValue : function() { return {};}
             };
@@ -1870,7 +1870,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("disabled when not subnet with getValue", function() {
-            var controller = makeController();
+            makeController();
             var nic = {
                 getValue : function() { return null;}
             };
@@ -1881,7 +1881,7 @@ describe("NodeNetworkingController", function() {
     describe("saveInterfaceLink", function() {
 
         it("calls MachinesManager.linkSubnet with params", function() {
-            var controller = makeController();
+            makeController();
             var nic = {
                 id: makeInteger(0, 100),
                 mode: "static",
@@ -1905,7 +1905,7 @@ describe("NodeNetworkingController", function() {
     describe("subnetChanged", function() {
 
         it("sets mode to link_up if set to no subnet", function() {
-            var controller = makeController();
+            makeController();
             var nic = {
                 subnet: null
             };
@@ -1915,7 +1915,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("doesnt set mode to link_up if set if subnet", function() {
-            var controller = makeController();
+            makeController();
             var nic = {
                 mode: "static",
                 subnet: {}
@@ -1926,7 +1926,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("clears ip_address", function() {
-            var controller = makeController();
+            makeController();
             var nic = {
                 subnet: null,
                 ip_address: makeName("ip")
@@ -1940,7 +1940,7 @@ describe("NodeNetworkingController", function() {
     describe("subnetChangedForm", function() {
 
         it("sets mode to link_up if set to no subnet", function() {
-            var controller = makeController();
+            makeController();
             var nic = {
                 getValue: function(name) { return this["_" + name];},
                 updateValue: function(name, val) { this["_" + name] = val; },
@@ -1952,7 +1952,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("doesnt set mode to link_up if set if subnet", function() {
-            var controller = makeController();
+            makeController();
             var nic = {
                 getValue: function(name) { return this["_" + name];},
                 updateValue: function(name, val) { this["_" + name] = val; },
@@ -1965,7 +1965,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("clears ip_address", function() {
-            var controller = makeController();
+            makeController();
             var nic = {
                 getValue: function(name) { return this["_" + name];},
                 updateValue: function(name, val) { this["_" + name] = val; },
@@ -1981,7 +1981,7 @@ describe("NodeNetworkingController", function() {
     describe("isIPAddressInvalid", function() {
 
         it("true if empty IP address", function() {
-            var controller = makeController();
+            makeController();
             var nic = {
                 ip_address: "",
                 mode: "static"
@@ -1990,7 +1990,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("true if not valid IP address", function() {
-            var controller = makeController();
+            makeController();
             var nic = {
                 ip_address: "192.168.260.5",
                 mode: "static"
@@ -1999,7 +1999,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("true if IP address not in subnet", function() {
-            var controller = makeController();
+            makeController();
             var nic = {
                 ip_address: "192.168.123.10",
                 mode: "static",
@@ -2011,7 +2011,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("false if IP address in subnet", function() {
-            var controller = makeController();
+            makeController();
             var nic = {
                 ip_address: "192.168.122.10",
                 mode: "static",
@@ -2026,7 +2026,7 @@ describe("NodeNetworkingController", function() {
     describe("getUniqueKey", function() {
 
         it("returns id + / + link_id", function() {
-            var controller = makeController();
+            makeController();
             var nic = {
                 id: makeInteger(0, 100),
                 link_id: makeInteger(0, 100)
@@ -2038,7 +2038,7 @@ describe("NodeNetworkingController", function() {
     describe("toggleInterfaceSelect", function() {
 
         it("selects interface and enters single mode", function() {
-            var controller = makeController();
+            makeController();
             var nic = {
                 id: makeInteger(0, 100),
                 link_id: makeInteger(0, 100)
@@ -2050,7 +2050,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("deselects interface and enters none mode", function() {
-            var controller = makeController();
+            makeController();
             var nic = {
                 id: makeInteger(0, 100),
                 link_id: makeInteger(0, 100)
@@ -2063,7 +2063,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("selecting multiple enters multi mode", function() {
-            var controller = makeController();
+            makeController();
             var nic1 = {
                 id: makeInteger(0, 100),
                 link_id: makeInteger(0, 100)
@@ -2084,7 +2084,7 @@ describe("NodeNetworkingController", function() {
     describe("isInterfaceSelected", function() {
 
         it("returns true when selected", function() {
-            var controller = makeController();
+            makeController();
             var nic = {
                 id: makeInteger(0, 100),
                 link_id: makeInteger(0, 100)
@@ -2095,7 +2095,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("returns false when not selected", function() {
-            var controller = makeController();
+            makeController();
             var nic = {
                 id: makeInteger(0, 100),
                 link_id: makeInteger(0, 100)
@@ -2108,7 +2108,7 @@ describe("NodeNetworkingController", function() {
     describe("cannotEditInterface", function() {
 
         it("returns true when only one selected", function() {
-            var controller = makeController();
+            makeController();
             var nic = {
                 id: makeInteger(0, 100),
                 link_id: makeInteger(0, 100)
@@ -2119,7 +2119,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("returns false when multiple selected", function() {
-            var controller = makeController();
+            makeController();
             var nic1 = {
                 id: makeInteger(0, 100),
                 link_id: makeInteger(0, 100)
@@ -2135,7 +2135,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("returns false when not selected", function() {
-            var controller = makeController();
+            makeController();
             var nic = {
                 id: makeInteger(0, 100),
                 link_id: makeInteger(0, 100)
@@ -2148,13 +2148,13 @@ describe("NodeNetworkingController", function() {
     describe("isShowingDeleteConfirm", function() {
 
         it("returns true in delete mode", function() {
-            var controller = makeController();
+            makeController();
             $scope.selectedMode = "delete";
             expect($scope.isShowingDeleteConfirm()).toBe(true);
         });
 
         it("returns false not in delete mode", function() {
-            var controller = makeController();
+            makeController();
             $scope.selectedMode = "single";
             expect($scope.isShowingDeleteConfirm()).toBe(false);
         });
@@ -2163,13 +2163,13 @@ describe("NodeNetworkingController", function() {
     describe("isShowingAdd", function() {
 
         it("returns true in add mode", function() {
-            var controller = makeController();
+            makeController();
             $scope.selectedMode = "add";
             expect($scope.isShowingAdd()).toBe(true);
         });
 
         it("returns false not in add mode", function() {
-            var controller = makeController();
+            makeController();
             $scope.selectedMode = "delete";
             expect($scope.isShowingAdd()).toBe(false);
         });
@@ -2178,7 +2178,7 @@ describe("NodeNetworkingController", function() {
     describe("canAddAliasOrVLAN", function() {
 
         it("returns false if isController", function() {
-            var controller = makeController();
+            makeController();
             $parentScope.isController = true;
             spyOn($scope, "isAllNetworkingDisabled").and.returnValue(false);
             spyOn($scope, "canAddAlias").and.returnValue(true);
@@ -2187,7 +2187,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("returns false if no node editing", function() {
-            var controller = makeController();
+            makeController();
             $parentScope.isController = false;
             spyOn($scope, "isAllNetworkingDisabled").and.returnValue(true);
             spyOn($scope, "canAddAlias").and.returnValue(true);
@@ -2196,7 +2196,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("returns true if can edit alias", function() {
-            var controller = makeController();
+            makeController();
             $parentScope.isController = false;
             spyOn($scope, "isAllNetworkingDisabled").and.returnValue(false);
             spyOn($scope, "canAddAlias").and.returnValue(true);
@@ -2205,7 +2205,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("returns true if can edit VLAN", function() {
-            var controller = makeController();
+            makeController();
             $parentScope.isController = false;
             spyOn($scope, "isAllNetworkingDisabled").and.returnValue(false);
             spyOn($scope, "canAddAlias").and.returnValue(false);
@@ -2217,12 +2217,12 @@ describe("NodeNetworkingController", function() {
     describe("canAddAlias", function() {
 
         it("returns false if nic undefined", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.canAddAlias()).toBe(false);
         });
 
         it("returns false if nic type is alias", function() {
-            var controller = makeController();
+            makeController();
             var nic = {
                 type: "alias"
             };
@@ -2230,7 +2230,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("returns false if nic has no links", function() {
-            var controller = makeController();
+            makeController();
             var nic = {
                 type: "physical",
                 links: []
@@ -2239,7 +2239,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("returns false if nic has link_up", function() {
-            var controller = makeController();
+            makeController();
             var nic = {
                 type: "physical",
                 links: [{
@@ -2250,7 +2250,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("returns true if nic has dhcp", function() {
-            var controller = makeController();
+            makeController();
             var nic = {
                 type: "physical",
                 links: [{
@@ -2261,7 +2261,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("returns true if nic has static", function() {
-            var controller = makeController();
+            makeController();
             var nic = {
                 type: "physical",
                 links: [{
@@ -2272,7 +2272,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("returns true if nic has auto", function() {
-            var controller = makeController();
+            makeController();
             var nic = {
                 type: "physical",
                 links: [{
@@ -2286,12 +2286,12 @@ describe("NodeNetworkingController", function() {
     describe("canAddVLAN", function() {
 
         it("returns false if nic undefined", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.canAddVLAN()).toBe(false);
         });
 
         it("returns false if nic type is alias", function() {
-            var controller = makeController();
+            makeController();
             var nic = {
                 type: "alias"
             };
@@ -2299,7 +2299,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("returns false if nic type is vlan", function() {
-            var controller = makeController();
+            makeController();
             var nic = {
                 type: "vlan"
             };
@@ -2307,7 +2307,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("returns false if no unused vlans", function() {
-            var controller = makeController();
+            makeController();
             var fabric = {
                 id: 0
             };
@@ -2366,7 +2366,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("returns true if unused vlans", function() {
-            var controller = makeController();
+            makeController();
             var fabric = {
                 id: 0
             };
@@ -2421,13 +2421,13 @@ describe("NodeNetworkingController", function() {
     describe("canAddAnotherVLAN", function() {
 
         it("returns false if canAddVLAN returns false", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "canAddVLAN").and.returnValue(false);
             expect($scope.canAddAnotherVLAN()).toBe(false);
         });
 
         it("returns false if only 1 unused vlans", function() {
-            var controller = makeController();
+            makeController();
             var fabric = {
                 id: 0
             };
@@ -2479,7 +2479,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("returns true if more than 1 unused vlans", function() {
-            var controller = makeController();
+            makeController();
             var fabric = {
                 id: 0
             };
@@ -2527,7 +2527,7 @@ describe("NodeNetworkingController", function() {
     describe("getRemoveTypeText", function() {
 
         it("returns interface for physical interface", function() {
-            var controller = makeController();
+            makeController();
             var nic = {
                 type: "physical"
             };
@@ -2535,7 +2535,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("returns VLAN for VLAN interface", function() {
-            var controller = makeController();
+            makeController();
             var nic = {
                 type: "vlan"
             };
@@ -2543,7 +2543,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("returns type for other types", function() {
-            var controller = makeController();
+            makeController();
             var type = makeName("type");
             var nic = {
                 type: type
@@ -2555,21 +2555,21 @@ describe("NodeNetworkingController", function() {
     describe("canBeRemoved", function() {
 
         it("false if isController", function() {
-            var controller = makeController();
+            makeController();
             $parentScope.isController = true;
             spyOn($scope, "isAllNetworkingDisabled").and.returnValue(false);
             expect($scope.canBeRemoved()).toBe(false);
         });
 
         it("false if no node editing", function() {
-            var controller = makeController();
+            makeController();
             $parentScope.isController = false;
             spyOn($scope, "isAllNetworkingDisabled").and.returnValue(true);
             expect($scope.canBeRemoved()).toBe(false);
         });
 
         it("true if node can be edited", function() {
-            var controller = makeController();
+            makeController();
             $parentScope.isController = false;
             spyOn($scope, "isAllNetworkingDisabled").and.returnValue(false);
             expect($scope.canBeRemoved()).toBe(true);
@@ -2579,7 +2579,7 @@ describe("NodeNetworkingController", function() {
     describe("remove", function() {
 
         it("sets selectedMode to delete", function() {
-            var controller = makeController();
+            makeController();
             $scope.remove();
             expect($scope.selectedMode).toBe("delete");
         });
@@ -2588,7 +2588,7 @@ describe("NodeNetworkingController", function() {
     describe("quickRemove", function() {
 
         it("selects interface and sets selectedMode to delete", function() {
-            var controller = makeController();
+            makeController();
             var nic = {
                 id: makeInteger(0, 100),
                 link_id: makeInteger(0, 100)
@@ -2602,7 +2602,7 @@ describe("NodeNetworkingController", function() {
     describe("cancel", function() {
 
         it("clears newInterface and sets selectedMode to single", function() {
-            var controller = makeController();
+            makeController();
             var newInterface = {};
             $scope.newInterface = newInterface;
             $scope.selectedMode = "delete";
@@ -2612,7 +2612,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("clears newInterface and create resets to none", function() {
-            var controller = makeController();
+            makeController();
             var newInterface = {};
             $scope.newInterface = newInterface;
             $scope.selectedMode = "create-physical";
@@ -2623,7 +2623,7 @@ describe("NodeNetworkingController", function() {
 
         it("clears newBondInterface and sets selectedMode to multi",
             function() {
-                var controller = makeController();
+                makeController();
                 var newBondInterface = {};
                 $scope.newBondInterface = newBondInterface;
                 $scope.selectedMode = "create-bond";
@@ -2636,7 +2636,7 @@ describe("NodeNetworkingController", function() {
     describe("confirmRemove", function() {
 
         it("sets selectedMode to none", function() {
-            var controller = makeController();
+            makeController();
             var nic = {
                 id: makeInteger(0, 100),
                 type: "physical",
@@ -2653,7 +2653,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("calls MachinesManager.deleteInterface", function() {
-            var controller = makeController();
+            makeController();
             var nic = {
                 id: makeInteger(0, 100),
                 type: "physical",
@@ -2670,7 +2670,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("calls MachinesManager.unlinkSubnet", function() {
-            var controller = makeController();
+            makeController();
             var nic = {
                 id: makeInteger(0, 100),
                 type: "alias",
@@ -2687,7 +2687,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("removes nic from interfaces", function() {
-            var controller = makeController();
+            makeController();
             var nic = {
                 id: makeInteger(0, 100),
                 type: "alias",
@@ -2707,7 +2707,7 @@ describe("NodeNetworkingController", function() {
     describe("add", function() {
 
         it("sets up newInterface for alias", function() {
-            var controller = makeController();
+            makeController();
             var vlan = {id:0};
             var subnet = {id:0, vlan:0};
             $scope.subnets = [subnet];
@@ -2734,7 +2734,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("sets up newInterface for vlan", function() {
-            var controller = makeController();
+            makeController();
             var fabric = {
                 id: 0
             };
@@ -2799,7 +2799,7 @@ describe("NodeNetworkingController", function() {
     describe("quickAdd", function() {
 
         it("selects nic and calls add with alias", function() {
-            var controller = makeController();
+            makeController();
             var nic = {
                 id: makeInteger(0, 100),
                 link_id: makeInteger(0, 100)
@@ -2816,7 +2816,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("selects nic and calls add with vlan", function() {
-            var controller = makeController();
+            makeController();
             var nic = {
                 id: makeInteger(0, 100),
                 link_id: makeInteger(0, 100)
@@ -2836,7 +2836,7 @@ describe("NodeNetworkingController", function() {
     describe("getAddName", function() {
 
         it("returns alias name based on links length", function() {
-            var controller = makeController();
+            makeController();
             var name = makeName("eth");
             var parent = {
                 id: makeInteger(0, 100),
@@ -2853,7 +2853,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("returns VLAN name based on VLAN vid", function() {
-            var controller = makeController();
+            makeController();
             var name = makeName("eth");
             var vid = makeInteger(0, 100);
             var parent = {
@@ -2876,7 +2876,7 @@ describe("NodeNetworkingController", function() {
     describe("addTypeChanged", function() {
 
         it("reset properties based on the new type alias", function() {
-            var controller = makeController();
+            makeController();
             var vlan = {id:0};
             var subnet = {id:0, vlan:0};
             $scope.subnets = [subnet];
@@ -2898,7 +2898,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("reset properties based on the new type VLAN", function() {
-            var controller = makeController();
+            makeController();
             var fabric = {
                 id: 0
             };
@@ -2957,7 +2957,7 @@ describe("NodeNetworkingController", function() {
     describe("vlanChanged", function() {
 
         it("clears subnets on newInterface", function() {
-            var controller = makeController();
+            makeController();
             $scope.newInterface = {
                 subnet: {}
             };
@@ -2969,7 +2969,7 @@ describe("NodeNetworkingController", function() {
     describe("vlanChangedForm", function() {
 
         it("clears subnets on newInterface", function() {
-            var controller = makeController();
+            makeController();
             $scope.newInterface = {
                 getValue: function(name) { return this["_" + name];},
                 updateValue: function(name, val) { this["_" + name] = val; },
@@ -2983,7 +2983,7 @@ describe("NodeNetworkingController", function() {
     describe("subnetChanged", function() {
 
         it("sets mode to link_up if no subnet", function() {
-            var controller = makeController();
+            makeController();
             $scope.newInterface = {
                 mode: "auto"
             };
@@ -2992,7 +2992,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("leaves mode to alone when subnet", function() {
-            var controller = makeController();
+            makeController();
             $scope.newInterface = {
                 mode: "auto",
                 subnet: {}
@@ -3005,7 +3005,7 @@ describe("NodeNetworkingController", function() {
     describe("addInterface", function() {
 
         it("calls saveInterfaceLink with correct params", function() {
-            var controller = makeController();
+            makeController();
             var parent = {
                 id: makeInteger(0, 100)
             };
@@ -3032,7 +3032,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("calls createVLANInterface with correct params", function() {
-            var controller = makeController();
+            makeController();
             var parent = {
                 id: makeInteger(0, 100)
             };
@@ -3072,7 +3072,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("calls add again with type", function() {
-            var controller = makeController();
+            makeController();
             var parent = {
                 id: makeInteger(0, 100)
             };
@@ -3098,7 +3098,7 @@ describe("NodeNetworkingController", function() {
     describe("isDisabled", function() {
 
         it("returns false when in none, single, or multi mode", function() {
-            var controller = makeController();
+            makeController();
             $scope.canEdit = function() { return true; };
             // Node needs to be Ready or Broken for the mode to be considered.
             $scope.node = {status: "Ready"};
@@ -3111,7 +3111,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("returns true when in delete, add, or create modes", function() {
-            var controller = makeController();
+            makeController();
             $scope.canEdit = function() { return true; };
             // Node needs to be Ready or Broken for the mode to be considered.
             $scope.node = {status: "Ready"};
@@ -3125,7 +3125,7 @@ describe("NodeNetworkingController", function() {
 
         it("returns true when the node state is not 'Ready' or 'Broken'",
             function() {
-            var controller = makeController();
+            makeController();
             $scope.canEdit = function() { return true; };
             $scope.node = {status: "Ready"};
             expect($scope.isDisabled()).toBe(false);
@@ -3151,7 +3151,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("returns true if the user is not a superuser", function() {
-            var controller = makeController();
+            makeController();
             $scope.canEdit = function() { return false; };
             $scope.node = {status: "Ready"};
             expect($scope.isDisabled()).toBe(true);
@@ -3163,20 +3163,20 @@ describe("NodeNetworkingController", function() {
     describe("isLimitedEditingAllowed", function() {
 
         it("returns false when not superuser", function() {
-            var controller = makeController();
+            makeController();
             $scope.canEdit = function() { return false; };
             expect($scope.isLimitedEditingAllowed()).toBe(false);
         });
 
         it("returns false when isController", function() {
-            var controller = makeController();
+            makeController();
             $scope.canEdit = function() { return true; };
             $parentScope.isController = true;
             expect($scope.isLimitedEditingAllowed()).toBe(false);
         });
 
         it("returns true when deployed and not vlan", function() {
-            var controller = makeController();
+            makeController();
             $scope.canEdit = function() { return true; };
             $parentScope.isController = false;
             $scope.node = {
@@ -3194,7 +3194,7 @@ describe("NodeNetworkingController", function() {
         it("returns true if the user is not a superuser " +
            "and the node is not a device",
             function() {
-            var controller = makeController();
+            makeController();
             $parentScope.isDevice = false;
             $scope.canEdit = function() { return false; };
             expect($scope.isAllNetworkingDisabled()).toBe(true);
@@ -3203,7 +3203,7 @@ describe("NodeNetworkingController", function() {
         it("returns false if the user is not a superuser " +
            "and the node is not a device",
             function() {
-            var controller = makeController();
+            makeController();
             $parentScope.isDevice = true;
             $scope.canEdit = function() { return false; };
             expect($scope.isAllNetworkingDisabled()).toBe(false);
@@ -3212,7 +3212,7 @@ describe("NodeNetworkingController", function() {
         it("returns false when a non-controller node state " +
            "is 'New', 'Ready', 'Allocated' or 'Broken' and we are a superuser",
             function() {
-            var controller = makeController();
+            makeController();
             $scope.canEdit = function() { return true; };
             $scope.node = {status: "New"};
             expect($scope.isAllNetworkingDisabled()).toBe(false);
@@ -3242,7 +3242,7 @@ describe("NodeNetworkingController", function() {
 
         it("returns false for controllers, in any state, even if superuser",
             function() {
-            var controller = makeController();
+            makeController();
             $parentScope.isController = true;
             $scope.canEdit = function() { return true; };
             ["Ready",
@@ -3270,7 +3270,7 @@ describe("NodeNetworkingController", function() {
     describe("canCreateBond", function() {
 
         it("returns false if not in multi mode", function() {
-            var controller = makeController();
+            makeController();
             var modes = [null, "add", "delete", "single", "delete"];
             angular.forEach(modes, function(mode) {
                 $scope.selectedMode = mode;
@@ -3279,7 +3279,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("returns false if selected interface is bond", function() {
-            var controller = makeController();
+            makeController();
             var nic1 = {
                 id: makeInteger(0, 100),
                 link_id: makeInteger(0, 100),
@@ -3302,7 +3302,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("returns false if selected interface is alias", function() {
-            var controller = makeController();
+            makeController();
             var nic1 = {
                 id: makeInteger(0, 100),
                 link_id: makeInteger(0, 100),
@@ -3325,7 +3325,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("returns false if not same selected vlan", function() {
-            var controller = makeController();
+            makeController();
             var nic1 = {
                 id: makeInteger(0, 100),
                 link_id: makeInteger(0, 100),
@@ -3350,7 +3350,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("returns true if same selected vlan", function() {
-            var controller = makeController();
+            makeController();
             var vlan = {};
             var nic1 = {
                 id: makeInteger(0, 100),
@@ -3379,13 +3379,13 @@ describe("NodeNetworkingController", function() {
     describe("isShowingCreateBond", function() {
 
         it("returns true in create-bond mode", function() {
-            var controller = makeController();
+            makeController();
             $scope.selectedMode = "create-bond";
             expect($scope.isShowingCreateBond()).toBe(true);
         });
 
         it("returns false in multi mode", function() {
-            var controller = makeController();
+            makeController();
             $scope.selectedMode = "multi";
             expect($scope.isShowingCreateBond()).toBe(false);
         });
@@ -3394,7 +3394,7 @@ describe("NodeNetworkingController", function() {
     describe("showCreateBond", function() {
 
         it("sets mode to create-bond", function() {
-            var controller = makeController();
+            makeController();
             $scope.selectedMode = "multi";
             spyOn($scope, "canCreateBond").and.returnValue(true);
             $scope.showCreateBond();
@@ -3402,7 +3402,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("creates the newBondInterface", function() {
-            var controller = makeController();
+            makeController();
             var vlan = {};
             var nic1 = {
                 id: makeInteger(0, 100),
@@ -3444,14 +3444,14 @@ describe("NodeNetworkingController", function() {
     describe("toggleInterfaces", function() {
 
         it("sets isShowingInterfaces to false if showing", function() {
-            var controller = makeController();
+            makeController();
             $scope.isShowingInterfaces = true;
             $scope.toggleInterfaces();
             expect($scope.isShowingInterfaces).toBe(false);
         });
 
         it("sets isShowingInterfaces to true if not showing", function() {
-            var controller = makeController();
+            makeController();
             $scope.isShowingInterfaces = false;
             $scope.toggleInterfaces();
             expect($scope.isShowingInterfaces).toBe(true);
@@ -3472,14 +3472,14 @@ describe("NodeNetworkingController", function() {
         ];
 
         it("returns true if not parent & type is same as parent", function() {
-            var controller = makeController();
+            makeController();
             expect(
                 $scope.isCorrectInterfaceType(bondInterface, parents)
             ).toBe(true);
         });
 
         it("returns false if parent", function() {
-            var controller = makeController();
+            makeController();
 
             bondInterface.id = 34;
 
@@ -3489,7 +3489,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("returns false is type is not same as parent", function() {
-            var controller = makeController();
+            makeController();
 
             bondInterface.id = 33;
             bondInterface.type = 'vlan';
@@ -3503,7 +3503,7 @@ describe("NodeNetworkingController", function() {
     describe("hasBootInterface", function() {
 
         it("returns false if bond has no members with is_boot", function() {
-            var controller = makeController();
+            makeController();
             $scope.newBondInterface = {
                 parents: [
                     {
@@ -3519,7 +3519,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("returns true if bond has member with is_boot", function() {
-            var controller = makeController();
+            makeController();
             $scope.newBondInterface = {
                 parents: [
                     {
@@ -3538,12 +3538,12 @@ describe("NodeNetworkingController", function() {
     describe("getInterfacePlaceholderMACAddress", function() {
 
         it("returns empty string if primary not set", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.getInterfacePlaceholderMACAddress({})).toBe("");
         });
 
         it("returns the MAC address of the primary interface", function() {
-            var controller = makeController();
+            makeController();
             var mac_address = makeName("mac");
             $scope.newBondInterface.primary = {
                 mac_address: mac_address
@@ -3558,23 +3558,23 @@ describe("NodeNetworkingController", function() {
 
         it("returns false when the mac_address blank and not invalidEmpty",
             function() {
-                var controller = makeController();
+                makeController();
                 expect($scope.isMACAddressInvalid("")).toBe(false);
             });
 
         it("returns truw when the mac_address is blank and invalidEmpty",
             function() {
-                var controller = makeController();
+                makeController();
                 expect($scope.isMACAddressInvalid("", true)).toBe(true);
             });
 
         it("returns false if valid mac_address", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.isMACAddressInvalid("00:11:22:33:44:55")).toBe(false);
         });
 
         it("returns true if invalid mac_address", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.isMACAddressInvalid("00:11:22:33:44")).toBe(true);
         });
     });
@@ -3582,13 +3582,13 @@ describe("NodeNetworkingController", function() {
     describe("showLACPRate", function() {
 
         it("returns true if in 802.3ad mode", function() {
-            var controller = makeController();
+            makeController();
             $scope.newBondInterface.bond_mode = "802.3ad";
             expect($scope.showLACPRate()).toBe(true);
         });
 
         it("returns false if not in 802.3ad mode", function() {
-            var controller = makeController();
+            makeController();
             $scope.newBondInterface.bond_mode = makeName("otherMode");
             expect($scope.showLACPRate()).toBe(false);
         });
@@ -3597,21 +3597,21 @@ describe("NodeNetworkingController", function() {
     describe("modeAndPolicyCompliant", function() {
 
         it("returns true if policy is layer3+4", function() {
-            var controller = makeController();
+            makeController();
             $scope.newBondInterface.bond_mode = "802.3ad";
             $scope.newBondInterface.xmitHashPolicy = "layer3+4";
             expect($scope.showLACPRate()).toBe(true);
         });
 
         it("returns true if policy is encap3+4", function() {
-            var controller = makeController();
+            makeController();
             $scope.newBondInterface.bond_mode = "802.3ad";
             $scope.newBondInterface.xmitHashPolicy = "encap3+4";
             expect($scope.showLACPRate()).toBe(true);
         });
 
         it("returns false if 802.3ad compliant", function() {
-            var controller = makeController();
+            makeController();
             $scope.editInterface = {
                 id: 0,
                 link_id: -1
@@ -3625,25 +3625,25 @@ describe("NodeNetworkingController", function() {
     describe("showXMITHashPolicy", function() {
 
         it("returns true if in balance-xor mode", function() {
-            var controller = makeController();
+            makeController();
             $scope.newBondInterface.bond_mode = "balance-xor";
             expect($scope.showXMITHashPolicy()).toBe(true);
         });
 
         it("returns true if in 802.3ad mode", function() {
-            var controller = makeController();
+            makeController();
             $scope.newBondInterface.bond_mode = "802.3ad";
             expect($scope.showXMITHashPolicy()).toBe(true);
         });
 
         it("returns true if in balance-tlb mode", function() {
-            var controller = makeController();
+            makeController();
             $scope.newBondInterface.bond_mode = "balance-tlb";
             expect($scope.showXMITHashPolicy()).toBe(true);
         });
 
         it("returns false if not in other modes", function() {
-            var controller = makeController();
+            makeController();
             $scope.newBondInterface.bond_mode = makeName("otherMode");
             expect($scope.showXMITHashPolicy()).toBe(false);
         });
@@ -3652,20 +3652,20 @@ describe("NodeNetworkingController", function() {
     describe("cannotAddBond", function() {
 
         it("returns true when isInterfaceNameInvalid is true", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "isInterfaceNameInvalid").and.returnValue(true);
             expect($scope.cannotAddBond()).toBe(true);
         });
 
         it("returns true when isMACAddressInvalid is true", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "isInterfaceNameInvalid").and.returnValue(false);
             spyOn($scope, "isMACAddressInvalid").and.returnValue(true);
             expect($scope.cannotAddBond()).toBe(true);
         });
 
         it("returns false when both are false", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "isInterfaceNameInvalid").and.returnValue(false);
             spyOn($scope, "isMACAddressInvalid").and.returnValue(false);
             expect($scope.cannotAddBond()).toBe(false);
@@ -3674,8 +3674,8 @@ describe("NodeNetworkingController", function() {
 
     describe("addBond", function() {
 
-        it("deos nothing if cannotAddBond returns true", function() {
-            var controller = makeController();
+        it("does nothing if cannotAddBond returns true", function() {
+            makeController();
             var vlan = {
                 id: makeInteger(0, 100)
             };
@@ -3712,7 +3712,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("calls createBondInterface and removes selection", function() {
-            var controller = makeController();
+            makeController();
             var vlan = {
                 id: makeInteger(0, 100)
             };
@@ -3772,7 +3772,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("calls createBondInterface even when disconnected", function() {
-            var controller = makeController();
+            makeController();
             var nic1 = {
                 id: makeInteger(0, 100),
                 link_id: makeInteger(0, 100),
@@ -3825,7 +3825,7 @@ describe("NodeNetworkingController", function() {
     describe("canCreateBridge", function() {
 
         it("returns false if not in single mode", function() {
-            var controller = makeController();
+            makeController();
             var modes = [null, "add", "delete", "multi", "delete"];
             angular.forEach(modes, function(mode) {
                 $scope.selectedMode = mode;
@@ -3834,7 +3834,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("returns false if selected interface is bridge", function() {
-            var controller = makeController();
+            makeController();
             var nic1 = {
                 id: makeInteger(0, 100),
                 link_id: makeInteger(0, 100),
@@ -3849,7 +3849,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("returns false if selected interface is alias", function() {
-            var controller = makeController();
+            makeController();
             var nic1 = {
                 id: makeInteger(0, 100),
                 link_id: makeInteger(0, 100),
@@ -3864,7 +3864,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("returns false if muliple selected", function() {
-            var controller = makeController();
+            makeController();
             var nic1 = {
                 id: makeInteger(0, 100),
                 link_id: makeInteger(0, 100),
@@ -3889,7 +3889,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("returns true if selected", function() {
-            var controller = makeController();
+            makeController();
             var vlan = {};
             var nic1 = {
                 id: makeInteger(0, 100),
@@ -3909,13 +3909,13 @@ describe("NodeNetworkingController", function() {
     describe("isShowingCreateBridge", function() {
 
         it("returns true in create-bridge mode", function() {
-            var controller = makeController();
+            makeController();
             $scope.selectedMode = "create-bridge";
             expect($scope.isShowingCreateBridge()).toBe(true);
         });
 
         it("returns false in single mode", function() {
-            var controller = makeController();
+            makeController();
             $scope.selectedMode = "single";
             expect($scope.isShowingCreateBridge()).toBe(false);
         });
@@ -3924,13 +3924,13 @@ describe("NodeNetworkingController", function() {
     describe("isShowingEdit", function() {
 
         it("returns true in edit mode", function() {
-            var controller = makeController();
+            makeController();
             $scope.selectedMode = "edit";
             expect($scope.isShowingEdit()).toBe(true);
         });
 
         it("returns false in single mode", function() {
-            var controller = makeController();
+            makeController();
             $scope.selectedMode = "single";
             expect($scope.isShowingEdit()).toBe(false);
         });
@@ -3939,7 +3939,7 @@ describe("NodeNetworkingController", function() {
     describe("showCreateBridge", function() {
 
         it("sets mode to create-bridge", function() {
-            var controller = makeController();
+            makeController();
             $scope.selectedMode = "single";
             spyOn($scope, "canCreateBridge").and.returnValue(true);
             $scope.showCreateBridge();
@@ -3947,7 +3947,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("creates the newBridgeInterface", function() {
-            var controller = makeController();
+            makeController();
             var vlan = {};
             var nic1 = {
                 id: makeInteger(0, 100),
@@ -3978,20 +3978,20 @@ describe("NodeNetworkingController", function() {
     describe("cannotAddBridge", function() {
 
         it("returns true when isInterfaceNameInvalid is true", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "isInterfaceNameInvalid").and.returnValue(true);
             expect($scope.cannotAddBridge()).toBe(true);
         });
 
         it("returns true when isMACAddressInvalid is true", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "isInterfaceNameInvalid").and.returnValue(false);
             spyOn($scope, "isMACAddressInvalid").and.returnValue(true);
             expect($scope.cannotAddBridge()).toBe(true);
         });
 
         it("returns false when both are false", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "isInterfaceNameInvalid").and.returnValue(false);
             spyOn($scope, "isMACAddressInvalid").and.returnValue(false);
             expect($scope.cannotAddBridge()).toBe(false);
@@ -4000,8 +4000,8 @@ describe("NodeNetworkingController", function() {
 
     describe("addBridge", function() {
 
-        it("deos nothing if cannotAddBridge returns true", function() {
-            var controller = makeController();
+        it("does nothing if cannotAddBridge returns true", function() {
+            makeController();
             var vlan = {
                 id: makeInteger(0, 100)
             };
@@ -4030,7 +4030,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("calls createBridgeInterface and removes selection", function() {
-            var controller = makeController();
+            makeController();
             var vlan = {
                 id: makeInteger(0, 100)
             };
@@ -4089,13 +4089,13 @@ describe("NodeNetworkingController", function() {
     describe("isShowingCreatePhysical", function() {
 
         it("returns true in create-physical mode", function() {
-            var controller = makeController();
+            makeController();
             $scope.selectedMode = "create-physical";
             expect($scope.isShowingCreatePhysical()).toBe(true);
         });
 
         it("returns false in single mode", function() {
-            var controller = makeController();
+            makeController();
             $scope.selectedMode = "single";
             expect($scope.isShowingCreatePhysical()).toBe(false);
         });
@@ -4104,7 +4104,7 @@ describe("NodeNetworkingController", function() {
     describe("showCreatePhysical", function() {
 
         it("sets mode to create-physical", function() {
-            var controller = makeController();
+            makeController();
             var vlan = { id: 0, fabric: 0 };
             var fabric = {
                 id: 0, name: makeName("fabric"),
@@ -4118,7 +4118,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("creates the newInterface", function() {
-            var controller = makeController();
+            makeController();
             var vlan = { id: 0, fabric: 0 };
             var fabric = {
                 id: 0, name: makeName("fabric"),
@@ -4145,7 +4145,7 @@ describe("NodeNetworkingController", function() {
     describe("fabricChanged", function() {
 
         it("sets newInterface.vlan with new fabric", function() {
-            var controller = makeController();
+            makeController();
             var vlan = { id: 0, fabric: 0 };
             var fabric = {
                 id: 0, name: makeName("fabric"),
@@ -4165,7 +4165,7 @@ describe("NodeNetworkingController", function() {
     describe("fabricChangedForm", function() {
 
         it("sets newInterface.vlan with new fabric", function() {
-            var controller = makeController();
+            makeController();
             var vlan = { id: 0, fabric: 0 };
             var fabric = {
                 id: 0, name: makeName("fabric"),
@@ -4189,7 +4189,7 @@ describe("NodeNetworkingController", function() {
     describe("subnetChanged", function() {
 
         it("sets mode to link_up when no subnet", function() {
-            var controller = makeController();
+            makeController();
             $scope.newInterface.subnet = null;
             $scope.newInterface.mode = "auto";
             $scope.subnetChanged($scope.newInterface);
@@ -4197,7 +4197,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("leaves mode to original when subnet", function() {
-            var controller = makeController();
+            makeController();
             $scope.newInterface.subnet = {};
             $scope.newInterface.mode = "auto";
             $scope.subnetChanged($scope.newInterface);
@@ -4208,7 +4208,7 @@ describe("NodeNetworkingController", function() {
     describe("subnetChangedForm", function() {
 
         it("sets mode to link_up when no subnet", function() {
-            var controller = makeController();
+            makeController();
             $scope.newInterface = {
                 getValue: function(name) { return this["_" + name];},
                 updateValue: function(name, val) { this["_" + name] = val; },
@@ -4220,7 +4220,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("leaves mode to original when subnet", function() {
-            var controller = makeController();
+            makeController();
             $scope.newInterface = {
                 getValue: function(name) { return this["_" + name];},
                 updateValue: function(name, val) { this["_" + name] = val; },
@@ -4235,20 +4235,20 @@ describe("NodeNetworkingController", function() {
     describe("cannotAddPhysicalInterface", function() {
 
         it("returns true when isInterfaceNameInvalid is true", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "isInterfaceNameInvalid").and.returnValue(true);
             expect($scope.cannotAddPhysicalInterface()).toBe(true);
         });
 
         it("returns true when isMACAddressInvalid is true", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "isInterfaceNameInvalid").and.returnValue(false);
             spyOn($scope, "isMACAddressInvalid").and.returnValue(true);
             expect($scope.cannotAddPhysicalInterface()).toBe(true);
         });
 
         it("returns false when both are false", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "isInterfaceNameInvalid").and.returnValue(false);
             spyOn($scope, "isMACAddressInvalid").and.returnValue(false);
             expect($scope.cannotAddPhysicalInterface()).toBe(false);
@@ -4257,8 +4257,8 @@ describe("NodeNetworkingController", function() {
 
     describe("addPhysicalInterface", function() {
 
-        it("deos nothing if cannotAddInterface returns true", function() {
-            var controller = makeController();
+        it("does nothing if cannotAddInterface returns true", function() {
+            makeController();
             var vlan = {
                 id: makeInteger(0, 100)
             };
@@ -4284,7 +4284,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("calls createPhysicalInterface and removes selection", function() {
-            var controller = makeController();
+            makeController();
             var vlan = {
                 id: makeInteger(0, 100)
             };
@@ -4325,7 +4325,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("clears error on call", function() {
-            var controller = makeController();
+            makeController();
             var vlan = {
                 id: makeInteger(0, 100)
             };
@@ -4354,7 +4354,7 @@ describe("NodeNetworkingController", function() {
         });
 
         it("handles mac_address error", function() {
-            var controller = makeController();
+            makeController();
             var vlan = {
                 id: makeInteger(0, 100)
             };

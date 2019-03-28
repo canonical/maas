@@ -160,14 +160,14 @@ describe("NodesListController", function() {
 
     describe("isSuperUser", function() {
         it("returns true if the user is a superuser", function() {
-            var controller = makeController();
+            makeController();
             spyOn(UsersManager, "getAuthUser").and.returnValue(
                 { is_superuser: true });
             expect($scope.isSuperUser()).toBe(true);
         });
 
         it("returns false if the user is not a superuser", function() {
-            var controller = makeController();
+            makeController();
             spyOn(UsersManager, "getAuthUser").and.returnValue(
                 { is_superuser: false });
             expect($scope.isSuperUser()).toBe(false);
@@ -176,7 +176,7 @@ describe("NodesListController", function() {
 
     describe("canAddMachine", function() {
         it("calls hasGlobalPermission with machine_create", function() {
-            var controller = makeController();
+            makeController();
             spyOn(UsersManager, "hasGlobalPermission").and.returnValue(true);
             expect($scope.canAddMachine()).toBe(true);
             expect(UsersManager.hasGlobalPermission).toHaveBeenCalledWith(
@@ -186,7 +186,7 @@ describe("NodesListController", function() {
 
     describe("canCreateResourcePool", function() {
         it("calls hasGlobalPermission with resource_pool_create", function() {
-            var controller = makeController();
+            makeController();
             spyOn(UsersManager, "hasGlobalPermission").and.returnValue(true);
             expect($scope.canCreateResourcePool()).toBe(true);
             expect(UsersManager.hasGlobalPermission).toHaveBeenCalledWith(
@@ -196,7 +196,7 @@ describe("NodesListController", function() {
 
     describe("showResourcePoolActions", function() {
         it("returns false if no permissions on any pool", function() {
-            var controller = makeController();
+            makeController();
             $scope.pools = [
                 {
                     permissions: []
@@ -207,7 +207,7 @@ describe("NodesListController", function() {
         });
 
         it("returns true if permissions on any pool", function() {
-            var controller = makeController();
+            makeController();
             $scope.pools = [
                 {
                     permissions: []
@@ -222,13 +222,13 @@ describe("NodesListController", function() {
 
     describe("canEditResourcePool", function() {
         it("returns false if not permissions on pool", function() {
-            var controller = makeController();
+            makeController();
             var pool = {};
             expect($scope.canEditResourcePool(pool)).toBe(false);
         });
 
         it("returns false if no edit permission", function() {
-            var controller = makeController();
+            makeController();
             var pool = {
                 permissions: ['delete']
             };
@@ -236,7 +236,7 @@ describe("NodesListController", function() {
         });
 
         it("returns true if edit permission", function() {
-            var controller = makeController();
+            makeController();
             var pool = {
                 permissions: ['edit']
             };
@@ -246,7 +246,7 @@ describe("NodesListController", function() {
 
     describe("canDeleteResourcePool", function() {
         it("calls hasGlobalPermission with resource_pool_delete", function() {
-            var controller = makeController();
+            makeController();
             spyOn(UsersManager, "hasGlobalPermission").and.returnValue(true);
             expect($scope.canDeleteResourcePool()).toBe(true);
             expect(UsersManager.hasGlobalPermission).toHaveBeenCalledWith(
@@ -255,14 +255,14 @@ describe("NodesListController", function() {
     });
 
     it("sets title and page on $rootScope", function() {
-        var controller = makeController();
+        makeController();
         expect($rootScope.title).toBe("Machines");
         expect($rootScope.page).toBe("machines");
     });
 
     it("sets initial values on $scope", function() {
         // tab-independent variables.
-        var controller = makeController();
+        makeController();
         expect($scope.machines).toBe(MachinesManager.getItems());
         expect($scope.devices).toBe(DevicesManager.getItems());
         expect($scope.pools).toBe(ResourcePoolsManager.getItems());
@@ -285,7 +285,7 @@ describe("NodesListController", function() {
 
     it("saves current filters for nodes and devices when scope destroyed",
         function() {
-            var controller = makeController();
+            makeController();
             var nodesFilters = {};
             var devicesFilters = {};
             var controllersFilters = {};
@@ -310,7 +310,7 @@ describe("NodesListController", function() {
         function(node_type) {
             it("calls loadManagers for " + node_type, function() {
                 $location.path("/" + node_type);
-                var controller = makeController();
+                makeController();
                 var page_managers = [$scope.tabs[node_type].manager];
                 if($scope.currentpage === "machines" ||
                         $scope.currentpage === "controllers") {
@@ -330,7 +330,7 @@ describe("NodesListController", function() {
 
     it("sets loading to false with loadManagers resolves", function() {
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
         defer.resolve();
         $rootScope.$digest();
         expect($scope.loading).toBe(false);
@@ -341,7 +341,7 @@ describe("NodesListController", function() {
             var query = makeName("query");
             SearchService.storeFilters(
                 "machines", SearchService.getCurrentFilters(query));
-            var controller = makeController();
+            makeController();
             expect($scope.tabs.machines.search).toBe(query);
         });
 
@@ -350,7 +350,7 @@ describe("NodesListController", function() {
             var query = makeName("query");
             SearchService.storeFilters(
                 "devices", SearchService.getCurrentFilters(query));
-            var controller = makeController();
+            makeController();
             expect($scope.tabs.devices.search).toBe(query);
         });
 
@@ -359,7 +359,7 @@ describe("NodesListController", function() {
             var query = makeName("query");
             SearchService.storeFilters(
                 "controllers", SearchService.getCurrentFilters(query));
-            var controller = makeController();
+            makeController();
             expect($scope.tabs.controllers.search).toBe(query);
         });
 
@@ -376,7 +376,7 @@ describe("NodesListController", function() {
         function() {
             var query = makeName("query");
             $routeParams.query = query;
-            var controller = makeController();
+            makeController();
             expect($scope.tabs.machines.search).toBe(query);
         });
 
@@ -384,12 +384,12 @@ describe("NodesListController", function() {
         function() {
             var query = makeName("query");
             $routeParams.query = query;
-            var controller = makeController();
+            makeController();
             expect($scope.tabs.machines.filters._).toEqual([query]);
         });
 
     it("reloads osinfo on route update", function() {
-        var controller = makeController();
+        makeController();
         spyOn(GeneralManager, "loadItems").and.returnValue(
             $q.defer().promise);
         $scope.$emit("$routeUpdate");
@@ -399,7 +399,7 @@ describe("NodesListController", function() {
     describe("toggleTab", function() {
 
         it("sets $rootScope.title", function() {
-            var controller = makeController();
+            makeController();
             $scope.toggleTab('devices');
             expect($rootScope.title).toBe($scope.tabs.devices.pagetitle);
             $scope.toggleTab('machines');
@@ -409,7 +409,7 @@ describe("NodesListController", function() {
         });
 
         it("sets currentpage and $rootScope.page", function() {
-            var controller = makeController();
+            makeController();
             $scope.toggleTab('devices');
             expect($scope.currentpage).toBe('devices');
             expect($rootScope.page).toBe('devices');
@@ -441,7 +441,7 @@ describe("NodesListController", function() {
                     };
                 }
 
-                var controller = makeController();
+                makeController();
                 var tabScope = $scope.tabs[tab];
                 expect(tabScope.previous_search).toBe("");
                 expect(tabScope.search).toBe("");
@@ -505,7 +505,7 @@ describe("NodesListController", function() {
 
             it("resets search matches previous search and empty filtered_items",
                 function() {
-                    var controller = makeController();
+                    makeController();
                     var tabScope = $scope.tabs[tab];
                     var search = makeName("search");
 
@@ -538,7 +538,7 @@ describe("NodesListController", function() {
 
             it("doesnt reset search matches if not empty filtered_items",
                 function() {
-                    var controller = makeController();
+                    makeController();
                     var tabScope = $scope.tabs[tab];
                     var search = makeName("search");
                     var nodes = [makeObject(tab), makeObject(tab)];
@@ -567,7 +567,7 @@ describe("NodesListController", function() {
 
             it("doesnt reset search when previous search doesnt match",
                 function() {
-                    var controller = makeController();
+                    makeController();
                     var tabScope = $scope.tabs[tab];
                     var nodes = [makeObject(tab), makeObject(tab)];
 
@@ -605,14 +605,14 @@ describe("NodesListController", function() {
             describe("clearSearch", function() {
 
                 it("sets search to empty string", function() {
-                    var controller = makeController();
+                    makeController();
                     $scope.tabs[tab].search = makeName("search");
                     $scope.clearSearch(tab);
                     expect($scope.tabs[tab].search).toBe("");
                 });
 
                 it("calls updateFilters", function() {
-                    var controller = makeController();
+                    makeController();
                     spyOn($scope, "updateFilters");
                     $scope.clearSearch(tab);
                     expect($scope.updateFilters).toHaveBeenCalledWith(tab);
@@ -627,9 +627,9 @@ describe("NodesListController", function() {
 
             describe("toggleChecked", function() {
 
-                var controller, object, tabObj;
+                var object, tabObj;
                 beforeEach(function() {
-                    controller = makeController();
+                    makeController();
                     object = makeObject(tab);
                     tabObj = $scope.tabs[tab];
                 });
@@ -671,9 +671,9 @@ describe("NodesListController", function() {
 
             describe("toggleCheckAll", function() {
 
-                var controller, object1, object2, tabObj;
+                var object1, object2, tabObj;
                 beforeEach(function() {
-                    controller = makeController();
+                    makeController();
                     object1 = makeObject(tab);
                     object2 = makeObject(tab);
                     tabObj = $scope.tabs[tab];
@@ -723,9 +723,9 @@ describe("NodesListController", function() {
 
             describe("toggleChecked", function() {
 
-                var controller, object, tabObj;
+                var object, tabObj;
                 beforeEach(function() {
-                    controller = makeController();
+                    makeController();
                     object = makeObject(tab);
                     tabObj = $scope.tabs[tab];
                     $scope.tabs.devices.filtered_items = $scope.devices;
@@ -803,9 +803,9 @@ describe("NodesListController", function() {
 
             describe("toggleCheckAll", function() {
 
-                var controller, object1, object2, tabObj;
+                var object1, object2, tabObj;
                 beforeEach(function() {
-                    controller = makeController();
+                    makeController();
                     object1 = makeObject(tab);
                     object2 = makeObject(tab);
                     tabObj = $scope.tabs[tab];
@@ -864,14 +864,14 @@ describe("NodesListController", function() {
             describe("sortTable", function() {
 
                 it("sets predicate", function() {
-                    var controller = makeController();
+                    makeController();
                     var predicate = makeName('predicate');
                     $scope.sortTable(predicate, tab);
                     expect($scope.tabs[tab].predicate).toBe(predicate);
                 });
 
                 it("reverses reverse", function() {
-                    var controller = makeController();
+                    makeController();
                     $scope.tabs[tab].reverse = true;
                     $scope.sortTable(makeName('predicate'), tab);
                     expect($scope.tabs[tab].reverse).toBe(false);
@@ -881,14 +881,14 @@ describe("NodesListController", function() {
             describe("selectColumnOrSort", function() {
 
                 it("sets column if different", function() {
-                    var controller = makeController();
+                    makeController();
                     var column = makeName('column');
                     $scope.selectColumnOrSort(column, tab);
                     expect($scope.tabs[tab].column).toBe(column);
                 });
 
                 it("calls sortTable if column already set", function() {
-                    var controller = makeController();
+                    makeController();
                     var column = makeName('column');
                     $scope.tabs[tab].column = column;
                     spyOn($scope, "sortTable");
@@ -908,7 +908,7 @@ describe("NodesListController", function() {
             describe("showSelected", function() {
 
                 it("sets search to in:selected", function() {
-                    var controller = makeController();
+                    makeController();
                     $scope.tabs[tab].selectedItems.push(makeObject(tab));
                     $scope.tabs[tab].actionOption = {};
                     $scope.showSelected(tab);
@@ -916,7 +916,7 @@ describe("NodesListController", function() {
                 });
 
                 it("updateFilters with the new search", function() {
-                    var controller = makeController();
+                    makeController();
                     $scope.tabs[tab].selectedItems.push(makeObject(tab));
                     $scope.tabs[tab].actionOption = {};
                     $scope.showSelected(tab);
@@ -928,7 +928,7 @@ describe("NodesListController", function() {
             describe("toggleFilter", function() {
 
                 it("does nothing if actionOption", function() {
-                    var controller = makeController();
+                    makeController();
                     $scope.tabs[tab].actionOption = {};
 
                     var filters = { _: [], "in": ["Selected"] };
@@ -938,7 +938,7 @@ describe("NodesListController", function() {
                 });
 
                 it("calls SearchService.toggleFilter", function() {
-                    var controller = makeController();
+                    makeController();
                     spyOn(SearchService, "toggleFilter").and.returnValue(
                         SearchService.getEmptyFilter());
                     $scope.toggleFilter("hostname", "test", tab);
@@ -946,7 +946,7 @@ describe("NodesListController", function() {
                 });
 
                 it("sets $scope.filters", function() {
-                    var controller = makeController();
+                    makeController();
                     var filters = { _: [], other: [] };
                     spyOn(SearchService, "toggleFilter").and.returnValue(
                         filters);
@@ -955,7 +955,7 @@ describe("NodesListController", function() {
                 });
 
                 it("calls SearchService.filtersToString", function() {
-                    var controller = makeController();
+                    makeController();
                     spyOn(SearchService, "filtersToString").and.returnValue(
                         "");
                     $scope.toggleFilter("hostname", "test", tab);
@@ -963,7 +963,7 @@ describe("NodesListController", function() {
                 });
 
                 it("sets $scope.search", function() {
-                    var controller = makeController();
+                    makeController();
                     $scope.toggleFilter("hostname", "test", tab);
                     expect($scope.tabs[tab].search).toBe("hostname:(=test)");
                 });
@@ -972,7 +972,7 @@ describe("NodesListController", function() {
             describe("isFilterActive", function() {
 
                 it("returns true when active", function() {
-                    var controller = makeController();
+                    makeController();
                     $scope.toggleFilter("hostname", "test", tab);
                     expect(
                         $scope.isFilterActive(
@@ -980,7 +980,7 @@ describe("NodesListController", function() {
                 });
 
                 it("returns false when inactive", function() {
-                    var controller = makeController();
+                    makeController();
                     $scope.toggleFilter("hostname", "test2", tab);
                     expect(
                         $scope.isFilterActive(
@@ -991,7 +991,7 @@ describe("NodesListController", function() {
             describe("updateFilters", function() {
 
                 it("updates filters and sets searchValid to true", function() {
-                    var controller = makeController();
+                    makeController();
                     $scope.tabs[tab].search = "test hostname:name";
                     $scope.updateFilters(tab);
                     expect($scope.tabs[tab].filters).toEqual({
@@ -1003,7 +1003,7 @@ describe("NodesListController", function() {
 
                 it("updates sets filters empty and sets searchValid to false",
                     function() {
-                        var controller = makeController();
+                        makeController();
                         $scope.tabs[tab].search = "test hostname:(name";
                         $scope.updateFilters(tab);
                         expect(
@@ -1016,7 +1016,7 @@ describe("NodesListController", function() {
             describe("supportsAction", function() {
 
                 it("returns true if actionOption is null", function() {
-                    var controller = makeController();
+                    makeController();
                     var object = makeObject(tab);
                     object.actions = ["start", "stop"];
                     expect($scope.supportsAction(object, tab)).toBe(true);
@@ -1024,7 +1024,7 @@ describe("NodesListController", function() {
 
                 it("returns true if actionOption in object.actions",
                     function() {
-                    var controller = makeController();
+                    makeController();
                     var object = makeObject(tab);
                     object.actions = ["start", "stop"];
                     $scope.tabs.machines.actionOption = { name: "start" };
@@ -1033,7 +1033,7 @@ describe("NodesListController", function() {
 
                 it("returns false if actionOption not in object.actions",
                     function() {
-                    var controller = makeController();
+                    makeController();
                     var object = makeObject(tab);
                     object.actions = ["start", "stop"];
                     $scope.tabs[tab].actionOption = { name: "deploy" };
@@ -1051,7 +1051,7 @@ describe("NodesListController", function() {
             describe("actionOptionSelected", function() {
 
                 it("sets actionErrorCount to zero", function() {
-                    var controller = makeController();
+                    makeController();
                     $scope.tabs[tab].actionErrorCount = 1;
                     $scope.actionOptionSelected(tab);
                     expect($scope.tabs[tab].actionErrorCount).toBe(0);
@@ -1060,7 +1060,7 @@ describe("NodesListController", function() {
                 it("sets actionErrorCount to 1 when selected object doesn't " +
                     "support action",
                     function() {
-                        var controller = makeController();
+                        makeController();
                         var object = makeObject(tab);
                         object.actions = ['start', 'stop'];
                         $scope.tabs[tab].actionOption = { name: 'deploy' };
@@ -1070,13 +1070,13 @@ describe("NodesListController", function() {
                     });
 
                 it("sets search to in:selected", function() {
-                    var controller = makeController();
+                    makeController();
                     $scope.actionOptionSelected(tab);
                     expect($scope.tabs[tab].search).toBe("in:(Selected)");
                 });
 
                 it("sets previous_search to search value", function() {
-                    var controller = makeController();
+                    makeController();
                     var search = makeName("search");
                     $scope.tabs[tab].search = search;
                     $scope.tabs[tab].actionErrorCount = 1;
@@ -1085,9 +1085,8 @@ describe("NodesListController", function() {
                 });
 
                 it("calls hide on addHardwareScope", function() {
-                    var controller;
+                    makeController();
                     if (tab === 'machines') {
-                        controller = makeController();
                         $scope.addHardwareScope = {
                             hide: jasmine.createSpy("hide")
                         };
@@ -1095,7 +1094,6 @@ describe("NodesListController", function() {
                         expect(
                             $scope.addHardwareScope.hide).toHaveBeenCalled();
                     } else if (tab === 'devices') {
-                        controller = makeController();
                         $scope.addDeviceScope = {
                             hide: jasmine.createSpy("hide")
                         };
@@ -1110,19 +1108,19 @@ describe("NodesListController", function() {
             describe("isActionError", function() {
 
                 it("returns true if actionErrorCount > 0", function() {
-                    var controller = makeController();
+                    makeController();
                     $scope.tabs[tab].actionErrorCount = 2;
                     expect($scope.isActionError(tab)).toBe(true);
                 });
 
                 it("returns false if actionErrorCount === 0", function() {
-                    var controller = makeController();
+                    makeController();
                     $scope.tabs[tab].actionErrorCount = 0;
                     expect($scope.isActionError(tab)).toBe(false);
                 });
 
                 it("returns true if deploy action missing osinfo", function() {
-                    var controller = makeController();
+                    makeController();
                     $scope.tabs[tab].actionOption = {
                         name: "deploy"
                     };
@@ -1135,7 +1133,7 @@ describe("NodesListController", function() {
 
                 it("returns true if action missing ssh keys",
                     function() {
-                        var controller = makeController();
+                        makeController();
                         $scope.tabs[tab].actionOption = {
                             name: "deploy"
                         };
@@ -1151,7 +1149,7 @@ describe("NodesListController", function() {
 
                 it("returns false if deploy action not missing osinfo or keys",
                     function() {
-                        var controller = makeController();
+                        makeController();
                         $scope.tabs[tab].actionOption = {
                             name: "deploy"
                         };
@@ -1169,14 +1167,14 @@ describe("NodesListController", function() {
             describe("isSSHKeyError", function() {
 
                 it("returns false if actionErrorCount > 0", function() {
-                    var controller = makeController();
+                    makeController();
                     $scope.tabs[tab].actionErrorCount = 2;
                     expect($scope.isSSHKeyError(tab)).toBe(false);
                 });
 
                 it("returns true if deploy action missing ssh keys",
                     function() {
-                        var controller = makeController();
+                        makeController();
                         $scope.tabs[tab].actionOption = {
                             name: "deploy"
                         };
@@ -1186,7 +1184,7 @@ describe("NodesListController", function() {
 
                 it("returns false if deploy action not missing ssh keys",
                     function() {
-                        var controller = makeController();
+                        makeController();
                         $scope.tabs[tab].actionOption = {
                             name: "deploy"
                         };
@@ -1201,13 +1199,13 @@ describe("NodesListController", function() {
             describe("isDeployError", function() {
 
                 it("returns false if actionErrorCount > 0", function() {
-                    var controller = makeController();
+                    makeController();
                     $scope.tabs[tab].actionErrorCount = 2;
                     expect($scope.isDeployError(tab)).toBe(false);
                 });
 
                 it("returns true if deploy action missing osinfo", function() {
-                    var controller = makeController();
+                    makeController();
                     $scope.tabs[tab].actionOption = {
                         name: "deploy"
                     };
@@ -1220,7 +1218,7 @@ describe("NodesListController", function() {
 
                 it("returns false if deploy action not missing osinfo",
                     function() {
-                        var controller = makeController();
+                        makeController();
                         $scope.tabs[tab].actionOption = {
                             name: "deploy"
                         };
@@ -1235,35 +1233,35 @@ describe("NodesListController", function() {
             describe("actionCancel", function() {
 
                 it("clears search if in:selected", function() {
-                    var controller = makeController();
+                    makeController();
                     $scope.tabs[tab].search = "in:(Selected)";
                     $scope.actionCancel(tab);
                     expect($scope.tabs[tab].search).toBe("");
                 });
 
                 it("clears search if in:selected (device)", function() {
-                    var controller = makeController();
+                    makeController();
                     $scope.tabs.devices.search = "in:(Selected)";
                     $scope.actionCancel('devices');
                     expect($scope.tabs.devices.search).toBe("");
                 });
 
                 it("clears search if in:selected (controller)", function() {
-                    var controller = makeController();
+                    makeController();
                     $scope.tabs.controllers.search = "in:(Selected)";
                     $scope.actionCancel('controllers');
                     expect($scope.tabs.controllers.search).toBe("");
                 });
 
                 it("doesnt clear search if not in:Selected", function() {
-                    var controller = makeController();
+                    makeController();
                     $scope.tabs[tab].search = "other";
                     $scope.actionCancel(tab);
                     expect($scope.tabs[tab].search).toBe("other");
                 });
 
                 it("sets actionOption to null", function() {
-                    var controller = makeController();
+                    makeController();
                     $scope.tabs[tab].actionOption = {};
                     $scope.actionCancel(tab);
                     expect($scope.tabs[tab].actionOption).toBeNull();
@@ -1276,14 +1274,14 @@ describe("NodesListController", function() {
                         'devices': 'device',
                         'controllers': 'controller',
                     };
-                    var controller = makeController();
+                    makeController();
                     expect($scope.pluralize(tab)).toEqual(singulars[tab]);
                     $scope.tabs[tab].selectedItems.length = 2;
                     expect($scope.pluralize(tab)).toEqual(tab);
                 });
 
                 it("resets actionProgress", function() {
-                    var controller = makeController();
+                    makeController();
                     $scope.tabs[tab].actionProgress.total = makeInteger(0, 10);
                     $scope.tabs[tab].actionProgress.completed =
                         makeInteger(0, 10);
@@ -1316,8 +1314,8 @@ describe("NodesListController", function() {
 
                 it("sets actionProgress.total to the number of selectedItems",
                     function() {
-                        var controller = makeController();
-                        var object = makeObject(tab);
+                        makeController();
+                        makeObject(tab);
                         $scope.tabs[tab].actionOption = { name: "start" };
                         $scope.tabs[tab].selectedItems = [
                             makeObject(tab),
@@ -1331,7 +1329,7 @@ describe("NodesListController", function() {
                     });
 
                 it("calls performAction for selected object", function() {
-                    var controller = makeController();
+                    makeController();
                     var object = makeObject(tab);
                     var spy = spyOn(
                         $scope.tabs[tab].manager,
@@ -1345,7 +1343,7 @@ describe("NodesListController", function() {
                 });
 
                 it("calls unselectItem after failed action", function() {
-                    var controller = makeController();
+                    makeController();
                     var object = makeObject(tab);
                     object.action_failed = false;
                     spyOn(
@@ -1364,7 +1362,7 @@ describe("NodesListController", function() {
                 });
 
                 it("keeps items selected after success", function() {
-                    var controller = makeController();
+                    makeController();
                     var object = makeObject(tab);
                     spyOn(
                         $scope, 'hasActionsFailed').and.returnValue(false);
@@ -1385,7 +1383,7 @@ describe("NodesListController", function() {
 
                 it("increments actionProgress.completed after action complete",
                     function() {
-                        var controller = makeController();
+                        makeController();
                         var object = makeObject(tab);
                         var defer = $q.defer();
                         spyOn(
@@ -1404,7 +1402,7 @@ describe("NodesListController", function() {
 
                 it("set search to in:(Selected) search after complete",
                     function() {
-                    var controller = makeController();
+                    makeController();
                     var defer = $q.defer();
                     spyOn(
                         $scope.tabs[tab].manager,
@@ -1427,7 +1425,7 @@ describe("NodesListController", function() {
                 });
 
                 it("clears action option when complete", function() {
-                    var controller = makeController();
+                    makeController();
                     var defer = $q.defer();
                     spyOn(
                         $scope.tabs[tab].manager,
@@ -1448,7 +1446,7 @@ describe("NodesListController", function() {
 
                 it("increments actionProgress.completed after action error",
                     function() {
-                        var controller = makeController();
+                        makeController();
                         var object = makeObject(tab);
                         var defer = $q.defer();
                         spyOn(
@@ -1465,7 +1463,7 @@ describe("NodesListController", function() {
 
                 it("adds error to actionProgress.errors on action error",
                     function() {
-                        var controller = makeController();
+                        makeController();
                         var object = makeObject(tab);
                         var defer = $q.defer();
                         spyOn(
@@ -1487,14 +1485,14 @@ describe("NodesListController", function() {
             describe("hasActionsInProgress", function() {
 
                 it("returns false if actionProgress.total not > 0", function() {
-                    var controller = makeController();
+                    makeController();
                     $scope.tabs[tab].actionProgress.total = 0;
                     expect($scope.hasActionsInProgress(tab)).toBe(false);
                 });
 
                 it("returns true if actionProgress total != completed",
                     function() {
-                        var controller = makeController();
+                        makeController();
                         $scope.tabs[tab].actionProgress.total = 1;
                         $scope.tabs[tab].actionProgress.completed = 0;
                         expect($scope.hasActionsInProgress(tab)).toBe(true);
@@ -1502,7 +1500,7 @@ describe("NodesListController", function() {
 
                 it("returns false if actionProgress total == completed",
                     function() {
-                        var controller = makeController();
+                        makeController();
                         $scope.tabs[tab].actionProgress.total = 1;
                         $scope.tabs[tab].actionProgress.completed = 1;
                         expect($scope.hasActionsInProgress(tab)).toBe(false);
@@ -1512,13 +1510,13 @@ describe("NodesListController", function() {
             describe("hasActionsFailed", function() {
 
                 it("returns false if no errors", function() {
-                    var controller = makeController();
+                    makeController();
                     $scope.tabs[tab].actionProgress.errors = {};
                     expect($scope.hasActionsFailed(tab)).toBe(false);
                 });
 
                 it("returns true if errors", function() {
-                    var controller = makeController();
+                    makeController();
                     var error = makeName("error");
                     var object = makeObject(tab);
                     var errors = $scope.tabs[tab].actionProgress.errors;
@@ -1530,7 +1528,7 @@ describe("NodesListController", function() {
             describe("actionSetZone", function () {
                 it("calls performAction with zone",
                     function() {
-                        var controller = makeController();
+                        makeController();
                         var spy = spyOn(
                             $scope.tabs[tab].manager,
                             "performAction").and.returnValue(
@@ -1547,7 +1545,7 @@ describe("NodesListController", function() {
 
                 it("clears action option when successfully complete",
                         function() {
-                    var controller = makeController();
+                    makeController();
                     var defer = $q.defer();
                     spyOn(
                         $scope.tabs[tab].manager,
@@ -1572,7 +1570,7 @@ describe("NodesListController", function() {
 
                 it("calls performAction with pool",
                     function() {
-                        var controller = makeController();
+                        makeController();
                         var spy = spyOn(
                             $scope.tabs[tab].manager,
                             "performAction").and.returnValue(
@@ -1591,7 +1589,7 @@ describe("NodesListController", function() {
 
                 it("calls performAction with new pool data",
                     function() {
-                        var controller = makeController();
+                        makeController();
                         var createDefer = $q.defer();
                         var createSpy = spyOn(
                             ResourcePoolsManager,
@@ -1625,7 +1623,7 @@ describe("NodesListController", function() {
 
                 it("clears action option when successfully complete",
                         function() {
-                    var controller = makeController();
+                    makeController();
                     var defer = $q.defer();
                     spyOn(
                         $scope.tabs[tab].manager,
@@ -1654,7 +1652,7 @@ describe("NodesListController", function() {
 
             it("calls performAction with osystem and distro_series",
                 function() {
-                    var controller = makeController();
+                    makeController();
                     var object = makeObject("machines");
                     var spy = spyOn(
                         $scope.tabs.machines.manager,
@@ -1675,7 +1673,7 @@ describe("NodesListController", function() {
             });
 
             it("calls performAction with tag", function() {
-                var controller = makeController();
+                makeController();
                 var object = makeObject("machines");
                 var spy = spyOn($scope.tabs.machines.manager, "performAction")
                     .and
@@ -1697,7 +1695,7 @@ describe("NodesListController", function() {
 
             it("calls performAction with install_kvm",
                 function() {
-                    var controller = makeController();
+                    makeController();
                     var object = makeObject("machines");
                     var spy = spyOn(
                         $scope.tabs.machines.manager,
@@ -1721,7 +1719,7 @@ describe("NodesListController", function() {
 
             it("clears selected os and release when successfully complete",
                     function() {
-                var controller = makeController();
+                makeController();
                 var defer = $q.defer();
                 spyOn(
                     MachinesManager,
@@ -1746,7 +1744,7 @@ describe("NodesListController", function() {
 
             it("calls performAction with commissionOptions",
                 function() {
-                    var controller = makeController();
+                    makeController();
                     var object = makeObject("machines");
                     var spy = spyOn(
                         $scope.tabs.machines.manager,
@@ -1799,7 +1797,7 @@ describe("NodesListController", function() {
 
             it("calls performAction with testOptions",
                 function() {
-                    var controller = makeController();
+                    makeController();
                     var object = makeObject("machines");
                     var spy = spyOn(
                         $scope.tabs.machines.manager,
@@ -1828,7 +1826,7 @@ describe("NodesListController", function() {
 
             it("sets showing_confirmation with testOptions",
                 function() {
-                    var controller = makeController();
+                    makeController();
                     var object = makeObject("machines");
                     object.status_code = 6;
                     var spy = spyOn(
@@ -1851,7 +1849,7 @@ describe("NodesListController", function() {
 
             it("calls performAction with releaseOptions",
                 function() {
-                    var controller = makeController();
+                    makeController();
                     var object = makeObject("machines");
                     var spy = spyOn(
                         $scope.tabs.machines.manager,
@@ -1879,7 +1877,7 @@ describe("NodesListController", function() {
             it("sets showing_confirmation with deleteOptions",
                 function() {
                     // Regression test for LP:1793478
-                    var controller = makeController();
+                    makeController();
                     var object = makeObject("controllers");
                     $scope.vlans = [{
                         'id': 0,
@@ -1909,7 +1907,7 @@ describe("NodesListController", function() {
 
             it("clears commissionOptions when successfully complete",
                     function() {
-                var controller = makeController();
+                makeController();
                 var defer = $q.defer();
                 spyOn(
                     MachinesManager,
@@ -1977,7 +1975,7 @@ describe("NodesListController", function() {
     describe("addHardwareOptionChanged", function() {
 
         it("calls show in addHardwareScope", function() {
-            var controller = makeController();
+            makeController();
             $scope.addHardwareScope = {
                 show: jasmine.createSpy("show")
             };
@@ -1993,7 +1991,7 @@ describe("NodesListController", function() {
     describe("addDevice", function() {
 
         it("calls show in addDeviceScope", function() {
-            var controller = makeController();
+            makeController();
             $scope.addDeviceScope = {
                 show: jasmine.createSpy("show")
             };
@@ -2005,7 +2003,7 @@ describe("NodesListController", function() {
     describe("cancelAddDevice", function() {
 
         it("calls cancel in addDeviceScope", function() {
-            var controller = makeController();
+            makeController();
             $scope.addDeviceScope = {
                 cancel: jasmine.createSpy("cancel")
             };
@@ -2017,19 +2015,19 @@ describe("NodesListController", function() {
     describe("getDeviceIPAssignment", function() {
 
         it("returns 'External' for external assignment", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.getDeviceIPAssignment("external")).toBe(
                 "External");
         });
 
         it("returns 'Dynamic' for dynamic assignment", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.getDeviceIPAssignment("dynamic")).toBe(
                 "Dynamic");
         });
 
         it("returns 'Static' for static assignment", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.getDeviceIPAssignment("static")).toBe(
                 "Static");
         });
@@ -2037,12 +2035,12 @@ describe("NodesListController", function() {
 
     describe("hasCustomCommissioningScripts", function() {
         it("returns true with custom commissioning scripts", function() {
-            var controller = makeController();
+            makeController();
             ScriptsManager._items.push({script_type: 0});
             expect($scope.hasCustomCommissioningScripts()).toBe(true);
         });
         it("returns false without custom commissioning scripts", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.hasCustomCommissioningScripts()).toBe(false);
         });
     });
@@ -2050,16 +2048,16 @@ describe("NodesListController", function() {
     describe("showswitches", function() {
         it("is true if switches=on", function() {
             $routeParams.switches = "on";
-            var controller = makeController();
+            makeController();
             expect($scope.showswitches).toBe(true);
         });
         it("is false if switches=off", function() {
             $routeParams.switches = "off";
-            var controller = makeController();
+            makeController();
             expect($scope.showswitches).toBe(false);
         });
         it("is false if switches is not specified", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.showswitches).toBe(false);
         });
     });

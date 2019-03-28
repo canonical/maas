@@ -66,26 +66,26 @@ describe("IntroUserController", function() {
     }
 
     it("sets title and page on $rootScope", function() {
-        var controller = makeController();
+        makeController();
         expect($rootScope.title).toBe("Welcome");
         expect($rootScope.page).toBe("intro");
     });
 
     it("calls loadManager with correct managers", function() {
-        var controller = makeController();
+        makeController();
         expect(ManagerHelperService.loadManager).toHaveBeenCalledWith(
             $scope, UsersManager);
     });
 
     it("sets initial $scope", function() {
-        var controller = makeController();
+        makeController();
         expect($scope.loading).toBe(true);
         expect($scope.user).toBeNull();
     });
 
     it("clears loading", function() {
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
         defer.resolve();
         $scope.$digest();
         expect($scope.loading).toBe(false);
@@ -94,13 +94,13 @@ describe("IntroUserController", function() {
     it("calls $location.path if already completed", function() {
         window.MAAS_config.user_completed_intro = true;
         spyOn($location, 'path');
-        var controller = makeController();
+        makeController();
         expect($location.path).toHaveBeenCalledWith('/');
     });
 
     it("sets user on resolve", function() {
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
         var user = {};
         spyOn(UsersManager, "getAuthUser").and.returnValue(user);
 
@@ -112,7 +112,7 @@ describe("IntroUserController", function() {
     describe("$rootScope.skip", function() {
 
         it("calls markIntroComplete and reloads", function() {
-            var controller = makeController();
+            makeController();
             var defer = $q.defer();
             spyOn(UsersManager, "markIntroComplete").and.returnValue(
                 defer.promise);
@@ -128,7 +128,7 @@ describe("IntroUserController", function() {
     describe("canContinue", function() {
 
         it("returns false when no sshkeys", function() {
-            var controller = makeController();
+            makeController();
             $scope.user = {
                 sshkeys_count: 0
             };
@@ -136,7 +136,7 @@ describe("IntroUserController", function() {
         });
 
         it("returns true when sshkeys", function() {
-            var controller = makeController();
+            makeController();
             $scope.user = {
                 sshkeys_count: 1
             };
@@ -147,7 +147,7 @@ describe("IntroUserController", function() {
     describe("clickContinue", function() {
 
         it("does nothing if cannot continue", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "canContinue").and.returnValue(false);
             spyOn(UsersManager, "markIntroComplete");
             $scope.clickContinue();
@@ -155,7 +155,7 @@ describe("IntroUserController", function() {
         });
 
         it("forces ignores canContinue", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "canContinue").and.returnValue(false);
             spyOn(UsersManager, "markIntroComplete").and.returnValue(
                 $q.defer().promise);
@@ -164,7 +164,7 @@ describe("IntroUserController", function() {
         });
 
         it("calls updateItem and reloads", function() {
-            var controller = makeController();
+            makeController();
             var defer = $q.defer();
             spyOn(UsersManager, "markIntroComplete").and.returnValue(
                 defer.promise);

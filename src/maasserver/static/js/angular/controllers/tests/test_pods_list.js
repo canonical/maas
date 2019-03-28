@@ -92,14 +92,14 @@ describe("PodsListController", function() {
     }
 
     it("sets title and page on $rootScope", function() {
-        var controller = makeController();
+        makeController();
         expect($rootScope.title).toBe("Pods");
         expect($rootScope.page).toBe("pods");
     });
 
     it("sets initial values on $scope", function() {
         // tab-independent variables.
-        var controller = makeController();
+        makeController();
         expect($scope.pods).toBe(PodsManager.getItems());
         expect($scope.loading).toBe(true);
         expect($scope.filteredItems).toEqual([]);
@@ -115,7 +115,7 @@ describe("PodsListController", function() {
 
     it("calls loadManagers with PodsManager, UsersManager, \
         GeneralManager, ZonesManager", function() {
-            var controller = makeController();
+            makeController();
             expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
                 $scope, [
                     PodsManager, UsersManager, GeneralManager, ZonesManager,
@@ -124,7 +124,7 @@ describe("PodsListController", function() {
 
     it("sets loading to false with loadManagers resolves", function() {
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
         defer.resolve();
         $rootScope.$digest();
         expect($scope.loading).toBe(false);
@@ -132,13 +132,13 @@ describe("PodsListController", function() {
 
     describe("isRackControllerConnected", function() {
         it("returns false no powerTypes", function() {
-            var controller = makeController();
+            makeController();
             $scope.powerTypes = [];
             expect($scope.isRackControllerConnected()).toBe(false);
         });
 
         it("returns true if powerTypes", function() {
-            var controller = makeController();
+            makeController();
             $scope.powerTypes = [{}];
             expect($scope.isRackControllerConnected()).toBe(true);
         });
@@ -146,7 +146,7 @@ describe("PodsListController", function() {
 
     describe("canAddPod", function() {
         it("returns false if not global permission", function() {
-            var controller = makeController();
+            makeController();
             spyOn(UsersManager, "hasGlobalPermission").and.returnValue(false);
             spyOn(
                 $scope,
@@ -157,7 +157,7 @@ describe("PodsListController", function() {
         });
 
         it("returns false if rack disconnected", function() {
-            var controller = makeController();
+            makeController();
             spyOn(UsersManager, "hasGlobalPermission").and.returnValue(true);
             spyOn(
                 $scope,
@@ -166,7 +166,7 @@ describe("PodsListController", function() {
         });
 
         it("returns true if super user, rack connected", function() {
-            var controller = makeController();
+            makeController();
             spyOn(UsersManager, "hasGlobalPermission").and.returnValue(true);
             spyOn(
                 $scope,
@@ -179,14 +179,14 @@ describe("PodsListController", function() {
 
     describe("showActions", function() {
         it("returns false if no permissions on pods", function() {
-            var controller = makeController();
+            makeController();
             var pod = makePod();
             PodsManager._items.push(pod);
             expect($scope.showActions()).toBe(false);
         });
 
         it("returns false if compose permissions on pods", function() {
-            var controller = makeController();
+            makeController();
             var pod = makePod();
             pod.permissions.push('compose');
             PodsManager._items.push(pod);
@@ -194,7 +194,7 @@ describe("PodsListController", function() {
         });
 
         it("returns true if edit permissions on pods", function() {
-            var controller = makeController();
+            makeController();
             var pod = makePod();
             pod.permissions.push('edit');
             PodsManager._items.push(pod);
@@ -204,9 +204,9 @@ describe("PodsListController", function() {
 
     describe("toggleChecked", function() {
 
-        var controller, pod;
+        var pod;
         beforeEach(function() {
-            controller = makeController();
+            makeController();
             pod = makePod();
             $scope.filteredItems = $scope.pods;
         });
@@ -255,9 +255,9 @@ describe("PodsListController", function() {
 
     describe("toggleCheckAll", function() {
 
-        var controller, pod1, pods2;
+        var pod1, pod2;
         beforeEach(function() {
-            controller = makeController();
+            makeController();
             pod1 = makePod();
             pod2 = makePod();
             $scope.filteredItems = $scope.pods;
@@ -287,14 +287,14 @@ describe("PodsListController", function() {
     describe("sortTable", function() {
 
         it("sets predicate", function() {
-            var controller = makeController();
+            makeController();
             var predicate = makeName('predicate');
             $scope.sortTable(predicate);
             expect($scope.predicate).toBe(predicate);
         });
 
         it("reverses reverse", function() {
-            var controller = makeController();
+            makeController();
             $scope.reverse = true;
             $scope.sortTable(makeName('predicate'));
             expect($scope.reverse).toBe(false);
@@ -304,14 +304,14 @@ describe("PodsListController", function() {
     describe("actionCancel", function() {
 
         it("sets actionOption to null", function() {
-            var controller = makeController();
+            makeController();
             $scope.action.option = {};
             $scope.actionCancel();
             expect($scope.action.option).toBeNull();
         });
 
         it("resets actionProgress", function() {
-            var controller = makeController();
+            makeController();
             $scope.action.progress.total = makeInteger(1, 10);
             $scope.action.progress.completed =
                 makeInteger(1, 10);
@@ -328,8 +328,8 @@ describe("PodsListController", function() {
 
         it("sets action.progress.total to the number of selectedItems",
             function() {
-                var controller = makeController();
-                var pod = makePod();
+                makeController();
+                makePod();
                 $scope.action.option = { name: "refresh" };
                 $scope.action.selectedItems = [
                     makePod(),
@@ -342,7 +342,7 @@ describe("PodsListController", function() {
             });
 
         it("calls operation for selected action", function() {
-            var controller = makeController();
+            makeController();
             var pod = makePod();
             var spy = spyOn(
                 PodsManager,
@@ -354,7 +354,7 @@ describe("PodsListController", function() {
         });
 
         it("calls unselectItem after failed action", function() {
-            var controller = makeController();
+            makeController();
             var pod = makePod();
             pod.action_failed = false;
             spyOn(
@@ -373,7 +373,7 @@ describe("PodsListController", function() {
         });
 
         it("keeps items selected after success", function() {
-            var controller = makeController();
+            makeController();
             var pod = makePod();
             spyOn(
                 $scope, 'hasActionsFailed').and.returnValue(false);
@@ -393,7 +393,7 @@ describe("PodsListController", function() {
 
         it("increments action.progress.completed after action complete",
             function() {
-                var controller = makeController();
+                makeController();
                 var pod = makePod();
                 var defer = $q.defer();
                 var refresh = jasmine.createSpy(
@@ -409,7 +409,7 @@ describe("PodsListController", function() {
             });
 
         it("clears action option when complete", function() {
-            var controller = makeController();
+            makeController();
             var pod = makePod();
             var defer = $q.defer();
             var refresh = jasmine.createSpy(
@@ -429,7 +429,7 @@ describe("PodsListController", function() {
 
         it("increments action.progress.errors after action error",
             function() {
-                var controller = makeController();
+                makeController();
                 var pod = makePod();
                 var defer = $q.defer();
                 var refresh = jasmine.createSpy(
@@ -445,7 +445,7 @@ describe("PodsListController", function() {
 
         it("adds error to action.progress.errors on action error",
             function() {
-                var controller = makeController();
+                makeController();
                 var pod = makePod();
                 var defer = $q.defer();
                 var refresh = jasmine.createSpy(
@@ -464,14 +464,14 @@ describe("PodsListController", function() {
     describe("hasActionsInProgress", function() {
 
         it("returns false if action.progress.total not > 0", function() {
-            var controller = makeController();
+            makeController();
             $scope.action.progress.total = 0;
             expect($scope.hasActionsInProgress()).toBe(false);
         });
 
         it("returns true if action.progress total != completed",
             function() {
-                var controller = makeController();
+                makeController();
                 $scope.action.progress.total = 1;
                 $scope.action.progress.completed = 0;
                 expect($scope.hasActionsInProgress()).toBe(true);
@@ -479,7 +479,7 @@ describe("PodsListController", function() {
 
         it("returns false if actionProgress total == completed",
             function() {
-                var controller = makeController();
+                makeController();
                 $scope.action.progress.total = 1;
                 $scope.action.progress.completed = 1;
                 expect($scope.hasActionsInProgress()).toBe(false);
@@ -489,13 +489,13 @@ describe("PodsListController", function() {
     describe("hasActionsFailed", function() {
 
         it("returns false if no errors", function() {
-            var controller = makeController();
+            makeController();
             $scope.action.progress.errors = 0;
             expect($scope.hasActionsFailed()).toBe(false);
         });
 
         it("returns true if errors", function() {
-            var controller = makeController();
+            makeController();
             $scope.action.progress.errors = 1;
             expect($scope.hasActionsFailed()).toBe(true);
         });
@@ -528,7 +528,7 @@ describe("PodsListController", function() {
         }
 
         it("sets add.open to true", function() {
-            var controller = makeController();
+            makeController();
             var zero = makeZone(0);
             ZonesManager._items.push(makeZone());
             ZonesManager._items.push(zero);
@@ -548,7 +548,7 @@ describe("PodsListController", function() {
     describe("cancelAddPod", function() {
 
         it("set add.open to false and clears add.obj", function() {
-            var controller = makeController();
+            makeController();
             var obj = {};
             $scope.add.obj = obj;
             $scope.add.open = true;
@@ -562,7 +562,7 @@ describe("PodsListController", function() {
     describe("getPowerTypeTitle", function() {
 
         it("returns power_type description", function() {
-            var controller = makeController();
+            makeController();
             $scope.powerTypes = [
                 {
                     name: 'power_type',
@@ -573,7 +573,7 @@ describe("PodsListController", function() {
         });
 
         it("returns power_type passed in", function() {
-            var controller = makeController();
+            makeController();
             $scope.powerTypes = [];
             expect($scope.getPowerTypeTitle('power_type')).toBe('power_type');
         });

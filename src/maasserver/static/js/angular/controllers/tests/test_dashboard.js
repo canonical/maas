@@ -62,13 +62,13 @@ describe("DashboardController", function() {
     }
 
     it("sets title and page on $rootScope", function() {
-        var controller = makeController();
+        makeController();
         expect($rootScope.title).toBe("Dashboard");
         expect($rootScope.page).toBe("dashboard");
     });
 
     it("calls loadManagers with correct managers", function() {
-        var controller = makeController();
+        makeController();
         expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
             $scope, [
                 DiscoveriesManager, DomainsManager, MachinesManager,
@@ -76,7 +76,7 @@ describe("DashboardController", function() {
     });
 
     it("sets initial $scope", function() {
-        var controller = makeController();
+        makeController();
         expect($scope.loaded).toBe(false);
         expect($scope.discoveredDevices).toBe(DiscoveriesManager.getItems());
         expect($scope.domains).toBe(DomainsManager.getItems());
@@ -91,7 +91,7 @@ describe("DashboardController", function() {
     describe("proxyManager", function() {
 
         it("calls DevicesManager.createItem when device", function() {
-            var controller = makeController();
+            makeController();
             var sentinel = {};
             spyOn(DevicesManager, "createItem").and.returnValue(sentinel);
             $scope.convertTo = {
@@ -104,7 +104,7 @@ describe("DashboardController", function() {
         });
 
         it("calls DevicesManager.createInterface when interface", function() {
-            var controller = makeController();
+            makeController();
             var sentinel = {};
             spyOn(DevicesManager, "createInterface").and.returnValue(sentinel);
             $scope.convertTo = {
@@ -120,13 +120,13 @@ describe("DashboardController", function() {
     describe("getDiscoveryName", function() {
 
         it("returns discovery hostname", function() {
-            var controller = makeController();
+            makeController();
             var discovery = { hostname: "hostname" };
             expect($scope.getDiscoveryName(discovery)).toBe("hostname");
         });
 
         it("returns discovery mac_organization with device octets", function() {
-            var controller = makeController();
+            makeController();
             var discovery = {
                 hostname: null,
                 mac_organization: "mac-org",
@@ -137,7 +137,7 @@ describe("DashboardController", function() {
         });
 
         it("returns discovery with device mac", function() {
-            var controller = makeController();
+            makeController();
             var discovery = {
                 hostname: null,
                 mac_organization: null,
@@ -151,7 +151,7 @@ describe("DashboardController", function() {
     describe("getSubnetName", function() {
 
         it("calls SubnetsManager.getName with subnet", function() {
-            var controller = makeController();
+            makeController();
             var subnet = {
                 id: makeInteger(0, 100)
             };
@@ -166,7 +166,7 @@ describe("DashboardController", function() {
     describe("getVLANName", function() {
 
         it("calls VLANsManager.getName with vlan", function() {
-            var controller = makeController();
+            makeController();
             var vlan = {
                 id: makeInteger(0, 100)
             };
@@ -181,7 +181,7 @@ describe("DashboardController", function() {
     describe("toggleSelected", function() {
 
         it("clears selected if already selected", function() {
-            var controller = makeController();
+            makeController();
             var id = makeInteger(0, 100);
             $scope.selectedDevice = id;
             $scope.toggleSelected(id);
@@ -189,7 +189,7 @@ describe("DashboardController", function() {
         });
 
         it("sets selectedDevice and convertTo with static", function() {
-            var controller = makeController();
+            makeController();
             var id = makeInteger(0, 100);
             var defaultDomain = {
                 id: 0
@@ -219,7 +219,7 @@ describe("DashboardController", function() {
             });
         });
         it("sets handles fqdn correctly", function() {
-            var controller = makeController();
+            makeController();
             var id = makeInteger(0, 100);
             var defaultDomain = {
                 id: 0
@@ -245,7 +245,7 @@ describe("DashboardController", function() {
         });
 
         it("sets selectedDevice and convertTo without static", function() {
-            var controller = makeController();
+            makeController();
             var id = makeInteger(0, 100);
             var defaultDomain = {
                 id: 0
@@ -278,14 +278,14 @@ describe("DashboardController", function() {
     describe("sortTable", function() {
 
         it("sets predicate", function() {
-            var controller = makeController();
+            makeController();
             var predicate = makeName('predicate');
             $scope.sortTable(predicate);
             expect($scope.predicate).toBe(predicate);
         });
 
         it("reverses reverse", function() {
-            var controller = makeController();
+            makeController();
             $scope.reverse = true;
             $scope.sortTable(makeName('predicate'));
             expect($scope.reverse).toBe(false);
@@ -295,7 +295,7 @@ describe("DashboardController", function() {
     describe("preProcess", function() {
 
         it("adjust device to include the needed fields", function() {
-            var controller = makeController();
+            makeController();
             var id = makeInteger(0, 100);
             var defaultDomain = {
                 id: 0
@@ -337,7 +337,7 @@ describe("DashboardController", function() {
         });
 
         it("adjust interface to include the needed fields", function() {
-            var controller = makeController();
+            makeController();
             var id = makeInteger(0, 100);
             var defaultDomain = {
                 id: 0
@@ -378,7 +378,7 @@ describe("DashboardController", function() {
     describe("afterSave", function() {
 
         it("removes item from DiscoveriesManager", function() {
-            var controller = makeController();
+            makeController();
             var id = makeInteger(0, 100);
             $scope.selectedDevice = id;
             $scope.convertTo = {
@@ -398,7 +398,7 @@ describe("DashboardController", function() {
         });
 
         it("doesn't call $location.path if not goTo", function() {
-            var controller = makeController();
+            makeController();
             var id = makeInteger(0, 100);
             $scope.selectedDevice = id;
             $scope.convertTo = {
@@ -414,7 +414,7 @@ describe("DashboardController", function() {
         });
 
         it("calls $location.path if goTo without parent", function() {
-            var controller = makeController();
+            makeController();
             var id = makeInteger(0, 100);
             $scope.selectedDevice = id;
             $scope.convertTo = {
@@ -422,9 +422,6 @@ describe("DashboardController", function() {
             };
             spyOn(DiscoveriesManager, "_removeItem");
             spyOn($location, "path");
-            var path = {
-                search: jasmine.createSpy("search")
-            };
             $scope.afterSave({
                 hostname: makeName("hostname"),
                 parent: null
@@ -433,7 +430,7 @@ describe("DashboardController", function() {
         });
 
         it("calls $location.path if goTo with parent", function() {
-            var controller = makeController();
+            makeController();
             var id = makeInteger(0, 100);
             $scope.selectedDevice = id;
             $scope.convertTo = {
@@ -452,7 +449,7 @@ describe("DashboardController", function() {
 
     describe("removeDevice", function () {
         it("calls `removeDevice` in `DiscoveriesManager`", function() {
-            var controller = makeController();
+            makeController();
             var device = {
                 ip: "127.0.0.1",
                 mac_address: "00:25:96:FF:FE:12:34:56"
@@ -467,7 +464,7 @@ describe("DashboardController", function() {
 
     describe("removeAllDevices", function () {
         it("calls `removeDevices` in `DiscoveriesManager`", function () {
-            var controller = makeController();
+            makeController();
             var device = {
                 ip: "127.0.0.1",
                 mac_address: "00:25:96:FF:FE:12:34:56"
@@ -484,7 +481,7 @@ describe("DashboardController", function() {
 
     describe("openClearDiscoveriesPanel", function() {
         it("sets `showClearDiscoveriesPanel` to `true`", function() {
-            var controller = makeController();
+            makeController();
             $scope.openClearDiscoveriesPanel();
             expect($scope.showClearDiscoveriesPanel).toBe(true);
         });
@@ -492,7 +489,7 @@ describe("DashboardController", function() {
 
     describe("closeClearDiscoveriesPanel", function() {
         it("sets `showClearDiscoveriesPanel` to `false`", function() {
-            var controller = makeController();
+            makeController();
             $scope.closeClearDiscoveriesPanel();
             expect($scope.showClearDiscoveriesPanel).toBe(false);
         });
@@ -500,7 +497,7 @@ describe("DashboardController", function() {
 
     describe("getCount", function() {
         it("gets count of specified objects", function() {
-            var controller = makeController();
+            makeController();
             var device = {
                 ip: "127.0.0.1",
                 mac_address: "00:25:96:FF:FE:12:34:56"
@@ -514,7 +511,7 @@ describe("DashboardController", function() {
 
     describe("dedupeMetadata", function() {
         it("dedupes metadata", function() {
-            var controller = makeController();
+            makeController();
             $scope.discoveredDevices = [
                 {
                     fabric_name: "fabric-0",
@@ -543,7 +540,7 @@ describe("DashboardController", function() {
 
     describe("toggleFilter", function() {
         it("calls SearchService.toggleFilter", function () {
-            var controller = makeController();
+            makeController();
             spyOn(SearchService, "toggleFilter").and.returnValue(
                 SearchService.getEmptyFilter());
             $scope.toggleFilter("hostname", "test");
@@ -551,7 +548,7 @@ describe("DashboardController", function() {
         });
 
         it("sets $scope.filters", function() {
-            var controller = makeController();
+            makeController();
             var filters = { _: [], other: [] };
             spyOn(SearchService, "toggleFilter").and.returnValue(
                 filters);
@@ -560,14 +557,14 @@ describe("DashboardController", function() {
         });
 
         it("calls SearchService.filtersToString", function() {
-            var controller = makeController();
+            makeController();
             spyOn(SearchService, "filtersToString").and.returnValue("");
             $scope.toggleFilter("hostname", "test");
             expect(SearchService.filtersToString).toHaveBeenCalled();
         });
 
         it("sets $scope.search", function() {
-            var controller = makeController();
+            makeController();
             $scope.toggleFilter("hostname", "test");
             expect($scope.search).toBe("hostname:(=test)");
         });
@@ -575,7 +572,7 @@ describe("DashboardController", function() {
 
     describe("setMetadata", function() {
         it("sets metadata for fabrics, vlans, racks and subnets", function() {
-            var controller = makeController();
+            makeController();
             $scope.discoveredDevices = [
                 {
                     fabric_name: "fabric-01",
@@ -622,13 +619,13 @@ describe("DashboardController", function() {
 
     describe("isFilterActive", function() {
         it("returns true when active", function() {
-            var controller = makeController();
+            makeController();
             $scope.toggleFilter("hostname", "test");
             expect($scope.isFilterActive("hostname", "test")).toBe(true);
         });
 
         it("returns false when inactive", function() {
-            var controller = makeController();
+            makeController();
             $scope.toggleFilter("hostname", "test2");
             expect($scope.isFilterActive("hostname", "test")).toBe(false);
         });
@@ -637,7 +634,7 @@ describe("DashboardController", function() {
     describe("updateFilters", function () {
 
         it("updates filters and sets searchValid to true", function () {
-            var controller = makeController();
+            makeController();
             $scope.search = "test hostname:name";
             $scope.updateFilters();
             expect($scope.filters).toEqual({
@@ -649,7 +646,7 @@ describe("DashboardController", function() {
 
         it("updates sets filters empty and sets searchValid to false",
             function () {
-                var controller = makeController();
+                makeController();
                 $scope.search = "test hostname:(name";
                 $scope.updateFilters();
                 expect(

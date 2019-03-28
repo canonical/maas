@@ -87,14 +87,14 @@ describe("ZoneDetailsController", function() {
     }
 
     it("sets title and page on $rootScope", function() {
-        var controller = makeController();
+        makeController();
         expect($rootScope.title).toBe("Loading...");
         expect($rootScope.page).toBe("zones");
     });
 
     it("calls loadManagers with [ZonesManager, UsersManager]" +
         function() {
-            var controller = makeController();
+            makeController();
             expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
                 $scope, [ZonesManager, UsersManager]);
     });
@@ -105,7 +105,7 @@ describe("ZoneDetailsController", function() {
         spyOn(ErrorService, "raiseError").and.returnValue(
             $q.defer().promise);
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
         $routeParams.zone_id = 'xyzzy';
 
         defer.resolve();
@@ -121,7 +121,7 @@ describe("ZoneDetailsController", function() {
         spyOn(ZonesManager, "setActiveItem").and.returnValue(
             $q.defer().promise);
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
         ZonesManager._activeItem = zone;
         $routeParams.zone_id = zone.id;
 
@@ -137,7 +137,7 @@ describe("ZoneDetailsController", function() {
         spyOn(ZonesManager, "setActiveItem").and.returnValue(
             $q.defer().promise);
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
         $routeParams.zone_id = zone.id;
 
         defer.resolve();
@@ -148,32 +148,32 @@ describe("ZoneDetailsController", function() {
     });
 
     it("sets zone and loaded once setActiveItem resolves", function() {
-        var controller = makeControllerResolveSetActiveItem();
+        makeControllerResolveSetActiveItem();
         expect($scope.zone).toBe(zone);
         expect($scope.loaded).toBe(true);
     });
 
     it("title is updated once setActiveItem resolves", function() {
-        var controller = makeControllerResolveSetActiveItem();
+        makeControllerResolveSetActiveItem();
         expect($rootScope.title).toBe(zone.name);
     });
 
     describe("canBeDeleted", function() {
 
         it("returns false if zone is null", function() {
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             $scope.zone = null;
             expect($scope.canBeDeleted()).toBe(false);
         });
 
         it("returns false if zone id is 0", function() {
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             $scope.zone.id = 0;
             expect($scope.canBeDeleted()).toBe(false);
         });
 
         it("returns true if zone id > 0", function() {
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             $scope.zone.id = 1;
             expect($scope.canBeDeleted()).toBe(true);
         });
@@ -182,13 +182,13 @@ describe("ZoneDetailsController", function() {
     describe("deleteButton", function() {
 
         it("confirms delete", function() {
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             $scope.deleteButton();
             expect($scope.confirmingDelete).toBe(true);
         });
 
         it("clears error", function() {
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             $scope.error = makeName("error");
             $scope.deleteButton();
             expect($scope.error).toBeNull();
@@ -198,7 +198,7 @@ describe("ZoneDetailsController", function() {
     describe("cancelDeleteButton", function() {
 
         it("cancels delete", function() {
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             $scope.deleteButton();
             $scope.cancelDeleteButton();
             expect($scope.confirmingDelete).toBe(false);
@@ -208,7 +208,7 @@ describe("ZoneDetailsController", function() {
     describe("deleteZone", function() {
 
         it("calls deleteItem", function() {
-            var controller = makeController();
+            makeController();
             var deleteItem = spyOn(ZonesManager, "deleteItem");
             var defer = $q.defer();
             deleteItem.and.returnValue(defer.promise);

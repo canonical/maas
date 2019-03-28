@@ -112,7 +112,7 @@ describe("NodeResultsController", function() {
     });
 
     it("sets the initial $scope values", function() {
-        var controller = makeController();
+        makeController();
         expect($scope.commissioning_results).toBeNull();
         expect($scope.testing_results).toBeNull();
         expect($scope.installation_results).toBeNull();
@@ -128,7 +128,7 @@ describe("NodeResultsController", function() {
 
     it("sets the initial $scope values when controller", function() {
         $location.path('/controller');
-        var controller = makeController();
+        makeController();
         expect($scope.commissioning_results).toBeNull();
         expect($scope.testing_results).toBeNull();
         expect($scope.installation_results).toBeNull();
@@ -143,14 +143,14 @@ describe("NodeResultsController", function() {
     });
 
     it("calls loadManager with MachinesManager", function() {
-        var controller = makeController();
+        makeController();
         expect(ManagerHelperService.loadManager).toHaveBeenCalledWith(
             $scope, MachinesManager);
     });
 
     it("doesnt call setActiveItem if node already loaded", function() {
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
         MachinesManager._activeItem = node;
         spyOn(MachinesManager, "setActiveItem");
 
@@ -163,7 +163,7 @@ describe("NodeResultsController", function() {
 
     it("calls setActiveItem if node not loaded", function() {
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
         var setActiveDefer = $q.defer();
         spyOn(MachinesManager, "setActiveItem").and.returnValue(
             setActiveDefer.promise);
@@ -181,7 +181,7 @@ describe("NodeResultsController", function() {
 
     it("calls raiseError if setActiveItem is rejected", function() {
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
         var setActiveDefer = $q.defer();
         spyOn(MachinesManager, "setActiveItem").and.returnValue(
             setActiveDefer.promise);
@@ -199,7 +199,7 @@ describe("NodeResultsController", function() {
 
     it("calls loadItems on the results manager", function() {
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
         MachinesManager._activeItem = node;
         var manager = NodeResultsManagerFactory.getManager(node);
         spyOn(manager, "loadItems").and.returnValue($q.defer().promise);
@@ -211,7 +211,7 @@ describe("NodeResultsController", function() {
 
     it("sets eventsLoaded once events manager loadItems resolves", function() {
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
         MachinesManager._activeItem = node;
         var manager = NodeResultsManagerFactory.getManager(node);
         var loadDefer = $q.defer();
@@ -226,7 +226,7 @@ describe("NodeResultsController", function() {
 
     it("sets results once events manager loadItems resolves", function() {
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
         MachinesManager._activeItem = node;
         var manager = NodeResultsManagerFactory.getManager(node);
         var loadDefer = $q.defer();
@@ -242,7 +242,7 @@ describe("NodeResultsController", function() {
     describe("updateLogs", function() {
         it("only runs on logs page", function() {
             var defer = $q.defer();
-            var controller = makeController(defer);
+            makeController(defer);
             MachinesManager._activeItem = node;
             var manager = NodeResultsManagerFactory.getManager(node);
             var loadDefer = $q.defer();
@@ -256,7 +256,7 @@ describe("NodeResultsController", function() {
 
         it("loads summary", function() {
             var defer = $q.defer();
-            var controller = makeController(defer);
+            makeController(defer);
             $scope.section = {area: "logs"};
             MachinesManager._activeItem = node;
             webSocket.returnData.push(makeFakeResponse([]));
@@ -291,14 +291,14 @@ describe("NodeResultsController", function() {
 
     describe("updateLogOutput", function() {
         it("sets to loading when no node", function() {
-            var controller = makeController();
+            makeController();
             $scope.updateLogOutput();
             expect($scope.logOutput).toEqual("Loading...");
         });
 
         it("sets summary xml", function() {
             var defer = $q.defer();
-            var controller = makeController(defer);
+            makeController(defer);
             MachinesManager._activeItem = node;
             var managerDefer = $q.defer();
             $scope.logs = {option: {id: "summary_xml"}};
@@ -316,7 +316,7 @@ describe("NodeResultsController", function() {
 
         it("sets summary yaml", function() {
             var defer = $q.defer();
-            var controller = makeController(defer);
+            makeController(defer);
             MachinesManager._activeItem = node;
             var managerDefer = $q.defer();
             $scope.logs = {option: {id: "summary_yaml"}};
@@ -333,7 +333,7 @@ describe("NodeResultsController", function() {
         });
 
         it("sets system booting", function() {
-            var controller = makeController();
+            makeController();
             var installation_result = makeResult(1, 0);
             $scope.installation_results = [installation_result];
             $scope.node = node;
@@ -344,7 +344,7 @@ describe("NodeResultsController", function() {
         });
 
         it("sets installation has begun", function() {
-            var controller = makeController();
+            makeController();
             var installation_result = makeResult(1, 1);
             $scope.installation_results = [installation_result];
             $scope.node = node;
@@ -356,7 +356,7 @@ describe("NodeResultsController", function() {
 
         it("sets installation output succeeded", function() {
             var defer = $q.defer();
-            var controller = makeController(defer);
+            makeController(defer);
             var installation_result = makeResult(1, 2);
             MachinesManager._activeItem = node;
             var manager = NodeResultsManagerFactory.getManager(node);
@@ -378,7 +378,7 @@ describe("NodeResultsController", function() {
 
         it("sets installation output failed", function() {
             var defer = $q.defer();
-            var controller = makeController(defer);
+            makeController(defer);
             var installation_result = makeResult(1, 3);
             MachinesManager._activeItem = node;
             var manager = NodeResultsManagerFactory.getManager(node);
@@ -399,7 +399,7 @@ describe("NodeResultsController", function() {
         });
 
         it("sets timed out", function() {
-            var controller = makeController();
+            makeController();
             var installation_result = makeResult(1, 4);
             $scope.installation_results = [installation_result];
             $scope.node = node;
@@ -411,7 +411,7 @@ describe("NodeResultsController", function() {
         });
 
         it("sets installation aborted", function() {
-            var controller = makeController();
+            makeController();
             var installation_result = makeResult(1, 5);
             $scope.installation_results = [installation_result];
             $scope.node = node;
@@ -422,7 +422,7 @@ describe("NodeResultsController", function() {
         });
 
         it("sets unknown status", function() {
-            var controller = makeController();
+            makeController();
             var installation_result = makeResult(1, makeInteger(6, 100));
             $scope.installation_results = [installation_result];
             $scope.node = node;
@@ -436,7 +436,7 @@ describe("NodeResultsController", function() {
         it("sets install id to ScriptResult /tmp/install.log", function() {
             var defer = $q.defer();
             var loadItems_defer = $q.defer();
-            var controller = makeController(loadItems_defer);
+            makeController(loadItems_defer);
             $scope.section = {area: "logs"};
             MachinesManager._activeItem = node;
             webSocket.returnData.push(makeFakeResponse([]));
@@ -459,7 +459,7 @@ describe("NodeResultsController", function() {
     describe("loadHistory", function() {
         it("loads results", function() {
             var defer = $q.defer();
-            var controller = makeController();
+            makeController();
             var result = {
                 id: makeInteger(0, 100)
             };
@@ -484,7 +484,7 @@ describe("NodeResultsController", function() {
         });
 
         it("doesnt reload", function() {
-            var controller = makeController();
+            makeController();
             var result = {
                 id: makeInteger(0, 100),
                 history_list: [{id: makeInteger(0, 100)}]

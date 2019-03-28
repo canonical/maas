@@ -96,14 +96,14 @@ describe("FabricDetailsController", function() {
     }
 
     it("sets title and page on $rootScope", function() {
-        var controller = makeController();
+        makeController();
         expect($rootScope.title).toBe("Loading...");
         expect($rootScope.page).toBe("networks");
     });
 
     it("calls loadManagers with correct managers" +
         function() {
-            var controller = makeController();
+            makeController();
             expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
                 $scope, [
                     FabricsManager, VLANsManager, SubnetsManager,
@@ -116,7 +116,7 @@ describe("FabricDetailsController", function() {
         spyOn(ErrorService, "raiseError").and.returnValue(
             $q.defer().promise);
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
         $routeParams.fabric_id = 'xyzzy';
 
         defer.resolve();
@@ -132,7 +132,7 @@ describe("FabricDetailsController", function() {
         spyOn(FabricsManager, "setActiveItem").and.returnValue(
             $q.defer().promise);
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
         FabricsManager._activeItem = fabric;
         $routeParams.fabric_id = fabric.id;
 
@@ -148,7 +148,7 @@ describe("FabricDetailsController", function() {
         spyOn(FabricsManager, "setActiveItem").and.returnValue(
             $q.defer().promise);
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
         $routeParams.fabric_id = fabric.id;
 
         defer.resolve();
@@ -159,19 +159,19 @@ describe("FabricDetailsController", function() {
     });
 
     it("sets fabric and loaded once setActiveItem resolves", function() {
-        var controller = makeControllerResolveSetActiveItem();
+        makeControllerResolveSetActiveItem();
         expect($scope.fabric).toBe(fabric);
         expect($scope.loaded).toBe(true);
     });
 
     it("title is updated once setActiveItem resolves", function() {
-        var controller = makeControllerResolveSetActiveItem();
+        makeControllerResolveSetActiveItem();
         expect($rootScope.title).toBe(fabric.name);
     });
 
     it("default fabric title is not special", function() {
         fabric.id = 0;
-        var controller = makeControllerResolveSetActiveItem();
+        makeControllerResolveSetActiveItem();
         expect($rootScope.title).toBe(fabric.name);
     });
 
@@ -187,7 +187,7 @@ describe("FabricDetailsController", function() {
         SpacesManager._items.push(spaces[0]);
         VLANsManager._items.push(vlans[0]);
         SubnetsManager._items.push(subnets[0]);
-        var controller = makeControllerResolveSetActiveItem();
+        makeControllerResolveSetActiveItem();
         $scope.$apply();
         $rootScope.$digest();
         var rows = $scope.rows;
@@ -201,7 +201,7 @@ describe("FabricDetailsController", function() {
         fabric.vlan_ids = [1];
         fabric.default_vlan_id = 1;
         VLANsManager._items.push(vlans[0]);
-        var controller = makeControllerResolveSetActiveItem();
+        makeControllerResolveSetActiveItem();
         $rootScope.$digest();
         var rows = $scope.rows;
         expect(rows[0].vlan).toBe(vlans[0]);
@@ -212,7 +212,7 @@ describe("FabricDetailsController", function() {
     describe("editSubnetSummary", function() {
 
         it("enters edit mode for summary", function() {
-            var controller = makeController();
+            makeController();
             $scope.editSummary = false;
             $scope.enterEditSummary();
             expect($scope.editSummary).toBe(true);
@@ -222,7 +222,7 @@ describe("FabricDetailsController", function() {
     describe("exitEditSubnetSummary", function() {
 
         it("enters edit mode for summary", function() {
-            var controller = makeController();
+            makeController();
             $scope.editSummary = true;
             $scope.exitEditSummary();
             expect($scope.editSummary).toBe(false);
@@ -232,19 +232,19 @@ describe("FabricDetailsController", function() {
     describe("canBeDeleted", function() {
 
         it("returns false if fabric is null", function() {
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             $scope.fabric = null;
             expect($scope.canBeDeleted()).toBe(false);
         });
 
         it("returns false if fabric is default fabric", function() {
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             $scope.fabric.id = 0;
             expect($scope.canBeDeleted()).toBe(false);
         });
 
         it("returns true if fabric is not default fabric", function() {
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             $scope.fabric.id = 1;
             expect($scope.canBeDeleted()).toBe(true);
         });
@@ -253,13 +253,13 @@ describe("FabricDetailsController", function() {
     describe("deleteButton", function() {
 
         it("confirms delete", function() {
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             $scope.deleteButton();
             expect($scope.confirmingDelete).toBe(true);
         });
 
         it("clears error", function() {
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             $scope.error = makeName("error");
             $scope.deleteButton();
             expect($scope.error).toBeNull();
@@ -269,7 +269,7 @@ describe("FabricDetailsController", function() {
     describe("cancelDeleteButton", function() {
 
         it("cancels delete", function() {
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             $scope.deleteButton();
             $scope.cancelDeleteButton();
             expect($scope.confirmingDelete).toBe(false);
@@ -282,7 +282,7 @@ describe("FabricDetailsController", function() {
             $location = {};
             $location.path = jasmine.createSpy('path');
             $location.search = jasmine.createSpy('search');
-            var controller = makeController();
+            makeController();
             var deleteFabric = spyOn(FabricsManager, "deleteFabric");
             var defer = $q.defer();
             deleteFabric.and.returnValue(defer.promise);

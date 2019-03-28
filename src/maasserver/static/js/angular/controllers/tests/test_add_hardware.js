@@ -19,9 +19,9 @@ describe("AddHardwareController", function() {
         $q = $injector.get("$q");
     }));
 
-    // Load the ZonesManager, ResourcePoolManager, MachinesManager,
+    // Load the ZonesManager, ResourcePoolsManager, MachinesManager,
     // RegionConnection, DomainManager, and mock the websocket connection.
-    var ZonesManager, ResorucePoolManager, MachinesManager, GeneralManager,
+    var ZonesManager, ResourcePoolsManager, MachinesManager, GeneralManager,
         DomainsManager;
     var RegionConnection, ManagerHelperService, webSocket;
     beforeEach(inject(function($injector) {
@@ -95,12 +95,12 @@ describe("AddHardwareController", function() {
     }
 
     it("sets addHardwareScope on $scope.$parent", function() {
-        var controller = makeController();
+        makeController();
         expect(parentScope.addHardwareScope).toBe($scope);
     });
 
     it("sets initial values on $scope", function() {
-        var controller = makeController();
+        makeController();
         expect($scope.viewable).toBe(false);
         expect($scope.zones).toBe(ZonesManager.getItems());
         expect($scope.pools).toBe(ResourcePoolsManager.getItems());
@@ -117,14 +117,14 @@ describe("AddHardwareController", function() {
         // add_hardware is loaded on the listing and details page. Managers
         // should be loaded when shown. Otherwise all Zones and Domains are
         // loaded and updated even though they are not needed.
-        var controller = makeController();
+        makeController();
         expect(ManagerHelperService.loadManagers).not.toHaveBeenCalled();
     });
 
     it("initializes machine architecture with first arch", function() {
         var loadManagers_defer = $q.defer();
         var loadItems_defer = $q.defer();
-        var controller = makeController(loadManagers_defer, loadItems_defer);
+        makeController(loadManagers_defer, loadItems_defer);
         var arch = makeName("arch");
         $scope.architectures = [arch];
         $scope.machine = {
@@ -142,7 +142,7 @@ describe("AddHardwareController", function() {
     it("initializes machine arch with amd64 arch", function() {
         var loadManagers_defer = $q.defer();
         var loadItems_defer = $q.defer();
-        var controller = makeController(loadManagers_defer, loadItems_defer);
+        makeController(loadManagers_defer, loadItems_defer);
         var arch = makeName("arch");
         $scope.architectures = [arch, "amd64/generic"];
         $scope.machine = {
@@ -160,7 +160,7 @@ describe("AddHardwareController", function() {
     it("doesnt initializes machine architecture if set", function() {
         var loadManagers_defer = $q.defer();
         var loadItems_defer = $q.defer();
-        var controller = makeController(loadManagers_defer, loadItems_defer);
+        makeController(loadManagers_defer, loadItems_defer);
         var arch = makeName("arch");
         var newArch = makeName("arch");
         $scope.architectures = [newArch];
@@ -179,13 +179,13 @@ describe("AddHardwareController", function() {
     it("initializes machine min_hwe_kernel with hwe-t", function() {
         var loadManagers_defer = $q.defer();
         var loadItems_defer = $q.defer();
-        var controller = makeController(loadManagers_defer, loadItems_defer);
+        makeController(loadManagers_defer, loadItems_defer);
         var arch = makeName("arch");
         var min_hwe_kernel = "hwe-t";
         $scope.architectures = [arch];
         $scope.machine = {
             architecture: '',
-            min_hwe_kernel: 'hwe-t',
+            min_hwe_kernel: min_hwe_kernel,
             power: {type: makeName("power_type")}
         };
         $scope.show();
@@ -193,7 +193,7 @@ describe("AddHardwareController", function() {
         loadManagers_defer.resolve();
         loadItems_defer.resolve();
         $scope.$digest();
-        expect($scope.machine.min_hwe_kernel).toEqual("hwe-t");
+        expect($scope.machine.min_hwe_kernel).toEqual(min_hwe_kernel);
     });
 
     describe("show", function() {
@@ -201,7 +201,7 @@ describe("AddHardwareController", function() {
         it("sets viewable to true", function() {
             var loadItems_defer = $q.defer();
             var loadManagers_defer = $q.defer();
-            var controller = makeController(
+            makeController(
                 loadManagers_defer, loadItems_defer);
             $scope.show();
 
@@ -214,7 +214,7 @@ describe("AddHardwareController", function() {
         it("reloads arches and kernels", function() {
             var loadItems_defer = $q.defer();
             var loadManagers_defer = $q.defer();
-            var controller = makeController(
+            makeController(
                 loadManagers_defer, loadItems_defer);
             $scope.show();
 
@@ -228,7 +228,7 @@ describe("AddHardwareController", function() {
         it("calls loadManagers with ZonesManager, DomainsManager", function() {
             var loadItems_defer = $q.defer();
             var loadManagers_defer = $q.defer();
-            var controller = makeController(
+            makeController(
                 loadManagers_defer, loadItems_defer);
             $scope.show();
 
@@ -243,7 +243,7 @@ describe("AddHardwareController", function() {
             function() {
                 var loadItems_defer = $q.defer();
                 var loadManagers_defer = $q.defer();
-                var controller = makeController(
+                makeController(
                     loadManagers_defer, loadItems_defer);
                 $scope.show();
 
@@ -258,14 +258,14 @@ describe("AddHardwareController", function() {
     describe("hide", function() {
 
         it("sets viewable to false", function() {
-            var controller = makeController();
+            makeController();
             $scope.viewable = true;
             $scope.hide();
             expect($scope.viewable).toBe(false);
         });
 
         it("emits addHardwareHidden event", function(done) {
-            var controller = makeController();
+            makeController();
             $scope.$on("addHardwareHidden", function() {
                 done();
             });
@@ -274,7 +274,7 @@ describe("AddHardwareController", function() {
 
         it("unloadManagers", function() {
             var unloadManagers = spyOn(ManagerHelperService, "unloadManagers");
-            var controller = makeController();
+            makeController();
             $scope.viewable = true;
             $scope.hide();
             expect(unloadManagers).toHaveBeenCalledWith(
@@ -285,7 +285,7 @@ describe("AddHardwareController", function() {
     describe("addMac", function() {
 
         it("adds mac address object to machine", function() {
-            var controller = makeControllerWithMachine();
+            makeControllerWithMachine();
             $scope.addMac();
             expect($scope.machine.macs.length).toBe(2);
         });
@@ -294,7 +294,7 @@ describe("AddHardwareController", function() {
     describe("removeMac", function() {
 
         it("removes mac address object from machine", function() {
-            var controller = makeControllerWithMachine();
+            makeControllerWithMachine();
             $scope.addMac();
             var mac = $scope.machine.macs[1];
             $scope.removeMac(mac);
@@ -302,7 +302,7 @@ describe("AddHardwareController", function() {
         });
 
         it("ignores second remove if mac object removed again", function() {
-            var controller = makeControllerWithMachine();
+            makeControllerWithMachine();
             $scope.addMac();
             var mac = $scope.machine.macs[1];
             $scope.removeMac(mac);
@@ -314,18 +314,18 @@ describe("AddHardwareController", function() {
     describe("invalidName", function() {
 
         it("return false if machine name empty", function() {
-            var controller = makeControllerWithMachine();
+            makeControllerWithMachine();
             expect($scope.invalidName($scope.machine)).toBe(false);
         });
 
         it("return false if machine name valid", function() {
-            var controller = makeControllerWithMachine();
+            makeControllerWithMachine();
             $scope.machine.name = "abc";
             expect($scope.invalidName($scope.machine)).toBe(false);
         });
 
         it("return true if machine name invalid", function() {
-            var controller = makeControllerWithMachine();
+            makeControllerWithMachine();
             $scope.machine.name = "ab_c.local";
             expect($scope.invalidName($scope.machine)).toBe(true);
         });
@@ -334,7 +334,7 @@ describe("AddHardwareController", function() {
     describe("validateMac", function() {
 
         it("sets error to false if blank", function() {
-            var controller = makeController();
+            makeController();
             var mac = {
                 mac: '',
                 error: true
@@ -344,7 +344,7 @@ describe("AddHardwareController", function() {
         });
 
         it("sets error to true if invalid", function() {
-            var controller = makeController();
+            makeController();
             var mac = {
                 mac: '00:11:22',
                 error: false
@@ -354,7 +354,7 @@ describe("AddHardwareController", function() {
         });
 
         it("sets error to false if valid", function() {
-            var controller = makeController();
+            makeController();
             var mac = {
                 mac: '00:11:22:33:44:55',
                 error: true
@@ -367,13 +367,13 @@ describe("AddHardwareController", function() {
     describe("machineHasError", function() {
 
         it("returns true if machine is null", function() {
-            var controller = makeControllerWithMachine();
+            makeControllerWithMachine();
             $scope.machine = null;
             expect($scope.machineHasError()).toBe(true);
         });
 
         it("returns true if zone is null", function() {
-            var controller = makeControllerWithMachine();
+            makeControllerWithMachine();
             $scope.machine.zone = null;
             $scope.machine.pool = null;
             $scope.machine.architecture = makeName("arch");
@@ -384,7 +384,7 @@ describe("AddHardwareController", function() {
         });
 
         it("returns true if architecture is not chosen", function() {
-            var controller = makeControllerWithMachine();
+            makeControllerWithMachine();
             $scope.machine.zone = {};
             $scope.machine.pool = {};
             $scope.machine.architecture = 'Choose an architecture';
@@ -395,7 +395,7 @@ describe("AddHardwareController", function() {
         });
 
         it("returns true if power.type is null", function() {
-            var controller = makeControllerWithMachine();
+            makeControllerWithMachine();
             $scope.machine.zone = {};
             $scope.machine.architecture = makeName("arch");
             $scope.machine.power.type = null;
@@ -405,7 +405,7 @@ describe("AddHardwareController", function() {
         });
 
         it("returns true if machine.name invalid", function() {
-            var controller = makeControllerWithMachine();
+            makeControllerWithMachine();
             $scope.machine.zone = {};
             $scope.machine.architecture = makeName("arch");
             $scope.machine.name = "ab_c.local";
@@ -416,7 +416,7 @@ describe("AddHardwareController", function() {
         });
 
         it("returns true if mac[0] is empty", function() {
-            var controller = makeControllerWithMachine();
+            makeControllerWithMachine();
             $scope.machine.zone = {};
             $scope.machine.architecture = makeName("arch");
             $scope.machine.power.type = {};
@@ -426,7 +426,7 @@ describe("AddHardwareController", function() {
         });
 
         it("returns true if mac[0] is in error", function() {
-            var controller = makeControllerWithMachine();
+            makeControllerWithMachine();
             $scope.machine.zone = {};
             $scope.machine.architecture = makeName("arch");
             $scope.machine.power.type = {};
@@ -436,7 +436,7 @@ describe("AddHardwareController", function() {
         });
 
         it("returns true if mac[1] is in error", function() {
-            var controller = makeControllerWithMachine();
+            makeControllerWithMachine();
             $scope.machine.zone = {};
             $scope.machine.architecture = makeName("arch");
             $scope.machine.power.type = {};
@@ -450,7 +450,7 @@ describe("AddHardwareController", function() {
         });
 
         it("returns false if all is correct", function() {
-            var controller = makeControllerWithMachine();
+            makeControllerWithMachine();
             $scope.machine.zone = {};
             $scope.machine.pool = {};
             $scope.machine.architecture = makeName("arch");
@@ -461,7 +461,7 @@ describe("AddHardwareController", function() {
         });
 
         it("returns false if all is correct and mac[1] is blank", function() {
-            var controller = makeControllerWithMachine();
+            makeControllerWithMachine();
             $scope.machine.zone = {};
             $scope.machine.pool = {};
             $scope.machine.architecture = makeName("arch");
@@ -479,13 +479,13 @@ describe("AddHardwareController", function() {
     describe("chassisHasErrors", function() {
 
         it("returns true if chassis is null", function() {
-            var controller = makeController();
+            makeController();
             $scope.chassis = null;
             expect($scope.chassisHasErrors()).toBe(true);
         });
 
         it("returns true if power.type is null", function() {
-            var controller = makeController();
+            makeController();
             $scope.chassis = {
                 power: {
                     type: null,
@@ -496,7 +496,7 @@ describe("AddHardwareController", function() {
         });
 
         it("returns true if power.parameters is invalid", function() {
-            var controller = makeController();
+            makeController();
             $scope.chassis = {
                 power: {
                     type: {
@@ -516,7 +516,7 @@ describe("AddHardwareController", function() {
         });
 
         it("returns false if all valid", function() {
-            var controller = makeController();
+            makeController();
             $scope.chassis = {
                 power: {
                     type: {
@@ -539,7 +539,7 @@ describe("AddHardwareController", function() {
     describe("cancel", function() {
 
         it("clears error", function() {
-            var controller = makeControllerWithMachine();
+            makeControllerWithMachine();
             $scope.error = makeName("error");
             $scope.cancel();
 
@@ -547,21 +547,21 @@ describe("AddHardwareController", function() {
         });
 
         it("clears machine and adds a new one", function() {
-            var controller = makeControllerWithMachine();
+            makeControllerWithMachine();
             $scope.machine.name = makeName("name");
             $scope.cancel();
             expect($scope.machine.name).toBe("");
         });
 
         it("clears chassis and adds a new one", function() {
-            var controller = makeControllerWithMachine();
+            makeControllerWithMachine();
             $scope.chassis.power.type = makeName("type");
             $scope.cancel();
             expect($scope.chassis.power.type).toBeNull();
         });
 
         it("calls hide", function() {
-            var controller = makeControllerWithMachine();
+            makeControllerWithMachine();
             spyOn($scope, "hide");
             $scope.cancel();
             expect($scope.hide).toHaveBeenCalled();
@@ -572,7 +572,7 @@ describe("AddHardwareController", function() {
 
         // Setup a valid machine before each test.
         beforeEach(function() {
-            var controller = makeControllerWithMachine();
+            makeControllerWithMachine();
 
             $scope.addMac();
             $scope.machine.name = makeName("name").replace("_", "");
@@ -666,7 +666,7 @@ describe("AddHardwareController", function() {
             $http.and.returnValue(httpDefer.promise);
 
             // Create the controller and the valid chassis.
-            var controller = makeController();
+            makeController();
             $scope.chassis = {
                 domain: makeName("domain"),
                 power: {

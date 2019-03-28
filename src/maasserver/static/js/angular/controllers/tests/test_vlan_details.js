@@ -179,13 +179,13 @@ describe("VLANDetailsController", function() {
     }
 
     it("sets title and page on $rootScope", function() {
-        var controller = makeController();
+        makeController();
         expect($rootScope.title).toBe("Loading...");
         expect($rootScope.page).toBe("networks");
     });
 
     it("calls loadManagers with required managers", function() {
-        var controller = makeController();
+        makeController();
         expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
             $scope, [
                 VLANsManager, SubnetsManager, SpacesManager, FabricsManager,
@@ -230,7 +230,7 @@ describe("VLANDetailsController", function() {
         spyOn(VLANsManager, "setActiveItem").and.returnValue(
             $q.defer().promise);
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
         $routeParams.vlan_id = vlan.id;
 
         defer.resolve();

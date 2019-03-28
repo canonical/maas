@@ -55,12 +55,12 @@ describe("AddDomainController", function() {
     }
 
     it("sets addDomainScope on $scope.$parent", function() {
-        var controller = makeController();
+        makeController();
         expect(parentScope.addDomainScope).toBe($scope);
     });
 
     it("sets initial values on $scope", function() {
-        var controller = makeController();
+        makeController();
         expect($scope.viewable).toBe(false);
         expect($scope.error).toBe(null);
         expect($scope.domain).toEqual({
@@ -72,7 +72,7 @@ describe("AddDomainController", function() {
     describe("show", function() {
 
         it("does nothing if already viewable", function() {
-            var controller = makeController();
+            makeController();
             $scope.viewable = true;
             var name = makeName("name");
             $scope.domain.name = name;
@@ -83,7 +83,7 @@ describe("AddDomainController", function() {
         });
 
         it("clears domain and sets viewable to true", function() {
-            var controller = makeController();
+            makeController();
             $scope.domain.name = makeName("name");
             $scope.show();
             expect($scope.domain.name).toBe("");
@@ -94,14 +94,14 @@ describe("AddDomainController", function() {
     describe("hide", function() {
 
         it("sets viewable to false", function() {
-            var controller = makeController();
+            makeController();
             $scope.viewable = true;
             $scope.hide();
             expect($scope.viewable).toBe(false);
         });
 
         it("emits event addDomainHidden", function(done) {
-            var controller = makeController();
+            makeController();
             $scope.viewable = true;
             $scope.$on("addDomainHidden", function() {
                 done();
@@ -113,18 +113,18 @@ describe("AddDomainController", function() {
     describe("nameHasError", function() {
 
         it("returns false if name is empty", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.nameHasError()).toBe(false);
         });
 
         it("returns false if valid name", function() {
-            var controller = makeController();
+            makeController();
             $scope.domain.name = "abc";
             expect($scope.nameHasError()).toBe(false);
         });
 
         it("returns true if invalid name", function() {
-            var controller = makeController();
+            makeController();
             $scope.domain.name = "a_bc.local";
             expect($scope.nameHasError()).toBe(true);
         });
@@ -133,13 +133,13 @@ describe("AddDomainController", function() {
     describe("domainHasError", function() {
 
         it("returns true if name empty", function() {
-            var controller = makeController();
+            makeController();
             $scope.domain.authoritative = true;
             expect($scope.domainHasError()).toBe(true);
         });
 
         it("returns true if name invalid", function() {
-            var controller = makeController();
+            makeController();
             $scope.domain.name = "ab_c.local";
             expect($scope.domainHasError()).toBe(true);
         });
@@ -148,21 +148,21 @@ describe("AddDomainController", function() {
     describe("cancel", function() {
 
         it("clears error", function() {
-            var controller = makeController();
+            makeController();
             $scope.error = makeName("error");
             $scope.cancel();
             expect($scope.error).toBeNull();
         });
 
         it("clears domain", function() {
-            var controller = makeController();
+            makeController();
             $scope.domain.name = makeName("name");
             $scope.cancel();
             expect($scope.domain.name).toBe("");
         });
 
         it("calls hide", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "hide");
             $scope.cancel();
             expect($scope.hide).toHaveBeenCalled();
@@ -172,7 +172,7 @@ describe("AddDomainController", function() {
     describe("save", function() {
 
         it("doest nothing if domain in error", function() {
-            var controller = makeController();
+            makeController();
             var error = makeName("error");
             $scope.error = error;
             spyOn($scope, "domainHasError").and.returnValue(true);
@@ -182,7 +182,7 @@ describe("AddDomainController", function() {
         });
 
         it("clears error before calling create", function() {
-            var controller = makeController();
+            makeController();
             $scope.error = makeName("error");
             spyOn($scope, "domainHasError").and.returnValue(false);
             spyOn(DomainsManager, "create").and.returnValue(
@@ -193,7 +193,7 @@ describe("AddDomainController", function() {
         });
 
         it("calls create with converted domain", function() {
-            var controller = makeController();
+            makeController();
             $scope.error = makeName("error");
             spyOn($scope, "domainHasError").and.returnValue(false);
             spyOn(DomainsManager, "create").and.returnValue(
@@ -212,7 +212,7 @@ describe("AddDomainController", function() {
         });
 
         it("on create resolve domain is cleared", function() {
-            var controller = makeController();
+            makeController();
             $scope.error = makeName("error");
             spyOn($scope, "domainHasError").and.returnValue(false);
             var defer = $q.defer();
@@ -226,7 +226,7 @@ describe("AddDomainController", function() {
 
         it("on create resolve hide is called when addAnother is false",
             function() {
-                var controller = makeController();
+                makeController();
                 $scope.error = makeName("error");
                 spyOn($scope, "domainHasError").and.returnValue(false);
                 var defer = $q.defer();
@@ -241,7 +241,7 @@ describe("AddDomainController", function() {
 
         it("on create resolve hide is not called when addAnother is true",
             function() {
-                var controller = makeController();
+                makeController();
                 $scope.error = makeName("error");
                 spyOn($scope, "domainHasError").and.returnValue(false);
                 var defer = $q.defer();
@@ -256,7 +256,7 @@ describe("AddDomainController", function() {
 
         it("on create reject error is set",
             function() {
-                var controller = makeController();
+                makeController();
                 $scope.error = makeName("error");
                 spyOn($scope, "domainHasError").and.returnValue(false);
                 var defer = $q.defer();

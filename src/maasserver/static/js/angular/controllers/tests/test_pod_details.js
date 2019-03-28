@@ -143,14 +143,14 @@ describe("PodDetailsController", function() {
     }
 
     it("sets title and page on $rootScope", function() {
-        var controller = makeController();
+        makeController();
         expect($rootScope.title).toBe("Loading...");
         expect($rootScope.page).toBe("pods");
     });
 
     it("sets initial values on $scope", function() {
         // tab-independent variables.
-        var controller = makeController();
+        makeController();
         expect($scope.pod).toBeNull();
         expect($scope.loaded).toBe(false);
         expect($scope.action.option).toBeNull();
@@ -186,7 +186,7 @@ describe("PodDetailsController", function() {
     it("calls loadManagers with PodsManager, UsersManager, GeneralManager, \
         DomainsManager, ZonesManager, SubnetsManager, VLANsManager, \
         FabricsManager, SpacesManager, MachinesManager", function() {
-            var controller = makeController();
+            makeController();
             expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
                 $scope,
                 [
@@ -205,32 +205,32 @@ describe("PodDetailsController", function() {
         });
 
     it("sets loaded and title when loadManagers resolves", function() {
-        var controller = makeControllerResolveSetActiveItem();
+        makeControllerResolveSetActiveItem();
         expect($scope.loaded).toBe(true);
         expect($scope.title).toBe('Pod ' + pod.name);
     });
 
     describe("stripTrailingZero", function() {
         it("removes decimal point if zero", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.stripTrailingZero(41.0)).toBe('41');
         });
 
         it("doesn't strip decimal point if not zero", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.stripTrailingZero(42.2)).toBe('42.2');
         });
     });
 
     describe("isRackControllerConnected", function() {
         it("returns false no power_types", function() {
-            var controller = makeController();
+            makeController();
             $scope.power_types = [];
             expect($scope.isRackControllerConnected()).toBe(false);
         });
 
         it("returns true if power_types", function() {
-            var controller = makeController();
+            makeController();
             $scope.power_types = [{}];
             expect($scope.isRackControllerConnected()).toBe(true);
         });
@@ -238,7 +238,7 @@ describe("PodDetailsController", function() {
 
     describe("canEdit", function() {
         it("returns false if no pod", function() {
-            var controller = makeController();
+            makeController();
             spyOn(
                 $scope,
                 "isRackControllerConnected").and.returnValue(true);
@@ -246,7 +246,7 @@ describe("PodDetailsController", function() {
         });
 
         it("returns false if no pod permissions", function() {
-            var controller = makeController();
+            makeController();
             $scope.pod = makePod();
             delete $scope.pod.permissions;
             spyOn(
@@ -256,7 +256,7 @@ describe("PodDetailsController", function() {
         });
 
         it("returns false if no edit permission", function() {
-            var controller = makeController();
+            makeController();
             $scope.pod = makePod();
             spyOn(
                 $scope,
@@ -265,7 +265,7 @@ describe("PodDetailsController", function() {
         });
 
         it("returns false if rack disconnected", function() {
-            var controller = makeController();
+            makeController();
             $scope.pod = makePod();
             $scope.pod.permissions.push('edit');
             spyOn(
@@ -275,7 +275,7 @@ describe("PodDetailsController", function() {
         });
 
         it("returns true if super user, rack connected", function() {
-            var controller = makeController();
+            makeController();
             $scope.pod = makePod();
             $scope.pod.permissions.push('edit');
             spyOn(
@@ -289,7 +289,7 @@ describe("PodDetailsController", function() {
 
         it("doesnt set editing true",
            function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "canEdit").and.returnValue(false);
             $scope.name.editing = false;
             $scope.editName();
@@ -298,7 +298,7 @@ describe("PodDetailsController", function() {
 
         it("sets editing to true",
            function() {
-            var controller = makeController();
+            makeController();
             $scope.pod = pod;
             spyOn($scope, "canEdit").and.returnValue(true);
             $scope.name.editing = false;
@@ -307,7 +307,7 @@ describe("PodDetailsController", function() {
         });
 
         it("sets name.value to pod name", function() {
-            var controller = makeController();
+            makeController();
             $scope.pod = pod;
             spyOn($scope, "canEdit").and.returnValue(true);
             $scope.editName();
@@ -315,7 +315,7 @@ describe("PodDetailsController", function() {
         });
 
         it("doesnt reset name.value on multiple calls", function() {
-            var controller = makeController();
+            makeController();
             $scope.pod = pod;
             spyOn($scope, "canEdit").and.returnValue(true);
             $scope.editName();
@@ -329,14 +329,14 @@ describe("PodDetailsController", function() {
     describe("editNameInvalid", function() {
 
         it("returns false if not editing", function() {
-            var controller = makeController();
+            makeController();
             $scope.name.editing = false;
             $scope.name.value = "abc_invalid.local";
             expect($scope.editNameInvalid()).toBe(false);
         });
 
         it("returns true for bad values", function() {
-            var controller = makeController();
+            makeController();
             $scope.name.editing = true;
             var values = [
                 {
@@ -367,7 +367,7 @@ describe("PodDetailsController", function() {
 
         it("sets editing to false for name section",
            function() {
-            var controller = makeController();
+            makeController();
             $scope.pod = pod;
             $scope.name.editing = true;
             $scope.cancelEditName();
@@ -375,7 +375,7 @@ describe("PodDetailsController", function() {
         });
 
         it("sets name.value back to original", function() {
-            var controller = makeController();
+            makeController();
             $scope.pod = pod;
             $scope.name.editing = true;
             $scope.name.value = makeName("name");
@@ -387,7 +387,7 @@ describe("PodDetailsController", function() {
     describe("saveEditName", function() {
 
         it("does nothing if value is invalid", function() {
-            var controller = makeController();
+            makeController();
             $scope.pod = pod;
             spyOn($scope, "editNameInvalid").and.returnValue(true);
             var sentinel = {};
@@ -397,7 +397,7 @@ describe("PodDetailsController", function() {
         });
 
         it("sets editing to false", function() {
-            var controller = makeController();
+            makeController();
             spyOn(PodsManager, "updateItem").and.returnValue(
                 $q.defer().promise);
             spyOn($scope, "editNameInvalid").and.returnValue(false);
@@ -411,7 +411,7 @@ describe("PodDetailsController", function() {
         });
 
         it("calls updateItem with copy of pod", function() {
-            var controller = makeController();
+            makeController();
             spyOn(PodsManager, "updateItem").and.returnValue(
                 $q.defer().promise);
             spyOn($scope, "editNameInvalid").and.returnValue(false);
@@ -426,7 +426,7 @@ describe("PodDetailsController", function() {
         });
 
         it("calls updateItem with new name on pod", function() {
-            var controller = makeController();
+            makeController();
             spyOn(PodsManager, "updateItem").and.returnValue(
                 $q.defer().promise);
             spyOn($scope, "editNameInvalid").and.returnValue(false);
@@ -442,7 +442,7 @@ describe("PodDetailsController", function() {
         });
 
         it("calls updateName once updateItem resolves", function() {
-            var controller = makeController();
+            makeController();
             var defer = $q.defer();
             spyOn(PodsManager, "updateItem").and.returnValue(
                 defer.promise);
@@ -465,7 +465,7 @@ describe("PodDetailsController", function() {
     describe("editPodConfiguration", function() {
         it("sets editing to true if can edit",
            function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "canEdit").and.returnValue(true);
             $scope.editing = false;
             $scope.editPodConfiguration();
@@ -474,7 +474,7 @@ describe("PodDetailsController", function() {
 
         it("doesnt set editing to true if cannot",
            function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "canEdit").and.returnValue(false);
             $scope.editing = false;
             $scope.editPodConfiguration();
@@ -485,7 +485,7 @@ describe("PodDetailsController", function() {
     describe("exitEditPodConfiguration", function() {
         it("sets editing to false on exiting pod configuration",
            function() {
-            var controller = makeController();
+            makeController();
             $scope.editing = true;
             $scope.exitEditPodConfiguration();
             expect($scope.editing).toBe(false);
@@ -495,12 +495,12 @@ describe("PodDetailsController", function() {
     describe("isActionError", function() {
 
         it("returns false if not action error", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.isActionError()).toBe(false);
         });
 
         it("returns true if action error", function() {
-            var controller = makeController();
+            makeController();
             $scope.action.error = makeName("error");
             expect($scope.isActionError()).toBe(true);
         });
@@ -509,7 +509,7 @@ describe("PodDetailsController", function() {
     describe("actionOptionChanged", function() {
 
         it("clears action error", function() {
-            var controller = makeController();
+            makeController();
             $scope.action.error = makeName("error");
             $scope.actionOptionChanged();
             expect($scope.action.error).toBeNull();
@@ -519,7 +519,7 @@ describe("PodDetailsController", function() {
     describe("actionCancel", function() {
 
         it("clears action error and option", function() {
-            var controller = makeController();
+            makeController();
             $scope.action.error = makeName("error");
             $scope.action.option = {};
             $scope.actionCancel();
@@ -531,7 +531,7 @@ describe("PodDetailsController", function() {
     describe("actionGo", function() {
 
         it("performs action and sets and clears inProgress", function() {
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             var defer = $q.defer();
             var refresh = jasmine.createSpy('refresh');
             refresh.and.returnValue(defer.promise);
@@ -551,7 +551,7 @@ describe("PodDetailsController", function() {
         });
 
         it("performs action and sets error", function() {
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             var defer = $q.defer();
             var refresh = jasmine.createSpy('refresh');
             refresh.and.returnValue(defer.promise);
@@ -571,7 +571,7 @@ describe("PodDetailsController", function() {
         });
 
         it("changes path to pods listing on delete", function() {
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             var defer = $q.defer();
             var refresh = jasmine.createSpy('refresh');
             refresh.and.returnValue(defer.promise);
@@ -590,7 +590,7 @@ describe("PodDetailsController", function() {
 
     describe("totalStoragePercentage", function() {
         it("returns the correct percentage", function() {
-            var controller = makeController();
+            makeController();
             var storage_pool = {
                 'used': 40,
                 'total': 100
@@ -601,7 +601,7 @@ describe("PodDetailsController", function() {
         });
 
         it("returns the overcommitted percentage", function() {
-            var controller = makeController();
+            makeController();
             var storage_pool = {
                 'used': 90,
                 'total': 100
@@ -615,23 +615,23 @@ describe("PodDetailsController", function() {
     describe("canCompose", function() {
 
         it("returns false when no pod", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.canCompose()).toBe(false);
         });
 
         it("returns false when no compose permission", function() {
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             expect($scope.canCompose()).toBe(false);
         });
 
         it("returns false when not composable", function() {
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             $scope.pod.permissions.push('compose');
             expect($scope.canCompose()).toBe(false);
         });
 
         it("returns true when composable", function() {
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             $scope.pod.permissions.push('compose');
             $scope.pod.capabilities.push('composable');
             expect($scope.canCompose()).toBe(true);
@@ -641,13 +641,13 @@ describe("PodDetailsController", function() {
     describe("composeMachine", function() {
 
         it("sets action.options to compose.action", function() {
-            var controller = makeController();
+            makeController();
             $scope.composeMachine();
             expect($scope.action.option).toBe($scope.compose.action);
         });
 
         it("sets action.options to compose.action", function() {
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             $scope.pod.default_pool = 42;
             $scope.composeMachine();
             $scope.$digest();
@@ -658,7 +658,7 @@ describe("PodDetailsController", function() {
     describe("composePreProcess", function() {
 
         it("sets id to pod id", function() {
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             $scope.pod.type = 'rsd';
             expect($scope.composePreProcess({})).toEqual({
               id: $scope.pod.id,
@@ -668,7 +668,7 @@ describe("PodDetailsController", function() {
         });
 
         it("sets rsd storage based on compose.obj.storage", function() {
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             $scope.pod.type = 'rsd';
             $scope.compose.obj.storage = [
               {
@@ -710,7 +710,7 @@ describe("PodDetailsController", function() {
         });
 
         it("sets the interface constraint for subnets", function() {
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             $scope.compose.obj.interfaces = [
               {
                 name: 'eth0',
@@ -733,7 +733,7 @@ describe("PodDetailsController", function() {
         });
 
         it("sets the interface constraint favouring ip addresses", function() {
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             $scope.compose.obj.interfaces = [
               {
                 name: 'eth0',
@@ -763,7 +763,7 @@ describe("PodDetailsController", function() {
         });
 
         it("sets virsh storage based on compose.obj.storage", function() {
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             $scope.pod.type = 'virsh';
             $scope.compose.obj.storage = [
               {
@@ -811,7 +811,7 @@ describe("PodDetailsController", function() {
         });
 
         it("sets virsh storage based on compose.obj.storage", function() {
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             $scope.pod.type = 'virsh';
             $scope.compose.obj.storage = [
               {
@@ -862,7 +862,7 @@ describe("PodDetailsController", function() {
     describe("cancelCompose", function() {
 
         it("resets obj and action.option", function() {
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             var otherObj = {};
             $scope.compose.obj = otherObj;
             $scope.action.option = {};
@@ -888,7 +888,7 @@ describe("PodDetailsController", function() {
     describe("composeAddStorage", function() {
 
         it("adds a new local storage item", function() {
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             expect($scope.compose.obj.storage.length).toBe(1);
             $scope.composeAddStorage();
             expect($scope.compose.obj.storage.length).toBe(2);
@@ -902,7 +902,7 @@ describe("PodDetailsController", function() {
         });
 
         it("adds a new iscsi storage item", function() {
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             $scope.pod.capabilities.push('iscsi_storage');
             expect($scope.compose.obj.storage.length).toBe(1);
             $scope.composeAddStorage();
@@ -920,7 +920,7 @@ describe("PodDetailsController", function() {
     describe("composeSetBootDisk", function() {
 
         it("sets a new boot disk", function() {
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             $scope.composeAddStorage();
             $scope.composeAddStorage();
             $scope.composeAddStorage();
@@ -934,7 +934,7 @@ describe("PodDetailsController", function() {
     describe("composeRemoveDisk", function() {
 
         it("removes disk from storage", function() {
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             $scope.composeAddStorage();
             $scope.composeAddStorage();
             $scope.composeAddStorage();
@@ -947,7 +947,7 @@ describe("PodDetailsController", function() {
     describe("composeAddInterface", function() {
 
         it("adds a new interface item and removes the default", function() {
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             expect($scope.compose.obj.interfaces.length).toBe(1);
             expect($scope.compose.obj.interfaces[0]).toEqual({
                 name: 'default'
@@ -960,7 +960,7 @@ describe("PodDetailsController", function() {
         });
 
         it("increments the default interface name", function() {
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             $scope.composeAddInterface();
             $scope.composeAddInterface();
             expect($scope.compose.obj.interfaces[0]).toEqual({
@@ -975,7 +975,7 @@ describe("PodDetailsController", function() {
     describe("composeRemoveInterface", function() {
 
         it("removes interface from interfaces table", function() {
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             $scope.composeAddInterface();
             $scope.composeAddInterface();
             $scope.composeAddInterface();

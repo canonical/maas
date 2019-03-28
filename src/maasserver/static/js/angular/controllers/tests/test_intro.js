@@ -72,19 +72,19 @@ describe("IntroController", function() {
     }
 
     it("sets title and page on $rootScope", function() {
-        var controller = makeController();
+        makeController();
         expect($rootScope.title).toBe("Welcome");
         expect($rootScope.page).toBe("intro");
     });
 
     it("calls loadManagers with correct managers", function() {
-        var controller = makeController();
+        makeController();
         expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
             $scope, [ConfigsManager, PackageRepositoriesManager]);
     });
 
     it("sets initial $scope", function() {
-        var controller = makeController();
+        makeController();
         expect($scope.loading).toBe(true);
         expect($scope.configManager).toBe(ConfigsManager);
         expect($scope.repoManager).toBe(PackageRepositoriesManager);
@@ -99,7 +99,7 @@ describe("IntroController", function() {
 
     it("clears loading", function() {
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
         defer.resolve();
         $scope.$digest();
         expect($scope.loading).toBe(false);
@@ -108,13 +108,13 @@ describe("IntroController", function() {
     it("calls $location.path if already completed", function() {
         window.MAAS_config.completed_intro = true;
         spyOn($location, 'path');
-        var controller = makeController();
+        makeController();
         expect($location.path).toHaveBeenCalledWith('/');
     });
 
     it("sets required objects on resolve", function() {
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
         var maasName = { name: 'maas_name' };
         var upstreamDNS = { name: 'upstream_dns' };
         var httpProxy = { name: 'http_proxy' };
@@ -142,7 +142,7 @@ describe("IntroController", function() {
     describe("$rootScope.skip", function() {
 
         it("calls updateItem and reloads", function() {
-            var controller = makeController();
+            makeController();
             var defer = $q.defer();
             spyOn(ConfigsManager, "updateItem").and.returnValue(defer.promise);
             $rootScope.skip();
@@ -160,13 +160,13 @@ describe("IntroController", function() {
     describe("welcomeInError", function() {
 
         it("returns false without form", function() {
-            var controller = makeController();
+            makeController();
             $scope.maasName = {};
             expect($scope.welcomeInError()).toBe(false);
         });
 
         it("returns hasErrors from form", function() {
-            var controller = makeController();
+            makeController();
             var sentinel = {};
             var hasErrors = jasmine.createSpy("hasErrors");
             hasErrors.and.returnValue(sentinel);
@@ -182,7 +182,7 @@ describe("IntroController", function() {
     describe("networkInError", function() {
 
         it("returns false when no forms", function() {
-            var controller = makeController();
+            makeController();
             $scope.upstreamDNS = {};
             $scope.mainArchive = {};
             $scope.portsArchive = {};
@@ -191,7 +191,7 @@ describe("IntroController", function() {
         });
 
         it("returns false when none have errors", function() {
-            var controller = makeController();
+            makeController();
             var hasErrors = jasmine.createSpy("hasErrors");
             hasErrors.and.returnValue(false);
             var obj = {
@@ -207,7 +207,7 @@ describe("IntroController", function() {
         });
 
         it("returns true when one has error", function() {
-            var controller = makeController();
+            makeController();
             var hasErrorsFalse = jasmine.createSpy("hasErrors");
             hasErrorsFalse.and.returnValue(false);
             var objFalse = {
@@ -233,20 +233,20 @@ describe("IntroController", function() {
     describe("canContinue", function() {
 
         it("returns false when welcome has error", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "welcomeInError").and.returnValue(true);
             expect($scope.canContinue()).toBe(false);
         });
 
         it("returns false when network has error", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "welcomeInError").and.returnValue(false);
             spyOn($scope, "networkInError").and.returnValue(true);
             expect($scope.canContinue()).toBe(false);
         });
 
         it("returns false when no images", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "welcomeInError").and.returnValue(false);
             spyOn($scope, "networkInError").and.returnValue(false);
             $scope.hasImages = false;
@@ -254,7 +254,7 @@ describe("IntroController", function() {
         });
 
         it("returns true", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "welcomeInError").and.returnValue(false);
             spyOn($scope, "networkInError").and.returnValue(false);
             $scope.hasImages = true;
@@ -265,7 +265,7 @@ describe("IntroController", function() {
     describe("clickContinue", function() {
 
         it("does nothing if cannot continue", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "canContinue").and.returnValue(false);
             spyOn(ConfigsManager, "updateItem");
             $scope.clickContinue();
@@ -273,7 +273,7 @@ describe("IntroController", function() {
         });
 
         it("forces ignores canContinue", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "canContinue").and.returnValue(false);
             spyOn(ConfigsManager, "updateItem").and.returnValue(
                 $q.defer().promise);
@@ -285,7 +285,7 @@ describe("IntroController", function() {
         });
 
         it("calls updateItem and reloads", function() {
-            var controller = makeController();
+            makeController();
             var defer = $q.defer();
             spyOn(ConfigsManager, "updateItem").and.returnValue(defer.promise);
             $scope.clickContinue(true);

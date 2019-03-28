@@ -22,7 +22,7 @@ describe("NetworksListController", function() {
 
     // Load the managers and services.
     var SubnetsManager, FabricsManager, SpacesManager, VLANsManager;
-    var UsersManager, ManagerHelperService, RegionConnection;
+    var UsersManager, ManagerHelperService;
     beforeEach(inject(function($injector) {
         SubnetsManager = $injector.get("SubnetsManager");
         FabricsManager = $injector.get("FabricsManager");
@@ -59,14 +59,14 @@ describe("NetworksListController", function() {
     }
 
     it("sets title and page on $rootScope", function() {
-        var controller = makeController();
+        makeController();
         expect($rootScope.title).toBe("Subnets");
         expect($rootScope.page).toBe("networks");
     });
 
     it("sets initial values on $scope", function() {
         // tab-independent variables.
-        var controller = makeController();
+        makeController();
         expect($scope.subnets).toBe(SubnetsManager.getItems());
         expect($scope.fabrics).toBe(FabricsManager.getItems());
         expect($scope.spaces).toBe(SpacesManager.getItems());
@@ -75,7 +75,7 @@ describe("NetworksListController", function() {
     });
 
     it("calls loadManagers with expected managers", function() {
-            var controller = makeController();
+            makeController();
             expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
                 $scope, [
                     SubnetsManager, FabricsManager, SpacesManager,
@@ -85,7 +85,7 @@ describe("NetworksListController", function() {
 
     it("sets loading to false with loadManagers resolves", function() {
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
         defer.resolve();
         $rootScope.$digest();
         expect($scope.loading).toBe(false);
@@ -94,7 +94,7 @@ describe("NetworksListController", function() {
     it("populates actions when loadManagers resolves", function() {
         UsersManager._authUser = { is_superuser: true };
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
         defer.resolve();
         $rootScope.$digest();
         expect($scope.actionOptions.length).toBe(4);
@@ -104,7 +104,7 @@ describe("NetworksListController", function() {
         "if not superuser", function() {
         UsersManager._authUser = { is_superuser: false };
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
         defer.resolve();
         $rootScope.$digest();
         expect($scope.actionOptions.length).toBe(0);
@@ -142,25 +142,25 @@ describe("NetworksListController", function() {
         }
 
         it("selects fabric groupBy by default", function() {
-            var controller = setupController([], [], [], []);
+            setupController([], [], [], []);
             expect($scope.groupBy).toBe("fabric");
         });
 
         it("selects space groupBy with search string", function() {
             $location.search('by', 'space');
-            var controller = setupController([], [], [], []);
+            setupController([], [], [], []);
             expect($scope.groupBy).toBe("space");
         });
 
         it("updates groupBy when location changes", function() {
-            var controller = setupController([], [], [], []);
+            setupController([], [], [], []);
             $location.search('by', 'space');
             $rootScope.$broadcast('$routeUpdate');
             expect($scope.groupBy).toBe("space");
         });
 
         it("updates location when groupBy changes", function() {
-            var controller = setupController([], [], [], []);
+            setupController([], [], [], []);
             expect($location.search()).toEqual({by: 'fabric'});
             $scope.groupBy = "space";
             $scope.updateGroupBy();
@@ -175,7 +175,7 @@ describe("NetworksListController", function() {
             var subnets = [
                 { id:0, name:"subnet 0", vlan:1, space:0, cidr:"10.20.0.0/16" }
             ];
-            var controller = setupController(fabrics, spaces, vlans, subnets);
+            setupController(fabrics, spaces, vlans, subnets);
             var rows = $scope.group.fabrics.rows;
             expect(rows.length).toBe(1);
             expect($scope.group.spaces.rows).toBe(undefined);
@@ -196,7 +196,7 @@ describe("NetworksListController", function() {
             var subnets = [
                 { id:0, name:"subnet 0", vlan:1, space:0, cidr:"10.20.0.0/16" }
             ];
-            var controller = setupController(fabrics, spaces, vlans, subnets);
+            setupController(fabrics, spaces, vlans, subnets);
             var rows = $scope.group.spaces.rows;
             expect(rows.length).toBe(1);
             expect($scope.group.fabrics.rows).toBe(undefined);
@@ -338,7 +338,7 @@ describe("NetworksListController", function() {
     describe("actionChanged", function() {
 
         it("initializes newObject for fabric", function() {
-            var controller = makeController();
+            makeController();
             $scope.actionOption = {
                 name: "add_fabric",
                 objectName: "fabric"
@@ -348,7 +348,7 @@ describe("NetworksListController", function() {
         });
 
         it("initializes newObject for vlan", function() {
-            var controller = makeController();
+            makeController();
             var fabric = {
                 id: makeInteger(0, 100)
             };
@@ -364,7 +364,7 @@ describe("NetworksListController", function() {
         });
 
         it("initializes newObject for space", function() {
-            var controller = makeController();
+            makeController();
             $scope.actionOption = {
                 name: "add_space",
                 objectName: "space"
@@ -374,7 +374,7 @@ describe("NetworksListController", function() {
         });
 
         it("initializes newObject for subnet", function() {
-            var controller = makeController();
+            makeController();
             var space = {
                 id: makeInteger(0, 100)
             };
@@ -403,7 +403,7 @@ describe("NetworksListController", function() {
     describe("cancelAction", function() {
 
         it("clears actionOption and newObject", function() {
-            var controller = makeController();
+            makeController();
             $scope.actionOption = {};
             $scope.newObject = {};
             $scope.cancelAction();
@@ -415,7 +415,7 @@ describe("NetworksListController", function() {
     describe("actionSubnetPreSave", function() {
 
         it("sets fabric to fabric ID for selected VLAN", function() {
-            var controller = makeController();
+            makeController();
             var fabric = {
                 id: makeInteger(0, 100)
             };

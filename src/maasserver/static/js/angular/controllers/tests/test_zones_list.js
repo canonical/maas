@@ -50,28 +50,28 @@ describe("ZonesListController", function() {
     }
 
     it("sets title and page on $rootScope", function() {
-        var controller = makeController();
+        makeController();
         expect($rootScope.title).toBe("Zones");
         expect($rootScope.page).toBe("zones");
     });
 
     it("sets initial values on $scope", function() {
         // tab-independent variables.
-        var controller = makeController();
+        makeController();
         expect($scope.zones).toBe(ZonesManager.getItems());
         expect($scope.loading).toBe(true);
     });
 
     it("calls loadManagers with [ZonesManager, UsersManager]",
         function() {
-            var controller = makeController();
+            makeController();
             expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
                 $scope, [ZonesManager, UsersManager]);
         });
 
     it("sets loading to false when loadManagers resolves", function() {
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
         defer.resolve();
         $rootScope.$digest();
         expect($scope.loading).toBe(false);
@@ -80,7 +80,7 @@ describe("ZonesListController", function() {
     describe("addZone", function() {
 
         it("sets action.open to true", function() {
-            var controller = makeController();
+            makeController();
             $scope.addZone();
             expect($scope.action.open).toBe(true);
         });
@@ -89,7 +89,7 @@ describe("ZonesListController", function() {
     describe("closeZone", function() {
 
         it("set action.open to false and clears action.obj", function() {
-            var controller = makeController();
+            makeController();
             var obj = {};
             $scope.action.obj = obj;
             $scope.action.open = true;

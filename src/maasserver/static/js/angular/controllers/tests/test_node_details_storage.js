@@ -275,7 +275,7 @@ describe("NodeStorageController", function() {
     }
 
     it("sets initial values", function() {
-        var controller = makeController();
+        makeController();
         expect($scope.tableInfo.column).toBe('name');
         expect($scope.has_disks).toBe(false);
         expect($scope.filesystems).toEqual([]);
@@ -294,7 +294,7 @@ describe("NodeStorageController", function() {
     });
 
     it("starts watching disks once nodeLoaded called", function() {
-        var controller = makeController();
+        makeController();
 
         spyOn($scope, "$watch");
         $scope.nodeLoaded();
@@ -454,7 +454,7 @@ describe("NodeStorageController", function() {
                 used_for: disks[3].partitions[1].used_for
             }
         ];
-        var controller = makeController();
+        makeController();
         $scope.nodeLoaded();
         $rootScope.$digest();
         expect($scope.has_disks).toEqual(true);
@@ -465,7 +465,7 @@ describe("NodeStorageController", function() {
     });
 
     it("disks $selected and $options not lost on update", function() {
-        var controller = makeController();
+        makeController();
         var disks = makeDisks();
         node.disks = disks;
 
@@ -516,7 +516,7 @@ describe("NodeStorageController", function() {
     });
 
     it("availableNew.device object is updated", function() {
-        var controller = makeController();
+        makeController();
         var disks = makeDisks();
         node.disks = disks;
 
@@ -537,7 +537,7 @@ describe("NodeStorageController", function() {
     });
 
     it("availableNew.devices array is updated", function() {
-        var controller = makeController();
+        makeController();
         var disks = makeDisks();
         node.disks = disks;
 
@@ -563,7 +563,7 @@ describe("NodeStorageController", function() {
     describe("isBootDiskDisabled", function() {
 
         it("returns true when not editable", function() {
-            var controller = makeController();
+            makeController();
             $scope.canEdit = function() { return false; };
             $scope.node.status = "Ready";
             var disk = { type: "physical" };
@@ -572,7 +572,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns true when not node not ready", function() {
-            var controller = makeController();
+            makeController();
             $scope.canEdit = function() { return true; };
             $scope.node.status = "Deploying";
             var disk = { type: "physical" };
@@ -581,7 +581,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns true if not physical", function() {
-            var controller = makeController();
+            makeController();
             $scope.canEdit = function() { return true; };
             $scope.node.status = "Ready";
             var disk = { type: "virtual" };
@@ -590,7 +590,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false if in available", function() {
-            var controller = makeController();
+            makeController();
             $scope.canEdit = function() { return true; };
             $scope.node.status = "Ready";
             var disk = { type: "physical" };
@@ -599,7 +599,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns true when used and no partitions", function() {
-            var controller = makeController();
+            makeController();
             $scope.canEdit = function() { return true; };
             $scope.node.status = "Ready";
             var disk = { type: "physical", has_partitions: false };
@@ -608,7 +608,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false when ready, used and partitions", function() {
-            var controller = makeController();
+            makeController();
             $scope.canEdit = function() { return true; };
             $scope.node.status = "Ready";
             var disk = { type: "physical", has_partitions: true };
@@ -617,7 +617,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false when allocated, used and partitions", function() {
-            var controller = makeController();
+            makeController();
             $scope.canEdit = function() { return true; };
             $scope.node.status = "Allocated";
             var disk = { type: "physical", has_partitions: true };
@@ -629,7 +629,7 @@ describe("NodeStorageController", function() {
     describe("setAsBootDisk", function() {
 
         it("does nothing if already boot disk", function() {
-            var controller = makeController();
+            makeController();
             var disk = { is_boot: true };
             spyOn(MachinesManager, "setBootDisk");
             spyOn($scope, "isBootDiskDisabled").and.returnValue(false);
@@ -640,7 +640,7 @@ describe("NodeStorageController", function() {
         });
 
         it("does nothing if set boot disk disabled", function() {
-            var controller = makeController();
+            makeController();
             var disk = { is_boot: false };
             spyOn(MachinesManager, "setBootDisk");
             spyOn($scope, "isBootDiskDisabled").and.returnValue(true);
@@ -651,7 +651,7 @@ describe("NodeStorageController", function() {
         });
 
         it("calls MachinesManager.setBootDisk", function() {
-            var controller = makeController();
+            makeController();
             var disk = { block_id: makeInteger(0, 100), is_boot: false };
             spyOn(MachinesManager, "setBootDisk");
             spyOn($scope, "isBootDiskDisabled").and.returnValue(false);
@@ -666,7 +666,7 @@ describe("NodeStorageController", function() {
     describe("getSelectedFilesystems", function() {
 
         it("returns selected filesystems", function() {
-            var controller = makeController();
+            makeController();
             var filesystems = [
                 { $selected: true },
                 { $selected: true },
@@ -682,7 +682,7 @@ describe("NodeStorageController", function() {
     describe("updateFilesystemSelection", function() {
 
         it("sets filesystemMode to NONE when none selected", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "getSelectedFilesystems").and.returnValue([]);
             $scope.filesystemMode = "other";
 
@@ -692,7 +692,7 @@ describe("NodeStorageController", function() {
         });
 
         it("doesn't sets filesystemMode to SINGLE when not force", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "getSelectedFilesystems").and.returnValue([{}]);
             $scope.filesystemMode = "other";
 
@@ -702,7 +702,7 @@ describe("NodeStorageController", function() {
         });
 
         it("sets filesystemMode to SINGLE when force", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "getSelectedFilesystems").and.returnValue([{}]);
             $scope.filesystemMode = "other";
 
@@ -712,7 +712,7 @@ describe("NodeStorageController", function() {
         });
 
         it("doesn't sets filesystemMode to MUTLI when not force", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "getSelectedFilesystems").and.returnValue([{}, {}]);
             $scope.filesystemMode = "other";
 
@@ -722,7 +722,7 @@ describe("NodeStorageController", function() {
         });
 
         it("sets filesystemMode to MULTI when force", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "getSelectedFilesystems").and.returnValue([{}, {}]);
             $scope.filesystemMode = "other";
 
@@ -733,7 +733,7 @@ describe("NodeStorageController", function() {
 
         it("sets filesystemAllSelected to false when none selected",
             function() {
-                var controller = makeController();
+                makeController();
                 spyOn($scope, "getSelectedFilesystems").and.returnValue([]);
                 $scope.filesystemAllSelected = true;
 
@@ -744,7 +744,7 @@ describe("NodeStorageController", function() {
 
         it("sets filesystemAllSelected to false when not all selected",
             function() {
-                var controller = makeController();
+                makeController();
                 $scope.filesystems = [{}, {}];
                 spyOn($scope, "getSelectedFilesystems").and.returnValue([{}]);
                 $scope.filesystemAllSelected = true;
@@ -756,7 +756,7 @@ describe("NodeStorageController", function() {
 
         it("sets filesystemAllSelected to true when all selected",
             function() {
-                var controller = makeController();
+                makeController();
                 $scope.filesystems = [{}, {}];
                 spyOn($scope, "getSelectedFilesystems").and.returnValue(
                     [{}, {}]);
@@ -771,7 +771,7 @@ describe("NodeStorageController", function() {
     describe("toggleFilesystemSelect", function() {
 
         it("inverts $selected", function() {
-            var controller = makeController();
+            makeController();
             var filesystem = { $selected: true };
             spyOn($scope, "updateFilesystemSelection");
 
@@ -788,7 +788,7 @@ describe("NodeStorageController", function() {
     describe("toggleFilesystemAllSelect", function() {
 
         it("sets all to true if not all selected", function() {
-            var controller = makeController();
+            makeController();
             var filesystems = [{ $selected: true }, { $selected: false }];
             $scope.filesystems = filesystems;
             $scope.filesystemAllSelected = false;
@@ -803,7 +803,7 @@ describe("NodeStorageController", function() {
         });
 
         it("sets all to false if all selected", function() {
-            var controller = makeController();
+            makeController();
             var filesystems = [{ $selected: true }, { $selected: true }];
             $scope.filesystems = filesystems;
             $scope.filesystemAllSelected = true;
@@ -821,7 +821,7 @@ describe("NodeStorageController", function() {
     describe("isFilesystemsDisabled", function() {
 
         it("returns false for NONE", function() {
-            var controller = makeController();
+            makeController();
             $scope.filesystemMode = null;
             spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
 
@@ -829,7 +829,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false for SINGLE", function() {
-            var controller = makeController();
+            makeController();
             $scope.filesystemMode = "single";
             spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
 
@@ -837,7 +837,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false for MULTI", function() {
-            var controller = makeController();
+            makeController();
             $scope.filesystemMode = "multi";
             spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
 
@@ -845,7 +845,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns true for UNMOUNT", function() {
-            var controller = makeController();
+            makeController();
             $scope.filesystemMode = "unmount";
             spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
 
@@ -853,7 +853,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns true when isAllStorageDisabled", function() {
-            var controller = makeController();
+            makeController();
             $scope.filesystemMode = "multi";
             spyOn($scope, "isAllStorageDisabled").and.returnValue(true);
 
@@ -864,7 +864,7 @@ describe("NodeStorageController", function() {
     describe("filesystemCancel", function() {
 
         it("calls updateFilesystemSelection with force true", function() {
-            var controller = makeController();
+            makeController();
             var filesystems = [{ $selected: true }, { $selected: false }];
             $scope.filesystems = filesystems;
             spyOn($scope, "updateFilesystemSelection");
@@ -881,7 +881,7 @@ describe("NodeStorageController", function() {
     describe("filesystemUnmount", function() {
 
         it("sets filesystemMode to UNMOUNT", function() {
-            var controller = makeController();
+            makeController();
             $scope.filesystemMode = "other";
 
             $scope.filesystemUnmount();
@@ -893,7 +893,7 @@ describe("NodeStorageController", function() {
     describe("quickFilesystemUnmount", function() {
 
         it("selects filesystem and calls filesystemUnmount", function() {
-            var controller = makeController();
+            makeController();
             var filesystems = [{ $selected: true }, { $selected: false }];
             $scope.filesystems = filesystems;
             spyOn($scope, "updateFilesystemSelection");
@@ -912,7 +912,7 @@ describe("NodeStorageController", function() {
     describe("filesystemConfirmUnmount", function() {
 
         it("calls MachinesManager.updateFilesystem", function() {
-            var controller = makeController();
+            makeController();
             var filesystem = {
                 block_id: makeInteger(0, 100),
                 partition_id: makeInteger(0, 100),
@@ -930,7 +930,7 @@ describe("NodeStorageController", function() {
         });
 
         it("removes filesystem from filesystems", function() {
-            var controller = makeController();
+            makeController();
             var filesystem = {
                 block_id: makeInteger(0, 100),
                 partition_id: makeInteger(0, 100),
@@ -950,7 +950,7 @@ describe("NodeStorageController", function() {
     describe("filesystemDelete", function() {
 
         it("sets filesystemMode to DELETE", function() {
-            var controller = makeController();
+            makeController();
             $scope.filesystemMode = "other";
 
             $scope.filesystemDelete();
@@ -962,7 +962,7 @@ describe("NodeStorageController", function() {
     describe("quickFilesystemDelete", function() {
 
         it("selects filesystem and calls filesystemDelete", function() {
-            var controller = makeController();
+            makeController();
             var filesystems = [{ $selected: true }, { $selected: false }];
             $scope.filesystems = filesystems;
             spyOn($scope, "updateFilesystemSelection");
@@ -981,7 +981,7 @@ describe("NodeStorageController", function() {
     describe("filesystemConfirmDelete", function() {
 
         it("calls MachinesManager.deletePartition for partition", function() {
-            var controller = makeController();
+            makeController();
             var filesystem = {
                 original_type: "partition",
                 original: {
@@ -1000,7 +1000,7 @@ describe("NodeStorageController", function() {
         });
 
         it("calls MachinesManager.deleteFilesystem for disk", function() {
-            var controller = makeController();
+            makeController();
             var filesystem = {
                 original_type: "physical",
                 block_id: makeInteger(0, 100),
@@ -1023,7 +1023,7 @@ describe("NodeStorageController", function() {
     describe("hasUnmountedFilesystem", function() {
 
         it("returns false if no fstype", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 fstype: null
             };
@@ -1032,7 +1032,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false if empty fstype", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 fstype: ""
             };
@@ -1041,7 +1041,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns true if no mount_point", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 fstype: "ext4",
                 mount_point: null
@@ -1051,7 +1051,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns true if empty mount_point", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 fstype: "ext4",
                 mount_point: ""
@@ -1061,7 +1061,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false if has mount_point", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 fstype: "ext4",
                 mount_point: "/"
@@ -1074,7 +1074,7 @@ describe("NodeStorageController", function() {
     describe("showFreeSpace", function() {
 
         it("returns true if volume group", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 type: "lvm-vg"
             };
@@ -1083,7 +1083,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns true if physical with partitions", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 type: "physical",
                 has_partitions: true
@@ -1093,7 +1093,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false if physical without partitions", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 type: "physical",
                 has_partitions: false
@@ -1103,7 +1103,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns true if virtual with partitions", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 type: "virtual",
                 has_partitions: true
@@ -1113,7 +1113,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false if virtual without partitions", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 type: "virtual",
                 has_partitions: false
@@ -1123,7 +1123,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false otherwise", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 type: "other"
             };
@@ -1135,7 +1135,7 @@ describe("NodeStorageController", function() {
     describe("getDeviceType", function() {
 
         it("returns logical volume", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 type: "virtual",
                 parent_type: "lvm-vg"
@@ -1145,7 +1145,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns raid", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 type: "virtual",
                 parent_type: "raid-5"
@@ -1155,7 +1155,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns parent_type", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 type: "virtual",
                 parent_type: "other"
@@ -1165,7 +1165,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns volume group", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 type: "lvm-vg"
             };
@@ -1174,7 +1174,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns type", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 type: "physical"
             };
@@ -1186,7 +1186,7 @@ describe("NodeStorageController", function() {
     describe("getSelectedAvailable", function() {
 
         it("returns selected available", function() {
-            var controller = makeController();
+            makeController();
             var available = [
                 { $selected: true },
                 { $selected: true },
@@ -1202,7 +1202,7 @@ describe("NodeStorageController", function() {
     describe("updateAvailableSelection", function() {
 
         it("sets availableMode to NONE when none selected", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "getSelectedAvailable").and.returnValue([]);
             $scope.availableMode = "other";
 
@@ -1212,7 +1212,7 @@ describe("NodeStorageController", function() {
         });
 
         it("doesn't sets availableMode to SINGLE when not force", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "getSelectedAvailable").and.returnValue([{}]);
             $scope.availableMode = "other";
 
@@ -1222,7 +1222,7 @@ describe("NodeStorageController", function() {
         });
 
         it("sets availableMode to SINGLE when force", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "getSelectedAvailable").and.returnValue([{}]);
             $scope.availableMode = "other";
 
@@ -1232,7 +1232,7 @@ describe("NodeStorageController", function() {
         });
 
         it("doesn't sets availableMode to MUTLI when not force", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "getSelectedAvailable").and.returnValue([{}, {}]);
             $scope.availableMode = "other";
 
@@ -1242,7 +1242,7 @@ describe("NodeStorageController", function() {
         });
 
         it("sets availableMode to MULTI when force", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "getSelectedAvailable").and.returnValue([{}, {}]);
             $scope.availableMode = "other";
 
@@ -1253,7 +1253,7 @@ describe("NodeStorageController", function() {
 
         it("sets availableAllSelected to false when none selected",
             function() {
-                var controller = makeController();
+                makeController();
                 spyOn($scope, "getSelectedAvailable").and.returnValue([]);
                 $scope.availableAllSelected = true;
 
@@ -1264,7 +1264,7 @@ describe("NodeStorageController", function() {
 
         it("sets availableAllSelected to false when not all selected",
             function() {
-                var controller = makeController();
+                makeController();
                 $scope.available = [{}, {}];
                 spyOn($scope, "getSelectedAvailable").and.returnValue([{}]);
                 $scope.availableAllSelected = true;
@@ -1276,7 +1276,7 @@ describe("NodeStorageController", function() {
 
         it("sets availableAllSelected to true when all selected",
             function() {
-                var controller = makeController();
+                makeController();
                 $scope.available = [{}, {}];
                 spyOn($scope, "getSelectedAvailable").and.returnValue(
                     [{}, {}]);
@@ -1291,7 +1291,7 @@ describe("NodeStorageController", function() {
     describe("toggleAvailableSelect", function() {
 
         it("inverts $selected", function() {
-            var controller = makeController();
+            makeController();
             var disk = { $selected: true };
             spyOn($scope, "updateAvailableSelection");
 
@@ -1308,7 +1308,7 @@ describe("NodeStorageController", function() {
     describe("toggleAvailableAllSelect", function() {
 
         it("sets all to true if not all selected", function() {
-            var controller = makeController();
+            makeController();
             var available = [{ $selected: true }, { $selected: false }];
             $scope.available = available;
             $scope.availableAllSelected = false;
@@ -1323,7 +1323,7 @@ describe("NodeStorageController", function() {
         });
 
         it("sets all to false if all selected", function() {
-            var controller = makeController();
+            makeController();
             var available = [{ $selected: true }, { $selected: true }];
             $scope.available = available;
             $scope.availableAllSelected = true;
@@ -1341,7 +1341,7 @@ describe("NodeStorageController", function() {
     describe("isAvailableDisabled", function() {
 
         it("returns false for NONE", function() {
-            var controller = makeController();
+            makeController();
             $scope.availableMode = null;
             spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
 
@@ -1349,7 +1349,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false for SINGLE", function() {
-            var controller = makeController();
+            makeController();
             $scope.availableMode = "single";
             spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
 
@@ -1357,7 +1357,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false for MULTI", function() {
-            var controller = makeController();
+            makeController();
             $scope.availableMode = "multi";
             spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
 
@@ -1365,7 +1365,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns true for UNMOUNT", function() {
-            var controller = makeController();
+            makeController();
             $scope.availableMode = "unmount";
             spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
 
@@ -1376,21 +1376,21 @@ describe("NodeStorageController", function() {
     describe("canFormatAndMount", function() {
 
         it("returns false if lvm-vg", function() {
-            var controller = makeController();
+            makeController();
             var disk = { type: "lvm-vg" };
             spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
             expect($scope.canFormatAndMount(disk)).toBe(false);
         });
 
         it("returns false if has_partitions", function() {
-            var controller = makeController();
+            makeController();
             var disk = { type: "physical", has_partitions: true };
             spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
             expect($scope.canFormatAndMount(disk)).toBe(false);
         });
 
         it("returns false if physical and is boot disk", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 type: "physical",
                 has_partitions: false,
@@ -1403,7 +1403,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns true otherwise", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 type: "physical",
                 has_partitions: false,
@@ -1419,14 +1419,14 @@ describe("NodeStorageController", function() {
     describe("getPartitionButtonText", function() {
 
         it("returns Add Partition if already has partitions", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.getPartitionButtonText({
                 has_partitions: true
             })).toBe("Add partition");
         });
 
         it("returns Partition if no partitions", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.getPartitionButtonText({
                 has_partitions: false
             })).toBe("Partition");
@@ -1436,7 +1436,7 @@ describe("NodeStorageController", function() {
     describe("canAddPartition", function() {
 
         it("returns false if partition", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
             $scope.canEdit = function() { return true; };
             expect($scope.canAddPartition({
@@ -1445,7 +1445,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false if lvm-vg", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
             $scope.canEdit = function() { return true; };
             expect($scope.canAddPartition({
@@ -1454,7 +1454,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false if logical volume", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
             $scope.canEdit = function() { return true; };
             expect($scope.canAddPartition({
@@ -1464,7 +1464,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false if bcache", function() {
-            var controller = makeController();
+            makeController();
             $scope.canEdit = function() { return true; };
             expect($scope.canAddPartition({
                 type: "virtual",
@@ -1473,7 +1473,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false if formatted", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
             $scope.canEdit = function() { return true; };
             expect($scope.canAddPartition({
@@ -1484,7 +1484,7 @@ describe("NodeStorageController", function() {
 
         it("returns false if available_size is less than partition size " +
             "and partition table extra space", function() {
-                var controller = makeController();
+                makeController();
                 var disk = {
                     type: "physical",
                     fstype: "",
@@ -1501,7 +1501,7 @@ describe("NodeStorageController", function() {
 
         it("returns false if available_size is less than partition size ",
             function() {
-                var controller = makeController();
+                makeController();
                 var disk = {
                     type: "physical",
                     fstype: "",
@@ -1519,7 +1519,7 @@ describe("NodeStorageController", function() {
         it("returns false if available_size is less than partition size " +
            "when node is ppc64el architecture",
             function() {
-                var controller = makeController();
+                makeController();
                 var disk = {
                     type: "physical",
                     fstype: "",
@@ -1536,7 +1536,7 @@ describe("NodeStorageController", function() {
             });
 
         it("returns false if not super user", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 type: "physical",
                 fstype: "",
@@ -1552,7 +1552,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false if isAllStorageDisabled", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 type: "physical",
                 fstype: "",
@@ -1568,7 +1568,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns true otherwise", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 type: "physical",
                 fstype: "",
@@ -1587,7 +1587,7 @@ describe("NodeStorageController", function() {
     describe("isNameInvalid", function() {
 
         it("returns false if name is blank", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 name: ""
             };
@@ -1596,7 +1596,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns true if name is already used by another disk", function() {
-            var controller = makeController();
+            makeController();
             var otherId = makeInteger(0, 100);
             var id = makeInteger(100, 200);
             var name = makeName("name");
@@ -1621,7 +1621,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false if name is the same as self", function() {
-            var controller = makeController();
+            makeController();
             var id = makeInteger(100, 200);
             var name = makeName("name");
             var thisDisk = {
@@ -1644,7 +1644,7 @@ describe("NodeStorageController", function() {
     describe("nameHasChanged", function() {
 
         it("logical volume resets name to include parents name", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 name: "",
                 type: "virtual",
@@ -1662,7 +1662,7 @@ describe("NodeStorageController", function() {
     describe("availableCancel", function() {
 
         it("calls updateAvailableSelection with force true", function() {
-            var controller = makeController();
+            makeController();
             var available = [{ $selected: false }, { $selected: true }];
             spyOn($scope, "updateAvailableSelection");
 
@@ -1676,31 +1676,31 @@ describe("NodeStorageController", function() {
     describe("usesMountPoint", function() {
 
         it("returns false if filesystem is undefined", function() {
-            var controller = makeController();
+            makeController();
 
             expect($scope.usesMountPoint(undefined)).toBe(false);
         });
 
         it("returns false if filesystem is null", function() {
-            var controller = makeController();
+            makeController();
 
             expect($scope.usesMountPoint(null)).toBe(false);
         });
 
         it("returns false if filesystem is not a string", function() {
-            var controller = makeController();
+            makeController();
 
             expect($scope.usesMountPoint(1234)).toBe(false);
         });
 
         it("returns false if filesystem is 'swap'", function() {
-            var controller = makeController();
+            makeController();
 
             expect($scope.usesMountPoint("swap")).toBe(false);
         });
 
         it("returns true if filesystem is not 'swap'", function() {
-            var controller = makeController();
+            makeController();
 
             expect($scope.usesMountPoint("any-string")).toBe(true);
         });
@@ -1710,31 +1710,31 @@ describe("NodeStorageController", function() {
     describe("isMountPointInvalid", function() {
 
         it("returns false if mount_point is undefined", function() {
-            var controller = makeController();
+            makeController();
 
             expect($scope.isMountPointInvalid()).toBe(false);
         });
 
         it("returns false if mount_point is empty", function() {
-            var controller = makeController();
+            makeController();
 
             expect($scope.isMountPointInvalid("")).toBe(false);
         });
 
         it("returns false if mount_point is 'none'", function() {
-            var controller = makeController();
+            makeController();
 
             expect($scope.isMountPointInvalid("none")).toBe(false);
         });
 
         it("returns true if mount_point doesn't start with '/'", function() {
-            var controller = makeController();
+            makeController();
 
             expect($scope.isMountPointInvalid("a")).toBe(true);
         });
 
         it("returns false if mount_point start with '/'", function() {
-            var controller = makeController();
+            makeController();
 
             expect($scope.isMountPointInvalid("/")).toBe(false);
         });
@@ -1743,7 +1743,7 @@ describe("NodeStorageController", function() {
     describe("canDelete", function() {
 
         it("returns true if volume group not used", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 type: "lvm-vg",
                 fstype: null,
@@ -1759,7 +1759,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false if not super user", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 type: "lvm-vg",
                 fstype: null,
@@ -1775,7 +1775,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false if isAllStorageDisabled", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 type: "lvm-vg",
                 fstype: null,
@@ -1791,7 +1791,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false if volume group used", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 type: "lvm-vg",
                 fstype: null,
@@ -1807,7 +1807,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns true if fstype is null", function() {
-            var controller = makeController();
+            makeController();
             var disk = { fstype: null, has_partitions: false };
             $scope.canEdit = function() { return true; };
             spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
@@ -1816,7 +1816,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns true if fstype is empty", function() {
-            var controller = makeController();
+            makeController();
             var disk = { fstype: "", has_partitions: false };
             $scope.canEdit = function() { return true; };
             spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
@@ -1825,7 +1825,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns true if fstype is not empty", function() {
-            var controller = makeController();
+            makeController();
             var disk = { fstype: "ext4" };
             $scope.canEdit = function() { return true; };
             spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
@@ -1834,7 +1834,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false if has_partitions is true", function() {
-            var controller = makeController();
+            makeController();
             var disk = { fstype: "", has_partitions: true };
             $scope.canEdit = function() { return true; };
             spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
@@ -1846,7 +1846,7 @@ describe("NodeStorageController", function() {
     describe("availableDelete", function() {
 
         it("sets availableMode to DELETE", function() {
-            var controller = makeController();
+            makeController();
             $scope.availableMode = "other";
 
             $scope.availableDelete();
@@ -1858,7 +1858,7 @@ describe("NodeStorageController", function() {
     describe("availableQuickDelete", function() {
 
         it("selects disks and deselects others", function() {
-            var controller = makeController();
+            makeController();
             var available = [{ $selected: false }, { $selected: true }];
             $scope.available = available;
             spyOn($scope, "updateAvailableSelection");
@@ -1871,7 +1871,7 @@ describe("NodeStorageController", function() {
         });
 
         it("calls updateAvailableSelection with force true", function() {
-            var controller = makeController();
+            makeController();
             var available = [{ $selected: false }, { $selected: true }];
             spyOn($scope, "updateAvailableSelection");
             spyOn($scope, "availableDelete");
@@ -1884,7 +1884,7 @@ describe("NodeStorageController", function() {
 
         it("calls availableDelete",
             function() {
-                var controller = makeController();
+                makeController();
                 var available = [{ $selected: false }, { $selected: true }];
                 spyOn($scope, "updateAvailableSelection");
                 spyOn($scope, "availableDelete");
@@ -1898,7 +1898,7 @@ describe("NodeStorageController", function() {
     describe("getRemoveTypeText", function() {
 
         it("returns 'physical disk' for physical on filesystem", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.getRemoveTypeText({
                 type: "filesystem",
                 original: {
@@ -1908,28 +1908,28 @@ describe("NodeStorageController", function() {
         });
 
         it("returns 'physical disk' for physical", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.getRemoveTypeText({
                 type: "physical"
             })).toBe("physical disk");
         });
 
         it("returns 'partition' for partition", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.getRemoveTypeText({
                 type: "partition"
             })).toBe("partition");
         });
 
         it("returns 'volume group' for lvm-vg", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.getRemoveTypeText({
                 type: "lvm-vg"
             })).toBe("volume group");
         });
 
         it("returns 'logical volume' for virtual on lvm-vg", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.getRemoveTypeText({
                 type: "virtual",
                 parent_type: "lvm-vg"
@@ -1937,7 +1937,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns 'RAID %d' for virtual on raid", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.getRemoveTypeText({
                 type: "virtual",
                 parent_type: "raid-1"
@@ -1945,7 +1945,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns parent_type + 'disk' for other virtual", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.getRemoveTypeText({
                 type: "virtual",
                 parent_type: "raid0"
@@ -1956,7 +1956,7 @@ describe("NodeStorageController", function() {
     describe("availableConfirmDelete", function() {
 
         it("calls MachinesManager.deleteVolumeGroup for lvm-vg", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 type: "lvm-vg",
                 block_id: makeInteger(0, 100),
@@ -1975,7 +1975,7 @@ describe("NodeStorageController", function() {
         });
 
         it("calls MachinesManager.deletePartition for partition", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 type: "partition",
                 block_id: makeInteger(0, 100),
@@ -1994,7 +1994,7 @@ describe("NodeStorageController", function() {
         });
 
         it("calls MachinesManager.deleteDisk for disk", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 type: "physical",
                 block_id: makeInteger(0, 100),
@@ -2016,7 +2016,7 @@ describe("NodeStorageController", function() {
     describe("availablePartition", function() {
 
         it("sets availableMode to 'partition'", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 available_size_human: "10 GB"
             };
@@ -2026,7 +2026,7 @@ describe("NodeStorageController", function() {
         });
 
         it("sets $options to values from available_size_human", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 available_size_human: "10 GB"
             };
@@ -2044,7 +2044,7 @@ describe("NodeStorageController", function() {
     describe("availableQuickPartition", function() {
 
         it("selects disks and deselects others", function() {
-            var controller = makeController();
+            makeController();
             var available = [{ $selected: false }, { $selected: true }];
             $scope.available = available;
             spyOn($scope, "updateAvailableSelection");
@@ -2057,7 +2057,7 @@ describe("NodeStorageController", function() {
         });
 
         it("calls updateAvailableSelection with force true", function() {
-            var controller = makeController();
+            makeController();
             var available = [{ $selected: false }, { $selected: true }];
             spyOn($scope, "updateAvailableSelection");
             spyOn($scope, "availablePartition");
@@ -2069,7 +2069,7 @@ describe("NodeStorageController", function() {
         });
 
         it("calls availablePartition", function() {
-            var controller = makeController();
+            makeController();
             var available = [{ $selected: false }, { $selected: true }];
             spyOn($scope, "updateAvailableSelection");
             spyOn($scope, "availablePartition");
@@ -2084,7 +2084,7 @@ describe("NodeStorageController", function() {
     describe("getAddPartitionName", function() {
 
         it("returns disk.name with -part#", function() {
-            var controller = makeController();
+            makeController();
             var name = makeName("sda");
             var disk = {
                 name: name,
@@ -2099,7 +2099,7 @@ describe("NodeStorageController", function() {
 
         it("returns disk.name with -part2 for ppc64el", function() {
             node.architecture = "ppc64el/generic";
-            var controller = makeController();
+            makeController();
             var name = makeName("sda");
             var disk = {
                 name: name,
@@ -2114,7 +2114,7 @@ describe("NodeStorageController", function() {
 
         it("returns disk.name with -part4 for ppc64el", function() {
             node.architecture = "ppc64el/generic";
-            var controller = makeController();
+            makeController();
             var name = makeName("sda");
             var disk = {
                 name: name,
@@ -2129,7 +2129,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns disk.name with -part3 for MBR", function() {
-            var controller = makeController();
+            makeController();
             var name = makeName("sda");
             var disk = {
                 name: name,
@@ -2143,7 +2143,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns disk.name with -part5 for MBR", function() {
-            var controller = makeController();
+            makeController();
             var name = makeName("sda");
             var disk = {
                 name: name,
@@ -2160,7 +2160,7 @@ describe("NodeStorageController", function() {
     describe("isAddPartitionSizeInvalid", function() {
 
         it("returns true if blank", function() {
-            var controller = makeController();
+            makeController();
             var size = "";
             var disk = {
                 $options: {
@@ -2176,7 +2176,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns true if not numbers", function() {
-            var controller = makeController();
+            makeController();
             var size = makeName("invalid");
             var disk = {
                 $options: {
@@ -2192,7 +2192,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns true if smaller than MIN_PARTITION_SIZE", function() {
-            var controller = makeController();
+            makeController();
             var size = "1";
             var disk = {
                 $options: {
@@ -2209,7 +2209,7 @@ describe("NodeStorageController", function() {
 
         it("returns true if larger than available_size more than tolerance",
             function() {
-                var controller = makeController();
+                makeController();
                 var size = "4";
                 var disk = {
                     original: {
@@ -2230,7 +2230,7 @@ describe("NodeStorageController", function() {
 
         it("returns false if larger than available_size in tolerance",
             function() {
-                var controller = makeController();
+                makeController();
                 var size = "2.62";
                 var disk = {
                     original: {
@@ -2250,7 +2250,7 @@ describe("NodeStorageController", function() {
 
         it("returns false if less than available_size",
             function() {
-                var controller = makeController();
+                makeController();
                 var size = "1.6"
                 var disk = {
                     original: {
@@ -2272,7 +2272,7 @@ describe("NodeStorageController", function() {
     describe("availableConfirmPartition", function() {
 
         it("does nothing if invalid", function() {
-            var controller = makeController();
+            makeController();
             var size = "";
             var disk = {
                 $options: {
@@ -2292,7 +2292,7 @@ describe("NodeStorageController", function() {
         });
 
         it("calls createPartition with bytes", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 block_id: makeInteger(0, 100),
                 original: {
@@ -2327,7 +2327,7 @@ describe("NodeStorageController", function() {
 
         it("calls createPartition with fstype, " +
            "mountPoint, and mountOptions", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 block_id: makeInteger(0, 100),
                 original: {
@@ -2363,7 +2363,7 @@ describe("NodeStorageController", function() {
         });
 
         it("calls createPartition with available_size bytes", function() {
-            var controller = makeController();
+            makeController();
             var available_size = 2.6 * 1000 * 1000 * 1000;
             var disk = {
                 block_id: makeInteger(0, 100),
@@ -2403,7 +2403,7 @@ describe("NodeStorageController", function() {
         it("calls createPartition with available_size bytes" +
             " even when human size gets rounded down", function() {
 
-                var controller = makeController();
+                makeController();
                 var available_size = 2.035 * 1000 * 1000 * 1000;
                 var disk = {
                     block_id: makeInteger(0, 100),
@@ -2441,7 +2441,7 @@ describe("NodeStorageController", function() {
 
         it("calls createPartition with bytes minus partition table extra",
             function() {
-                var controller = makeController();
+                makeController();
                 var available_size = 2.6 * 1000 * 1000 * 1000;
                 var disk = {
                     block_id: makeInteger(0, 100),
@@ -2482,7 +2482,7 @@ describe("NodeStorageController", function() {
     describe("getSelectedCacheSets", function() {
 
         it("returns selected cachesets", function() {
-            var controller = makeController();
+            makeController();
             var cachesets = [
                 { $selected: true },
                 { $selected: true },
@@ -2498,7 +2498,7 @@ describe("NodeStorageController", function() {
     describe("updateCacheSetsSelection", function() {
 
         it("sets cachesetsMode to NONE when none selected", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "getSelectedCacheSets").and.returnValue([]);
             $scope.cachesetsMode = "other";
 
@@ -2508,7 +2508,7 @@ describe("NodeStorageController", function() {
         });
 
         it("doesn't sets cachesetsMode to SINGLE when not force", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "getSelectedCacheSets").and.returnValue([{}]);
             $scope.cachesetsMode = "other";
 
@@ -2518,7 +2518,7 @@ describe("NodeStorageController", function() {
         });
 
         it("sets cachesetsMode to SINGLE when force", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "getSelectedCacheSets").and.returnValue([{}]);
             $scope.cachesetsMode = "other";
 
@@ -2528,7 +2528,7 @@ describe("NodeStorageController", function() {
         });
 
         it("doesn't sets cachesetsMode to MUTLI when not force", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "getSelectedCacheSets").and.returnValue([{}, {}]);
             $scope.cachesetsMode = "other";
 
@@ -2538,7 +2538,7 @@ describe("NodeStorageController", function() {
         });
 
         it("sets cachesetsMode to MULTI when force", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "getSelectedCacheSets").and.returnValue([{}, {}]);
             $scope.cachesetsMode = "other";
 
@@ -2549,7 +2549,7 @@ describe("NodeStorageController", function() {
 
         it("sets cachesetsAllSelected to false when none selected",
             function() {
-                var controller = makeController();
+                makeController();
                 spyOn($scope, "getSelectedCacheSets").and.returnValue([]);
                 $scope.cachesetsAllSelected = true;
 
@@ -2560,7 +2560,7 @@ describe("NodeStorageController", function() {
 
         it("sets cachesetsAllSelected to false when not all selected",
             function() {
-                var controller = makeController();
+                makeController();
                 $scope.cachesets = [{}, {}];
                 spyOn($scope, "getSelectedCacheSets").and.returnValue([{}]);
                 $scope.cachesetsAllSelected = true;
@@ -2572,7 +2572,7 @@ describe("NodeStorageController", function() {
 
         it("sets cachesetsAllSelected to true when all selected",
             function() {
-                var controller = makeController();
+                makeController();
                 $scope.cachesets = [{}, {}];
                 spyOn($scope, "getSelectedCacheSets").and.returnValue(
                     [{}, {}]);
@@ -2587,7 +2587,7 @@ describe("NodeStorageController", function() {
     describe("toggleCacheSetSelect", function() {
 
         it("inverts $selected", function() {
-            var controller = makeController();
+            makeController();
             var cacheset = { $selected: true };
             spyOn($scope, "updateCacheSetsSelection");
 
@@ -2604,7 +2604,7 @@ describe("NodeStorageController", function() {
     describe("toggleCacheSetAllSelect", function() {
 
         it("sets all to true if not all selected", function() {
-            var controller = makeController();
+            makeController();
             var cachesets = [{ $selected: true }, { $selected: false }];
             $scope.cachesets = cachesets;
             $scope.cachesetsAllSelected = false;
@@ -2619,7 +2619,7 @@ describe("NodeStorageController", function() {
         });
 
         it("sets all to false if all selected", function() {
-            var controller = makeController();
+            makeController();
             var cachesets = [{ $selected: true }, { $selected: true }];
             $scope.cachesets = cachesets;
             $scope.cachesetsAllSelected = true;
@@ -2637,7 +2637,7 @@ describe("NodeStorageController", function() {
     describe("isCacheSetsDisabled", function() {
 
         it("returns false for NONE", function() {
-            var controller = makeController();
+            makeController();
             $scope.cachesetsMode = null;
             $scope.canEdit = function() { return true; };
             spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
@@ -2646,7 +2646,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false for SINGLE", function() {
-            var controller = makeController();
+            makeController();
             $scope.cachesetsMode = "single";
             $scope.canEdit = function() { return true; };
             spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
@@ -2655,7 +2655,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false for MULTI", function() {
-            var controller = makeController();
+            makeController();
             $scope.cachesetsMode = "multi";
             $scope.canEdit = function() { return true; };
             spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
@@ -2664,7 +2664,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns true for when not super user", function() {
-            var controller = makeController();
+            makeController();
             $scope.cachesetsMode = "delete";
             $scope.canEdit = function() { return false; };
             spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
@@ -2673,7 +2673,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns true for when isAllStorageDisabled", function() {
-            var controller = makeController();
+            makeController();
             $scope.cachesetsMode = "delete";
             $scope.canEdit = function() { return true; };
             spyOn($scope, "isAllStorageDisabled").and.returnValue(true);
@@ -2682,7 +2682,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns true for DELETE", function() {
-            var controller = makeController();
+            makeController();
             $scope.cachesetsMode = "delete";
             $scope.canEdit = function() { return true; };
             spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
@@ -2694,7 +2694,7 @@ describe("NodeStorageController", function() {
     describe("cacheSetCancel", function() {
 
         it("calls updateCacheSetsSelection with force true", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "updateCacheSetsSelection");
 
             $scope.cacheSetCancel();
@@ -2707,7 +2707,7 @@ describe("NodeStorageController", function() {
     describe("canDeleteCacheSet", function() {
 
         it("returns true when not being used", function() {
-            var controller = makeController();
+            makeController();
             var cacheset = { used_by: "" };
             $scope.canEdit = function() { return true; };
             spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
@@ -2716,7 +2716,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false when being used", function() {
-            var controller = makeController();
+            makeController();
             var cacheset = { used_by: "bcache0" };
             $scope.canEdit = function() { return true; };
             spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
@@ -2725,7 +2725,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false when not super user", function() {
-            var controller = makeController();
+            makeController();
             var cacheset = { used_by: "" };
             $scope.canEdit = function() { return false; };
             spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
@@ -2734,7 +2734,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false when isAllStorageDisabled", function() {
-            var controller = makeController();
+            makeController();
             var cacheset = { used_by: "" };
             $scope.canEdit = function() { return true; };
             spyOn($scope, "isAllStorageDisabled").and.returnValue(true);
@@ -2746,7 +2746,7 @@ describe("NodeStorageController", function() {
     describe("cacheSetDelete", function() {
 
         it("sets cachesetsMode to DELETE", function() {
-            var controller = makeController();
+            makeController();
             $scope.cachesetsMode = "other";
 
             $scope.cacheSetDelete();
@@ -2758,7 +2758,7 @@ describe("NodeStorageController", function() {
     describe("quickCacheSetDelete", function() {
 
         it("selects cacheset and calls cacheSetDelete", function() {
-            var controller = makeController();
+            makeController();
             var cachesets = [{ $selected: true }, { $selected: false }];
             $scope.cachesets = cachesets;
             spyOn($scope, "updateCacheSetsSelection");
@@ -2778,7 +2778,7 @@ describe("NodeStorageController", function() {
 
         it("calls MachinesManager.deleteCacheSet and removes from list",
             function() {
-                var controller = makeController();
+                makeController();
                 var cacheset = {
                     cache_set_id: makeInteger(0, 100)
                 };
@@ -2798,7 +2798,7 @@ describe("NodeStorageController", function() {
     describe("canCreateCacheSet", function() {
 
         it("returns false if isAvailableDisabled returns true", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "isAvailableDisabled").and.returnValue(true);
             $scope.canEdit = function() { return true; };
 
@@ -2806,7 +2806,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false if two selected", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "isAvailableDisabled").and.returnValue(false);
             $scope.available = [ { $selected: true }, { $selected: true }];
             $scope.canEdit = function() { return true; };
@@ -2815,7 +2815,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false if selected has fstype", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "isAvailableDisabled").and.returnValue(false);
             $scope.available = [
                 {
@@ -2829,7 +2829,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false if selected is volume group", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "isAvailableDisabled").and.returnValue(false);
             $scope.available = [
                 {
@@ -2844,7 +2844,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false if not super user", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "isAvailableDisabled").and.returnValue(false);
             $scope.available = [
                 {
@@ -2858,7 +2858,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns true if selected has no fstype", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "isAvailableDisabled").and.returnValue(false);
             $scope.available = [
                 {
@@ -2875,7 +2875,7 @@ describe("NodeStorageController", function() {
     describe("createCacheSet", function() {
 
         it("does nothing if canCreateCacheSet returns false", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 block_id: makeInteger(0, 100),
                 partition_id: makeInteger(0, 100),
@@ -2891,7 +2891,7 @@ describe("NodeStorageController", function() {
 
         it("calls MachinesManager.createCacheSet and removes from available",
             function() {
-                var controller = makeController();
+                makeController();
                 var disk = {
                     block_id: makeInteger(0, 100),
                     partition_id: makeInteger(0, 100),
@@ -2912,7 +2912,7 @@ describe("NodeStorageController", function() {
 
         it("returns msg if no cachesets",
             function() {
-                var controller = makeController();
+                makeController();
                 $scope.available = [
                     {
                         fstype: null,
@@ -2926,7 +2926,7 @@ describe("NodeStorageController", function() {
             });
 
         it("returns msg if two selected", function() {
-            var controller = makeController();
+            makeController();
             $scope.cachesets = [{}];
             $scope.available = [ { $selected: true }, { $selected: true }];
             expect($scope.getCannotCreateBcacheMsg()).toBe(
@@ -2934,7 +2934,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns msg if selected has fstype", function() {
-            var controller = makeController();
+            makeController();
             $scope.available = [
                 {
                     fstype: "ext4",
@@ -2949,7 +2949,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns msg if selected is volume group", function() {
-            var controller = makeController();
+            makeController();
             $scope.available = [
                 {
                     type: "lvm-vg",
@@ -2964,7 +2964,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns msg if selected has partitions", function() {
-            var controller = makeController();
+            makeController();
             $scope.available = [
                 {
                     fstype: null,
@@ -2981,7 +2981,7 @@ describe("NodeStorageController", function() {
 
         it("returns null if selected is valid",
             function() {
-                var controller = makeController();
+                makeController();
                 $scope.available = [
                     {
                         fstype: null,
@@ -2997,7 +2997,7 @@ describe("NodeStorageController", function() {
     describe("canEdit", function() {
 
         it("returns false when $parent.canEdit is false", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
             $scope.$parent.canEdit = function() { return false; };
 
@@ -3005,7 +3005,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false when isAllStorageDisabled is false", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "isAllStorageDisabled").and.returnValue(true);
             $scope.$parent.canEdit = function() { return true; };
 
@@ -3016,7 +3016,7 @@ describe("NodeStorageController", function() {
     describe("availableEdit", function() {
 
         it("calls availableEdit for volumn group", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 type: "lvm-vg"
             };
@@ -3028,7 +3028,7 @@ describe("NodeStorageController", function() {
         });
 
         it("calls availableEdit for partition", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 type: "partition"
             };
@@ -3041,7 +3041,7 @@ describe("NodeStorageController", function() {
         });
 
         it("calls availableEdit for disk with partitions", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 type: "physical",
                 has_partitions: true
@@ -3056,7 +3056,7 @@ describe("NodeStorageController", function() {
         });
 
         it("calls availableEdit for disk and is boot disk", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 type: "physical",
                 has_partitions: false,
@@ -3077,7 +3077,7 @@ describe("NodeStorageController", function() {
     describe("availableQuickEdit", function() {
 
       it("selects disks and deselects others", function() {
-          var controller = makeController();
+          makeController();
           var available = [{ $selected: false }, { $selected: true }];
           $scope.available = available;
           spyOn($scope, "updateAvailableSelection");
@@ -3090,7 +3090,7 @@ describe("NodeStorageController", function() {
       });
 
       it("calls updateAvailableSelection with force true", function() {
-          var controller = makeController();
+          makeController();
           var available = [{ $selected: false }, { $selected: true }];
           spyOn($scope, "updateAvailableSelection");
           spyOn($scope, "availableEdit");
@@ -3102,7 +3102,7 @@ describe("NodeStorageController", function() {
       });
 
       it("calls availableEdit", function() {
-          var controller = makeController();
+          makeController();
           var available = [{ $selected: false }, { $selected: true }];
           spyOn($scope, "updateAvailableSelection");
           spyOn($scope, "availableEdit");
@@ -3117,7 +3117,7 @@ describe("NodeStorageController", function() {
     describe("availableConfirmEdit", function() {
 
       it("does nothing if invalid", function() {
-          var controller = makeController();
+          makeController();
           var disk = {
               $options: {
                   mountPoint: "!#$%"
@@ -3130,7 +3130,7 @@ describe("NodeStorageController", function() {
       });
 
       it("resets name to original if empty", function() {
-            var controller = makeController();
+            makeController();
             var name = makeName("name");
             var disk = {
                 name: "",
@@ -3149,7 +3149,7 @@ describe("NodeStorageController", function() {
         });
 
         it("calls updateDisk with new name for logical volume", function() {
-            var controller = makeController();
+            makeController();
             var name = "vg0-lvnew";
             var disk = {
                 name: name,
@@ -3174,7 +3174,7 @@ describe("NodeStorageController", function() {
         });
 
         it("calls updateFilesystem for partition", function() {
-            var controller = makeController();
+            makeController();
             var name = makeName("name");
             var disk = {
                 name: "",
@@ -3198,7 +3198,7 @@ describe("NodeStorageController", function() {
     describe("canCreateBcache", function() {
 
         it("returns false when isAvailableDisabled is true", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "isAvailableDisabled").and.returnValue(true);
             $scope.canEdit = function() { return true; };
 
@@ -3206,7 +3206,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false if two selected", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "isAvailableDisabled").and.returnValue(false);
             $scope.available = [ { $selected: true }, { $selected: true }];
             $scope.canEdit = function() { return true; };
@@ -3215,7 +3215,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false if selected has fstype", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "isAvailableDisabled").and.returnValue(false);
             $scope.available = [
                 {
@@ -3231,7 +3231,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false if selected is volume group", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "isAvailableDisabled").and.returnValue(false);
             $scope.available = [
                 {
@@ -3248,7 +3248,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false if selected has partitions", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "isAvailableDisabled").and.returnValue(false);
             $scope.available = [
                 {
@@ -3265,7 +3265,7 @@ describe("NodeStorageController", function() {
 
         it("returns false if selected has no fstype but not cachesets ",
             function() {
-                var controller = makeController();
+                makeController();
                 spyOn($scope, "isAvailableDisabled").and.returnValue(false);
                 $scope.available = [
                     {
@@ -3282,7 +3282,7 @@ describe("NodeStorageController", function() {
 
         it("returns false if not super user ",
             function() {
-                var controller = makeController();
+                makeController();
                 spyOn($scope, "isAvailableDisabled").and.returnValue(false);
                 $scope.available = [
                     {
@@ -3299,7 +3299,7 @@ describe("NodeStorageController", function() {
 
         it("returns true if selected has no fstype but has cachesets ",
             function() {
-                var controller = makeController();
+                makeController();
                 spyOn($scope, "isAvailableDisabled").and.returnValue(false);
                 $scope.available = [
                     {
@@ -3318,7 +3318,7 @@ describe("NodeStorageController", function() {
     describe("createBcache", function() {
 
         it("does nothing if canCreateBcache returns false", function() {
-            var controller = makeController();
+            makeController();
             $scope.availableMode = "other";
             spyOn($scope, "canCreateBcache").and.returnValue(false);
 
@@ -3327,7 +3327,7 @@ describe("NodeStorageController", function() {
         });
 
         it("sets availableMode and availableNew", function() {
-            var controller = makeController();
+            makeController();
             $scope.availableMode = "other";
             spyOn($scope, "canCreateBcache").and.returnValue(true);
 
@@ -3367,7 +3367,7 @@ describe("NodeStorageController", function() {
     describe("fstypeChanged", function() {
 
         it("leaves mountPoint when fstype is not null", function() {
-            var controller = makeController();
+            makeController();
             var mountPoint = makeName("srv");
             var mountOptions = makeName("options");
             var options = {
@@ -3382,7 +3382,7 @@ describe("NodeStorageController", function() {
         });
 
         it("clears mountPoint when fstype null", function() {
-            var controller = makeController();
+            makeController();
             var options = {
                 fstype: null,
                 mountPoint: makeName("srv"),
@@ -3396,7 +3396,7 @@ describe("NodeStorageController", function() {
 
         it("sets mountPoint to 'none' for a partition that " +
            "cannot be mounted at a directory", function() {
-            var controller = makeController();
+            makeController();
             var mountPoint = makeName("srv");
             var mountOptions = makeName("options");
             var options = {
@@ -3413,7 +3413,7 @@ describe("NodeStorageController", function() {
 
         it("clears mountPoint from 'none' for a partition that " +
            "can be mounted at a directory", function() {
-            var controller = makeController();
+            makeController();
             var mountOptions = makeName("options");
             var options = {
                 fstype: "ext4",
@@ -3432,7 +3432,7 @@ describe("NodeStorageController", function() {
     describe("isNewDiskNameInvalid", function() {
 
         it("returns true if blank name", function() {
-            var controller = makeController();
+            makeController();
             $scope.node.disks = [];
             $scope.availableNew.name = "";
 
@@ -3440,7 +3440,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns true if name used by disk", function() {
-            var controller = makeController();
+            makeController();
             var name = makeName("disk");
             $scope.node.disks = [{
                 name: name
@@ -3451,7 +3451,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns true if name used by partition", function() {
-            var controller = makeController();
+            makeController();
             var name = makeName("disk");
             $scope.node.disks = [{
                 name: makeName("other"),
@@ -3467,7 +3467,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false if the name is not already used", function() {
-            var controller = makeController();
+            makeController();
             var name = makeName("disk");
             $scope.node.disks = [{
                 name: makeName("other"),
@@ -3486,7 +3486,7 @@ describe("NodeStorageController", function() {
     describe("createBcacheCanSave", function() {
 
         it("returns false if isNewDiskNameInvalid returns true", function() {
-            var controller = makeController();
+            makeController();
             $scope.availableNew.mountPoint = "/";
             spyOn($scope, "isNewDiskNameInvalid").and.returnValue(true);
 
@@ -3494,7 +3494,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false if isMountPointInvalid returns true", function() {
-            var controller = makeController();
+            makeController();
             $scope.availableNew.mountPoint = "not/absolute";
             spyOn($scope, "isNewDiskNameInvalid").and.returnValue(false);
 
@@ -3502,7 +3502,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns true if both return false", function() {
-            var controller = makeController();
+            makeController();
             $scope.availableNew.mountPoint = "/";
             spyOn($scope, "isNewDiskNameInvalid").and.returnValue(false);
 
@@ -3513,7 +3513,7 @@ describe("NodeStorageController", function() {
     describe("availableConfirmCreateBcache", function() {
 
         it("does nothing if createBcacheCanSave returns false", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "createBcacheCanSave").and.returnValue(false);
             var availableNew = {
                 name: makeName("bcache"),
@@ -3537,7 +3537,7 @@ describe("NodeStorageController", function() {
         });
 
         it("calls MachinesManager.createBcache for partition", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "createBcacheCanSave").and.returnValue(true);
             var device = {
                 type: "partition",
@@ -3577,7 +3577,7 @@ describe("NodeStorageController", function() {
         });
 
         it("calls MachinesManager.createBcache for block device", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "createBcacheCanSave").and.returnValue(true);
             var device = {
                 type: "physical",
@@ -3617,14 +3617,14 @@ describe("NodeStorageController", function() {
     describe("canCreateRAID", function() {
 
         it("returns false isAvailableDisabled returns true", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "isAvailableDisabled").and.returnValue(true);
             $scope.canEdit = function() { return true; };
             expect($scope.canCreateRAID()).toBe(false);
         });
 
         it("returns false if less than 2 is selected", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "isAvailableDisabled").and.returnValue(false);
             spyOn($scope, "getSelectedAvailable").and.returnValue([{}]);
             $scope.canEdit = function() { return true; };
@@ -3632,7 +3632,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false if any selected has filesystem", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "isAvailableDisabled").and.returnValue(false);
             spyOn($scope, "getSelectedAvailable").and.returnValue([{}, {}]);
             spyOn($scope, "hasUnmountedFilesystem").and.returnValue(true);
@@ -3641,7 +3641,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false if any selected is volume group", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "isAvailableDisabled").and.returnValue(false);
             spyOn($scope, "getSelectedAvailable").and.returnValue([
                 {
@@ -3657,7 +3657,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false if not super user", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "isAvailableDisabled").and.returnValue(false);
             spyOn($scope, "getSelectedAvailable").and.returnValue([{}, {}]);
             spyOn($scope, "hasUnmountedFilesystem").and.returnValue(false);
@@ -3666,7 +3666,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns true if more than 1 selected", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "isAvailableDisabled").and.returnValue(false);
             spyOn($scope, "getSelectedAvailable").and.returnValue([{}, {}]);
             spyOn($scope, "hasUnmountedFilesystem").and.returnValue(false);
@@ -3679,7 +3679,7 @@ describe("NodeStorageController", function() {
     describe("createRAID", function() {
 
         it("does nothing if canCreateRAID returns false", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "canCreateRAID").and.returnValue(false);
             $scope.availableMode = "other";
 
@@ -3688,7 +3688,7 @@ describe("NodeStorageController", function() {
         });
 
         it("sets up availableNew", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "canCreateRAID").and.returnValue(true);
             $scope.availableMode = "other";
 
@@ -3722,7 +3722,7 @@ describe("NodeStorageController", function() {
     describe("getAvailableRAIDModes", function() {
 
         it("returns empty list if availableNew null", function() {
-            var controller = makeController();
+            makeController();
             $scope.availableNew = null;
 
             expect($scope.getAvailableRAIDModes()).toEqual([]);
@@ -3730,14 +3730,14 @@ describe("NodeStorageController", function() {
 
         it("returns empty list if availableNew.devices not defined",
             function() {
-                var controller = makeController();
+                makeController();
                 $scope.availableNew = {};
 
                 expect($scope.getAvailableRAIDModes()).toEqual([]);
             });
 
         it("returns raid 0 and 1 for 2 disks", function() {
-            var controller = makeController();
+            makeController();
             $scope.availableNew.devices = [{}, {}];
 
             var modes = $scope.getAvailableRAIDModes();
@@ -3747,7 +3747,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns raid 0,1,5,10 for 3 disks", function() {
-            var controller = makeController();
+            makeController();
             $scope.availableNew.devices = [{}, {}, {}];
 
             var modes = $scope.getAvailableRAIDModes();
@@ -3759,7 +3759,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns raid 0,1,5,6,10 for 4 disks", function() {
-            var controller = makeController();
+            makeController();
             $scope.availableNew.devices = [{}, {}, {}, {}];
 
             var modes = $scope.getAvailableRAIDModes();
@@ -3805,7 +3805,7 @@ describe("NodeStorageController", function() {
         angular.forEach(modes, function(mode) {
 
             it("returns current result for " + mode.level, function() {
-                var controller = makeController();
+                makeController();
                 $scope.availableNew.mode = mode;
                 if(!mode.allows_spares) {
                     expect($scope.getTotalNumberOfAvailableSpares()).toBe(0);
@@ -3828,7 +3828,7 @@ describe("NodeStorageController", function() {
 
         it("returns 0 when getTotalNumberOfAvailableSpares returns 0",
             function() {
-                var controller = makeController();
+                makeController();
                 spyOn(
                     $scope,
                     "getTotalNumberOfAvailableSpares").and.returnValue(0);
@@ -3838,7 +3838,7 @@ describe("NodeStorageController", function() {
 
         it("returns allowed minus the current number of spares",
             function() {
-                var controller = makeController();
+                makeController();
                 var count = makeInteger(10, 100);
                 spyOn(
                     $scope,
@@ -3859,7 +3859,7 @@ describe("NodeStorageController", function() {
 
         it("returns true when getTotalNumberOfAvailableSpares greater than 0",
             function() {
-                var controller = makeController();
+                makeController();
                 spyOn(
                     $scope,
                     "getTotalNumberOfAvailableSpares").and.returnValue(1);
@@ -3869,7 +3869,7 @@ describe("NodeStorageController", function() {
 
         it("returns false when getTotalNumberOfAvailableSpares less than 1",
             function() {
-                var controller = makeController();
+                makeController();
                 spyOn(
                     $scope,
                     "getTotalNumberOfAvailableSpares").and.returnValue(0);
@@ -3881,7 +3881,7 @@ describe("NodeStorageController", function() {
     describe("RAIDModeChanged", function() {
 
         it("clears availableNew.spares", function() {
-            var controller = makeController();
+            makeController();
             $scope.availableNew.spares = [{}, {}];
 
             $scope.RAIDModeChanged();
@@ -3892,7 +3892,7 @@ describe("NodeStorageController", function() {
     describe("isActiveRAIDMember", function() {
 
         it("returns true when disk key not in spares", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 type: "physical",
                 block_id: makeInteger()
@@ -3905,7 +3905,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false when disk key in spares", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 type: "physical",
                 block_id: makeInteger()
@@ -3921,7 +3921,7 @@ describe("NodeStorageController", function() {
     describe("isSpareRAIDMember", function() {
 
         it("returns false when disk key not in spares", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 type: "physical",
                 block_id: makeInteger()
@@ -3934,7 +3934,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns true when disk key in spares", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 type: "physical",
                 block_id: makeInteger()
@@ -3950,7 +3950,7 @@ describe("NodeStorageController", function() {
     describe("setAsActiveRAIDMember", function() {
 
         it("sets the disk as an active RAID member", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 type: "physical",
                 block_id: makeInteger()
@@ -3969,7 +3969,7 @@ describe("NodeStorageController", function() {
     describe("setAsSpareRAIDMember", function() {
 
         it("sets the disk as a spare RAID member", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 type: "physical",
                 block_id: makeInteger()
@@ -3988,7 +3988,7 @@ describe("NodeStorageController", function() {
     describe("getNewRAIDSize", function() {
 
         it("gets proper raid-0 size", function() {
-            var controller = makeController();
+            makeController();
             var disk0 = {
                 original: {
                     available_size: 1000 * 1000
@@ -4007,7 +4007,7 @@ describe("NodeStorageController", function() {
         });
 
         it("gets proper raid-0 size using size", function() {
-            var controller = makeController();
+            makeController();
             var disk0 = {
                 original: {
                     size: 1000 * 1000
@@ -4026,7 +4026,7 @@ describe("NodeStorageController", function() {
         });
 
         it("gets proper raid-1 size", function() {
-            var controller = makeController();
+            makeController();
             var disk0 = {
                 original: {
                     available_size: 1000 * 1000
@@ -4045,7 +4045,7 @@ describe("NodeStorageController", function() {
         });
 
         it("gets proper raid-5 size", function() {
-            var controller = makeController();
+            makeController();
             var disk0 = {
                 original: {
                     available_size: 2 * 1000 * 1000
@@ -4076,7 +4076,7 @@ describe("NodeStorageController", function() {
         });
 
         it("gets proper raid-6 size", function() {
-            var controller = makeController();
+            makeController();
             var disk0 = {
                 original: {
                     available_size: 2 * 1000 * 1000
@@ -4112,7 +4112,7 @@ describe("NodeStorageController", function() {
         });
 
         it("gets proper raid-10 size", function() {
-            var controller = makeController();
+            makeController();
             var disk0 = {
                 original: {
                     available_size: 2 * 1000 * 1000
@@ -4146,7 +4146,7 @@ describe("NodeStorageController", function() {
     describe("createRAIDCanSave", function() {
 
         it("returns false if isNewDiskNameInvalid returns true", function() {
-            var controller = makeController();
+            makeController();
             $scope.availableNew.mountPoint = "/";
             spyOn($scope, "isNewDiskNameInvalid").and.returnValue(true);
 
@@ -4154,7 +4154,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false if isMountPointInvalid returns true", function() {
-            var controller = makeController();
+            makeController();
             $scope.availableNew.mountPoint = "not/absolute";
             spyOn($scope, "isNewDiskNameInvalid").and.returnValue(false);
 
@@ -4162,7 +4162,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns true if both return false", function() {
-            var controller = makeController();
+            makeController();
             $scope.availableNew.mountPoint = "/";
             spyOn($scope, "isNewDiskNameInvalid").and.returnValue(false);
 
@@ -4173,7 +4173,7 @@ describe("NodeStorageController", function() {
     describe("availableConfirmCreateRAID", function() {
 
         it("does nothing if createRAIDCanSave returns false", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "createRAIDCanSave").and.returnValue(false);
             var partition0 = {
                 type: "partition",
@@ -4214,7 +4214,7 @@ describe("NodeStorageController", function() {
         });
 
         it("calls MachinesManager.createRAID", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "createRAIDCanSave").and.returnValue(true);
             var partition0 = {
                 type: "partition",
@@ -4263,7 +4263,7 @@ describe("NodeStorageController", function() {
         });
 
         it("calls MachinesManager.createRAID with filesystem", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "createRAIDCanSave").and.returnValue(true);
             var partition0 = {
                 type: "partition",
@@ -4318,14 +4318,14 @@ describe("NodeStorageController", function() {
     describe("canCreateVolumeGroup", function() {
 
         it("returns false isAvailableDisabled returns true", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "isAvailableDisabled").and.returnValue(true);
             $scope.canEdit = function() { return true; };
             expect($scope.canCreateVolumeGroup()).toBe(false);
         });
 
         it("returns false if any selected has filesystem", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "isAvailableDisabled").and.returnValue(false);
             spyOn($scope, "getSelectedAvailable").and.returnValue([{}]);
             spyOn($scope, "hasUnmountedFilesystem").and.returnValue(true);
@@ -4334,7 +4334,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false if any selected is volume group", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "isAvailableDisabled").and.returnValue(false);
             spyOn($scope, "getSelectedAvailable").and.returnValue([
                 {
@@ -4350,7 +4350,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false if not super user", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "isAvailableDisabled").and.returnValue(false);
             spyOn($scope, "getSelectedAvailable").and.returnValue([{}]);
             spyOn($scope, "hasUnmountedFilesystem").and.returnValue(false);
@@ -4359,7 +4359,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns true if aleast 1 selected", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "isAvailableDisabled").and.returnValue(false);
             spyOn($scope, "getSelectedAvailable").and.returnValue([{}]);
             spyOn($scope, "hasUnmountedFilesystem").and.returnValue(false);
@@ -4371,7 +4371,7 @@ describe("NodeStorageController", function() {
     describe("createVolumeGroup", function() {
 
         it("does nothing if canCreateVolumeGroup returns false", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "canCreateVolumeGroup").and.returnValue(false);
             $scope.availableMode = "other";
 
@@ -4380,7 +4380,7 @@ describe("NodeStorageController", function() {
         });
 
         it("sets up availableNew", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "canCreateVolumeGroup").and.returnValue(true);
             $scope.availableMode = "other";
 
@@ -4409,7 +4409,7 @@ describe("NodeStorageController", function() {
     describe("getNewVolumeGroupSize", function() {
 
         it("return the total of all devices", function() {
-            var controller = makeController();
+            makeController();
             $scope.availableNew.devices = [
                 {
                     original: {
@@ -4432,7 +4432,7 @@ describe("NodeStorageController", function() {
         });
 
         it("return the total of all devices using size", function() {
-            var controller = makeController();
+            makeController();
             $scope.availableNew.devices = [
                 {
                     original: {
@@ -4458,14 +4458,14 @@ describe("NodeStorageController", function() {
     describe("createVolumeGroupCanSave", function() {
 
         it("return true if isNewDiskNameInvalid returns false", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "isNewDiskNameInvalid").and.returnValue(false);
 
             expect($scope.createVolumeGroupCanSave()).toBe(true);
         });
 
         it("return false if isNewDiskNameInvalid returns true", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "isNewDiskNameInvalid").and.returnValue(true);
 
             expect($scope.createVolumeGroupCanSave()).toBe(false);
@@ -4476,7 +4476,7 @@ describe("NodeStorageController", function() {
 
         it("does nothing if createVolumeGroupCanSave returns false",
             function() {
-                var controller = makeController();
+                makeController();
                 spyOn($scope, "createVolumeGroupCanSave").and.returnValue(
                     false);
                 var partition0 = {
@@ -4510,7 +4510,7 @@ describe("NodeStorageController", function() {
             });
 
         it("calls MachinesManager.createVolumeGroup", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "createVolumeGroupCanSave").and.returnValue(true);
             var partition0 = {
                 type: "partition",
@@ -4551,7 +4551,7 @@ describe("NodeStorageController", function() {
     describe("canAddLogicalVolume", function() {
 
         it("returns false if not volume group", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.canAddLogicalVolume({
                 type: "physical"
             })).toBe(false);
@@ -4564,7 +4564,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false if not enough space", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.canAddLogicalVolume({
                 type: "lvm-vg",
                 original: {
@@ -4574,7 +4574,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns true if enough space", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.canAddLogicalVolume({
                 type: "lvm-vg",
                 original: {
@@ -4587,7 +4587,7 @@ describe("NodeStorageController", function() {
     describe("availableLogicalVolume", function() {
 
         it("sets availableMode to 'logical-volume'", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 type: "lvm-vg",
                 name: "vg0",
@@ -4601,7 +4601,7 @@ describe("NodeStorageController", function() {
         });
 
         it("sets $options to correct values", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 type: "lvm-vg",
                 name: "vg0",
@@ -4623,7 +4623,7 @@ describe("NodeStorageController", function() {
     describe("isLogicalVolumeNameInvalid", function() {
 
         it("returns true if doesn't start with volume group", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 type: "lvm-vg",
                 name: "vg0",
@@ -4636,7 +4636,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns true if equal to volume group", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 type: "lvm-vg",
                 name: "vg0",
@@ -4649,7 +4649,7 @@ describe("NodeStorageController", function() {
         });
 
         it("returns false has text after the volume group", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 type: "lvm-vg",
                 name: "vg0",
@@ -4665,7 +4665,7 @@ describe("NodeStorageController", function() {
     describe("newLogicalVolumeNameChanged", function() {
 
         it("resets name to volume group name if not present", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 type: "lvm-vg",
                 name: "vg0",
@@ -4682,7 +4682,7 @@ describe("NodeStorageController", function() {
     describe("isAddLogicalVolumeSizeInvalid", function() {
 
         it("returns value from isAddPartitionSizeInvalid", function() {
-            var controller = makeController();
+            makeController();
             var sentinel = {};
             spyOn($scope, "isAddPartitionSizeInvalid").and.returnValue(
                 sentinel);
@@ -4694,7 +4694,7 @@ describe("NodeStorageController", function() {
     describe("availableConfirmLogicalVolume", function() {
 
         it("does nothing if invalid", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 $options: {
                     size: "",
@@ -4709,7 +4709,7 @@ describe("NodeStorageController", function() {
         });
 
         it("calls createLogicalVolume with bytes", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 name: "vg0",
                 block_id: makeInteger(0, 100),
@@ -4736,7 +4736,7 @@ describe("NodeStorageController", function() {
 
         it("calls createLogicalVolume with fstype, " +
            "mountPoint, and mountOptions", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 name: "vg0",
                 block_id: makeInteger(0, 100),
@@ -4766,7 +4766,7 @@ describe("NodeStorageController", function() {
         });
 
         it("calls createLogicalVolume with available_size bytes", function() {
-            var controller = makeController();
+            makeController();
             var disk = {
                 name: "vg0",
                 block_id: makeInteger(0, 100),
@@ -4795,7 +4795,7 @@ describe("NodeStorageController", function() {
         it("calls createLogicalVolume with available_size bytes" +
             " even when human size gets rounded down", function() {
 
-            var controller = makeController();
+            makeController();
             var disk = {
                 name: "vg0",
                 block_id: makeInteger(0, 100),
@@ -4834,7 +4834,7 @@ describe("NodeStorageController", function() {
         }));
 
         it("false when status is Ready", function() {
-            var controller = makeController();
+            makeController();
             $scope.node.status = "Ready";
             spyOn(UsersManager, "getAuthUser").and.returnValue(
                 { is_superuser: true });
@@ -4842,7 +4842,7 @@ describe("NodeStorageController", function() {
         });
 
         it("false when status is Allocated", function() {
-            var controller = makeController();
+            makeController();
             $scope.node.status = "Allocated";
             spyOn(UsersManager, "getAuthUser").and.returnValue(
                 { is_superuser: true });
@@ -4850,7 +4850,7 @@ describe("NodeStorageController", function() {
         });
 
         it("false when Allocated and owned", function() {
-            var controller = makeController();
+            makeController();
             var user = makeName("user");
             $scope.node.status = "Allocated";
             $scope.node.owner = user;
@@ -4860,7 +4860,7 @@ describe("NodeStorageController", function() {
         });
 
         it("true when not admin", function() {
-            var controller = makeController();
+            makeController();
             $scope.node.status = "Allocated";
             $scope.node.owner = makeName("user");
             spyOn(UsersManager, "getAuthUser").and.returnValue(
@@ -4869,7 +4869,7 @@ describe("NodeStorageController", function() {
         });
 
         it("true otherwise", function() {
-            var controller = makeController();
+            makeController();
             $scope.node.status = makeName("status");
             spyOn(UsersManager, "getAuthUser").and.returnValue(
                 { is_superuser: true });
@@ -4879,13 +4879,13 @@ describe("NodeStorageController", function() {
 
     describe("hasStorageLayoutIssues", function() {
         it("true when node.storage_layout_issues has issues", function() {
-            var controller = makeController();
+            makeController();
             $scope.node.storage_layout_issues = [makeName("issue")];
             expect($scope.hasStorageLayoutIssues()).toBe(true);
         });
 
         it("false when node.storage_layout_issues has no issues", function() {
-            var controller = makeController();
+            makeController();
             $scope.node.storage_layout_issues = [];
             expect($scope.hasStorageLayoutIssues()).toBe(false);
         });

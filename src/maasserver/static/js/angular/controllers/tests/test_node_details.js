@@ -203,12 +203,12 @@ describe("NodeDetailsController", function() {
     }
 
     it("sets title to loading", function() {
-        var controller = makeController();
+        makeController();
         expect($rootScope.title).toBe("Loading...");
     });
 
     it("sets the initial $scope values", function() {
-        var controller = makeController();
+        makeController();
         expect($scope.loaded).toBe(false);
         expect($scope.node).toBeNull();
         expect($scope.action.option).toBeNull();
@@ -237,7 +237,7 @@ describe("NodeDetailsController", function() {
     });
 
     it("sets initial values for summary section", function() {
-        var controller = makeController();
+        makeController();
         expect($scope.summary).toEqual({
             editing: false,
             architecture: {
@@ -269,7 +269,7 @@ describe("NodeDetailsController", function() {
     });
 
     it("sets initial values for power section", function() {
-        var controller = makeController();
+        makeController();
         expect($scope.power).toEqual({
             editing: false,
             type: null,
@@ -280,7 +280,7 @@ describe("NodeDetailsController", function() {
     });
 
     it("sets initial values for events section", function() {
-        var controller = makeController();
+        makeController();
         expect($scope.events).toEqual({
             limit: 10
         });
@@ -288,13 +288,13 @@ describe("NodeDetailsController", function() {
 
     it("sets initial area to routeParams value", function() {
         $routeParams.area = makeName("area");
-        var controller = makeController();
+        makeController();
         expect($scope.section.area).toEqual($routeParams.area);
     });
 
     it("calls loadManagers for machine", function() {
         $location.path("/machine");
-        var controller = makeController();
+        makeController();
         expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
             $scope, [
                 ZonesManager, GeneralManager, UsersManager, TagsManager,
@@ -304,7 +304,7 @@ describe("NodeDetailsController", function() {
 
     it("calls loadManagers for device", function() {
         $location.path("/device");
-        var controller = makeController();
+        makeController();
         expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
             $scope, [
                 ZonesManager, GeneralManager, UsersManager, TagsManager,
@@ -314,7 +314,7 @@ describe("NodeDetailsController", function() {
 
     it("calls loadManagers for controller", function() {
         $location.path("/controller");
-        var controller = makeController();
+        makeController();
         expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
             $scope, [
                 ZonesManager, GeneralManager, UsersManager, TagsManager,
@@ -326,7 +326,7 @@ describe("NodeDetailsController", function() {
         spyOn(MachinesManager, "setActiveItem").and.returnValue(
             $q.defer().promise);
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
         MachinesManager._activeItem = node;
 
         defer.resolve();
@@ -341,7 +341,7 @@ describe("NodeDetailsController", function() {
         spyOn(MachinesManager, "setActiveItem").and.returnValue(
             $q.defer().promise);
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
 
         defer.resolve();
         $rootScope.$digest();
@@ -351,7 +351,7 @@ describe("NodeDetailsController", function() {
     });
 
     it("sets node and loaded once setActiveItem resolves", function() {
-        var controller = makeControllerResolveSetActiveItem();
+        makeControllerResolveSetActiveItem();
         expect($scope.node).toBe(node);
         expect($scope.loaded).toBe(true);
     });
@@ -360,7 +360,7 @@ describe("NodeDetailsController", function() {
         spyOn(MachinesManager, "setActiveItem").and.returnValue(
             $q.defer().promise);
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
 
         defer.resolve();
         $rootScope.$digest();
@@ -378,7 +378,7 @@ describe("NodeDetailsController", function() {
         spyOn(ControllersManager, "setActiveItem").and.returnValue(
             $q.defer().promise);
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
 
         defer.resolve();
         $rootScope.$digest();
@@ -398,7 +398,7 @@ describe("NodeDetailsController", function() {
 
         var defer = $q.defer();
         $location.path('/controller');
-        var controller = makeController(defer);
+        makeController(defer);
         ControllersManager._activeItem = node;
 
         defer.resolve();
@@ -425,7 +425,7 @@ describe("NodeDetailsController", function() {
         var loadManagersDefer = $q.defer();
         var loadItemsDefer = $q.defer();
         $location.path("/controller");
-        var controller = makeController(loadManagersDefer, loadItemsDefer);
+        makeController(loadManagersDefer, loadItemsDefer);
         var myNode = angular.copy(node);
         // Make node a rack controller.
         myNode.node_type = 2;
@@ -441,7 +441,7 @@ describe("NodeDetailsController", function() {
     });
 
     it("title is updated once setActiveItem resolves", function() {
-        var controller = makeControllerResolveSetActiveItem();
+        makeControllerResolveSetActiveItem();
         expect($rootScope.title).toBe(node.fqdn);
     });
 
@@ -452,7 +452,7 @@ describe("NodeDetailsController", function() {
             GeneralManager._data.power_types.data = [{}];
             GeneralManager._data.architectures.data = ["amd64/generic"];
 
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             expect($scope.summary.editing).toBe(true);
         });
 
@@ -461,7 +461,7 @@ describe("NodeDetailsController", function() {
             node.architecture = "";
             GeneralManager._data.power_types.data = [{}];
 
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             expect($scope.summary.editing).toBe(false);
         });
 
@@ -469,12 +469,12 @@ describe("NodeDetailsController", function() {
         function() {
             GeneralManager._data.architectures.data = [node.architecture];
 
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             expect($scope.summary.editing).toBe(false);
         });
 
     it("summary section is updated once setActiveItem resolves", function() {
-        var controller = makeControllerResolveSetActiveItem();
+        makeControllerResolveSetActiveItem();
         expect($scope.summary.zone.selected).toBe(
             ZonesManager.getItemFromList(node.zone.id));
         expect($scope.summary.architecture.selected).toBe(node.architecture);
@@ -484,19 +484,19 @@ describe("NodeDetailsController", function() {
     it("power section no edit if power_type blank for controller", function() {
         GeneralManager._data.power_types.data = [{}];
         node.node_type = 4;
-        var controller = makeControllerResolveSetActiveItem();
+        makeControllerResolveSetActiveItem();
         expect($scope.power.editing).toBe(false);
     });
 
     it("power section edit mode if power_type blank for a machine", function() {
         GeneralManager._data.power_types.data = [{}];
         node.permissions = ['edit'];
-        var controller = makeControllerResolveSetActiveItem();
+        makeControllerResolveSetActiveItem();
         expect($scope.power.editing).toBe(true);
     });
 
     it("power section not placed in edit mode if no power_types", function() {
-        var controller = makeControllerResolveSetActiveItem();
+        makeControllerResolveSetActiveItem();
         expect($scope.power.editing).toBe(false);
     });
 
@@ -504,7 +504,7 @@ describe("NodeDetailsController", function() {
         node.power_type = makeName("power");
         GeneralManager._data.power_types.data = [{}];
 
-        var controller = makeControllerResolveSetActiveItem();
+        makeControllerResolveSetActiveItem();
         expect($scope.power.editing).toBe(false);
     });
 
@@ -513,7 +513,7 @@ describe("NodeDetailsController", function() {
         spyOn(MachinesManager, "setActiveItem").and.returnValue(
             setActiveDefer.promise);
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
 
         spyOn($scope, "$watch");
         spyOn($scope, "$watchCollection");
@@ -561,7 +561,7 @@ describe("NodeDetailsController", function() {
         spyOn(MachinesManager, "setActiveItem").and.returnValue(
             setActiveDefer.promise);
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
 
         node.devices = [
             {
@@ -638,7 +638,7 @@ describe("NodeDetailsController", function() {
     });
 
     it("reloads osinfo on route update", function() {
-        var controller = makeController();
+        makeController();
         $scope.$emit("$routeUpdate");
         expect(GeneralManager.loadItems).toHaveBeenCalled();
     });
@@ -649,7 +649,7 @@ describe("NodeDetailsController", function() {
             setActiveDefer.promise);
         var loadManagersDefer = $q.defer();
         var loadItemsDefer = $q.defer();
-        var controller = makeController(loadManagersDefer, loadItemsDefer);
+        makeController(loadManagersDefer, loadItemsDefer);
         node.node_type = 0;
         node.actions = ['test', 'release', 'delete'];
         var all_actions = [
@@ -677,7 +677,7 @@ describe("NodeDetailsController", function() {
 
     describe("tagsAutocomplete", function() {
         it("calls TagsManager.autocomplete with query", function() {
-            var controller = makeController();
+            makeController();
             spyOn(TagsManager, "autocomplete");
             var query = makeName("query");
             $scope.tagsAutocomplete(query);
@@ -688,19 +688,19 @@ describe("NodeDetailsController", function() {
     describe("isSuperUser", function() {
 
         it("returns false if no authUser", function() {
-            var controller = makeController();
+            makeController();
             UsersManager._authUser = null;
             expect($scope.isSuperUser()).toBe(false);
         });
 
         it("returns false if authUser.is_superuser is false", function() {
-            var controller = makeController();
+            makeController();
             UsersManager._authUser.is_superuser = false;
             expect($scope.isSuperUser()).toBe(false);
         });
 
         it("returns true if authUser.is_superuser is true", function() {
-            var controller = makeController();
+            makeController();
             UsersManager._authUser.is_superuser = true;
             expect($scope.isSuperUser()).toBe(true);
         });
@@ -709,19 +709,19 @@ describe("NodeDetailsController", function() {
     describe("getPowerStateClass", function() {
 
         it("returns blank if no node", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.getPowerStateClass()).toBe("");
         });
 
         it("returns check if checkingPower is true", function() {
-            var controller = makeController();
+            makeController();
             $scope.node = node;
             $scope.checkingPower = true;
             expect($scope.getPowerStateClass()).toBe("checking");
         });
 
         it("returns power_state from node ", function() {
-            var controller = makeController();
+            makeController();
             var state = makeName("state");
             $scope.node = node;
             node.power_state = state;
@@ -732,12 +732,12 @@ describe("NodeDetailsController", function() {
     describe("getPowerStateText", function() {
 
         it("returns blank if no node", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.getPowerStateText()).toBe("");
         });
 
         it("returns 'Checking' if checkingPower is true", function() {
-            var controller = makeController();
+            makeController();
             $scope.node = node;
             $scope.checkingPower = true;
             node.power_state = "unknown";
@@ -745,14 +745,14 @@ describe("NodeDetailsController", function() {
         });
 
         it("returns blank if power_state is unknown", function() {
-            var controller = makeController();
+            makeController();
             $scope.node = node;
             node.power_state = "unknown";
             expect($scope.getPowerStateText()).toBe("");
         });
 
         it("returns power_state prefixed with Power ", function() {
-            var controller = makeController();
+            makeController();
             var state = makeName("state");
             $scope.node = node;
             node.power_state = state;
@@ -763,19 +763,19 @@ describe("NodeDetailsController", function() {
     describe("canCheckPowerState", function() {
 
         it("returns false if no node", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.canCheckPowerState()).toBe(false);
         });
 
         it("returns false if power_state is unknown", function() {
-            var controller = makeController();
+            makeController();
             $scope.node = node;
             node.power_state = "unknown";
             expect($scope.canCheckPowerState()).toBe(false);
         });
 
         it("returns false if checkingPower is true", function() {
-            var controller = makeController();
+            makeController();
             $scope.node = node;
             $scope.checkingPower = true;
             expect($scope.canCheckPowerState()).toBe(false);
@@ -783,7 +783,7 @@ describe("NodeDetailsController", function() {
 
         it("returns true if not checkingPower and power_state not unknown",
             function() {
-                var controller = makeController();
+                makeController();
                 $scope.node = node;
                 expect($scope.canCheckPowerState()).toBe(true);
             });
@@ -792,7 +792,7 @@ describe("NodeDetailsController", function() {
     describe("checkPowerState", function() {
 
         it("sets checkingPower to true", function() {
-            var controller = makeController();
+            makeController();
             spyOn(MachinesManager, "checkPowerState").and.returnValue(
                 $q.defer().promise);
             $scope.checkPowerState();
@@ -801,7 +801,7 @@ describe("NodeDetailsController", function() {
 
         it("sets checkingPower to false once checkPowerState resolves",
             function() {
-                var controller = makeController();
+                makeController();
                 var defer = $q.defer();
                 spyOn(MachinesManager, "checkPowerState").and.returnValue(
                     defer.promise);
@@ -814,7 +814,7 @@ describe("NodeDetailsController", function() {
 
     describe("isUbuntuOS", function() {
         it("returns true when ubuntu", function() {
-            var controller = makeController();
+            makeController();
             $scope.node = node;
             node.osystem = 'ubuntu';
             node.distro_series = makeName("distro_series");
@@ -822,7 +822,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("returns false when otheros", function() {
-            var controller = makeController();
+            makeController();
             $scope.node = node;
             node.osystem = makeName("osystem");
             node.distro_series = makeName("distro_series");
@@ -832,7 +832,7 @@ describe("NodeDetailsController", function() {
 
     describe("isUbuntuCoreOS", function() {
         it("returns true when ubuntu-core", function() {
-            var controller = makeController();
+            makeController();
             $scope.node = node;
             node.osystem = 'ubuntu-core';
             node.distro_series = makeName("distro_series");
@@ -840,7 +840,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("returns false when otheros", function() {
-            var controller = makeController();
+            makeController();
             $scope.node = node;
             node.osystem = makeName("osystem");
             node.distro_series = makeName("distro_series");
@@ -850,7 +850,7 @@ describe("NodeDetailsController", function() {
 
     describe("isCentOS", function() {
         it("returns true when CentOS", function() {
-            var controller = makeController();
+            makeController();
             $scope.node = node;
             node.osystem = 'centos';
             node.distro_series = makeName("distro_series");
@@ -858,7 +858,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("returns true when RHEL", function() {
-            var controller = makeController();
+            makeController();
             $scope.node = node;
             node.osystem = 'rhel';
             node.distro_series = makeName("distro_series");
@@ -866,7 +866,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("returns false when otheros", function() {
-            var controller = makeController();
+            makeController();
             $scope.node = node;
             node.osystem = makeName("osystem");
             node.distro_series = makeName("distro_series");
@@ -876,7 +876,7 @@ describe("NodeDetailsController", function() {
 
     describe("isCustomOS", function() {
         it("returns true when custom OS", function() {
-            var controller = makeController();
+            makeController();
             $scope.node = node;
             node.osystem = 'custom';
             node.distro_series = makeName("distro_series");
@@ -884,7 +884,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("returns false when otheros", function() {
-            var controller = makeController();
+            makeController();
             $scope.node = node;
             node.osystem = makeName("osystem");
             node.distro_series = makeName("distro_series");
@@ -895,13 +895,13 @@ describe("NodeDetailsController", function() {
     describe("isActionError", function() {
 
         it("returns true if actionError", function() {
-            var controller = makeController();
+            makeController();
             $scope.action.error = makeName("error");
             expect($scope.isActionError()).toBe(true);
         });
 
         it("returns false if not actionError", function() {
-            var controller = makeController();
+            makeController();
             $scope.action.error = null;
             expect($scope.isActionError()).toBe(false);
         });
@@ -910,13 +910,13 @@ describe("NodeDetailsController", function() {
     describe("isDeployError", function() {
 
         it("returns false if already actionError", function() {
-            var controller = makeController();
+            makeController();
             $scope.action.error = makeName("error");
             expect($scope.isDeployError()).toBe(false);
         });
 
         it("returns true if deploy action and missing osinfo", function() {
-            var controller = makeController();
+            makeController();
             $scope.action.option = {
                 name: "deploy"
             };
@@ -924,7 +924,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("returns true if deploy action and no osystems", function() {
-            var controller = makeController();
+            makeController();
             $scope.action.option = {
                 name: "deploy"
             };
@@ -935,12 +935,12 @@ describe("NodeDetailsController", function() {
         });
 
         it("returns false if actionOption null", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.isDeployError()).toBe(false);
         });
 
         it("returns false if not deploy action", function() {
-            var controller = makeController();
+            makeController();
             $scope.action.option = {
                 name: "release"
             };
@@ -948,7 +948,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("returns false if osystems present", function() {
-            var controller = makeController();
+            makeController();
             $scope.action.option = {
                 name: "deploy"
             };
@@ -963,7 +963,7 @@ describe("NodeDetailsController", function() {
     describe("isSSHKeyError", function() {
 
         it("returns true if deploy action and missing ssh keys", function() {
-            var controller = makeController();
+            makeController();
             $scope.action.option = {
                 name: "deploy"
             };
@@ -974,7 +974,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("returns false if actionOption null", function() {
-            var controller = makeController();
+            makeController();
             var firstUser = makeUser();
             firstUser.sshkeys_count = 1;
             UsersManager._authUser = firstUser;
@@ -982,7 +982,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("returns false if not deploy action", function() {
-            var controller = makeController();
+            makeController();
             $scope.action.option = {
                 name: "release"
             };
@@ -993,7 +993,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("returns false if ssh keys present", function() {
-            var controller = makeController();
+            makeController();
             $scope.action.option = {
                 name: "deploy"
             };
@@ -1007,7 +1007,7 @@ describe("NodeDetailsController", function() {
     describe("actionOptionChanged", function() {
 
         it("clears actionError", function() {
-            var controller = makeController();
+            makeController();
             $scope.action.error = makeName("error");
             $scope.action.optionChanged();
             expect($scope.action.error).toBeNull();
@@ -1017,21 +1017,21 @@ describe("NodeDetailsController", function() {
     describe("actionCancel", function() {
 
         it("sets actionOption to null", function() {
-            var controller = makeController();
+            makeController();
             $scope.action.option = {};
             $scope.actionCancel();
             expect($scope.action.option).toBeNull();
         });
 
         it("clears actionError", function() {
-            var controller = makeController();
+            makeController();
             $scope.action.error = makeName("error");
             $scope.actionCancel();
             expect($scope.action.error).toBeNull();
         });
 
         it("resets showing_confirmation", function() {
-            var controller = makeController();
+            makeController();
             $scope.action.showing_confirmation = true;
             $scope.action.confirmation_message = makeName("message");
             $scope.action.confirmation_details = [
@@ -1046,7 +1046,7 @@ describe("NodeDetailsController", function() {
     describe("actionGo", function() {
 
         it("calls performAction with node and actionOption name", function() {
-            var controller = makeController();
+            makeController();
             spyOn(MachinesManager, "performAction").and.returnValue(
                 $q.defer().promise);
             $scope.node = node;
@@ -1059,7 +1059,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("calls performAction with osystem and distro_series", function() {
-            var controller = makeController();
+            makeController();
             spyOn(MachinesManager, "performAction").and.returnValue(
                 $q.defer().promise);
             $scope.node = node;
@@ -1078,7 +1078,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("calls performAction with install_kvm", function() {
-            var controller = makeController();
+            makeController();
             spyOn(MachinesManager, "performAction").and.returnValue(
                 $q.defer().promise);
             $scope.node = node;
@@ -1099,7 +1099,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("calls performAction with hwe kernel", function() {
-            var controller = makeController();
+            makeController();
             spyOn(MachinesManager, "performAction").and.returnValue(
                 $q.defer().promise);
             $scope.node = node;
@@ -1120,7 +1120,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("calls performAction with ga kernel", function() {
-            var controller = makeController();
+            makeController();
             spyOn(MachinesManager, "performAction").and.returnValue(
                 $q.defer().promise);
             $scope.node = node;
@@ -1141,7 +1141,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("calls performAction with commissionOptions", function() {
-            var controller = makeController();
+            makeController();
             spyOn(MachinesManager, "performAction").and.returnValue(
                 $q.defer().promise);
             $scope.node = node;
@@ -1187,7 +1187,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("calls performAction with testOptions", function() {
-            var controller = makeController();
+            makeController();
             spyOn(MachinesManager, "performAction").and.returnValue(
                 $q.defer().promise);
             $scope.node = node;
@@ -1213,7 +1213,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("sets showing_confirmation with testOptions", function() {
-            var controller = makeController();
+            makeController();
             spyOn(MachinesManager, "performAction").and.returnValue(
                 $q.defer().promise);
             node.status_code = 6;
@@ -1227,7 +1227,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("calls performAction with releaseOptions", function() {
-            var controller = makeController();
+            makeController();
             spyOn(MachinesManager, "performAction").and.returnValue(
                 $q.defer().promise);
             $scope.node = node;
@@ -1250,7 +1250,7 @@ describe("NodeDetailsController", function() {
 
         it("sets showing_confirmation with deleteOptions", function() {
             // Regression test for LP:1793478
-            var controller = makeController();
+            makeController();
             spyOn(ControllersManager, "performAction").and.returnValue(
                 $q.defer().promise);
             $scope.node = node;
@@ -1271,7 +1271,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("clears actionOption on resolve", function() {
-            var controller = makeController();
+            makeController();
             var defer = $q.defer();
             spyOn(MachinesManager, "performAction").and.returnValue(
                 defer.promise);
@@ -1286,7 +1286,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("clears osSelection on resolve", function() {
-            var controller = makeController();
+            makeController();
             var defer = $q.defer();
             spyOn(MachinesManager, "performAction").and.returnValue(
                 defer.promise);
@@ -1303,7 +1303,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("clears commissionOptions on resolve", function() {
-            var controller = makeController();
+            makeController();
             var defer = $q.defer();
             spyOn(MachinesManager, "performAction").and.returnValue(
                 defer.promise);
@@ -1341,7 +1341,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("clears actionError on resolve", function() {
-            var controller = makeController();
+            makeController();
             var defer = $q.defer();
             spyOn(MachinesManager, "performAction").and.returnValue(
                 defer.promise);
@@ -1357,7 +1357,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("changes path to node listing on delete", function() {
-            var controller = makeController();
+            makeController();
             var defer = $q.defer();
             spyOn(MachinesManager, "performAction").and.returnValue(
                 defer.promise);
@@ -1373,7 +1373,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("sets actionError when rejected", function() {
-            var controller = makeController();
+            makeController();
             var defer = $q.defer();
             spyOn(MachinesManager, "performAction").and.returnValue(
                 defer.promise);
@@ -1392,13 +1392,13 @@ describe("NodeDetailsController", function() {
     describe("hasUsableArchitectures", function() {
 
         it("returns true if architecture available", function() {
-            var controller = makeController();
+            makeController();
             $scope.summary.architecture.options = ["amd64/generic"];
             expect($scope.hasUsableArchitectures()).toBe(true);
         });
 
         it("returns false if no architecture available", function() {
-            var controller = makeController();
+            makeController();
             $scope.summary.architecture.options = [];
             expect($scope.hasUsableArchitectures()).toBe(false);
         });
@@ -1407,14 +1407,14 @@ describe("NodeDetailsController", function() {
     describe("getArchitecturePlaceholder", function() {
 
         it("returns choose if architecture available", function() {
-            var controller = makeController();
+            makeController();
             $scope.summary.architecture.options = ["amd64/generic"];
             expect($scope.getArchitecturePlaceholder()).toBe(
                 "Choose an architecture");
         });
 
         it("returns error if no architecture available", function() {
-            var controller = makeController();
+            makeController();
             $scope.summary.architecture.options = [];
             expect($scope.getArchitecturePlaceholder()).toBe(
                 "-- No usable architectures --");
@@ -1424,14 +1424,14 @@ describe("NodeDetailsController", function() {
     describe("hasInvalidArchitecture", function() {
 
         it("returns false if node is null", function() {
-            var controller = makeController();
+            makeController();
             $scope.node = null;
             $scope.summary.architecture.options = ["amd64/generic"];
             expect($scope.hasInvalidArchitecture()).toBe(false);
         });
 
         it("returns true if node.architecture is blank", function() {
-            var controller = makeController();
+            makeController();
             $scope.node = {
                 architecture: ""
             };
@@ -1440,7 +1440,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("returns true if node.architecture not in options", function() {
-            var controller = makeController();
+            makeController();
             $scope.node = {
                 architecture: "i386/generic"
             };
@@ -1449,7 +1449,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("returns false if node.architecture in options", function() {
-            var controller = makeController();
+            makeController();
             $scope.node = {
                 architecture: "amd64/generic"
             };
@@ -1461,20 +1461,20 @@ describe("NodeDetailsController", function() {
     describe("invalidArchitecture", function() {
 
         it("returns true if selected architecture empty", function() {
-            var controller = makeController();
+            makeController();
             $scope.summary.architecture.selected = "";
             expect($scope.invalidArchitecture()).toBe(true);
         });
 
         it("returns true if selected architecture not in options", function() {
-            var controller = makeController();
+            makeController();
             $scope.summary.architecture.options = [makeName("arch")];
             $scope.summary.architecture.selected = makeName("arch");
             expect($scope.invalidArchitecture()).toBe(true);
         });
 
         it("returns false if selected architecture in options", function() {
-            var controller = makeController();
+            makeController();
             var arch = makeName("arch");
             $scope.summary.architecture.options = [arch];
             $scope.summary.architecture.selected = arch;
@@ -1485,13 +1485,13 @@ describe("NodeDetailsController", function() {
     describe("isRackControllerConnected", function() {
 
         it("returns false no power_types", function() {
-            var controller = makeController();
+            makeController();
             $scope.power_types = [];
             expect($scope.isRackControllerConnected()).toBe(false);
         });
 
         it("returns true if power_types", function() {
-            var controller = makeController();
+            makeController();
             $scope.power_types = [{}];
             expect($scope.isRackControllerConnected()).toBe(true);
         });
@@ -1500,13 +1500,13 @@ describe("NodeDetailsController", function() {
     describe("hasPermission", function() {
 
         it("returns false no permissions field", function() {
-            var controller = makeController();
+            makeController();
             $scope.node = {};
             expect($scope.hasPermission('edit')).toBe(false);
         });
 
         it("returns false no permission in field", function() {
-            var controller = makeController();
+            makeController();
             $scope.node = {
                 permissions: ['delete']
             };
@@ -1514,7 +1514,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("returns true permissions", function() {
-            var controller = makeController();
+            makeController();
             $scope.node = {
                 permissions: ['edit']
             };
@@ -1525,7 +1525,7 @@ describe("NodeDetailsController", function() {
     describe("canEdit", function() {
 
         it("returns false if no edit permission", function() {
-            var controller = makeController();
+            makeController();
             $scope.isDevice = false;
             spyOn($scope, "hasPermission").and.returnValue(false);
             spyOn(
@@ -1535,7 +1535,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("returns true if edit permission but device", function() {
-            var controller = makeController();
+            makeController();
             $scope.isDevice = true;
             spyOn($scope, "hasPermission").and.returnValue(true);
             spyOn(
@@ -1545,7 +1545,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("returns false if rack disconnected", function() {
-            var controller = makeController();
+            makeController();
             $scope.isDevice = false;
             spyOn($scope, "hasPermission").and.returnValue(true);
             spyOn(
@@ -1556,7 +1556,7 @@ describe("NodeDetailsController", function() {
 
         it("returns false if machine is locked",
            function() {
-               var controller = makeController();
+               makeController();
                $scope.isDevice = false;
                spyOn($scope, "hasPermission").and.returnValue(true);
                spyOn(
@@ -1572,7 +1572,7 @@ describe("NodeDetailsController", function() {
 
         it("doesnt set editing false and editing_domain true if cannot edit",
            function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "canEdit").and.returnValue(true);
             $scope.header.editing = true;
             $scope.header.editing_domain = false;
@@ -1583,7 +1583,7 @@ describe("NodeDetailsController", function() {
 
         it("sets editing to false and editing_domain to true if able",
            function() {
-            var controller = makeController();
+            makeController();
             $scope.node = node;
             spyOn($scope, "canEdit").and.returnValue(false);
             $scope.header.editing = true;
@@ -1594,7 +1594,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("sets header.hostname.value to node hostname", function() {
-            var controller = makeController();
+            makeController();
             $scope.node = node;
             spyOn($scope, "canEdit").and.returnValue(false);
             $scope.editHeaderDomain();
@@ -1602,7 +1602,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("doesnt reset header.hostname.value on multiple calls", function() {
-            var controller = makeController();
+            makeController();
             $scope.node = node;
             spyOn($scope, "canEdit").and.returnValue(false);
             $scope.editHeaderDomain();
@@ -1617,7 +1617,7 @@ describe("NodeDetailsController", function() {
 
         it("doesnt set editing true and editing_domain false if cannot edit",
            function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "canEdit").and.returnValue(false);
             $scope.header.editing = false;
             $scope.header.editing_domain = true;
@@ -1628,7 +1628,7 @@ describe("NodeDetailsController", function() {
 
         it("sets editing to true and editing_domain to false if able",
            function() {
-            var controller = makeController();
+            makeController();
             $scope.node = node;
             spyOn($scope, "canEdit").and.returnValue(true);
             $scope.header.editing = false;
@@ -1639,7 +1639,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("sets header.hostname.value to node hostname", function() {
-            var controller = makeController();
+            makeController();
             $scope.node = node;
             spyOn($scope, "canEdit").and.returnValue(true);
             $scope.editHeader();
@@ -1647,7 +1647,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("doesnt reset header.hostname.value on multiple calls", function() {
-            var controller = makeController();
+            makeController();
             $scope.node = node;
             spyOn($scope, "canEdit").and.returnValue(true);
             $scope.editHeader();
@@ -1661,7 +1661,7 @@ describe("NodeDetailsController", function() {
     describe("editHeaderInvalid", function() {
 
         it("returns false if not editing and not editing_domain", function() {
-            var controller = makeController();
+            makeController();
             $scope.header.editing = false;
             $scope.header.editing_domain = false;
             $scope.header.hostname.value = "abc_invalid.local";
@@ -1669,7 +1669,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("returns true for bad values", function() {
-            var controller = makeController();
+            makeController();
             $scope.header.editing = true;
             $scope.header.editing_domain = false;
             var values = [
@@ -1701,7 +1701,7 @@ describe("NodeDetailsController", function() {
 
         it("sets editing and editing_domain to false for nameHeader section",
            function() {
-            var controller = makeController();
+            makeController();
             $scope.node = node;
             $scope.header.editing = true;
             $scope.header.editing_domain = true;
@@ -1711,7 +1711,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("sets header.hostname.value back to fqdn", function() {
-            var controller = makeController();
+            makeController();
             $scope.node = node;
             $scope.header.editing = true;
             $scope.header.hostname.value = makeName("name");
@@ -1723,7 +1723,7 @@ describe("NodeDetailsController", function() {
     describe("saveEditHeader", function() {
 
         it("does nothing if value is invalid", function() {
-            var controller = makeController();
+            makeController();
             $scope.node = node;
             spyOn($scope, "editHeaderInvalid").and.returnValue(true);
             var sentinel = {};
@@ -1735,7 +1735,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("sets editing to false", function() {
-            var controller = makeController();
+            makeController();
             spyOn(MachinesManager, "updateItem").and.returnValue(
                 $q.defer().promise);
             spyOn($scope, "editHeaderInvalid").and.returnValue(false);
@@ -1751,7 +1751,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("calls updateItem with copy of node", function() {
-            var controller = makeController();
+            makeController();
             spyOn(MachinesManager, "updateItem").and.returnValue(
                 $q.defer().promise);
             spyOn($scope, "editHeaderInvalid").and.returnValue(false);
@@ -1766,7 +1766,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("calls updateItem with new hostname on node", function() {
-            var controller = makeController();
+            makeController();
             spyOn(MachinesManager, "updateItem").and.returnValue(
                 $q.defer().promise);
             spyOn($scope, "editHeaderInvalid").and.returnValue(false);
@@ -1782,7 +1782,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("calls updateName once updateItem resolves", function() {
-            var controller = makeController();
+            makeController();
             var defer = $q.defer();
             spyOn(MachinesManager, "updateItem").and.returnValue(
                 defer.promise);
@@ -1805,7 +1805,7 @@ describe("NodeDetailsController", function() {
     describe("editSummary", function() {
 
         it("doesnt sets editing to true if cannot edit", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "canEdit").and.returnValue(false);
             $scope.summary.editing = false;
             $scope.editSummary();
@@ -1813,7 +1813,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("sets editing to true for summary section", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "canEdit").and.returnValue(true);
             $scope.summary.editing = false;
             $scope.editSummary();
@@ -1824,7 +1824,7 @@ describe("NodeDetailsController", function() {
     describe("cancelEditSummary", function() {
 
         it("sets editing to false for summary section", function() {
-            var controller = makeController();
+            makeController();
             $scope.node = node;
             $scope.summary.architecture.options = [node.architecture];
             $scope.summary.editing = true;
@@ -1833,7 +1833,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("doesnt set editing to false if invalid architecture", function() {
-            var controller = makeController();
+            makeController();
             $scope.node = node;
             $scope.summary.editing = true;
             $scope.cancelEditSummary();
@@ -1841,7 +1841,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("does set editing to true if device", function() {
-            var controller = makeController();
+            makeController();
             $scope.isDevice = true;
             $scope.node = node;
             $scope.summary.editing = true;
@@ -1850,7 +1850,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("does set editing to true if controller", function() {
-            var controller = makeController();
+            makeController();
             $scope.isController = true;
             $scope.node = node;
             $scope.summary.editing = true;
@@ -1859,7 +1859,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("calls updateSummary", function() {
-            var controller = makeController();
+            makeController();
             $scope.node = node;
             $scope.summary.architecture.options = [node.architecture];
             $scope.summary.editing = true;
@@ -1883,7 +1883,7 @@ describe("NodeDetailsController", function() {
         }
 
         it("does nothing if invalidArchitecture", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "invalidArchitecture").and.returnValue(true);
             $scope.node = node;
             var editing = {};
@@ -1895,7 +1895,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("sets editing to false", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "invalidArchitecture").and.returnValue(false);
             spyOn(MachinesManager, "updateItem").and.returnValue(
                 $q.defer().promise);
@@ -1908,7 +1908,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("calls updateItem with copy of node", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "invalidArchitecture").and.returnValue(false);
             spyOn(MachinesManager, "updateItem").and.returnValue(
                 $q.defer().promise);
@@ -1922,7 +1922,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("calls updateItem with new copied values on node", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "invalidArchitecture").and.returnValue(false);
             spyOn(MachinesManager, "updateItem").and.returnValue(
                 $q.defer().promise);
@@ -1947,7 +1947,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("logs error if not disconnected error", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "invalidArchitecture").and.returnValue(false);
 
             var defer = $q.defer();
@@ -1970,13 +1970,13 @@ describe("NodeDetailsController", function() {
     describe("invalidPowerType", function() {
 
         it("returns true if missing power type", function() {
-            var controller = makeController();
+            makeController();
             $scope.power.type = null;
             expect($scope.invalidPowerType()).toBe(true);
         });
 
         it("returns false if selected power type", function() {
-            var controller = makeController();
+            makeController();
             $scope.power.type = {
                 name: makeName("power")
             };
@@ -1987,7 +1987,7 @@ describe("NodeDetailsController", function() {
     describe("editPower", function() {
 
         it("doesnt sets editing to true if cannot edit", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "canEdit").and.returnValue(false);
             $scope.power.editing = false;
             $scope.editPower();
@@ -1995,7 +1995,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("sets editing to true for power section", function() {
-            var controller = makeController();
+            makeController();
             spyOn($scope, "canEdit").and.returnValue(true);
             $scope.power.editing = false;
             $scope.editPower();
@@ -2007,7 +2007,7 @@ describe("NodeDetailsController", function() {
     describe("cancelEditPower", function() {
 
         it("sets editing to false for power section", function() {
-            var controller = makeController();
+            makeController();
             node.power_type = makeName("power");
             $scope.node = node;
             $scope.power.editing = true;
@@ -2016,7 +2016,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("doesnt sets editing to false when no power_type", function() {
-            var controller = makeController();
+            makeController();
             $scope.node = node;
             $scope.power.editing = true;
             $scope.cancelEditPower();
@@ -2024,7 +2024,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("sets editing false with no power_type for controller", function() {
-            var controller = makeController();
+            makeController();
             node.node_type = 4;
             $scope.node = node;
             $scope.power.editing = true;
@@ -2033,7 +2033,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("sets in_pod to true for node in pod", function() {
-            var controller = makeController();
+            makeController();
             node.power_type = makeName("power");
             node.pod = makeName("pod");
             $scope.node = node;
@@ -2047,7 +2047,7 @@ describe("NodeDetailsController", function() {
     describe("saveEditPower", function() {
 
         it("does nothing if no selected power_type", function() {
-            var controller = makeController();
+            makeController();
             $scope.node = node;
             var editing = {};
             $scope.power.editing = editing;
@@ -2059,7 +2059,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("sets editing to false", function() {
-            var controller = makeController();
+            makeController();
             spyOn(MachinesManager, "updateItem").and.returnValue(
                 $q.defer().promise);
 
@@ -2074,7 +2074,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("calls updateItem with copy of node", function() {
-            var controller = makeController();
+            makeController();
             spyOn(MachinesManager, "updateItem").and.returnValue(
                 $q.defer().promise);
 
@@ -2090,7 +2090,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("calls updateItem with new copied values on node", function() {
-            var controller = makeController();
+            makeController();
             spyOn(MachinesManager, "updateItem").and.returnValue(
                 $q.defer().promise);
 
@@ -2116,7 +2116,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("calls handleSaveError once updateItem is rejected", function() {
-            var controller = makeController();
+            makeController();
 
             var defer = $q.defer();
             spyOn(MachinesManager, "updateItem").and.returnValue(
@@ -2146,26 +2146,26 @@ describe("NodeDetailsController", function() {
     describe("allowShowMoreEvents", function() {
 
         it("returns false if node is null", function() {
-            var controller = makeController();
+            makeController();
             $scope.node = null;
             expect($scope.allowShowMoreEvents()).toBe(false);
         });
 
         it("returns false if node.events is not array", function() {
-            var controller = makeController();
+            makeController();
             $scope.node = node;
             $scope.node.events = undefined;
             expect($scope.allowShowMoreEvents()).toBe(false);
         });
 
         it("returns false if node has no events", function() {
-            var controller = makeController();
+            makeController();
             $scope.node = node;
             expect($scope.allowShowMoreEvents()).toBe(false);
         });
 
         it("returns false if node events less then the limit", function() {
-            var controller = makeController();
+            makeController();
             $scope.node = node;
             $scope.node.events = [
                 makeEvent(),
@@ -2176,7 +2176,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("returns false if events limit greater than 50", function() {
-            var controller = makeController();
+            makeController();
             $scope.node = node;
             var i;
             for(i = 0; i < 50; i++) {
@@ -2187,7 +2187,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("returns true if more events than limit", function() {
-            var controller = makeController();
+            makeController();
             $scope.node = node;
             var i;
             for(i = 0; i < 20; i++) {
@@ -2201,7 +2201,7 @@ describe("NodeDetailsController", function() {
     describe("showMoreEvents", function() {
 
         it("increments events limit by 10", function() {
-            var controller = makeController();
+            makeController();
             $scope.showMoreEvents();
             expect($scope.events.limit).toBe(20);
             $scope.showMoreEvents();
@@ -2212,7 +2212,7 @@ describe("NodeDetailsController", function() {
     describe("getEventText", function() {
 
         it("returns just event type description without dash", function() {
-            var controller = makeController();
+            makeController();
             var evt = makeEvent();
             delete evt.description;
             expect($scope.getEventText(evt)).toBe(evt.type.description);
@@ -2220,7 +2220,7 @@ describe("NodeDetailsController", function() {
 
         it("returns event type description with event description",
             function() {
-                var controller = makeController();
+                makeController();
                 var evt = makeEvent();
                 expect($scope.getEventText(evt)).toBe(
                     evt.type.description + " - " + evt.description);
@@ -2230,7 +2230,7 @@ describe("NodeDetailsController", function() {
     describe("getPowerEventError", function() {
 
         it("returns event if there is a power event error", function() {
-            var controller = makeController();
+            makeController();
             var evt = makeEvent();
             evt.type.level = "warning";
             evt.type.description = "Failed to query node's BMC";
@@ -2243,7 +2243,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("returns nothing if there is no power event error", function() {
-            var controller = makeController();
+            makeController();
             var evt_info = makeEvent();
             var evt_error = makeEvent();
             evt_info.type.level = "info";
@@ -2263,7 +2263,7 @@ describe("NodeDetailsController", function() {
     describe("hasPowerEventError", function() {
 
         it("returns true if last event is an error", function() {
-            var controller = makeController();
+            makeController();
             var evt = makeEvent();
             evt.type.level = "warning";
             evt.type.description = "Failed to query node's BMC";
@@ -2273,7 +2273,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("returns false if last event is not an error", function() {
-            var controller = makeController();
+            makeController();
             $scope.node = node;
             $scope.node.events = [makeEvent()];
             expect($scope.hasPowerEventError()).toBe(false);
@@ -2283,14 +2283,14 @@ describe("NodeDetailsController", function() {
     describe("getPowerEventErrorText", function() {
 
         it("returns just empty string", function() {
-            var controller = makeController();
+            makeController();
             $scope.node = node;
             $scope.node.events = [makeEvent()];
             expect($scope.getPowerEventErrorText()).toBe("");
         });
 
         it("returns event description", function() {
-            var controller = makeController();
+            makeController();
             var evt = makeEvent();
             evt.type.level = "warning";
             evt.type.description = "Failed to query node's BMC";
@@ -2303,33 +2303,33 @@ describe("NodeDetailsController", function() {
     describe("getServiceClass", function() {
 
         it("returns 'none' if null", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.getServiceClass(null)).toBe("none");
         });
 
         it("returns 'success' when running", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.getServiceClass({
                 status: "running"
             })).toBe("success");
         });
 
         it("returns 'power-error' when dead", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.getServiceClass({
                 status: "dead"
             })).toBe("error");
         });
 
         it("returns 'warning' when degraded", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.getServiceClass({
                 status: "degraded"
             })).toBe("warning");
         });
 
         it("returns 'none' for anything else", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.getServiceClass({
                 status: makeName("status")
             })).toBe("none");
@@ -2338,13 +2338,13 @@ describe("NodeDetailsController", function() {
 
     describe("hasCustomCommissioningScripts", function() {
         it("returns true with custom commissioning scripts", function() {
-            var controller = makeController();
+            makeController();
             ScriptsManager._items.push({script_type: 0});
             expect($scope.hasCustomCommissioningScripts()).toBe(true);
         });
 
         it("returns false without custom commissioning scripts", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.hasCustomCommissioningScripts()).toBe(false);
         });
     });
@@ -2352,7 +2352,7 @@ describe("NodeDetailsController", function() {
     describe("showFailedTestWarning", function() {
 
         it("returns false when device", function() {
-            var controller = makeController();
+            makeController();
             $scope.node = {
                 node_type: 1
             };
@@ -2360,7 +2360,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("returns false when new, commissioning, or testing", function() {
-            var controller = makeController();
+            makeController();
             $scope.node = node;
             angular.forEach([0, 1, 2, 21, 22], function(status) {
                 node.status_code = status;
@@ -2369,7 +2369,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("returns false when tests havn't been run or passed", function() {
-            var controller = makeController();
+            makeController();
             // READY
             node.status_code = 4;
             $scope.node = node;
@@ -2380,7 +2380,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("returns true otherwise", function() {
-            var controller = makeController();
+            makeController();
             var i, j;
             $scope.node = node;
             // i < 3 or i > 20 is tested above.
@@ -2397,14 +2397,14 @@ describe("NodeDetailsController", function() {
     describe("getCPUSubtext", function() {
 
         it("returns only cores when unknown speed", function() {
-            var controller = makeController();
+            makeController();
             $scope.node = node;
             expect($scope.getCPUSubtext()).toEqual(
                 node.cpu_count + " cores");
         });
 
         it("returns speed in mhz", function() {
-            var controller = makeController();
+            makeController();
             node.cpu_speed = makeInteger(100, 999);
             $scope.node = node;
             expect($scope.getCPUSubtext()).toEqual(
@@ -2412,7 +2412,7 @@ describe("NodeDetailsController", function() {
         });
 
         it("returns speed in ghz", function() {
-            var controller = makeController();
+            makeController();
             node.cpu_speed = makeInteger(1000, 10000);
             $scope.node = node;
             expect($scope.getCPUSubtext()).toEqual(

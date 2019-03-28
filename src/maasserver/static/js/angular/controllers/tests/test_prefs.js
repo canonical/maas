@@ -45,19 +45,19 @@ describe("PreferencesController", function() {
     }
 
     it("calls loadManager with correct managers", function() {
-        var controller = makeController();
+        makeController();
         expect(ManagerHelperService.loadManager).toHaveBeenCalledWith(
             $scope, UsersManager);
     });
 
     it("sets initial $scope", function() {
-        var controller = makeController();
+        makeController();
         expect($scope.loading).toBe(true);
     });
 
     it("clears loading", function() {
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
         defer.resolve();
         $scope.$digest();
         expect($scope.loading).toBe(false);

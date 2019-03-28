@@ -97,13 +97,13 @@ describe("SettingsController", function() {
     }
 
     it("sets title to loading and page to settings", function() {
-        var controller = makeController();
+        makeController();
         expect($rootScope.title).toBe("Loading...");
         expect($rootScope.page).toBe("settings");
     });
 
     it("sets initial values", function() {
-        var controller = makeController();
+        makeController();
         expect($scope.loading).toBe(true);
         expect($scope.loading).toBe(true);
         expect($scope.snippetsManager).toBe(DHCPSnippetsManager);
@@ -133,20 +133,20 @@ describe("SettingsController", function() {
 
     it("sets the values for 'dhcp' section", function() {
         $routeParams.section = "dhcp";
-        var controller = makeController();
+        makeController();
         expect($scope.title).toBe("DHCP snippets");
         expect($scope.currentpage).toBe("dhcp");
     });
 
     it("sets the values for 'repositories' section", function() {
         $routeParams.section = "repositories";
-        var controller = makeController();
+        makeController();
         expect($scope.title).toBe("Package repositories");
         expect($scope.currentpage).toBe("repositories");
     });
 
     it("calls loadManagers with all needed managers", function() {
-        var controller = makeController();
+        makeController();
         expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
             $scope, [
                 PackageRepositoriesManager, DHCPSnippetsManager,
@@ -156,7 +156,7 @@ describe("SettingsController", function() {
 
     it("sets loading to false", function() {
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
         defer.resolve();
         $scope.$digest();
         expect($scope.loading).toBe(false);
@@ -165,7 +165,7 @@ describe("SettingsController", function() {
     describe("repositoryEnabledToggle", function() {
 
         it("calls updateItem", function() {
-            var controller = makeController();
+            makeController();
             var repository = makeRepo();
             spyOn(PackageRepositoriesManager, "updateItem");
             $scope.repositoryEnabledToggle(repository);
@@ -177,7 +177,7 @@ describe("SettingsController", function() {
     describe("repositoryEnterRemove", function() {
 
         it("clears new and edit and sets delete", function() {
-            var controller = makeController();
+            makeController();
             var repository = makeRepo();
             $scope.newRepository = {};
             $scope.editRepository = {};
@@ -191,7 +191,7 @@ describe("SettingsController", function() {
     describe("repositoryExitRemove", function() {
 
         it("clears deleteRepository", function() {
-            var controller = makeController();
+            makeController();
             $scope.deleteRepository = {};
             $scope.repositoryExitRemove();
             expect($scope.deleteRepository).toBeNull();
@@ -201,7 +201,7 @@ describe("SettingsController", function() {
     describe("repositoryConfirmRemove", function() {
 
         it("calls deleteItem and then repositoryExitRemove", function() {
-            var controller = makeController();
+            makeController();
             var repository = makeRepo();
             var defer = $q.defer();
             spyOn(PackageRepositoriesManager, "deleteItem").and.returnValue(
@@ -220,26 +220,26 @@ describe("SettingsController", function() {
     describe("isPPA", function() {
 
         it("false when not object", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.isPPA(null)).toBe(false);
         });
 
         it("false when no url", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.isPPA({
                 url: null
             })).toBe(false);
         });
 
         it("true when url startswith", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.isPPA({
                 url: "ppa:"
             })).toBe(true);
         });
 
         it("true when url contains ppa.launchpad.net", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.isPPA({
                 url: "http://ppa.launchpad.net/"
             })).toBe(true);
@@ -249,26 +249,26 @@ describe("SettingsController", function() {
     describe("isMirror", function() {
 
         it("false when not object", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.isMirror(null)).toBe(false);
         });
 
         it("false when no name", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.isMirror({
                 name: null
             })).toBe(false);
         });
 
         it("true when name is 'main_archive'", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.isMirror({
                 name: "main_archive"
             })).toBe(true);
         });
 
         it("true when name is 'ports_archive'", function() {
-            var controller = makeController();
+            makeController();
             expect($scope.isMirror({
                 name: "ports_archive"
             })).toBe(true);
@@ -278,7 +278,7 @@ describe("SettingsController", function() {
     describe("repositoryEnterEdit", function() {
 
         it("clears new and delete and sets edit", function() {
-            var controller = makeController();
+            makeController();
             var repository = makeRepo();
             $scope.newRepository = {};
             $scope.deleteRepository = {};
@@ -292,7 +292,7 @@ describe("SettingsController", function() {
     describe("repositoryExitEdit", function() {
 
         it("clears edit", function() {
-            var controller = makeController();
+            makeController();
             $scope.editRepository = {};
             $scope.repositoryExitEdit();
             expect($scope.editRepository).toBeNull();
@@ -302,7 +302,7 @@ describe("SettingsController", function() {
     describe("repositoryAdd", function() {
 
         it("sets newRepository for ppa", function() {
-            var controller = makeController();
+            makeController();
             $scope.repositoryAdd(true);
             expect($scope.newRepository).toEqual({
                 name: "",
@@ -316,7 +316,7 @@ describe("SettingsController", function() {
         });
 
         it("sets newRepository not for ppa", function() {
-            var controller = makeController();
+            makeController();
             $scope.repositoryAdd(false);
             expect($scope.newRepository).toEqual({
                 name: "",
@@ -333,7 +333,7 @@ describe("SettingsController", function() {
     describe("repositoryAddCancel", function() {
 
         it("newRepository gets cleared", function() {
-            var controller = makeController();
+            makeController();
             $scope.newRepository = {};
             $scope.repositoryAddCancel();
             expect($scope.newRepository).toBeNull();
@@ -343,7 +343,7 @@ describe("SettingsController", function() {
     describe("getSubnetName", function() {
 
         it("calls SubnetsManager.getName", function() {
-            var controller = makeController();
+            makeController();
             var subnet = {};
             var subnetsName = {};
             spyOn(SubnetsManager, "getName").and.returnValue(subnetsName);
@@ -355,21 +355,21 @@ describe("SettingsController", function() {
     describe("getSnippetTypeText", function() {
 
         it("returns 'Node'", function() {
-            var controller = makeController();
+            makeController();
             var snippet = makeSnippet();
             snippet.node = makeName("system_id");
             expect($scope.getSnippetTypeText(snippet)).toBe("Node");
         });
 
         it("returns 'Subnet'", function() {
-            var controller = makeController();
+            makeController();
             var snippet = makeSnippet();
             snippet.subnet = makeInteger();
             expect($scope.getSnippetTypeText(snippet)).toBe("Subnet");
         });
 
         it("returns 'Global'", function() {
-            var controller = makeController();
+            makeController();
             var snippet = makeSnippet();
             expect($scope.getSnippetTypeText(snippet)).toBe("Global");
         });
@@ -378,7 +378,7 @@ describe("SettingsController", function() {
     describe("getSnippetAppliesToObject", function() {
 
         it("returns node from MachinesManager", function() {
-            var controller = makeController();
+            makeController();
             var system_id = makeName("system_id");
             var node = {
                 system_id: system_id
@@ -390,7 +390,7 @@ describe("SettingsController", function() {
         });
 
         it("returns device from DevicesManager", function() {
-            var controller = makeController();
+            makeController();
             var system_id = makeName("system_id");
             var device = {
                 system_id: system_id
@@ -402,7 +402,7 @@ describe("SettingsController", function() {
         });
 
         it("returns controller from ControllersManager", function() {
-            var c = makeController();
+            makeController();
             var system_id = makeName("system_id");
             var controller = {
                 system_id: system_id
@@ -414,7 +414,7 @@ describe("SettingsController", function() {
         });
 
         it("returns subnet from SubnetsManager", function() {
-            var controller = makeController();
+            makeController();
             var subnet_id = makeInteger(0, 100);
             var subnet = {
                 id: subnet_id
@@ -429,7 +429,7 @@ describe("SettingsController", function() {
     describe("getSnippetAppliesToText", function() {
 
         it("returns node.fqdn from MachinesManager", function() {
-            var controller = makeController();
+            makeController();
             var system_id = makeName("system_id");
             var fqdn = makeName("fqdn");
             var node = {
@@ -443,7 +443,7 @@ describe("SettingsController", function() {
         });
 
         it("returns device.fqdn from DevicesManager", function() {
-            var controller = makeController();
+            makeController();
             var system_id = makeName("system_id");
             var fqdn = makeName("fqdn");
             var device = {
@@ -457,7 +457,7 @@ describe("SettingsController", function() {
         });
 
         it("returns controller.fqdn from ControllersManager", function() {
-            var c = makeController();
+            makeController();
             var system_id = makeName("system_id");
             var fqdn = makeName("fqdn");
             var controller = {
@@ -471,7 +471,7 @@ describe("SettingsController", function() {
         });
 
         it("returns subnet from SubnetsManager", function() {
-            var controller = makeController();
+            makeController();
             var subnet_id = makeInteger(0, 100);
             var cidr = makeName("cidr");
             var subnet = {
@@ -488,7 +488,7 @@ describe("SettingsController", function() {
     describe("snippetEnterRemove", function() {
 
         it("clears new and edit and sets delete", function() {
-            var controller = makeController();
+            makeController();
             var snippet = makeSnippet();
             $scope.newSnippet = {};
             $scope.editSnippet = {};
@@ -502,7 +502,7 @@ describe("SettingsController", function() {
     describe("snippetExitRemove", function() {
 
         it("sets delete to null", function() {
-            var controller = makeController();
+            makeController();
             $scope.deleteSnippet = {};
             $scope.snippetExitRemove();
             expect($scope.deleteSnippet).toBeNull();
@@ -512,7 +512,7 @@ describe("SettingsController", function() {
     describe("snippetConfirmRemove", function() {
 
         it("calls deleteItem and then snippetExitRemove", function() {
-            var controller = makeController();
+            makeController();
             var snippet = makeSnippet();
             var defer = $q.defer();
             spyOn(DHCPSnippetsManager, "deleteItem").and.returnValue(
@@ -531,8 +531,8 @@ describe("SettingsController", function() {
     describe("snippetEnterEdit", function() {
 
         it("clears new and delete and sets edit", function() {
-            var defer = $q.defer();
-            var controller = makeController();
+            $q.defer();
+            makeController();
             var snippet = makeSnippet();
 
             $scope.newSnippet = {};
@@ -549,7 +549,7 @@ describe("SettingsController", function() {
     describe("snippetExitEdit", function() {
 
         it("clears editSnippet", function() {
-            var controller = makeController();
+            makeController();
             $scope.editSnippet = {};
 
             $scope.snippetExitEdit();
@@ -560,7 +560,7 @@ describe("SettingsController", function() {
     describe("snippetToggle", function() {
 
         it("calls updateItem", function() {
-            var controller = makeController();
+            makeController();
             var snippet = makeSnippet();
             spyOn(DHCPSnippetsManager, "updateItem").and.returnValue(
                 $q.defer().promise);
@@ -570,7 +570,7 @@ describe("SettingsController", function() {
         });
 
         it("updateItem reject resets enabled", function() {
-            var controller = makeController();
+            makeController();
             var snippet = makeSnippet();
             defer = $q.defer();
             spyOn(DHCPSnippetsManager, "updateItem").and.returnValue(
@@ -588,7 +588,7 @@ describe("SettingsController", function() {
     describe("snippetAdd", function() {
 
         it("sets newSnippet", function() {
-            var controller = makeController();
+            makeController();
             $scope.editSnippet = {};
             $scope.deleteSnippet = {};
             $scope.snippetAdd();
@@ -605,7 +605,7 @@ describe("SettingsController", function() {
     describe("snippetAddCancel", function() {
 
         it("newSnippet gets cleared", function() {
-            var controller = makeController();
+            makeController();
             $scope.newSnippet = {};
             $scope.snippetAddCancel();
             expect($scope.newSnippet).toBeNull();

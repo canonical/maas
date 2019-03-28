@@ -50,28 +50,28 @@ describe("DomainsListController", function() {
     }
 
     it("sets title and page on $rootScope", function() {
-        var controller = makeController();
+        makeController();
         expect($rootScope.title).toBe("DNS");
         expect($rootScope.page).toBe("domains");
     });
 
     it("sets initial values on $scope", function() {
         // tab-independent variables.
-        var controller = makeController();
+        makeController();
         expect($scope.domains).toBe(DomainsManager.getItems());
         expect($scope.loading).toBe(true);
     });
 
     it("calls loadManagers with [DomainsManager, UsersManager]",
         function() {
-            var controller = makeController();
+            makeController();
             expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
                 $scope, [DomainsManager, UsersManager]);
         });
 
     it("sets loading to false when loadManagers resolves", function() {
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
         defer.resolve();
         $rootScope.$digest();
         expect($scope.loading).toBe(false);
@@ -80,7 +80,7 @@ describe("DomainsListController", function() {
     describe("addDomain", function() {
 
         it("calls show in addDomainScope", function() {
-            var controller = makeController();
+            makeController();
             $scope.addDomainScope = {
                 show: jasmine.createSpy("show")
             };
@@ -92,7 +92,7 @@ describe("DomainsListController", function() {
     describe("cancelAddDomain", function() {
 
         it("calls cancel in addDomainScope", function() {
-            var controller = makeController();
+            makeController();
             $scope.addDomainScope = {
                 cancel: jasmine.createSpy("cancel")
             };
@@ -104,7 +104,7 @@ describe("DomainsListController", function() {
     describe("confirmSetDefault", function() {
 
         it("sets confirmSetDefaultRow to the specified row", function() {
-            var controller = makeController();
+            makeController();
             var obj = {
                 id: makeInteger(0, 100)
             };
@@ -116,7 +116,7 @@ describe("DomainsListController", function() {
     describe("cancelSetDefault", function() {
 
         it("sets confirmSetDefaultRow to the specified row", function() {
-            var controller = makeController();
+            makeController();
             var obj = {
                 id: makeInteger(0, 100)
             };
@@ -129,7 +129,7 @@ describe("DomainsListController", function() {
     describe("setDefault", function() {
 
         it("calls DomainsManager.setDefault and clears selection", function() {
-            var controller = makeController();
+            makeController();
             spyOn(DomainsManager, "setDefault");
             var obj = {
                 id: makeInteger(0, 100)

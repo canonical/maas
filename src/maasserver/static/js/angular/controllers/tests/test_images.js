@@ -51,19 +51,19 @@ describe("ImagesController", function() {
     }
 
     it("sets title and page on $rootScope", function() {
-        var controller = makeController();
+        makeController();
         expect($rootScope.title).toBe("Loading...");
         expect($rootScope.page).toBe("images");
     });
 
     it("calls loadManagers with correct managers", function() {
-        var controller = makeController();
+        makeController();
         expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
             $scope, [ConfigsManager, UsersManager]);
     });
 
     it("sets initial $scope", function() {
-        var controller = makeController();
+        makeController();
         expect($scope.loading).toBe(true);
         expect($scope.bootResources).toBe(BootResourcesManager.getData());
         expect($scope.configManager).toBe(ConfigsManager);
@@ -71,7 +71,7 @@ describe("ImagesController", function() {
     });
 
     it("clears loading and sets title", function() {
-        var controller = makeController();
+        makeController();
         BootResourcesManager._data.resources = [];
         $scope.$digest();
         expect($scope.loading).toBe(false);
@@ -80,7 +80,7 @@ describe("ImagesController", function() {
 
     it("sets autoImport object", function() {
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
         var autoImport = {
             name: "boot_images_auto_import",
             value: true
@@ -94,7 +94,7 @@ describe("ImagesController", function() {
     describe("isSuperUser", function() {
 
         it("returns isSuperUser from UsersManager", function() {
-            var controller = makeController();
+            makeController();
             var sentinel = {};
             spyOn(UsersManager, "isSuperUser").and.returnValue(sentinel);
             expect($scope.isSuperUser()).toBe(sentinel);

@@ -96,14 +96,14 @@ describe("SpaceDetailsController", function() {
     }
 
     it("sets title and page on $rootScope", function() {
-        var controller = makeController();
+        makeController();
         expect($rootScope.title).toBe("Loading...");
         expect($rootScope.page).toBe("networks");
     });
 
     it("calls loadManagers with correct managers" +
         function() {
-            var controller = makeController();
+            makeController();
             expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
                 $scope, [
                     SpacesManager, VLANsManager, SubnetsManager,
@@ -116,7 +116,7 @@ describe("SpaceDetailsController", function() {
         spyOn(ErrorService, "raiseError").and.returnValue(
             $q.defer().promise);
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
         $routeParams.space_id = 'xyzzy';
 
         defer.resolve();
@@ -132,7 +132,7 @@ describe("SpaceDetailsController", function() {
         spyOn(SpacesManager, "setActiveItem").and.returnValue(
             $q.defer().promise);
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
         SpacesManager._activeItem = space;
         $routeParams.space_id = space.id;
 
@@ -148,7 +148,7 @@ describe("SpaceDetailsController", function() {
         spyOn(SpacesManager, "setActiveItem").and.returnValue(
             $q.defer().promise);
         var defer = $q.defer();
-        var controller = makeController(defer);
+        makeController(defer);
         $routeParams.space_id = space.id;
 
         defer.resolve();
@@ -159,26 +159,26 @@ describe("SpaceDetailsController", function() {
     });
 
     it("sets space and loaded once setActiveItem resolves", function() {
-        var controller = makeControllerResolveSetActiveItem();
+        makeControllerResolveSetActiveItem();
         expect($scope.space).toBe(space);
         expect($scope.loaded).toBe(true);
     });
 
     it("title is updated once setActiveItem resolves", function() {
-        var controller = makeControllerResolveSetActiveItem();
+        makeControllerResolveSetActiveItem();
         expect($rootScope.title).toBe(space.name);
     });
 
     it("default space title is not special", function() {
         space.id = 0;
-        var controller = makeControllerResolveSetActiveItem();
+        makeControllerResolveSetActiveItem();
         expect($rootScope.title).toBe(space.name);
     });
 
     describe("enterEditSummary", function() {
 
       it("sets editSummary", function() {
-        var controller = makeController();
+        makeController();
         $scope.enterEditSummary();
         expect($scope.editSummary).toBe(true);
       });
@@ -187,7 +187,7 @@ describe("SpaceDetailsController", function() {
     describe("exitEditSummary", function() {
 
       it("sets editSummary", function() {
-        var controller = makeController();
+        makeController();
         $scope.enterEditSummary();
         $scope.exitEditSummary();
         expect($scope.editSummary).toBe(false);
@@ -197,19 +197,19 @@ describe("SpaceDetailsController", function() {
     describe("canBeDeleted", function() {
 
         it("returns false if space is null", function() {
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             $scope.space = null;
             expect($scope.canBeDeleted()).toBe(false);
         });
 
         it("returns false if space has subnets", function() {
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             $scope.space.subnet_ids = [makeInteger()];
             expect($scope.canBeDeleted()).toBe(false);
         });
 
         it("returns true if space has no subnets", function() {
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             $scope.space.subnet_ids = [];
             expect($scope.canBeDeleted()).toBe(true);
         });
@@ -218,13 +218,13 @@ describe("SpaceDetailsController", function() {
     describe("deleteButton", function() {
 
         it("confirms delete", function() {
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             $scope.deleteButton();
             expect($scope.confirmingDelete).toBe(true);
         });
 
         it("clears error", function() {
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             $scope.error = makeName("error");
             $scope.deleteButton();
             expect($scope.error).toBeNull();
@@ -234,7 +234,7 @@ describe("SpaceDetailsController", function() {
     describe("cancelDeleteButton", function() {
 
         it("cancels delete", function() {
-            var controller = makeControllerResolveSetActiveItem();
+            makeControllerResolveSetActiveItem();
             $scope.deleteButton();
             $scope.cancelDeleteButton();
             expect($scope.confirmingDelete).toBe(false);
@@ -247,7 +247,7 @@ describe("SpaceDetailsController", function() {
             $location = {};
             $location.path = jasmine.createSpy('path');
             $location.search = jasmine.createSpy('search');
-            var controller = makeController();
+            makeController();
             var deleteSpace = spyOn(SpacesManager, "deleteSpace");
             var defer = $q.defer();
             deleteSpace.and.returnValue(defer.promise);
