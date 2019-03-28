@@ -48,13 +48,49 @@ logger = logging.getLogger(__name__)
 # Used to generate the conditional bootloader behaviour
 CONDITIONAL_BOOTLOADER = tempita.Template("""
 {{if ipv6}}
+{{if user_class}}
 {{behaviour}} exists dhcp6.client-arch-type and
-  option dhcp6.client-arch-type = {{arch_octet}} {
+  option dhcp6.client-arch-type = {{arch_octet}} and
+  exists dhcp6.user-class and
+  option dhcp6.user-class = \"{{user_class}}\" {
+    # {{name}}
     option dhcp6.bootfile-url \"{{url}}\";
+    {{if path_prefix_force}}
     if exists dhcp6.oro {
         # Always send the PXELINUX option (path-prefix)
         option dhcp6.oro = concat(option dhcp6.oro,00d2);
     }
+    {{endif}}
+}
+{{else}}
+{{behaviour}} exists dhcp6.client-arch-type and
+  option dhcp6.client-arch-type = {{arch_octet}} {
+    # {{name}}
+    option dhcp6.bootfile-url \"{{url}}\";
+    {{if path_prefix_force}}
+    if exists dhcp6.oro {
+        # Always send the PXELINUX option (path-prefix)
+        option dhcp6.oro = concat(option dhcp6.oro,00d2);
+    }
+    {{endif}}
+}
+{{endif}}
+{{else}}
+{{if user_class}}
+{{behaviour}} option arch = {{arch_octet}} and
+ option user-class = \"{{user_class}}\" {
+    # {{name}}
+    filename \"{{bootloader}}\";
+    {{if path_prefix}}
+    option path-prefix \"{{path_prefix}}\";
+    {{endif}}
+    {{if path_prefix_force}}
+    if exists dhcp-parameter-request-list {
+        # Always send the PXELINUX option (path-prefix)
+        option dhcp-parameter-request-list = concat(
+            option dhcp-parameter-request-list,d2);
+    }
+    {{endif}}
 }
 {{else}}
 {{behaviour}} option arch = {{arch_octet}} {
@@ -72,13 +108,21 @@ CONDITIONAL_BOOTLOADER = tempita.Template("""
     {{endif}}
 }
 {{endif}}
+{{endif}}
 """)
 
 # Used to generate the PXEBootLoader special case
 DEFAULT_BOOTLOADER = tempita.Template("""
 {{if ipv6}}
 else {
+    # {{name}}
     option dhcp6.bootfile-url \"{{url}}\";
+    {{if path_prefix_force}}
+    if exists dhcp6.oro {
+        # Always send the PXELINUX option (path-prefix)
+        option dhcp6.oro = concat(option dhcp6.oro,00d2);
+    }
+    {{endif}}
 }
 {{else}}
 else {
@@ -118,15 +162,22 @@ def compose_conditional_bootloader(ipv6, rack_ip=None):
             if method.path_prefix_http:
                 # Force an absolute URL as the path prefix.
                 path_prefix = url
-            url += '/%s' % method.bootloader_path
+            url += method.bootloader_path
             if isinstance(method.arch_octet, str):
                 method.arch_octet = [method.arch_octet]
+            bootloader = method.bootloader_path
+            if method.absolute_url_as_filename:
+                bootloader = url
+                # path_prefix gets removed with this setting, because a
+                # absolute url is provided as the bootloader.
+                path_prefix = None
             for arch_octet in method.arch_octet:
                 output += CONDITIONAL_BOOTLOADER.substitute(
                     ipv6=ipv6, rack_ip=rack_ip, url=url,
                     behaviour=next(behaviour),
                     arch_octet=arch_octet,
-                    bootloader=method.bootloader_path,
+                    user_class=method.user_class,
+                    bootloader=bootloader,
                     path_prefix=path_prefix,
                     path_prefix_force=method.path_prefix_force,
                     name=method.name,

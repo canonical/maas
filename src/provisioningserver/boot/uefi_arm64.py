@@ -19,3 +19,4 @@ class UEFIARM64BootMethod(BootMethod):
     bootloader_path = 'grubaa64.efi'
     bootloader_files = ['grubaa64.efi']
     arch_octet = '00:0B'
+    user_class = None

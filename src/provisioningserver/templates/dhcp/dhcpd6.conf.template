@@ -2,6 +2,7 @@
 # overwrite any changes made there.  Instead, you can modify dhcpd6.conf by
 # using DHCP snippets over the API or through the web interface.
 
+option dhcp6.user-class code 15 = string;
 option dhcp6.client-arch-type code 61 = array of unsigned integer 16; # RFC5970
 option path-prefix code 210 = text; #RFC5071
 

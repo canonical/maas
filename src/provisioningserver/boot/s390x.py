@@ -81,6 +81,7 @@ class S390XBootMethod(BootMethod):
     bootloader_path = "boots390x.bin"
     arch_octet = "00:1F"
     path_prefix = "s390x/"
+    user_class = None
 
     def get_params(self, backend, path):
         """Gets the matching parameters from the requested path."""

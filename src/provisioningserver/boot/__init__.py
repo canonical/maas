@@ -155,6 +155,11 @@ class BootMethod(metaclass=ABCMeta):
     # request that information.
     path_prefix_force = False
 
+    # Use the full absolute URL for filename access. Instead of providing a
+    # relative path to the `bootloader_path` ensure that the DHCP renders
+    # with an absolute path.
+    absolute_url_as_filename = False
+
     # Arches for which this boot method needs to install boot loaders.
     bootloader_arches = []
 
@@ -184,6 +189,11 @@ class BootMethod(metaclass=ABCMeta):
         See http://www.iana.org/assignments/dhcpv6-parameters/
         dhcpv6-parameters.xhtml#processor-architecture
         """
+
+    @abstractproperty
+    def user_class(self):
+        """ User class that supports this method. Used for the
+        dhcpd.conf file that is generated."""
 
     def match_path(self, backend, path):
         """Checks path for a file the boot method needs to handle.
@@ -298,6 +308,7 @@ class BootMethod(metaclass=ABCMeta):
             self.arch_octet, list) and all(
                 isinstance(element, str)
                 for element in self.arch_octet)) or self.arch_octet is None
+        assert isinstance(self.user_class, str) or self.user_class is None
 
     @lru_cache(1)
     def get_template_dir(self):
@@ -361,6 +372,12 @@ class BootMethod(metaclass=ABCMeta):
                 initrd = 'boot-initrd'
             return "%s/%s" % (image_dir(params), initrd)
 
+        def kernel_name(params):
+            if params.kernel is not None:
+                return params.kernel
+            else:
+                return 'boot-kernel'
+
         def kernel_path(params):
             # Normally the kernel filename is the SimpleStream filetype. If
             # no filetype is given try the filetype.
@@ -391,6 +408,7 @@ class BootMethod(metaclass=ABCMeta):
             "kernel_command": kernel_command,
             "kernel_params": kernel_params,
             "kernel_path": kernel_path,
+            "kernel_name": kernel_name,
             "dtb_path": dtb_path,
             }
 
@@ -402,6 +420,7 @@ class BootMethodRegistry(Registry):
 
 
 # Import the supported boot methods after defining BootMethod.
+from provisioningserver.boot.ipxe import IPXEBootMethod
 from provisioningserver.boot.pxe import PXEBootMethod
 from provisioningserver.boot.uefi_amd64 import UEFIAMD64BootMethod
 from provisioningserver.boot.uefi_arm64 import UEFIARM64BootMethod
@@ -414,6 +433,7 @@ from provisioningserver.boot.s390x import S390XBootMethod
 
 
 builtin_boot_methods = [
+    IPXEBootMethod(),
     PXEBootMethod(),
     UEFIAMD64BootMethod(),
     UEFIARM64BootMethod(),

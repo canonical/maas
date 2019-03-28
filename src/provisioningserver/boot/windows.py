@@ -195,6 +195,7 @@ class WindowsPXEBootMethod(BootMethod):
     template_subdir = "windows"
     bootloader_path = "pxeboot.0"
     arch_octet = None
+    user_class = None
 
     @deferred
     def get_node_info(self):

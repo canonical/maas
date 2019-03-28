@@ -1,0 +1,7 @@
+#!ipxe
+# Boot the locally attached hard drives. On failure try the next locally
+# attached hard drive. Fail on the last hard drive, if booting fails.
+sanboot --no-describe --drive 0x80 ||
+sanboot --no-describe --drive 0x81 ||
+sanboot --no-describe --drive 0x82 ||
+sanboot --no-describe --drive 0x83

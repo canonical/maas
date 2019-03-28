@@ -7,10 +7,13 @@ __all__ = [
     "Registry",
 ]
 
-from collections import defaultdict
+from collections import (
+    defaultdict,
+    OrderedDict,
+)
 
-
-_registry = defaultdict(dict)
+# Uses `OrderedDict` so iterating registry occurs in the order of addition.
+_registry = defaultdict(OrderedDict)
 
 
 class RegistryType(type):

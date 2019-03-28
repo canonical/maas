@@ -81,6 +81,7 @@ class UEFIAMD64BootMethod(BootMethod):
     bootloader_path = 'bootx64.efi'
     bootloader_files = ['bootx64.efi', 'grubx64.efi']
     arch_octet = ['00:07', '00:09']
+    user_class = None
 
     def match_path(self, backend, path):
         """Checks path for the configuration file that needs to be

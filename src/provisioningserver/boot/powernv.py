@@ -79,6 +79,7 @@ class PowerNVBootMethod(BootMethod):
     template_subdir = "pxe"
     bootloader_path = "pxelinux.0"
     arch_octet = "00:0E"
+    user_class = None
     path_prefix = "ppc64el/"
 
     def get_params(self, backend, path):

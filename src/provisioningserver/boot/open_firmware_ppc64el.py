@@ -19,3 +19,4 @@ class OpenFirmwarePPC64ELBootMethod(BootMethod):
     bootloader_path = 'bootppc64.bin'
     bootloader_files = ['bootppc64.bin']
     arch_octet = '00:0C'
+    user_class = None

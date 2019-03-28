@@ -55,6 +55,7 @@ class FakeBootMethod(BootMethod):
     bootloader_path = factory.make_name('bootloader_path')
     bootloader_files = [factory.make_name('bootloader_file') for _ in range(3)]
     arch_octet = "00:00"
+    user_class = None
 
     def match_path(self, backend, path):
         return {}

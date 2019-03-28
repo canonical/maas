@@ -95,6 +95,7 @@ class PXEBootMethod(BootMethod):
         'libutil.c32',
     ]
     arch_octet = '00:00'
+    user_class = None
     path_prefix_http = True
     path_prefix_force = True
 
