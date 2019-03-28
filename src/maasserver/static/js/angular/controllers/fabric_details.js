@@ -4,17 +4,11 @@
  * MAAS Fabric Details Controller
  */
 
-angular.module('MAAS').controller('FabricDetailsController', [
-    '$scope', '$rootScope', '$routeParams', '$filter', '$location',
-    'FabricsManager', 'VLANsManager', 'SubnetsManager', 'SpacesManager',
-    'ControllersManager',
-    'UsersManager', 'ManagerHelperService', 'ErrorService',
-    function(
+    function FabricDetailsController(
         $scope, $rootScope, $routeParams, $filter, $location,
         FabricsManager, VLANsManager, SubnetsManager, SpacesManager,
-        ControllersManager,
-        UsersManager, ManagerHelperService, ErrorService) {
-
+        ControllersManager, UsersManager, ManagerHelperService,
+        ErrorService) {
         // Set title and page.
         $rootScope.title = "Loading...";
 
@@ -180,5 +174,7 @@ angular.module('MAAS').controller('FabricDetailsController', [
                         });
                 }
             });
-    }
-]);
+    };
+
+angular.module('MAAS').controller(
+    'FabricDetailsController', FabricDetailsController);

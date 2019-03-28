@@ -4,50 +4,48 @@
  * MAAS Zones List Controller
  */
 
-angular.module('MAAS').controller('ZonesListController', [
-    '$scope', '$rootScope', '$routeParams', '$filter', 'MachinesManager',
-    'DevicesManager', 'ControllersManager', 'ZonesManager', 'ServicesManager',
-    'UsersManager', 'ManagerHelperService', 'ErrorService',
-    function($scope, $rootScope, $routeParams, $filter, MachinesManager,
-        DevicesManager, ControllersManager, ZonesManager, ServicesManager,
-        UsersManager, ManagerHelperService, ErrorService) {
 
-        // Set title and page.
-        $rootScope.title = "Zones";
-        $rootScope.page = "zones";
+function ZonesListController(
+  $scope, $rootScope, ZonesManager,
+  UsersManager, ManagerHelperService) {
 
-        // Set initial values.
-        $scope.zoneManager = ZonesManager;
-        $scope.zones = ZonesManager.getItems();
-        $scope.currentpage = "zones";
-        $scope.predicate = "name";
-        $scope.reverse = false;
-        $scope.loading = true;
-        $scope.action = {
-          open: false,
-          obj: {}
-        };
+  // Set title and page.
+  $rootScope.title = "Zones";
+  $rootScope.page = "zones";
 
-        // Open add zone view.
-        $scope.addZone = function() {
-          $scope.action.open = true;
-        };
+  // Set initial values.
+  $scope.zoneManager = ZonesManager;
+  $scope.zones = ZonesManager.getItems();
+  $scope.currentpage = "zones";
+  $scope.predicate = "name";
+  $scope.reverse = false;
+  $scope.loading = true;
+  $scope.action = {
+    open: false,
+    obj: {}
+  };
 
-        // Saving has completed.
-        $scope.closeZone = function() {
-          $scope.action.open = false;
-          $scope.action.obj = {};
-        };
+  // Open add zone view.
+  $scope.addZone = function() {
+    $scope.action.open = true;
+  };
 
-        // Return true if the authenticated user is super user.
-        $scope.isSuperUser = function() {
-            return UsersManager.isSuperUser();
-        };
+  // Saving has completed.
+  $scope.closeZone = function() {
+    $scope.action.open = false;
+    $scope.action.obj = {};
+  };
 
-        ManagerHelperService.loadManagers(
-            $scope, [ZonesManager, UsersManager]).then(
-            function() {
-                $scope.loading = false;
-            });
-        }
-    ]);
+  // Return true if the authenticated user is super user.
+  $scope.isSuperUser = function() {
+    return UsersManager.isSuperUser();
+  };
+
+  ManagerHelperService.loadManagers(
+    $scope, [ZonesManager, UsersManager]).then(
+      function() {
+        $scope.loading = false;
+      });
+};
+
+angular.module('MAAS').controller('ZonesListController', ZonesListController);

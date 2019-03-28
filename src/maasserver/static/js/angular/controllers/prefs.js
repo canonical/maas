@@ -4,13 +4,14 @@
  * MAAS Preferences Controller
  */
 
-angular.module('MAAS').controller('PreferencesController', [
-    '$scope', 'UsersManager', 'ManagerHelperService',
-    function(
-        $scope, UsersManager, ManagerHelperService) {
-            $scope.loading = true;
-            ManagerHelperService.loadManager(
-                $scope, UsersManager).then(function() {
-                    $scope.loading = false;
-                });
-    }]);
+function PreferencesController(
+    $scope, UsersManager, ManagerHelperService) {
+    $scope.loading = true;
+    ManagerHelperService.loadManager(
+        $scope, UsersManager).then(function() {
+            $scope.loading = false;
+        });
+};
+
+angular.module('MAAS').controller(
+    'PreferencesController', PreferencesController);
