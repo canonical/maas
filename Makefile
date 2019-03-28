@@ -453,7 +453,7 @@ lander-styles: force-styles node_modules $(scss_output)
 # The $(subst ...) uses a pattern rule to ensure Webpack runs just once,
 # even if all four output files are out-of-date.
 $(subst .,%,$(javascript_output)): $(javascript_deps)
-	node_modules/.bin/webpack
+	bin/yarn build
 	@touch --no-create $(strip $(javascript_output))
 	@git update-index -q --assume-unchanged $(strip $(javascript_output)) 2> /dev/null || true
 
@@ -816,7 +816,6 @@ phony := $(sort $(strip $(phony)))
 define secondary_binaries
   bin/py bin/buildout
   bin/node-sass
-  bin/webpack
   bin/sphinx bin/sphinx-build
 endef
 

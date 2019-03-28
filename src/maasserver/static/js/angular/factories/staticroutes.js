@@ -8,26 +8,27 @@
  * listen for notification events about StaticRoutes.
  */
 
-angular.module('MAAS').factory(
-    'StaticRoutesManager',
-    ['$q', '$rootScope', 'RegionConnection', 'Manager',
-    function($q, $rootScope, RegionConnection, Manager) {
+function StaticRoutesManager(RegionConnection, Manager) {
 
-        function StaticRoutesManager() {
-            Manager.call(this);
+    function StaticRoutesManager() {
+        Manager.call(this);
 
-            this._pk = "id";
-            this._handler = "staticroute";
+        this._pk = "id";
+        this._handler = "staticroute";
 
-            // Listen for notify events for the staticroute object.
-            var self = this;
-            RegionConnection.registerNotifier("staticroute",
-                function(action, data) {
-                    self.onNotify(action, data);
-                });
-        }
+        // Listen for notify events for the staticroute object.
+        var self = this;
+        RegionConnection.registerNotifier("staticroute",
+            function(action, data) {
+                self.onNotify(action, data);
+            });
+    }
 
-        StaticRoutesManager.prototype = new Manager();
+    StaticRoutesManager.prototype = new Manager();
 
-        return new StaticRoutesManager();
-    }]);
+    return new StaticRoutesManager();
+};
+
+StaticRoutesManager.$inject = ['RegionConnection', 'Manager'];
+
+angular.module('MAAS').factory('StaticRoutesManager', StaticRoutesManager);

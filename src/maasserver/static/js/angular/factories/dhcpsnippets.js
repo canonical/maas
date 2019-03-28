@@ -8,32 +8,33 @@
  * listen for notification events about DHCPSnippets.
  */
 
-angular.module('MAAS').factory(
-    'DHCPSnippetsManager',
-    ['$q', '$rootScope', 'RegionConnection', 'Manager',
-    function($q, $rootScope, RegionConnection, Manager) {
+function DHCPSnippetsManager(RegionConnection, Manager) {
 
-        function DHCPSnippetsManager() {
-            Manager.call(this);
+    function DHCPSnippetsManager() {
+        Manager.call(this);
 
-            this._pk = "id";
-            this._handler = "dhcpsnippet";
+        this._pk = "id";
+        this._handler = "dhcpsnippet";
 
-            // Listen for notify events for the DHCPSnippet object.
-            var self = this;
-            RegionConnection.registerNotifier("dhcpsnippet",
-                function(action, data) {
-                    self.onNotify(action, data);
-                });
-        }
+        // Listen for notify events for the DHCPSnippet object.
+        var self = this;
+        RegionConnection.registerNotifier("dhcpsnippet",
+            function(action, data) {
+                self.onNotify(action, data);
+            });
+    }
 
-        DHCPSnippetsManager.prototype = new Manager();
+    DHCPSnippetsManager.prototype = new Manager();
 
-        // Create the snippet.
-        DHCPSnippetsManager.prototype.create = function(snippet) {
-            return RegionConnection.callMethod(
-                this._handler + ".create", snippet, true);
-        };
+    // Create the snippet.
+    DHCPSnippetsManager.prototype.create = function(snippet) {
+        return RegionConnection.callMethod(
+            this._handler + ".create", snippet, true);
+    };
 
-        return new DHCPSnippetsManager();
-    }]);
+    return new DHCPSnippetsManager();
+};
+
+DHCPSnippetsManager.$inject = ['RegionConnection', 'Manager'];
+
+angular.module('MAAS').factory('DHCPSnippetsManager', DHCPSnippetsManager);

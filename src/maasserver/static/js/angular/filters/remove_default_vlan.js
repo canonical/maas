@@ -4,7 +4,7 @@
  * MAAS Filter to remove the default VLAN as an option.
  */
 
-angular.module('MAAS').filter('removeDefaultVLAN', function() {
+function removeDefaultVLAN() {
     return function(vlans) {
         var filtered = [];
         angular.forEach(vlans, function(vlan) {
@@ -14,4 +14,6 @@ angular.module('MAAS').filter('removeDefaultVLAN', function() {
         });
         return filtered;
     };
-});
+};
+
+angular.module('MAAS').filter('removeDefaultVLAN', removeDefaultVLAN);

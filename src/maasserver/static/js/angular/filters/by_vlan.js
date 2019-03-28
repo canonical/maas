@@ -4,7 +4,7 @@
  * MAAS Filter Subnets by VLAN.
  */
 
-angular.module('MAAS').filter('filterByVLAN', function() {
+function filterByVLAN() {
     return function(subnets, vlan) {
         var filtered = [];
         var id;
@@ -22,9 +22,9 @@ angular.module('MAAS').filter('filterByVLAN', function() {
         });
         return filtered;
     };
-});
+};
 
-angular.module('MAAS').filter('filterControllersByVLAN', function() {
+function filterControllersByVLAN() {
     return function(controllers, vlan) {
         var filtered = [];
         if(!angular.isObject(vlan)) {
@@ -44,4 +44,8 @@ angular.module('MAAS').filter('filterControllersByVLAN', function() {
         });
         return filtered;
     };
-});
+};
+
+angular.module('MAAS').filter('filterByVLAN', filterByVLAN);
+angular.module('MAAS').filter(
+    'filterControllersByVLAN', filterControllersByVLAN);

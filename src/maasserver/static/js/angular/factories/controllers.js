@@ -8,43 +8,46 @@
  * NodesManager.
  */
 
-angular.module('MAAS').factory(
-    'ControllersManager',
-    ['$q', '$rootScope', 'RegionConnection', 'NodesManager', 'ServicesManager',
-            function($q, $rootScope, RegionConnection, NodesManager,
-            ServicesManager) {
 
-        function ControllersManager() {
-            NodesManager.call(this);
+function ControllersManager(RegionConnection, NodesManager, ServicesManager) {
 
-            this._pk = "system_id";
-            this._handler = "controller";
+    function ControllersManager() {
+        NodesManager.call(this);
 
-            // Listen for notify events for the controller object.
-            var self = this;
-            RegionConnection.registerNotifier("controller",
-                function(action, data) {
-                    self.onNotify(action, data);
-                });
-        }
-        ControllersManager.prototype = new NodesManager();
+        this._pk = "system_id";
+        this._handler = "controller";
 
-        ControllersManager.prototype.getServices = function(controller) {
-            var services = [];
-            angular.forEach(controller.service_ids, function(service_id) {
-                var service = ServicesManager.getItemFromList(service_id);
-                if(angular.isObject(service)) {
-                    services.push(service);
-                }
+        // Listen for notify events for the controller object.
+        var self = this;
+        RegionConnection.registerNotifier("controller",
+            function(action, data) {
+                self.onNotify(action, data);
             });
-            return services;
-        };
+    }
+    ControllersManager.prototype = new NodesManager();
 
-        // Check the boot image import status.
-        ControllersManager.prototype.checkImageStates = function(controllers) {
-            return RegionConnection.callMethod(
-                this._handler + ".check_images", controllers);
-        };
+    ControllersManager.prototype.getServices = function(controller) {
+        var services = [];
+        angular.forEach(controller.service_ids, function(service_id) {
+            var service = ServicesManager.getItemFromList(service_id);
+            if (angular.isObject(service)) {
+                services.push(service);
+            }
+        });
+        return services;
+    };
 
-        return new ControllersManager();
-    }]);
+    // Check the boot image import status.
+    ControllersManager.prototype.checkImageStates = function(controllers) {
+        return RegionConnection.callMethod(
+            this._handler + ".check_images", controllers);
+    };
+
+    return new ControllersManager();
+};
+
+ControllersManager.$inject = [
+    'RegionConnection', 'NodesManager', 'ServicesManager'
+];
+
+angular.module('MAAS').factory('ControllersManager', ControllersManager);

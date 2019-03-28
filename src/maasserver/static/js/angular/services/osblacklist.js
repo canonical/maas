@@ -3,7 +3,8 @@
  * The data should come from the backend
  * There is a launchpad issue for this (LP: #1802307)
  */
-angular.module('MAAS').service('KVMDeployOSBlacklist', function() {
+
+function KVMDeployOSBlacklist() {
   return [
     'ubuntu/precise',
     'ubuntu/trusty',
@@ -12,4 +13,6 @@ angular.module('MAAS').service('KVMDeployOSBlacklist', function() {
     'ubuntu/zesty',
     'ubuntu/artful'
   ];
-});
+};
+
+angular.module('MAAS').service('KVMDeployOSBlacklist', KVMDeployOSBlacklist);

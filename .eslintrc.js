@@ -19,5 +19,6 @@ module.exports = {
         "ecmaVersion": 2018
     },
     "rules": {
+        "angular/di": [2, "function", { "matchNames": true }]
     }
 };

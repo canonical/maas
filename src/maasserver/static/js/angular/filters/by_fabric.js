@@ -4,22 +4,24 @@
  * MAAS Filter VLANs by Fabric.
  */
 
-angular.module('MAAS').filter('filterByFabric', function() {
+function filterByFabric() {
     return function(vlans, fabric) {
         var filtered = [];
         var id;
-        if(angular.isObject(fabric)) {
+        if (angular.isObject(fabric)) {
             id = fabric.id;
-        } else if(angular.isNumber(fabric)) {
+        } else if (angular.isNumber(fabric)) {
             id = fabric;
         } else {
             return filtered;
         }
         angular.forEach(vlans, function(vlan) {
-            if(vlan.fabric === id) {
+            if (vlan.fabric === id) {
                 filtered.push(vlan);
             }
         });
         return filtered;
     };
-});
+};
+
+angular.module('MAAS').filter('filterByFabric', filterByFabric);

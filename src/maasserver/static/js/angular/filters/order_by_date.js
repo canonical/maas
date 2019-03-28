@@ -4,7 +4,7 @@
  * MAAS Filter Subnets by VLAN.
  */
 
-angular.module('MAAS').filter('orderByDate', function() {
+function orderByDate() {
     return function(items, field, field2) {
         let sorted = items.slice();
         sorted.sort(function(a, b) {
@@ -22,4 +22,6 @@ angular.module('MAAS').filter('orderByDate', function() {
         });
         return sorted;
     };
-});
+};
+
+angular.module('MAAS').filter('orderByDate', orderByDate);

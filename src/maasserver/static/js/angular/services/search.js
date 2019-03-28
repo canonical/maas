@@ -4,7 +4,7 @@
  * MAAS Nodes Search Services
  */
 
-angular.module('MAAS').service('SearchService', function() {
+function SearchService() {
 
     // Holds an empty filter object.
     var emptyFilter = { _: [] };
@@ -177,4 +177,6 @@ angular.module('MAAS').service('SearchService', function() {
     this.retrieveFilters = function(name) {
         return storedFilters[name];
     };
-});
+};
+
+angular.module('MAAS').service('SearchService', SearchService);

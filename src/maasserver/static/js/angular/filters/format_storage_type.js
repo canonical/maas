@@ -4,7 +4,7 @@
  * Converts storage type into human readable string, e.g. LVM
  */
 
-angular.module('MAAS').filter('formatStorageType', function() {
+function formatStorageType() {
   return function(storageType) {
     if (!storageType) {
       return '';
@@ -17,4 +17,6 @@ angular.module('MAAS').filter('formatStorageType', function() {
         return storageType;
     }
   }
-});
+};
+
+angular.module('MAAS').filter('formatStorageType', formatStorageType);

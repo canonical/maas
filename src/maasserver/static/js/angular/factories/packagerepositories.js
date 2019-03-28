@@ -8,32 +8,34 @@
  * for notification events about them.
  */
 
+function PackageRepositoriesManager(RegionConnection, Manager) {
+
+    function PackageRepositoriesManager() {
+        Manager.call(this);
+
+        this._pk = "id";
+        this._handler = "packagerepository";
+
+        // Listen for notify events for the PackageRepository object.
+        var self = this;
+        RegionConnection.registerNotifier("packagerepository",
+            function(action, data) {
+                self.onNotify(action, data);
+            });
+    }
+
+    PackageRepositoriesManager.prototype = new Manager();
+
+    // Create the repository.
+    PackageRepositoriesManager.prototype.create = function(repository) {
+        return RegionConnection.callMethod(
+            this._handler + ".create", repository, true);
+    };
+
+    return new PackageRepositoriesManager();
+};
+
+PackageRepositoriesManager.$inject = ['RegionConnection', 'Manager'];
+
 angular.module('MAAS').factory(
-    'PackageRepositoriesManager',
-    ['$q', '$rootScope', 'RegionConnection', 'Manager',
-    function($q, $rootScope, RegionConnection, Manager) {
-
-        function PackageRepositoriesManager() {
-            Manager.call(this);
-
-            this._pk = "id";
-            this._handler = "packagerepository";
-
-            // Listen for notify events for the PackageRepository object.
-            var self = this;
-            RegionConnection.registerNotifier("packagerepository",
-                function(action, data) {
-                    self.onNotify(action, data);
-                });
-        }
-
-        PackageRepositoriesManager.prototype = new Manager();
-
-        // Create the repository.
-        PackageRepositoriesManager.prototype.create = function(repository) {
-            return RegionConnection.callMethod(
-                this._handler + ".create", repository, true);
-        };
-
-        return new PackageRepositoriesManager();
-    }]);
+    'PackageRepositoriesManager', PackageRepositoriesManager);

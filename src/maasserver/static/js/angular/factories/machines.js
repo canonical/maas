@@ -7,75 +7,77 @@
  * machine listing and view pages. The manager is a subclass of NodesManager.
  */
 
-angular.module('MAAS').factory(
-    'MachinesManager',
-    ['$q', '$rootScope', 'RegionConnection', 'NodesManager', function(
-            $q, $rootScope, RegionConnection, NodesManager) {
 
-        function MachinesManager() {
-            NodesManager.call(this);
+function MachinesManager(RegionConnection, NodesManager) {
 
-            this._pk = "system_id";
-            this._handler = "machine";
+    function MachinesManager() {
+        NodesManager.call(this);
 
-            this._metadataAttributes = {
-                "architecture": null,
-                "status": null,
-                "owner": null,
-                "tags": null,
-                "pod": function(machine) {
-                    return (machine.pod === undefined) ? '' :machine.pod.name;
-                },
-                "pool": function(machine) {
-                    return machine.pool.name;
-                },
-                "zone": function(machine) {
-                    return machine.zone.name;
-                },
-                "subnets": null,
-                "fabrics": null,
-                "spaces": null,
-                "storage_tags": null,
-                "release": function(machine) {
-                    if(machine.status_code === 6 || machine.status_code === 9) {
-                        return machine.osystem + "/" + machine.distro_series;
-                    } else {
-                        return '';
-                    }
+        this._pk = "system_id";
+        this._handler = "machine";
+
+        this._metadataAttributes = {
+            "architecture": null,
+            "status": null,
+            "owner": null,
+            "tags": null,
+            "pod": function(machine) {
+                return (machine.pod === undefined) ? '' : machine.pod.name;
+            },
+            "pool": function(machine) {
+                return machine.pool.name;
+            },
+            "zone": function(machine) {
+                return machine.zone.name;
+            },
+            "subnets": null,
+            "fabrics": null,
+            "spaces": null,
+            "storage_tags": null,
+            "release": function(machine) {
+                if (machine.status_code === 6 || machine.status_code === 9) {
+                    return machine.osystem + "/" + machine.distro_series;
+                } else {
+                    return '';
                 }
+            }
+        };
+
+        // Listen for notify events for the machine object.
+        var self = this;
+        RegionConnection.registerNotifier("machine",
+            function(action, data) {
+                self.onNotify(action, data);
+            });
+
+    }
+    MachinesManager.prototype = new NodesManager();
+
+    MachinesManager.prototype.mountSpecialFilesystem =
+        function(obj) {
+            var method = this._handler + ".mount_special";
+            var params = {
+                system_id: obj.system_id,
+                fstype: obj.fstype,
+                mount_point: obj.mount_point,
+                mount_options: obj.mount_options
             };
+            return RegionConnection.callMethod(method, params);
+        };
 
-            // Listen for notify events for the machine object.
-            var self = this;
-            RegionConnection.registerNotifier("machine",
-                function(action, data) {
-                    self.onNotify(action, data);
-                });
-
-        }
-        MachinesManager.prototype = new NodesManager();
-
-        MachinesManager.prototype.mountSpecialFilesystem =
-            function(obj) {
-                var method = this._handler + ".mount_special";
-                var params = {
-                    system_id: obj.system_id,
-                    fstype: obj.fstype,
-                    mount_point: obj.mount_point,
-                    mount_options: obj.mount_options
-                };
-                return RegionConnection.callMethod(method, params);
+    MachinesManager.prototype.unmountSpecialFilesystem =
+        function(machine, mount_point) {
+            var method = this._handler + ".unmount_special";
+            var params = {
+                system_id: machine.system_id,
+                mount_point: mount_point
             };
+            return RegionConnection.callMethod(method, params);
+        };
 
-        MachinesManager.prototype.unmountSpecialFilesystem =
-            function(machine, mount_point) {
-                var method = this._handler + ".unmount_special";
-                var params = {
-                    system_id: machine.system_id,
-                    mount_point: mount_point
-                };
-                return RegionConnection.callMethod(method, params);
-            };
+    return new MachinesManager();
+};
 
-        return new MachinesManager();
-    }]);
+MachinesManager.$inject = ['RegionConnection', 'NodesManager'];
+
+angular.module('MAAS').factory('MachinesManager', MachinesManager);

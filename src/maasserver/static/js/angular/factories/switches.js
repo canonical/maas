@@ -9,10 +9,7 @@
  * notification events about switches.
  */
 
-angular.module('MAAS').factory(
-    'SwitchesManager',
-    ['$q', '$rootScope', 'RegionConnection', 'NodesManager', function(
-            $q, $rootScope, RegionConnection, NodesManager) {
+function SwitchesManager(RegionConnection, NodesManager) {
 
         function SwitchesManager() {
             NodesManager.call(this);
@@ -60,4 +57,8 @@ angular.module('MAAS').factory(
         };
 
         return new SwitchesManager();
-    }]);
+    };
+
+SwitchesManager.$inject = ['RegionConnection', 'NodesManager'];
+
+angular.module('MAAS').factory('SwitchesManager', SwitchesManager);

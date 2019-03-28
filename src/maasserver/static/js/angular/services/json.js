@@ -6,7 +6,7 @@
  * Used by controllers to parse JSON.
  */
 
-angular.module('MAAS').service('JSONService', function() {
+function JSONService() {
 
     // Return the JSON for the string or null if it cannot be parsed.
     this.tryParse = function(jsonString) {
@@ -21,4 +21,6 @@ angular.module('MAAS').service('JSONService', function() {
         catch (e) { }
         return null;
     };
-});
+};
+
+angular.module('MAAS').service('JSONService', JSONService);

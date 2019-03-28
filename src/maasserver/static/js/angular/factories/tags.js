@@ -8,10 +8,8 @@
  * notification events about tags.
  */
 
-angular.module('MAAS').factory(
-    'TagsManager',
-    ['$q', '$rootScope', 'RegionConnection', 'Manager', function(
-            $q, $rootScope, RegionConnection, Manager) {
+
+function TagsManager(RegionConnection, Manager) {
 
         function TagsManager() {
             Manager.call(this);
@@ -58,4 +56,8 @@ angular.module('MAAS').factory(
         };
 
         return new TagsManager();
-    }]);
+    };
+
+TagsManager.$inject = ['RegionConnection', 'Manager'];
+
+angular.module('MAAS').factory('TagsManager', TagsManager);

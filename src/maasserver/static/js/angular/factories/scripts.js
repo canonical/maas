@@ -8,26 +8,27 @@
  * events about Scripts.
  */
 
-angular.module('MAAS').factory(
-    'ScriptsManager',
-    ['$q', '$rootScope', 'RegionConnection', 'Manager',
-    function($q, $rootScope, RegionConnection, Manager) {
+function ScriptsManager(RegionConnection, Manager) {
 
-        function ScriptsManager() {
-            Manager.call(this);
+    function ScriptsManager() {
+        Manager.call(this);
 
-            this._pk = "id";
-            this._handler = "script";
+        this._pk = "id";
+        this._handler = "script";
 
-            // Listen for notify events for the Script object.
-            var self = this;
-            RegionConnection.registerNotifier("script",
-                function(action, data) {
-                    self.onNotify(action, data);
-                });
-        }
+        // Listen for notify events for the Script object.
+        var self = this;
+        RegionConnection.registerNotifier("script",
+            function(action, data) {
+                self.onNotify(action, data);
+            });
+    }
 
-        ScriptsManager.prototype = new Manager();
+    ScriptsManager.prototype = new Manager();
 
-        return new ScriptsManager();
-    }]);
+    return new ScriptsManager();
+};
+
+ScriptsManager.$inject = ['RegionConnection', 'Manager'];
+
+angular.module('MAAS').factory('ScriptsManager', ScriptsManager);

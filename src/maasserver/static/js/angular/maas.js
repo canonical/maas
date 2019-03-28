@@ -12,7 +12,6 @@ angular.module('MAAS',
     ['ngRoute', 'ngCookies', 'ngSanitize', 'ngTagsInput', 'vs-repeat']).config(
         function ($interpolateProvider, $routeProvider, $httpProvider,
             $compileProvider, tagsInputConfigProvider) {
-
         // Disable debugInfo unless in a karma context.
         // Re-enable debugInfo in development by running
         // angular.reloadWithDebugInfo(); in the console.

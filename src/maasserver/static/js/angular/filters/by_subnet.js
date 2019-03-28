@@ -4,7 +4,7 @@
  * Filter objects with subnet foreign key references by a particular subnet.
  */
 
-angular.module('MAAS').filter('filterBySubnet', function() {
+function filterBySubnet() {
     return function(foreign_objects, subnet, key) {
         var filtered = [];
         var id;
@@ -25,11 +25,11 @@ angular.module('MAAS').filter('filterBySubnet', function() {
         });
         return filtered;
     };
-});
+};
 
 // Filters by subnet, unless the subnet is not defined. If the subnet is not
 // defined, filters by VLAN.
-angular.module('MAAS').filter('filterBySubnetOrVlan', function() {
+function filterBySubnetOrVlan() {
     return function(foreign_objects, subnet, vlan) {
         var filtered = [];
         var id;
@@ -58,4 +58,7 @@ angular.module('MAAS').filter('filterBySubnetOrVlan', function() {
         });
         return filtered;
     };
-});
+};
+
+angular.module('MAAS').filter('filterBySubnet',filterBySubnet);
+angular.module('MAAS').filter('filterBySubnetOrVlan', filterBySubnetOrVlan);

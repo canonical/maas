@@ -25,6 +25,7 @@ module.exports = {
     // This creates a .map file for debugging each bundle.
     devtool: 'source-map',
     plugins: [
+        /*
         new UglifyJSPlugin({
             parallel: true,
             cache: true,
@@ -34,6 +35,7 @@ module.exports = {
                 mangle: false
             }
         })
+        */
     ],
     module: {
         rules: [{

@@ -8,26 +8,28 @@
  * notification events about IPRanges.
  */
 
-angular.module('MAAS').factory(
-    'IPRangesManager',
-    ['$q', '$rootScope', 'RegionConnection', 'Manager',
-    function($q, $rootScope, RegionConnection, Manager) {
 
-        function IPRangesManager() {
-            Manager.call(this);
+function IPRangesManager(RegionConnection, Manager) {
 
-            this._pk = "id";
-            this._handler = "iprange";
+    function IPRangesManager() {
+        Manager.call(this);
 
-            // Listen for notify events for the iprange object.
-            var self = this;
-            RegionConnection.registerNotifier("iprange",
-                function(action, data) {
-                    self.onNotify(action, data);
-                });
-        }
+        this._pk = "id";
+        this._handler = "iprange";
 
-        IPRangesManager.prototype = new Manager();
+        // Listen for notify events for the iprange object.
+        var self = this;
+        RegionConnection.registerNotifier("iprange",
+            function(action, data) {
+                self.onNotify(action, data);
+            });
+    }
 
-        return new IPRangesManager();
-    }]);
+    IPRangesManager.prototype = new Manager();
+
+    return new IPRangesManager();
+};
+
+IPRangesManager.$inject = ['RegionConnection', 'Manager'];
+
+angular.module('MAAS').factory('IPRangesManager', IPRangesManager);

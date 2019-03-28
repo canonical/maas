@@ -13,42 +13,43 @@
  * about discoveries.
  */
 
-angular.module('MAAS').factory(
-    'DiscoveriesManager',
-    ['$q', '$rootScope', 'RegionConnection', 'PollingManager',
-    function($q, $rootScope, RegionConnection, PollingManager) {
+function DiscoveriesManager($q, RegionConnection, PollingManager) {
 
-        function DiscoveriesManager() {
-            PollingManager.call(this);
+    function DiscoveriesManager() {
+        PollingManager.call(this);
 
-            this._pk = "first_seen";
-            this._batchKey = "first_seen";
-            this._handler = "discovery";
+        this._pk = "first_seen";
+        this._batchKey = "first_seen";
+        this._handler = "discovery";
 
-            // Poll every 10 seconds when its empty as its okay for
-            // this to be empty.
-            this._pollEmptyTimeout = 5000;
-        }
+        // Poll every 10 seconds when its empty as its okay for
+        // this to be empty.
+        this._pollEmptyTimeout = 5000;
+    }
 
-        DiscoveriesManager.prototype = new PollingManager();
+    DiscoveriesManager.prototype = new PollingManager();
 
-        DiscoveriesManager.prototype.removeDevice = function(device) {
+    DiscoveriesManager.prototype.removeDevice = function(device) {
+        return RegionConnection
+            .callMethod("discovery.delete_by_mac_and_ip", {
+                ip: device.ip,
+                mac: device.mac_address
+            });
+    };
+
+    DiscoveriesManager.prototype.removeDevices = function(devices) {
+        return $q.all(devices.map(function(device) {
             return RegionConnection
                 .callMethod("discovery.delete_by_mac_and_ip", {
                     ip: device.ip,
                     mac: device.mac_address
                 });
-        };
+        }));
+    };
 
-        DiscoveriesManager.prototype.removeDevices = function(devices) {
-            return $q.all(devices.map(function(device) {
-                return RegionConnection
-                    .callMethod("discovery.delete_by_mac_and_ip", {
-                        ip: device.ip,
-                        mac: device.mac_address
-                    });
-            }));
-        };
+    return new DiscoveriesManager();
+};
 
-        return new DiscoveriesManager();
-    }]);
+DiscoveriesManager.$inject = ['$q', 'RegionConnection', 'PollingManager'];
+
+angular.module('MAAS').factory('DiscoveriesManager', DiscoveriesManager);

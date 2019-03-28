@@ -7,26 +7,28 @@
  * the first-user journey and the settings page.
  */
 
- angular.module('MAAS').factory(
-     'ConfigsManager',
-     ['$q', '$rootScope', 'RegionConnection', 'Manager', function(
-             $q, $rootScope, RegionConnection, Manager) {
 
-         function ConfigsManager() {
-             Manager.call(this);
+function ConfigsManager(RegionConnection, Manager) {
 
-             this._pk = "name";
-             this._handler = "config";
+    function ConfigsManager() {
+        Manager.call(this);
 
-             // Listen for notify events for the config object.
-             var self = this;
-             RegionConnection.registerNotifier("config",
-                 function(action, data) {
-                     self.onNotify(action, data);
-                 });
-         }
+        this._pk = "name";
+        this._handler = "config";
 
-         ConfigsManager.prototype = new Manager();
+        // Listen for notify events for the config object.
+        var self = this;
+        RegionConnection.registerNotifier("config",
+            function(action, data) {
+                self.onNotify(action, data);
+            });
+    }
 
-         return new ConfigsManager();
-     }]);
+    ConfigsManager.prototype = new Manager();
+
+    return new ConfigsManager();
+};
+
+ConfigsManager.$inject = ['RegionConnection', 'Manager'];
+
+angular.module('MAAS').factory('ConfigsManager', ConfigsManager);
