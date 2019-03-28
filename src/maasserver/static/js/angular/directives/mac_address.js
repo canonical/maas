@@ -4,23 +4,24 @@
  * Creates the auto-formatting for MAC address inputs.
  */
 
-angular.module('MAAS').directive('macAddress', function () {
+
+function macAddress() {
     return {
         restrict: "A",
         require: "ngModel",
-        link: function (scope, ele, attr, ngModelCtrl, ngModel) {
+        link: function(scope, ele, attr, ngModelCtrl) {
             if (!ngModelCtrl) {
-              return;
+                return;
             }
 
-            var macAddressParse = function (value) {
+            var macAddressParse = function(value) {
                 return value.toUpperCase();
             };
 
-            var macAddressFormat = function (value) {
+            var macAddressFormat = function(value) {
 
                 if (!value) {
-                  return undefined;
+                    return undefined;
                 }
 
                 var numbers = value.replace(/:/g, "");
@@ -34,7 +35,7 @@ angular.module('MAAS').directive('macAddress', function () {
             ngModelCtrl.$parsers.push(macAddressParse);
             ngModelCtrl.$formatters.push(macAddressFormat);
 
-            ele.on('input', function () {
+            ele.on('input', function() {
                 var value = macAddressFormat(ele.val());
 
                 if (value !== undefined) {
@@ -45,4 +46,6 @@ angular.module('MAAS').directive('macAddress', function () {
             });
         }
     };
-});
+};
+
+angular.module('MAAS').directive('macAddress', macAddress);

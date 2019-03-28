@@ -4,30 +4,26 @@
  * Pod parameters directive.
  */
 
-angular.module('MAAS').run(['$templateCache', function ($templateCache) {
+function cachePodParameters($templateCache) {
     // Inject the power-parameters.html into the template cache.
     $templateCache.put('directive/templates/pod-parameters.html', [
         '<maas-obj-field type="options" key="type" label="Pod type" ',
-          'placeholder="Select the pod type" ',
-          'options="type.name as type.description for type in podTypes" ',
-          'label-width="2" label-width-tablet="2" ',
-          'input-width="3" input-width-tablet="4" ',
-          'ng-if="!hideType">',
+        'placeholder="Select the pod type" ',
+        'options="type.name as type.description for type in podTypes" ',
+        'label-width="2" label-width-tablet="2" ',
+        'input-width="3" input-width-tablet="4" ',
+        'ng-if="!hideType">',
         '</maas-obj-field>',
         '<div pod-fields></div>'
     ].join(''));
-}]);
+};
 
-
-angular.module('MAAS').directive(
-    'maasPodParameters', [
-        '$compile', 'GeneralManager', 'ManagerHelperService', function(
-        $compile, GeneralManager, ManagerHelperService) {
+function maasPodParameters($compile, GeneralManager, ManagerHelperService) {
     return {
         restrict: "E",
         require: "^^maasObjForm",
         scope: {
-          hideType: '='
+            hideType: '='
         },
         templateUrl: 'directive/templates/pod-parameters.html',
         link: function(scope, element, attrs, controller) {
@@ -42,62 +38,63 @@ angular.module('MAAS').directive(
             var updateFields = function(podType) {
                 var type = null;
                 var i;
-                for(i = 0; i < scope.podTypes.length; i++) {
-                    if(scope.podTypes[i].name === podType) {
-                      type = scope.podTypes[i];
+                for (i = 0; i < scope.podTypes.length; i++) {
+                    if (scope.podTypes[i].name === podType) {
+                        type = scope.podTypes[i];
                     }
                 }
 
                 fieldsElement.empty();
-                if(childScope) {
-                  childScope.$destroy();
+                if (childScope) {
+                    childScope.$destroy();
                 }
-                if(angular.isObject(type)) {
-                  var html = '<maas-obj-field-group>';
-                  angular.forEach(type.fields, function(field) {
-                      if(field.scope === 'bmc') {
-                          if(field.name === 'power_pass') {
-                              html += (
-                                  '<maas-obj-field type="password" key="');
-                          } else {
-                              html += (
-                                  '<maas-obj-field type="text" key="');
-                          }
-                          html += (field.name + '" label="' + field.label +
-                            '" label-width="2" label-width-tablet="2" '
-                            + 'input-width="4" input-width-tablet="3">'
-                            + '</maas-obj-field>');
-                      }
-                  });
+                if (angular.isObject(type)) {
+                    var html = '<maas-obj-field-group>';
+                    angular.forEach(type.fields, function(field) {
+                        if (field.scope === 'bmc') {
+                            if (field.name === 'power_pass') {
+                                html += (
+                                    '<maas-obj-field type="password" key="');
+                            } else {
+                                html += (
+                                    '<maas-obj-field type="text" key="');
+                            }
+                            html += (field.name + '" label="' + field.label +
+                                '" label-width="2" label-width-tablet="2" '
+                                + 'input-width="4" input-width-tablet="3">'
+                                + '</maas-obj-field>');
+                        }
+                    });
 
-                  if(type.name === 'virsh' && attrs.hideSlider !== "true") {
-                      html += (
-                          '<maas-obj-field type="slider" key="' +
-                          'cpu_over_commit_ratio" label="CPU overcommit" ' +
-                          'min="1" max="10" label-width="2" step=".1" '
-                          + 'label-width-tablet="2" input-width="4" '
-                          + 'input-width-tablet="3">' +
-                          '</maas-obj-field>');
-                      html += (
-                          '<maas-obj-field type="slider" key="' +
-                          'memory_over_commit_ratio" label="' +
-                          'Memory overcommit" min="1" max="10" ' +
-                          'label-width="2" label-width-tablet="2" step=".1" ' +
-                          'input-width="4" input-width-tablet="3">' +
-                          '</maas-obj-field>');
-                  }
-                  html += '</maas-obj-field-group>';
-                  childScope = scope.$new();
-                  var ele = angular.element(html);
-                  fieldsElement.append(ele);
-                  $compile(ele)(
-                      childScope, undefined, {maasObjForm: controller});
+                    if (type.name === 'virsh' && attrs.hideSlider !== "true") {
+                        html += (
+                            '<maas-obj-field type="slider" key="' +
+                            'cpu_over_commit_ratio" label="CPU overcommit" ' +
+                            'min="1" max="10" label-width="2" step=".1" '
+                            + 'label-width-tablet="2" input-width="4" '
+                            + 'input-width-tablet="3">' +
+                            '</maas-obj-field>');
+                        html += (
+                            '<maas-obj-field type="slider" key="' +
+                            'memory_over_commit_ratio" label="' +
+                            'Memory overcommit" min="1" max="10" ' +
+                            'label-width="2" label-width-tablet="2" ' +
+                            'step=".1" ' +
+                            'input-width="4" input-width-tablet="3">' +
+                            '</maas-obj-field>');
+                    }
+                    html += '</maas-obj-field-group>';
+                    childScope = scope.$new();
+                    var ele = angular.element(html);
+                    fieldsElement.append(ele);
+                    $compile(ele)(
+                        childScope, undefined, { maasObjForm: controller });
                 }
             };
 
             // Return the selected type.
             var getType = function() {
-                if(scope.hideType) {
+                if (scope.hideType) {
                     return controller.obj.type;
                 } else {
                     return controller.getValue('type');
@@ -111,7 +108,7 @@ angular.module('MAAS').directive(
             scope.$watchCollection("powerTypes", function() {
                 scope.podTypes.length = 0;
                 angular.forEach(scope.powerTypes, function(type) {
-                    if(type.driver_type === "pod") {
+                    if (type.driver_type === "pod") {
                         scope.podTypes.push(type);
                     }
                 });
@@ -122,4 +119,8 @@ angular.module('MAAS').directive(
             ManagerHelperService.loadManager(scope, GeneralManager);
         }
     };
-}]);
+};
+
+const maas = angular.module('MAAS');
+maas.run(cachePodParameters);
+maas.directive('maasPodParameters', maasPodParameters);

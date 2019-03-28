@@ -4,42 +4,41 @@
  * OS/Release select directive.
  */
 
-angular.module('MAAS').run(['$templateCache', function ($templateCache) {
+function cacheOsSelect($templateCache) {
     // Inject the os-select.html into the template cache.
     $templateCache.put('directive/templates/os-select.html', [
         '<label class="p-form__label">Choose your image</label>',
         '<div class="p-form__control"> ',
-            '<select name="os" ',
-                'data-ng-model="ngModel.osystem" ',
-                'data-ng-change="selectedOSChanged()" ',
-                'data-ng-disabled="maasOsSelect.osystems.length <= 1" ',
-                'data-ng-options="',
-                'os[0] as os[1] disable when ',
-                'installKVMSelectedAndNotUbuntu(os) ',
-                'for os in maasOsSelect.osystems">',
-            '</select>',
-            '<select name="release" ',
-                'data-ng-model="ngModel.release" ',
-                'data-ng-change="selectedReleaseChanged()" ',
-                'data-ng-disabled="maasOsSelect.releases.length <= 1" ',
-                'data-ng-options="',
-                'release[0] as release[1] disable when osOutdated(release,',
-                'deployOptions)',
-                ' for release in releases">',
-            '</select>',
-            '<select name="hwe_kernel" data-ng-model="ngModel.hwe_kernel" ',
-                'data-ng-show="hwe_kernels.length"',
-                'data-ng-options="',
-                'hwe_kernel[0] as hwe_kernel[1] for hwe_kernel ',
-                'in hwe_kernels">',
-                '<option value="">Default kernel</option>',
-            '</select>',
+        '<select name="os" ',
+        'data-ng-model="ngModel.osystem" ',
+        'data-ng-change="selectedOSChanged()" ',
+        'data-ng-disabled="maasOsSelect.osystems.length <= 1" ',
+        'data-ng-options="',
+        'os[0] as os[1] disable when ',
+        'installKVMSelectedAndNotUbuntu(os) ',
+        'for os in maasOsSelect.osystems">',
+        '</select>',
+        '<select name="release" ',
+        'data-ng-model="ngModel.release" ',
+        'data-ng-change="selectedReleaseChanged()" ',
+        'data-ng-disabled="maasOsSelect.releases.length <= 1" ',
+        'data-ng-options="',
+        'release[0] as release[1] disable when osOutdated(release,',
+        'deployOptions)',
+        ' for release in releases">',
+        '</select>',
+        '<select name="hwe_kernel" data-ng-model="ngModel.hwe_kernel" ',
+        'data-ng-show="hwe_kernels.length"',
+        'data-ng-options="',
+        'hwe_kernel[0] as hwe_kernel[1] for hwe_kernel ',
+        'in hwe_kernels">',
+        '<option value="">Default kernel</option>',
+        '</select>',
         '</div>'
     ].join(''));
-}]);
+};
 
-angular.module('MAAS').directive('maasOsSelect', ['KVMDeployOSBlacklist',
-    function(KVMDeployOSBlacklist) {
+function maasOsSelect(KVMDeployOSBlacklist) {
     return {
         restrict: "A",
         require: "ngModel",
@@ -52,11 +51,11 @@ angular.module('MAAS').directive('maasOsSelect', ['KVMDeployOSBlacklist',
 
             // Return only the selectable releases based on the selected os.
             function getSelectableReleases() {
-                if(angular.isObject($scope.maasOsSelect) &&
+                if (angular.isObject($scope.maasOsSelect) &&
                     angular.isArray($scope.maasOsSelect.releases)) {
                     var i, allChoices = $scope.maasOsSelect.releases;
                     var choice, choices = [];
-                    for(i = 0; i < allChoices.length; i++) {
+                    for (i = 0; i < allChoices.length; i++) {
                         choice = allChoices[i];
 
                         if (choice[1].includes('Ubuntu')) {
@@ -65,8 +64,8 @@ angular.module('MAAS').directive('maasOsSelect', ['KVMDeployOSBlacklist',
                                 .trim();
                         }
 
-                        if(choice[0].indexOf($scope.ngModel.osystem + '/') > -1)
-                        {
+                        if (choice[0].indexOf(
+                            $scope.ngModel.osystem + '/') > -1) {
                             choices.push(choice);
                         }
                     }
@@ -77,7 +76,7 @@ angular.module('MAAS').directive('maasOsSelect', ['KVMDeployOSBlacklist',
 
             // Return only the selectable kernels based on the selected os.
             function getSelectableKernels() {
-                if(angular.isObject($scope.maasOsSelect) &&
+                if (angular.isObject($scope.maasOsSelect) &&
                     angular.isObject($scope.maasOsSelect.kernels) &&
                     angular.isString($scope.ngModel.osystem) &&
                     angular.isString($scope.ngModel.release)) {
@@ -85,7 +84,7 @@ angular.module('MAAS').directive('maasOsSelect', ['KVMDeployOSBlacklist',
                     var release = $scope.ngModel.release.split('/')[1];
                     var osKernels = $scope.maasOsSelect.kernels[os];
 
-                    if(angular.isObject(osKernels)) {
+                    if (angular.isObject(osKernels)) {
                         return osKernels[release];
                     }
                 }
@@ -97,22 +96,22 @@ angular.module('MAAS').directive('maasOsSelect', ['KVMDeployOSBlacklist',
             // first choice.
             function getDefaultOrFirst(array, defaultValue, weightValue) {
                 var i, first, weightedPresent = false;
-                for(i = 0; i < array.length; i++) {
-                    if(angular.isUndefined(first)) {
+                for (i = 0; i < array.length; i++) {
+                    if (angular.isUndefined(first)) {
                         first = array[i][0];
                     }
-                    if(array[i][0] === defaultValue) {
+                    if (array[i][0] === defaultValue) {
                         return defaultValue;
                     }
-                    if(angular.isString(weightValue) &&
+                    if (angular.isString(weightValue) &&
                         array[i][0] === weightValue) {
                         weightedPresent = true;
                     }
                 }
-                if(weightedPresent) {
+                if (weightedPresent) {
                     return weightValue;
                 }
-                if(angular.isUndefined(first)) {
+                if (angular.isUndefined(first)) {
                     return null;
                 }
                 return first;
@@ -126,12 +125,12 @@ angular.module('MAAS').directive('maasOsSelect', ['KVMDeployOSBlacklist',
             // available.
             function setDefault() {
                 // Do nothing if model is already set.
-                if(angular.isString($scope.ngModel.osystem) &&
+                if (angular.isString($scope.ngModel.osystem) &&
                     angular.isString($scope.ngModel.release)) {
                     return;
                 }
                 // Do nothing if the default is not set.
-                if(angular.isUndefined($scope.maasOsSelect.default_osystem) ||
+                if (angular.isUndefined($scope.maasOsSelect.default_osystem) ||
                     angular.isUndefined($scope.maasOsSelect.default_release)) {
                     return;
                 }
@@ -149,7 +148,7 @@ angular.module('MAAS').directive('maasOsSelect', ['KVMDeployOSBlacklist',
             }
 
             // Defaults
-            if(!angular.isObject($scope.ngModel)) {
+            if (!angular.isObject($scope.ngModel)) {
                 $scope.ngModel = {
                     osystem: null,
                     release: null,
@@ -187,7 +186,7 @@ angular.module('MAAS').directive('maasOsSelect', ['KVMDeployOSBlacklist',
                 $scope.releases = getSelectableReleases();
                 $scope.ngModel.release = null;
                 $scope.ngModel.hwe_kernel = null;
-                if($scope.releases.length > 0) {
+                if ($scope.releases.length > 0) {
                     var firstRelease = $scope.releases[0][0];
                     $scope.ngModel.release = firstRelease;
                 }
@@ -204,23 +203,23 @@ angular.module('MAAS').directive('maasOsSelect', ['KVMDeployOSBlacklist',
             $scope.osOutdated = function(release) {
                 if ($scope.$parent.$parent.deployOptions &&
                     $scope.$parent.$parent.deployOptions.installKVM) {
-                        if (KVMDeployOSBlacklist.includes(release[0])) {
-                            return true;
-                        }
+                    if (KVMDeployOSBlacklist.includes(release[0])) {
+                        return true;
+                    }
 
-                        return false;
+                    return false;
                 }
 
                 if ($scope.$parent.$parent.tabs &&
                     $scope.$parent.$parent.tabs['machines'].deployOptions &&
                     $scope.$parent.$parent.tabs['machines']
                         .deployOptions.installKVM) {
-                            if (KVMDeployOSBlacklist.includes(release[0])) {
-                                return true;
-                            }
-
-                            return false;
+                    if (KVMDeployOSBlacklist.includes(release[0])) {
+                        return true;
                     }
+
+                    return false;
+                }
 
                 return false;
             };
@@ -228,18 +227,18 @@ angular.module('MAAS').directive('maasOsSelect', ['KVMDeployOSBlacklist',
             $scope.installKVMSelectedAndNotUbuntu = function(os) {
                 if ($scope.$parent.$parent.deployOptions &&
                     $scope.$parent.$parent.deployOptions.installKVM) {
-                        if (os[0] !== 'ubuntu') {
-                            return true;
-                        }
+                    if (os[0] !== 'ubuntu') {
+                        return true;
+                    }
                 }
 
                 if ($scope.$parent.$parent.tabs &&
                     $scope.$parent.$parent.tabs['machines'].deployOptions &&
                     $scope.$parent.$parent.tabs['machines']
                         .deployOptions.installKVM) {
-                            if (os[0] !== 'ubuntu') {
-                                return true;
-                            }
+                    if (os[0] !== 'ubuntu') {
+                        return true;
+                    }
                 }
 
                 return false;
@@ -247,4 +246,8 @@ angular.module('MAAS').directive('maasOsSelect', ['KVMDeployOSBlacklist',
         }
     };
 
-}]);
+};
+
+const maas = angular.module('MAAS');
+maas.run(cacheOsSelect);
+maas.directive('maasOsSelect', maasOsSelect);

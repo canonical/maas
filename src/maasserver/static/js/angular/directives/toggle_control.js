@@ -4,9 +4,7 @@
  * Toggle control.
  */
 
-angular.module('MAAS').directive('toggleCtrl',[
-    '$document',
-    function($document) {
+function toggleCtrl($document) {
         return {
             restrict: 'A',
             link: function($scope, $element, $attr){
@@ -31,4 +29,6 @@ angular.module('MAAS').directive('toggleCtrl',[
                 });
             }
         };
-}]);
+};
+
+angular.module('MAAS').directive('toggleCtrl', toggleCtrl);

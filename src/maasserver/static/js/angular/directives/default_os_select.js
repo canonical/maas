@@ -4,7 +4,8 @@
  * OS/Release select directive.
  */
 
-angular.module('MAAS').directive('maasDefaultOsSelect', function() {
+
+function maasDefaultOsSelect() {
     return {
         restrict: "A",
         scope: {
@@ -15,7 +16,7 @@ angular.module('MAAS').directive('maasDefaultOsSelect', function() {
             var osElement = angular.element($element.find($scope.osInput));
             var seriesElement = angular.element(
                 $element.find($scope.seriesInput));
-            if(!osElement || !seriesElement) {
+            if (!osElement || !seriesElement) {
                 throw new Error("Unable to find os or series elements");
             }
 
@@ -23,13 +24,13 @@ angular.module('MAAS').directive('maasDefaultOsSelect', function() {
                 var first_option = null;
                 angular.forEach(options, function(option) {
                     option = angular.element(option);
-                    if(!option.hasClass('u-hide')) {
-                        if(first_option === null) {
+                    if (!option.hasClass('u-hide')) {
+                        if (first_option === null) {
                             first_option = option;
                         }
                     }
                 });
-                if(first_option !== null) {
+                if (first_option !== null) {
                     seriesElement.val(first_option.val());
                 }
             };
@@ -41,17 +42,17 @@ angular.module('MAAS').directive('maasDefaultOsSelect', function() {
 
                 // If "Default OS" is selected, then
                 // only show "Default OS Release".
-                if(newOSValue === '') {
-                    if(value === '') {
+                if (newOSValue === '') {
+                    if (value === '') {
                         option.removeClass('u-hide');
                         option.attr('selected', 'selected');
                     } else {
                         option.addClass('u-hide');
                     }
                 } else {
-                    if(split_value[0] === newOSValue) {
+                    if (split_value[0] === newOSValue) {
                         option.removeClass('u-hide');
-                        if(split_value[1] === '' && !initialSkip) {
+                        if (split_value[1] === '' && !initialSkip) {
                             selected = true;
                             option.attr('selected', 'selected');
                         }
@@ -83,7 +84,7 @@ angular.module('MAAS').directive('maasDefaultOsSelect', function() {
                 // See if a selection was made, if not then we need
                 // to select the first visible as a default is not
                 // present.
-                if(!selected) {
+                if (!selected) {
                     selectVisableOption(options);
                 }
             };
@@ -97,4 +98,6 @@ angular.module('MAAS').directive('maasDefaultOsSelect', function() {
             switchTo(osElement.val(), true);
         }
     };
-});
+};
+
+angular.module('MAAS').directive('maasDefaultOsSelect', maasDefaultOsSelect);

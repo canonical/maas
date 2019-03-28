@@ -6,43 +6,42 @@
  * Converts the provided release name into the release title.
  */
 
+function maasReleaseName(GeneralManager) {
+  return {
+    restrict: "A",
+    scope: {
+      releaseName: "=maasReleaseName"
+    },
+    link: function(scope, element, attrs) {
+      scope.osinfo = GeneralManager.getData("osinfo");
 
-angular.module('MAAS').directive('maasReleaseName', [
-    'GeneralManager', 'ManagerHelperService',
-    function(GeneralManager, ManagerHelperService) {
-    return {
-        restrict: "A",
-        scope: {
-          releaseName: "=maasReleaseName"
-        },
-        link: function(scope, element, attrs) {
-            scope.osinfo = GeneralManager.getData("osinfo");
-
-            // Gets the release name.
-            var getName = function() {
-                if(angular.isArray(scope.osinfo.releases)) {
-                  for(let i = 0; i < scope.osinfo.releases.length; i++) {
-                      var release = scope.osinfo.releases[i];
-                      if(release[0] === scope.releaseName) {
-                          return release[1];
-                      }
-                  }
-                }
-                return scope.releaseName;
-            };
-
-            // Sets the text inside the element.
-            var setText = function() {
-                element.text(getName());
-            };
-
-            // Update the text when the release name or osinfo changes.
-            scope.$watch('releaseName', function() {
-              setText();
-            });
-            scope.$watchCollection('osinfo.releases', function() {
-              setText();
-            });
+      // Gets the release name.
+      var getName = function() {
+        if (angular.isArray(scope.osinfo.releases)) {
+          for (let i = 0; i < scope.osinfo.releases.length; i++) {
+            var release = scope.osinfo.releases[i];
+            if (release[0] === scope.releaseName) {
+              return release[1];
+            }
+          }
         }
-    };
-}]);
+        return scope.releaseName;
+      };
+
+      // Sets the text inside the element.
+      var setText = function() {
+        element.text(getName());
+      };
+
+      // Update the text when the release name or osinfo changes.
+      scope.$watch('releaseName', function() {
+        setText();
+      });
+      scope.$watchCollection('osinfo.releases', function() {
+        setText();
+      });
+    }
+  };
+};
+
+angular.module('MAAS').directive('maasReleaseName', maasReleaseName);

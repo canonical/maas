@@ -4,17 +4,15 @@
  * Proxy settings directive.
 */
 
-angular.module('MAAS').directive('maasProxySettings', [
-    '$sce', 'ConfigsManager', 'ManagerHelperService', 'JSONService',
-    function($sce, ConfigsManager, ManagerHelperService, JSONService) {
-        return {
-            restrict: "E",
-            scope: {},
-            templateUrl: 'static/partials/proxy-settings.html',
-            controller: function($scope, $rootScope, $element, $document) {
-                $scope.loading = true;
-                ManagerHelperService.loadManager(
-                    $scope, ConfigsManager).then(function() {
+function maasProxySettings(ConfigsManager, ManagerHelperService) {
+    return {
+        restrict: "E",
+        scope: {},
+        templateUrl: 'static/partials/proxy-settings.html',
+        controller: function($scope) {
+            $scope.loading = true;
+            ManagerHelperService.loadManager(
+                $scope, ConfigsManager).then(function() {
                     $scope.loading = false;
                     $scope.httpProxy = ConfigsManager.getItemFromList(
                         "http_proxy");
@@ -36,6 +34,8 @@ angular.module('MAAS').directive('maasProxySettings', [
                         $scope.proxy_type = "no-proxy";
                     }
                 });
-            }
-        };
-    }]);
+        }
+    };
+};
+
+angular.module('MAAS').directive('maasProxySettings', maasProxySettings);

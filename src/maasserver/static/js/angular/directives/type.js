@@ -4,7 +4,7 @@
  * Type directive.
  */
 
-angular.module('MAAS').directive('ngType', function() {
+function ngType() {
     return {
         restrict: "A",
         scope: {
@@ -37,7 +37,7 @@ angular.module('MAAS').directive('ngType', function() {
                     'url',
                     'week'
                 ];
-                if(valid_types.indexOf(scope.ngType) !== -1) {
+                if (valid_types.indexOf(scope.ngType) !== -1) {
                     element[0].type = scope.ngType;
                 }
                 else {
@@ -47,4 +47,6 @@ angular.module('MAAS').directive('ngType', function() {
             });
         }
     };
-});
+};
+
+angular.module('MAAS').directive('ngType', ngType);

@@ -6,9 +6,7 @@
  * Provides the navigation interactions on all screen sizes
  */
 
-
-angular.module('MAAS').directive(
-  'maasNavigationDropdown', ['$document', function($document) {
+function maasNavigationDropdown($document) {
   return {
     restrict: "A",
     link: function(scope, element, attrs) {
@@ -23,4 +21,7 @@ angular.module('MAAS').directive(
       });
     }
   };
-}]);
+};
+
+angular.module('MAAS').directive(
+  'maasNavigationDropdown', maasNavigationDropdown)

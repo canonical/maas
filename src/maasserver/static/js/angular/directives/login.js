@@ -6,15 +6,16 @@
 
 const bakery = require('macaroon-bakery');
 
-angular.module('MAAS').factory('getBakery', function() {
+function getBakery() {
     return function(visitPage) {
         return new bakery.Bakery({
             storage: new bakery.BakeryStorage(localStorage, {}),
             visitPage: visitPage
         });
     };
-}).directive('externalLogin', ['$window', 'getBakery',
-                               function($window, getBakery) {
+};
+
+function externalLogin($window, getBakery) {
     return {
         restrict: 'E',
         scope: {},
@@ -37,7 +38,7 @@ angular.module('MAAS').factory('getBakery', function() {
 
             const visitPage = function(error) {
                 $scope.$apply(function() {
-                    $scope.loginURL =  error.Info.VisitURL;
+                    $scope.loginURL = error.Info.VisitURL;
                     $scope.errorMessage = '';
                 });
             };
@@ -45,8 +46,10 @@ angular.module('MAAS').factory('getBakery', function() {
             const nextPath = $element.attr('next-path');
             bakery.get(
                 '/MAAS/accounts/discharge-request/',
-                {'Accept': 'application/json',
-                 'Content-Type': 'application/json'},
+                {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
                 function(error, response) {
                     if (response.currentTarget.status != 200) {
                         $scope.$apply(function() {
@@ -60,4 +63,8 @@ angular.module('MAAS').factory('getBakery', function() {
                 });
         }
     };
-}]);
+};
+
+const maas = angular.module('MAAS');
+maas.factory('getBakery', getBakery);
+maas.directive('externalLogin', externalLogin);

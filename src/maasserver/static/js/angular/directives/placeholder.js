@@ -6,8 +6,7 @@
  * Allows the placeholder attribute on an element to be dynamic.
  */
 
-
-angular.module('MAAS').directive('ngPlaceholder', function() {
+function ngPlaceholder() {
     return {
         restrict: "A",
         scope: {
@@ -19,4 +18,6 @@ angular.module('MAAS').directive('ngPlaceholder', function() {
             });
         }
     };
-});
+};
+
+angular.module('MAAS').directive('ngPlaceholder', ngPlaceholder);

@@ -4,7 +4,7 @@
  * Call to action directive.
  */
 
-angular.module('MAAS').run(['$templateCache', function ($templateCache) {
+function cacheCta($templateCache) {
     // Inject the cta.html into the template cache.
     $templateCache.put('directive/templates/cta.html', [
        '<div class="p-cta">',
@@ -42,9 +42,9 @@ angular.module('MAAS').run(['$templateCache', function ($templateCache) {
             '</div>',
         '</div>',
     ].join(''));
-}]);
+};
 
-angular.module('MAAS').directive('maasCta', function() {
+function maasCta() {
     return {
         restrict: "A",
         replace: true,
@@ -152,4 +152,8 @@ angular.module('MAAS').directive('maasCta', function() {
             });
         }
     };
-});
+};
+
+const maas = angular.module('MAAS');
+maas.run(cacheCta);
+maas.directive('maasCta', maasCta);

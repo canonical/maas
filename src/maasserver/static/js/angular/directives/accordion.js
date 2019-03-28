@@ -9,8 +9,7 @@
  * accordion tab.
  */
 
-
-angular.module('MAAS').directive('maasAccordion', function() {
+function maasAccordion() {
     return {
         restrict: "C",
         link: function(scope, element, attrs) {
@@ -39,4 +38,6 @@ angular.module('MAAS').directive('maasAccordion', function() {
             });
         }
     };
-});
+};
+
+angular.module('MAAS').directive('maasAccordion', maasAccordion)

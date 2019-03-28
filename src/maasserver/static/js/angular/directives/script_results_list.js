@@ -5,10 +5,13 @@
 *
 */
 
-angular.module('MAAS').directive('maasScriptResultsList', function() {
+function maasScriptResultsList() {
     return {
         templateUrl: (
         'static/partials/script-results-list.html?v=' + (
             MAAS_config.files_version))
     };
-});
+};
+
+angular.module('MAAS').directive(
+    'maasScriptResultsList', maasScriptResultsList);

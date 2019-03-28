@@ -2,7 +2,7 @@
  * GNU Affero General Public License version 3 (see the file LICENSE).
 */
 
-angular.module('MAAS').directive('maasEnter', function () {
+function maasEnter() {
     return {
         restrict: "A",
         link: function (scope, element, attrs) {
@@ -16,4 +16,6 @@ angular.module('MAAS').directive('maasEnter', function () {
             });
         }
     };
-});
+};
+
+angular.module('MAAS').directive('maasEnter', maasEnter);

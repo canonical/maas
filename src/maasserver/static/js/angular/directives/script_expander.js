@@ -6,8 +6,7 @@
  * Expands a scripts content.
  */
 
-
-angular.module('MAAS').directive('pScriptExpander', function() {
+function pScriptExpander() {
     return {
         restrict: "C",
         link: function($scope, $element, $attrs) {
@@ -21,4 +20,6 @@ angular.module('MAAS').directive('pScriptExpander', function() {
             });
         }
     };
-});
+};
+
+angular.module('MAAS').directive('pScriptExpander', pScriptExpander);

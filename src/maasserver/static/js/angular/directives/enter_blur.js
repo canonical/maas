@@ -6,8 +6,7 @@
  * When the enter key is pressed make the element lose focus (aka. blur event).
  */
 
-
-angular.module('MAAS').directive('maasEnterBlur', function() {
+function maasEnterBlur() {
     return {
         restrict: "A",
         link: function(scope, element, attrs) {
@@ -19,4 +18,6 @@ angular.module('MAAS').directive('maasEnterBlur', function() {
             });
         }
     };
-});
+};
+
+angular.module('MAAS').directive('maasEnterBlur', maasEnterBlur);

@@ -6,9 +6,7 @@
  * Provides the navigation interactions on all screen sizes
  */
 
-
-angular.module('MAAS').directive(
-  'maasNavigationMobile', ['$document', function($document) {
+function maasNavigationMobile() {
   return {
     restrict: "A",
     link: function(scope, element, attrs) {
@@ -20,4 +18,6 @@ angular.module('MAAS').directive(
       });
     }
   };
-}]);
+};
+
+angular.module('MAAS').directive('maasNavigationMobile', maasNavigationMobile);

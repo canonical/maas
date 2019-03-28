@@ -4,14 +4,14 @@
  * Script status icon select directive.
  */
 
-angular.module('MAAS').run(['$templateCache', function ($templateCache) {
+function cacheScriptStatus($templateCache) {
     // Inject the script_status.html into the template cache.
     $templateCache.put('directive/templates/script_status.html', [
         '<span data-ng-class="icon" data-ng-show="show"></span>'
     ].join(''));
-}]);
+};
 
-angular.module('MAAS').directive('maasScriptStatus', function() {
+function maasScriptStatus() {
     return {
         restrict: "A",
         require: "scriptStatus",
@@ -22,7 +22,7 @@ angular.module('MAAS').directive('maasScriptStatus', function() {
         controller: function($scope) {
             function getIcon() {
                 $scope.show = true;
-                switch($scope.scriptStatus) {
+                switch ($scope.scriptStatus) {
                     // SCRIPT_STATUS.PENDING
                     case 0:
                         $scope.icon = 'p-icon--pending';
@@ -72,4 +72,8 @@ angular.module('MAAS').directive('maasScriptStatus', function() {
             });
         }
     };
-});
+};
+
+const maas = angular.module('MAAS');
+maas.run(cacheScriptStatus);
+maas.directive('maasScriptStatus', maasScriptStatus);

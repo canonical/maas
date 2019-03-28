@@ -9,43 +9,44 @@
  * accordion tab.
  */
 
+function maasCodeLines() {
+    return {
+        restrict: "A",
+        scope: {
+            maasCodeLines: '&'
+        },
+        link: function(scope, element, attributes) {
 
- angular.module('MAAS').directive('maasCodeLines', function () {
-     return {
-         restrict: "A",
-         scope: {
-             maasCodeLines: '&'
-         },
-         link: function(scope, element, attributes) {
+            function insertContent() {
 
-             function insertContent() {
+                // Empty the element contents and include again, this asures
+                // its the most up-to-date content
+                element.empty();
+                element.text(scope.maasCodeLines);
 
-                 // Empty the element contents and include again, this asures
-                 // its the most up-to-date content
-                 element.empty();
-                 element.text(scope.maasCodeLines);
+                // Count the line contents
+                var lines = element.html().split('\n'),
+                    newLine = '',
+                    insert = "<code>";
 
-                 // Count the line contents
-                 var lines = element.html().split('\n'),
-                     newLine = '',
-                     insert = "<code>";
+                // Each line is to be wrapped by a span which is style & given
+                // its appropriate line number
+                $.each(lines, function() {
+                    insert += newLine + '<span class="code-line">' +
+                        this + '</span>';
+                    newLine = '\n';
+                });
+                insert += "</code>";
 
-                 // Each line is to be wrapped by a span which is style & given
-                 // its appropriate line number
-                 $.each(lines, function() {
-                   insert += newLine + '<span class="code-line">' +
-                   this + '</span>';
-                   newLine = '\n';
-                 });
-                 insert += "</code>";
+                // Re-insert the contents
+                element.html(insert);
+            }
 
-                 // Re-insert the contents
-                 element.html(insert);
-             }
+            // Watch the contents of the element so when it changes to
+            // re-add the line numbers.
+            scope.$watch(scope.maasCodeLines, insertContent);
+        }
+    };
+};
 
-             // Watch the contents of the element so when it changes to
-             // re-add the line numbers.
-             scope.$watch(scope.maasCodeLines, insertContent);
-         }
-     };
- });
+angular.module('MAAS').directive('maasCodeLines', maasCodeLines)

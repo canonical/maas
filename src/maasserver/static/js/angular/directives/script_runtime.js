@@ -4,7 +4,7 @@
  * Script runtime counter directive.
  */
 
-angular.module('MAAS').run(['$templateCache', function ($templateCache) {
+function cacheScriptRuntime($templateCache) {
     // Inject the script_runtime.html into the template cache.
     $templateCache.put('directive/templates/script_runtime.html', [
         '<span data-ng-if="(scriptStatus === 1 || scriptStatus === 7) &&',
@@ -17,9 +17,9 @@ angular.module('MAAS').run(['$templateCache', function ($templateCache) {
         '<span data-ng-if="scriptStatus !== 0 && scriptStatus !== 1 ',
         '&& scriptStatus !== 7">{{runTime}}</span>'
     ].join(''));
-}]);
+};
 
-angular.module('MAAS').directive('maasScriptRunTime', function() {
+function maasScriptRunTime() {
     return {
         restrict: "A",
         require: ["startTime", "runTime", "estimatedRunTime", "scriptStatus"],
@@ -34,7 +34,7 @@ angular.module('MAAS').directive('maasScriptRunTime', function() {
             $scope.counter = "0:00:00";
 
             function incrementCounter() {
-                if(($scope.scriptStatus === 1 || $scope.scriptStatus === 7) &&
+                if (($scope.scriptStatus === 1 || $scope.scriptStatus === 7) &&
                     $scope.startTime) {
                     var seconds = Math.floor(
                         (Date.now() / 1000) - $scope.startTime);
@@ -50,18 +50,18 @@ angular.module('MAAS').directive('maasScriptRunTime', function() {
                     // import to use the same format as when scripts are not
                     // running runtime is taken from the region using Python's
                     // format.
-                    if(days === 1) {
+                    if (days === 1) {
                         new_counter = days + " day, ";
-                    }else if(days > 1) {
+                    } else if (days > 1) {
                         new_counter = days + " days, ";
                     }
                     new_counter += hours + ":";
-                    if(minutes < 10) {
+                    if (minutes < 10) {
                         new_counter += "0" + minutes + ":";
                     } else {
                         new_counter += minutes + ":";
                     }
-                    if(seconds < 10) {
+                    if (seconds < 10) {
                         new_counter += "0" + seconds;
                     } else {
                         new_counter += seconds;
@@ -75,8 +75,12 @@ angular.module('MAAS').directive('maasScriptRunTime', function() {
             incrementCounter();
             var promise = $interval(incrementCounter, 1000);
             $scope.$on('$destroy', function() {
-              $interval.cancel(promise);
+                $interval.cancel(promise);
             });
         }
     };
-});
+};
+
+const maas = angular.module('MAAS');
+maas.run(cacheScriptRuntime);
+maas.directive('maasScriptRunTime', maasScriptRunTime);

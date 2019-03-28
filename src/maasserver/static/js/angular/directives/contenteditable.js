@@ -9,8 +9,7 @@
  * with maas so Angular can identify all elements with this attribute.
  */
 
-
-angular.module('MAAS').directive('contenteditable', function() {
+function contenteditable() {
     return {
         restrict: "A",
         require: "ngModel",
@@ -57,4 +56,6 @@ angular.module('MAAS').directive('contenteditable', function() {
             });
         }
     };
-});
+};
+
+angular.module('MAAS').directive('contenteditable', contenteditable)
