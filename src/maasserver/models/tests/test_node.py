@@ -2955,7 +2955,9 @@ class TestNode(MAASServerTestCase):
 
         try:
             with transaction.atomic():
-                node.start_commissioning(admin)
+                node.start_commissioning(
+                    admin, enable_ssh=True, skip_bmc_config=True,
+                    skip_networking=True, skip_storage=True)
         except node_start.side_effect.__class__:
             # We don't care about the error here, so suppress it. It
             # exists only to cause the transaction to abort.
@@ -2967,6 +2969,10 @@ class TestNode(MAASServerTestCase):
                 admin, generate_user_data_for_status.return_value,
                 NODE_STATUS.NEW, allow_power_cycle=True, config=config))
         self.assertEqual(NODE_STATUS.NEW, node.status)
+        self.assertFalse(node.enable_ssh)
+        self.assertFalse(node.skip_bmc_config)
+        self.assertFalse(node.skip_networking)
+        self.assertFalse(node.skip_storage)
 
     def test_start_commissioning_logs_and_raises_errors_in_starting(self):
         admin = factory.make_admin()
@@ -3317,7 +3323,8 @@ class TestNode(MAASServerTestCase):
 
         try:
             with transaction.atomic():
-                node.start_testing(admin, testing_scripts=[script.name])
+                node.start_testing(
+                    admin, enable_ssh=True, testing_scripts=[script.name])
         except mock_node_power_cycle.side_effect.__class__:
             # We don't care about the error here, so suppress it. It
             # exists only to cause the transaction to abort.
@@ -3325,6 +3332,7 @@ class TestNode(MAASServerTestCase):
 
         self.expectThat(mock_node_power_cycle, MockCalledOnceWith())
         self.expectThat(NODE_STATUS.DEPLOYED, Equals(node.status))
+        self.assertFalse(node.enable_ssh)
 
     def test_start_testing_logs_and_raises_errors(self):
         script = factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
