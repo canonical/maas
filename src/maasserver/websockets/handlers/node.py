@@ -42,6 +42,7 @@ from maasserver.websockets.base import (
     HandlerError,
 )
 from maasserver.websockets.handlers.event import dehydrate_event_type_level
+from maasserver.websockets.handlers.node_result import NodeResultHandler
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
 )
@@ -884,3 +885,39 @@ class NodeHandler(TimestampedModelHandler):
                 etree.tostring(
                     probed_details, encoding=str,
                     pretty_print=True)).convert()
+
+    def set_script_result_suppressed(self, params):
+        """Set suppressed for the ScriptResult ids."""
+        script_result_ids = params.get('script_result_ids')
+        ScriptResult.objects.filter(id__in=script_result_ids).update(
+            suppressed=True)
+
+    def get_suppressible_script_results(self, params):
+        """Return a dictionary with Nodes system_ids mapped to lists of
+        ScriptResults that can still be suppressed."""
+        node_result_handler = NodeResultHandler(self.user, {}, None)
+        system_ids = params.get('system_ids')
+
+        script_results = ScriptResult.objects.filter(
+            status__in=[
+                SCRIPT_STATUS.FAILED, SCRIPT_STATUS.TIMEDOUT,
+                SCRIPT_STATUS.FAILED_INSTALLING],
+            script_set__node__system_id__in=system_ids,
+            suppressed=False).defer(
+                'output', 'stdout', 'stderr').prefetch_related(
+                    'script', 'script_set', 'script_set__node').defer(
+                        'script__parameters', 'script__packages').defer(
+                            'script_set__requested_scripts')
+
+        # Create the node to script result mappings.
+        script_result_mappings = {}
+        for script_result in script_results:
+            if script_result.script_set.node.system_id not in (
+                    script_result_mappings):
+                script_result_mappings[
+                    script_result.script_set.node.system_id] = []
+            script_result_mappings[
+                script_result.script_set.node.system_id].append(
+                    node_result_handler.dehydrate(
+                        script_result, {}, for_list=True))
+        return script_result_mappings

@@ -50,6 +50,8 @@ class ControllerHandler(MachineHandler):
             'unlink_subnet',
             'get_summary_xml',
             'get_summary_yaml',
+            'set_script_result_suppressed',
+            'get_suppressible_script_results',
         ]
         form = ControllerForm
         exclude = [

@@ -57,6 +57,7 @@ class TestNodeResultHandler(MAASServerTestCase):
                 "value": value,
                 "surfaced": False,
                 } for key, value in results.items()],
+            "suppressed": script_result.suppressed,
         }
 
         return data
@@ -352,6 +353,7 @@ class TestNodeResultHandler(MAASServerTestCase):
                 'starttime': script_result.starttime,
                 'endtime': script_result.endtime,
                 'estimated_runtime': script_result.estimated_runtime,
+                'suppressed': script_result.suppressed,
             }, out)
 
     def test_clear_removes_system_id_from_cache(self):

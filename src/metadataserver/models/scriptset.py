@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 __all__ = [
@@ -76,7 +76,8 @@ def get_status_from_qs(qs):
             SCRIPT_STATUS.FAILED, SCRIPT_STATUS.FAILED_INSTALLING,
             SCRIPT_STATUS.TIMEDOUT, SCRIPT_STATUS.DEGRADED):
         for script_result in qs:
-            if script_result.status == status:
+            if (script_result.status == status and
+                    not script_result.suppressed):
                 if status == SCRIPT_STATUS.INSTALLING:
                     # When a script is installing the set is running.
                     return SCRIPT_STATUS.RUNNING
@@ -346,7 +347,8 @@ class ScriptSet(CleanSave, Model):
     @property
     def status(self):
         return get_status_from_qs(
-            self.scriptresult_set.all().only('status', 'script_set_id'))
+            self.scriptresult_set.all().only(
+                'status', 'script_set_id', 'suppressed'))
 
     @property
     def status_name(self):

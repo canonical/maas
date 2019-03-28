@@ -163,6 +163,8 @@ class MachineHandler(NodeHandler):
             'default_user',
             'get_summary_xml',
             'get_summary_yaml',
+            'set_script_result_suppressed',
+            'get_suppressible_script_results',
         ]
         form = AdminMachineWithMACAddressesForm
         exclude = [

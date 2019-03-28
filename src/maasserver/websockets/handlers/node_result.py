@@ -58,6 +58,7 @@ class NodeResultHandler(TimestampedModelHandler):
             "exit_status",
             "started",
             "ended",
+            "suppressed",
         ]
 
     def __init__(self, *args, **kwargs):
@@ -85,6 +86,7 @@ class NodeResultHandler(TimestampedModelHandler):
         data["endtime"] = obj.endtime
         data["estimated_runtime"] = obj.estimated_runtime
         data["result_type"] = obj.script_set.result_type
+        data["suppressed"] = obj.suppressed
         if obj.script is not None:
             data["hardware_type"] = obj.script.hardware_type
             data["tags"] = ", ".join(obj.script.tags)
@@ -213,7 +215,8 @@ class NodeResultHandler(TimestampedModelHandler):
             'script_name').first()
         history_qs = script_result.history.only(
             'id', 'updated', 'status', 'started', 'ended', 'script_id',
-            'script_name', 'script_set_id', 'physical_blockdevice_id')
+            'script_name', 'script_set_id', 'physical_blockdevice_id',
+            'suppressed')
         return [{
             'id': history.id,
             'updated': dehydrate_datetime(history.updated),
@@ -223,6 +226,7 @@ class NodeResultHandler(TimestampedModelHandler):
             'starttime': history.starttime,
             'endtime': history.endtime,
             'estimated_runtime': history.estimated_runtime,
+            'suppressed': history.suppressed,
         } for history in history_qs]
 
     def clear(self, params):

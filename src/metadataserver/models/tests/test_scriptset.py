@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 __all__ = []
@@ -886,6 +886,22 @@ class TestScriptSet(MAASServerTestCase):
             if status == SCRIPT_STATUS.TIMEDOUT:
                 status = SCRIPT_STATUS.FAILED
             self.assertEquals(status, script_set.status)
+
+    def test_status_with_suppressed(self):
+        script_set = factory.make_ScriptSet()
+        factory.make_ScriptResult(
+            script_set=script_set, status=SCRIPT_STATUS.PASSED)
+        factory.make_ScriptResult(
+            script_set=script_set, status=SCRIPT_STATUS.FAILED,
+            suppressed=True)
+        factory.make_ScriptResult(
+            status=SCRIPT_STATUS.TIMEDOUT, suppressed=True)
+        factory.make_ScriptResult(
+            script_set=script_set, status=SCRIPT_STATUS.FAILED_INSTALLING,
+            suppressed=True)
+        factory.make_ScriptResult(
+            script_set=script_set, status=SCRIPT_STATUS.SKIPPED)
+        self.assertEquals(SCRIPT_STATUS.PASSED, script_set.status)
 
     def test_empty_scriptset_has_no_status(self):
         script_set = factory.make_ScriptSet()

@@ -279,7 +279,7 @@ def get_cached_script_results(node):
     if not hasattr(node, '_cached_script_results'):
         node._cached_script_results = list(
             node.get_latest_script_results.only(
-                'status', 'script_set', 'script'))
+                'status', 'script_set', 'script', 'suppressed'))
         node._cached_commissioning_script_results = []
         node._cached_testing_script_results = []
         for script_result in node._cached_script_results:
