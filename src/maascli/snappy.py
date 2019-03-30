@@ -34,6 +34,8 @@ from maascli.init import (
     add_rbac_options,
     init_maas,
     print_msg,
+    prompt_for_choices,
+    read_input,
 )
 import netifaces
 import tempita
@@ -484,25 +486,6 @@ def perform_work(msg, cmd, *args, **kwargs):
     return ret
 
 
-def read_input(prompt):
-    """Reads input from stdin."""
-    while True:
-        try:
-            data = input(prompt)
-        except EOFError:
-            # Ctrl-d was pressed?
-            print()
-            continue
-        except KeyboardInterrupt:
-            print()
-            raise SystemExit(1)
-        else:
-            # The assumption is that, since Python 3 return a Unicode string
-            # from input(), it has Done The Right Thing with respect to
-            # character encoding.
-            return data
-
-
 def required_prompt(prompt, help_text=None):
     """Prompt for required input."""
     value = None
@@ -512,34 +495,6 @@ def required_prompt(prompt, help_text=None):
             if help_text:
                 print_msg(help_text)
     return value
-
-
-def prompt_for_choices(prompt, choices, default=None, help_text=None):
-    """Prompt requires specific choice answeres.
-
-    If `help_text` is provided the 'help' is added as a choice.
-    """
-    invalid_msg = 'Invalid input, try again'
-    if help_text:
-        invalid_msg += " or type 'help'"
-    invalid_msg += '.'
-    value = None
-    while True:
-        value = read_input(prompt)
-        if not value:
-            if default:
-                return default
-            else:
-                print_msg(invalid_msg)
-                print_msg()
-        elif value == 'help' and help_text:
-            print_msg(help_text)
-            print_msg()
-        elif value not in choices:
-            print_msg(invalid_msg)
-            print_msg()
-        else:
-            return value
 
 
 def prompt_for_maas_url():

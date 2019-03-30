@@ -549,3 +549,38 @@ class TestRBACUserClient(MAASServerTestCase):
                 'https://rbac.example.com/api/'
                 'rbac/v1/service/3/credentials',
                 auth=mock.ANY, cookies=mock.ANY, json=json))
+
+    def test_create_service(self):
+        products = [
+            {
+                '$uri': '/api/rbac/v1/product/1',
+                'label': 'maas',
+                'name': 'MAAS',
+            }
+        ]
+        maas = {
+            '$uri': '/api/rbac/v1/service/2',
+            'name': 'maas',
+            'description': '',
+            'pending': True,
+            'product': {
+                '$ref': '/api/rbac/v1/product/1'
+            },
+        }
+        self.mock_responses(products, maas)
+        self.assertEqual(self.client.create_service('maas'), maas)
+        json = {
+            'name': 'maas',
+            'product': {'$ref': '/api/rbac/v1/product/1'}
+        }
+        self.assertThat(
+            self.mock_request,
+            MockCallsMatch(
+                mock.call(
+                    'GET',
+                    'https://rbac.example.com/api/rbac/v1/product',
+                    auth=mock.ANY, cookies=mock.ANY, json=None),
+                mock.call(
+                    'POST',
+                    'https://rbac.example.com/api/rbac/v1/service',
+                    auth=mock.ANY, cookies=mock.ANY, json=json)))

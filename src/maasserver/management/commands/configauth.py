@@ -18,8 +18,10 @@ from django.db import DEFAULT_DB_ALIAS
 from maascli.init import (
     add_candid_options,
     add_rbac_options,
+    prompt_for_choices,
+    read_input,
 )
-from maasserver.management.commands.createadmin import read_input
+from maasserver.macaroon_auth import APIError
 from maasserver.models import Config
 from maasserver.models.rbacsync import (
     RBAC_ACTION,
@@ -80,19 +82,27 @@ def update_auth_details_from_rbac_registration(
     services = {
         service['name']: service
         for service in client.get_registerable_services()}
-    if not services:
-        raise CommandError(
-            'No registerable MAAS service on the specified RBAC server')
-    if service_name is not None:
+    if service_name is None:
+        if not services:
+            raise CommandError(
+                'No registerable MAAS service on the specified RBAC server')
+        service = _pick_service(services)
+    else:
         service = services.get(service_name)
         if service is None:
-            raise CommandError(
-                'Service "{}" is not known, available choices: {}'.
-                format(service_name, ', '.join(sorted(services))))
-
-    else:
-        service = _pick_service(services)
-
+            create_service = prompt_for_choices(
+                'A service with the specified name was not found, '
+                'do you want to create one? (yes/no) [default=no]? ',
+                ['yes', 'no'], default='no')
+            if create_service == 'no':
+                raise CommandError('Registration with RBAC service canceled')
+            try:
+                service = client.create_service(service_name)
+            except APIError as error:
+                if error.status_code == 409:
+                    raise CommandError(
+                        'User not allowed to register this service')
+                raise CommandError(str(error))
     _register_service(client, service, auth_details)
     print('Service "{}" registered'.format(service['name']))
 

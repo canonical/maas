@@ -14,6 +14,7 @@ from django.core.management.base import (
     CommandError,
 )
 from django.db import DEFAULT_DB_ALIAS
+from maascli.init import read_input
 from maasserver.enum import KEYS_PROTOCOL_TYPE
 from maasserver.models.config import Config
 from maasserver.models.keysource import KeySource
@@ -35,24 +36,6 @@ class EmptyEmail(CommandError):
 
 class SSHKeysError(CommandError):
     """Error during SSH keys import."""
-
-
-def read_input(prompt):
-    while True:
-        try:
-            data = input(prompt)
-        except EOFError:
-            # Ctrl-d was pressed?
-            print()
-            continue
-        except KeyboardInterrupt:
-            print()
-            raise SystemExit(1)
-        else:
-            # The assumption is that, since Python 3 return a Unicode string
-            # from input(), it has Done The Right Thing with respect to
-            # character encoding.
-            return data
 
 
 def read_password(prompt):

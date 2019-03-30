@@ -378,12 +378,18 @@ class RBACUserClient(MacaroonClient):
     def __init__(self, url):
         # no auth info is passed as this is meant for interactive use
         super().__init__(url, None)
+        self._maas_product = None
+
+    def create_service(self, name):
+        """Create a MAAS service with the specified name."""
+        maas = self._get_maas_product()
+        data = {'name': name, 'product': {'$ref': maas['$uri']}}
+        return self._api_request('POST', '/service', json=data)
 
     def get_registerable_services(self):
         """Return MAAS services that can be registered by the user."""
         maas = self._get_maas_product()
-        services = self._request(
-            'GET', self._url + self.API_BASE_URL + '/service/registerable')
+        services = self._api_request('GET', '/service/registerable')
         return [
             service for service in services
             if service['product']['$ref'] == maas['$uri']]
@@ -396,11 +402,17 @@ class RBACUserClient(MacaroonClient):
 
     def _get_maas_product(self):
         """Return details for the maas product."""
-        products = self._request(
-            'GET', self._url + self.API_BASE_URL + '/product')
-        [maas] = [
-            product for product in products if product['label'] == 'maas']
-        return maas
+        if self._maas_product is None:
+            products = self._api_request('GET', '/product')
+            [maas] = [
+                product for product in products if product['label'] == 'maas']
+            self._maas_product = maas
+        return self._maas_product
+
+    def _api_request(self, method, path, json=None, status_code=200):
+        return self._request(
+            method, self._url + self.API_BASE_URL + path,
+            json=json, status_code=status_code)
 
 
 class FakeRBACUserClient(RBACUserClient):
@@ -409,6 +421,15 @@ class FakeRBACUserClient(RBACUserClient):
         self.services = []
         self.products = []
         self.registered_services = []
+
+    def create_service(self, name):
+        maas = {
+            'name': 'maas',
+            '$uri': '/api/rbac/v1/service/4',
+            'pending': True,
+            'product': {'$ref' '/api/rbac/v1/product/2'}}
+        self.services.append(maas)
+        return maas
 
     def get_products(self):
         return self.products
