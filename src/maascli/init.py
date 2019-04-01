@@ -223,3 +223,50 @@ def init_maas(options):
             create_account_external_auth(auth_config, maas_config)
         else:
             create_admin_account(options)
+
+
+def read_input(prompt):
+    """Reads input from stdin."""
+    while True:
+        try:
+            data = input(prompt)
+        except EOFError:
+            # Ctrl-d was pressed?
+            print()
+            continue
+        except KeyboardInterrupt:
+            print()
+            raise SystemExit(1)
+        else:
+            # The assumption is that, since Python 3 return a Unicode string
+            # from input(), it has Done The Right Thing with respect to
+            # character encoding.
+            return data
+
+
+def prompt_for_choices(prompt, choices, default=None, help_text=None):
+    """Prompt requires specific choice answeres.
+
+    If `help_text` is provided the 'help' is added as a choice.
+    """
+    invalid_msg = 'Invalid input, try again'
+    if help_text:
+        invalid_msg += " or type 'help'"
+    invalid_msg += '.'
+    value = None
+    while True:
+        value = read_input(prompt)
+        if not value:
+            if default:
+                return default
+            else:
+                print_msg(invalid_msg)
+                print_msg()
+        elif value == 'help' and help_text:
+            print_msg(help_text)
+            print_msg()
+        elif value not in choices:
+            print_msg(invalid_msg)
+            print_msg()
+        else:
+            return value

@@ -306,7 +306,7 @@ class TestConfigAuthCommand(MAASServerTestCase):
              'rbac_url': 'http://rbac.example.com/'},
             json.loads(output))
 
-    def test_configauth_rbac_with_name(self):
+    def test_configauth_rbac_with_name_existing(self):
         self.rbac_user_client.services = [
             {'name': 'mymaas',
              '$uri': '/api/rbac/v1/service/4',
@@ -325,26 +325,31 @@ class TestConfigAuthCommand(MAASServerTestCase):
             self.rbac_user_client.registered_services,
             ['/api/rbac/v1/service/4'])
 
-    def test_configauth_rbac_unknown_name(self):
-        self.rbac_user_client.services = [
-            {'name': 'mymaas1',
-             '$uri': '/api/rbac/v1/service/4',
-             'pending': True,
-             'product': {'$ref' '/api/rbac/v1/product/2'}},
-            {'name': 'mymaas2',
-             '$uri': '/api/rbac/v1/service/4',
-             'pending': True,
-             'product': {'$ref' '/api/rbac/v1/product/2'}}]
+    def test_configauth_rbac_with_name_create(self):
+        patch_prompt = self.patch(configauth, 'prompt_for_choices')
+        patch_prompt.return_value = 'yes'
+        call_command(
+            'configauth', rbac_url='http://rbac.example.com',
+            rbac_service_name='maas')
+        patch_prompt.assert_called_once()
+        self.assertEqual(
+            'http://rbac.example.com',
+            Config.objects.get_config('rbac_url'))
+        self.assertEqual(
+            self.rbac_user_client.registered_services,
+            ['/api/rbac/v1/service/4'])
+
+    def test_configauth_rbac_with_name_abort(self):
+        patch_prompt = self.patch(configauth, 'prompt_for_choices')
+        patch_prompt.return_value = 'no'
         error = self.assertRaises(
             CommandError, call_command,
-            'configauth', candid_url='http://example.com:1234',
-            candid_user='user@admin', candid_key='private-key',
-            rbac_url='http://rbac.example.com',
-            rbac_service_name='unknown')
-        self.assertEqual(
-            str(error),
-            'Service "unknown" is not known, available choices: '
-            'mymaas1, mymaas2')
+            'configauth', rbac_url='http://rbac.example.com',
+            rbac_service_name='maas')
+        self.assertEqual(str(error), 'Registration with RBAC service canceled')
+        patch_prompt.assert_called_once()
+        self.assertEqual(Config.objects.get_config('rbac_url'), '')
+        self.assertEqual(self.rbac_user_client.registered_services, [])
 
     def test_configauth_rbac_registration_list(self):
         self.rbac_user_client.services = [

@@ -256,12 +256,12 @@ class TestCommands(MAASServerTestCase):
 
     def test_prompt_for_username_returns_selected_username(self):
         username = factory.make_name('user')
-        self.patch(createadmin, 'input').return_value = username
+        self.patch(createadmin, 'read_input').return_value = username
 
         self.assertEqual(username, createadmin.prompt_for_username())
 
     def test_prompt_for_username_checks_for_empty_username(self):
-        self.patch(createadmin, 'input', lambda x: '')
+        self.patch(createadmin, 'read_input', lambda x: '')
 
         self.assertRaises(
             createadmin.EmptyUsername,
@@ -269,12 +269,12 @@ class TestCommands(MAASServerTestCase):
 
     def test_prompt_for_email_returns_selected_email(self):
         email = factory.make_email_address()
-        self.patch(createadmin, 'input').return_value = email
+        self.patch(createadmin, 'read_input').return_value = email
 
         self.assertEqual(email, createadmin.prompt_for_email())
 
     def test_prompt_for_email_checks_for_empty_email(self):
-        self.patch(createadmin, 'input', lambda x: '')
+        self.patch(createadmin, 'read_input', lambda x: '')
 
         self.assertRaises(
             createadmin.EmptyEmail,
@@ -285,12 +285,12 @@ class TestCommands(MAASServerTestCase):
             random.choice(
                 [KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH]),
             factory.make_name('user-id'))
-        self.patch(createadmin, 'input').return_value = ssh_import
+        self.patch(createadmin, 'read_input').return_value = ssh_import
 
         self.assertEqual(ssh_import, createadmin.prompt_for_ssh_import())
 
     def test_prompt_for_ssh_import_returns_None_for_no_user_id(self):
-        self.patch(createadmin, 'input').return_value = ''
+        self.patch(createadmin, 'read_input').return_value = ''
         self.assertEqual('', createadmin.prompt_for_ssh_import())
 
     def test_validate_ssh_import_validates_protocol_and_user_id(self):
