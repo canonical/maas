@@ -1543,6 +1543,34 @@
                                                             >
                                                         </div>
                                                     </div>
+                                                    <div class="p-form__group">
+                                                        <label for="link-monitoring" class="p-form__label">Link monitoring</label>
+                                                        <div class="p-form__control">
+                                                            <select name="link-monitoring" id="link-monitoring" data-ng-model="editInterfaceLinkMonitoring">
+                                                                <option value="">No link monitoring</option>
+                                                                <option value="mii">MII link monitoring</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="p-form__group" data-ng-if="editInterfaceLinkMonitoring === 'mii'">
+                                                        <label for="monitoring-frequency" class="p-form__label u-no-padding--top">Monitoring frequency (ms)</label>
+                                                        <div class="p-form__control">
+                                                            <input type="text" name="monitoring-frequency" id="monitoring-frequency"
+                                                                data-ng-model="editInterface.bond_miimon">
+                                                        </div>
+                                                    </div>
+                                                    <div class="p-form__group" data-ng-if="editInterfaceLinkMonitoring === 'mii'">
+                                                        <label for="updelay" class="p-form__label">Updelay (ms)</label>
+                                                        <div class="p-form__control">
+                                                            <input type="text" name="updelay" id="updelay" data-ng-model="editInterface.bond_updelay">
+                                                        </div>
+                                                    </div>
+                                                    <div class="p-form__group"  data-ng-if="editInterfaceLinkMonitoring === 'mii'">
+                                                        <label for="downdelay" class="p-form__label">Downdelay (ms)</label>
+                                                        <div class="p-form__control">
+                                                            <input type="text" name="downdelay" id="downdelay" data-ng-model="editInterface.bond_downdelay">
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -1853,6 +1881,34 @@
                                                 data-ng-pattern="/^([0-9A-F]{2}[::]){5}([0-9A-F]{2})$/gmi" mac-address maxlength="17"
                                                 data-ng-placeholder="getInterfacePlaceholderMACAddress(newBondInterface)"
                                             >
+                                        </div>
+                                    </div>
+                                    <div class="p-form__group">
+                                        <label for="link-monitoring" class="p-form__label">Link monitoring</label>
+                                        <div class="p-form__control">
+                                            <select name="link-monitoring" id="link-monitoring" data-ng-model="newInterfaceLinkMonitoring">
+                                                <option value="">No link monitoring</option>
+                                                <option value="mii">MII link monitoring</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="p-form__group" data-ng-if="newInterfaceLinkMonitoring === 'mii'">
+                                        <label for="monitoring-frequency" class="p-form__label u-no-padding--top">Monitoring frequency (ms)</label>
+                                        <div class="p-form__control">
+                                            <input type="text" name="monitoring-frequency" id="monitoring-frequency"
+                                                data-ng-model="newBondInterface.bond_miimon">
+                                        </div>
+                                    </div>
+                                    <div class="p-form__group" data-ng-if="newInterfaceLinkMonitoring === 'mii'">
+                                        <label for="updelay" class="p-form__label">Updelay (ms)</label>
+                                        <div class="p-form__control">
+                                            <input type="text" name="updelay" id="updelay" data-ng-model="newBondInterface.bond_updelay">
+                                        </div>
+                                    </div>
+                                    <div class="p-form__group" data-ng-if="newInterfaceLinkMonitoring === 'mii'">
+                                        <label for="downdelay" class="p-form__label">Downdelay (ms)</label>
+                                        <div class="p-form__control">
+                                            <input type="text" name="downdelay" id="downdelay" data-ng-model="newBondInterface.bond_downdelay">
                                         </div>
                                     </div>
                                 </div>

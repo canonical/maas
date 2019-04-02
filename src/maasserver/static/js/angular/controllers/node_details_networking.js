@@ -218,6 +218,8 @@ export function NodeNetworkingController(
     $scope.editInterface = null;
     $scope.bondOptions = GeneralManager.getData("bond_options");
     $scope.createBondError = null;
+    $scope.newInterfaceLinkMonitoring = null;
+    $scope.editInterfaceLinkMonitoring = null;
     $scope.modes = [
         {
             mode: LINK_MODE.AUTO,
@@ -799,7 +801,10 @@ export function NodeNetworkingController(
                 bridge_stp: nic.params.bridge_stp,
                 bond_mode: nic.params.bond_mode,
                 xmitHashPolicy: nic.params.bond_xmit_hash_policy,
-                lacpRate: nic.params.bond_lacp_rate
+                lacpRate: nic.params.bond_lacp_rate,
+                bond_downdelay: nic.params.bond_downdelay,
+                bond_updelay: nic.params.bond_updelay,
+                bond_miimon: nic.params.bond_miimon
             };
             if (nic.subnet !== undefined && nic.subnet !== null) {
                 $scope.editInterface.defaultSubnet = nic.subnet;
@@ -823,7 +828,10 @@ export function NodeNetworkingController(
                 bridge_stp: nic.params.bridge_stp,
                 bond_mode: nic.params.bond_mode,
                 xmitHashPolicy: nic.params.bond_xmit_hash_policy,
-                lacpRate: nic.params.bond_lacp_rate
+                lacpRate: nic.params.bond_lacp_rate,
+                bond_downdelay: nic.params.bond_downdelay,
+                bond_updelay: nic.params.bond_updelay,
+                bond_miimon: nic.params.bond_miimon
             };
         }
     };
@@ -1404,7 +1412,10 @@ export function NodeNetworkingController(
                 subnet: subnet,
                 bond_mode: "active-backup",
                 lacpRate: "fast",
-                xmitHashPolicy: "layer2"
+                xmitHashPolicy: "layer2",
+                bond_updelay: 0,
+                bond_downdelay: 0,
+                bond_miimon: 100
             };
         }
     };
@@ -1531,7 +1542,10 @@ export function NodeNetworkingController(
             vlan: vlan_id,
             subnet: subnet_id,
             mode: $scope.newBondInterface.mode,
-            ip_address: $scope.newBondInterface.ip_address
+            ip_address: $scope.newBondInterface.ip_address,
+            bond_miimon: $scope.newBondInterface.bond_miimon,
+            bond_updelay: $scope.newBondInterface.bond_updelay,
+            bond_downdelay: $scope.newBondInterface.bond_downdelay
         };
         $scope.$parent.nodesManager
             .createBondInterface($scope.node, params)

@@ -3436,7 +3436,10 @@ describe("NodeNetworkingController", function() {
                 vlan: {},
                 subnet: '',
                 lacpRate: "fast",
-                xmitHashPolicy: "layer2"
+                xmitHashPolicy: "layer2",
+                bond_updelay: 0,
+                bond_downdelay: 0,
+                bond_miimon: 100
             });
         });
     });
@@ -3764,7 +3767,10 @@ describe("NodeNetworkingController", function() {
                     vlan: vlan.id,
                     subnet: subnet.id,
                     mode: "static",
-                    ip_address: "192.168.1.100"
+                    ip_address: "192.168.1.100",
+                    bond_miimon: 100,
+                    bond_updelay: 0,
+                    bond_downdelay: 0
                 });
             expect($scope.newBondInterface).toEqual({});
             expect($scope.selectedInterfaces).toEqual([]);
@@ -3814,7 +3820,10 @@ describe("NodeNetworkingController", function() {
                     vlan: undefined,
                     subnet: null,
                     mode: undefined,
-                    ip_address: undefined
+                    ip_address: undefined,
+                    bond_miimon: 100,
+                    bond_updelay: 0,
+                    bond_downdelay: 0
                 });
             expect($scope.newBondInterface).toEqual({});
             expect($scope.selectedInterfaces).toEqual([]);
