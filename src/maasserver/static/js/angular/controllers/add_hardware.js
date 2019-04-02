@@ -4,6 +4,7 @@
  * MAAS Add Hardware Controller
  */
 
+/* @ngInject */
 function AddHardwareController(
     $q, $scope, $http, ZonesManager, ResourcePoolsManager,
     MachinesManager, GeneralManager, DomainsManager,
@@ -636,7 +637,6 @@ function AddHardwareController(
                 ManagerHelperService.parseValidationError(error.data);
         });
     };
-};
+}
 
-angular.module('MAAS').controller(
-    'AddHardwareController', AddHardwareController);
+export default AddHardwareController;

@@ -28,8 +28,8 @@ function NotificationsManager(RegionConnection, Manager) {
     };
 
     return new NotificationsManager();
-};
+}
 
 NotificationsManager.$inject = ['RegionConnection', 'Manager'];
 
-angular.module('MAAS').factory('NotificationsManager', NotificationsManager);
+export default NotificationsManager;

@@ -28,8 +28,8 @@ function IPRangesManager(RegionConnection, Manager) {
     IPRangesManager.prototype = new Manager();
 
     return new IPRangesManager();
-};
+}
 
 IPRangesManager.$inject = ['RegionConnection', 'Manager'];
 
-angular.module('MAAS').factory('IPRangesManager', IPRangesManager);
+export default IPRangesManager;

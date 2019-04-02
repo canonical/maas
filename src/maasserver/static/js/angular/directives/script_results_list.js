@@ -11,7 +11,6 @@ function maasScriptResultsList() {
         'static/partials/script-results-list.html?v=' + (
             MAAS_config.files_version))
     };
-};
+}
 
-angular.module('MAAS').directive(
-    'maasScriptResultsList', maasScriptResultsList);
+export default maasScriptResultsList;

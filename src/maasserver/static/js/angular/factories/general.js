@@ -440,8 +440,8 @@ function GeneralManager($q, $timeout, RegionConnection, ErrorService) {
     };
 
     return new GeneralManager();
-};
+}
 
 GeneralManager.$inject = ['$q', '$timeout', 'RegionConnection', 'ErrorService'];
 
-angular.module('MAAS').factory('GeneralManager', GeneralManager);
+export default GeneralManager;

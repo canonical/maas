@@ -20,6 +20,6 @@ function pScriptExpander() {
             });
         }
     };
-};
+}
 
-angular.module('MAAS').directive('pScriptExpander', pScriptExpander);
+export default pScriptExpander;

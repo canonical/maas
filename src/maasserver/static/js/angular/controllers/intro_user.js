@@ -4,6 +4,7 @@
  * MAAS Intro Controller
  */
 
+/* @ngInject */
 function IntroUserController(
     $rootScope, $scope, $window, $location,
     UsersManager, ManagerHelperService) {
@@ -55,7 +56,6 @@ function IntroUserController(
                 $scope.user = UsersManager.getAuthUser();
             });
     }
-};
+}
 
-angular.module('MAAS').controller(
-    'IntroUserController', IntroUserController);
+export default IntroUserController;

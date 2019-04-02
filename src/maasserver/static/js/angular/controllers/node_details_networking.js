@@ -6,7 +6,7 @@
 
 // Filter that is specific to the NodeNetworkingController. Filters the
 // list of VLANs to be only those that are unused by the interface.
-angular.module('MAAS').filter('filterByUnusedForInterface', function() {
+export function filterByUnusedForInterface() {
     return function(vlans, nic, originalInterfaces) {
         var filtered = [];
         if (!angular.isObject(nic) ||
@@ -30,14 +30,12 @@ angular.module('MAAS').filter('filterByUnusedForInterface', function() {
         });
         return filtered;
     };
-});
-
-
+}
 
 // Filter that is specific to the NodeNetworkingController. Filters the
 // list of interfaces to not include the current parent interfaces being
 // bonded together.
-angular.module('MAAS').filter('removeInterfaceParents', function() {
+export function removeInterfaceParents() {
     return function(interfaces, childInterface, skip) {
         if (skip || !angular.isObject(childInterface) ||
             !angular.isArray(childInterface.parents)) {
@@ -59,12 +57,11 @@ angular.module('MAAS').filter('removeInterfaceParents', function() {
         });
         return filtered;
     };
-});
-
+}
 
 // Filter that is specific to the NodeNetworkingController. Remove the default
 // VLAN if the interface is a VLAN interface.
-angular.module('MAAS').filter('removeDefaultVLANIfVLAN', function() {
+export function removeDefaultVLANIfVLAN() {
     return function(vlans, interfaceType) {
         if (!angular.isString(interfaceType)) {
             return vlans;
@@ -79,12 +76,11 @@ angular.module('MAAS').filter('removeDefaultVLANIfVLAN', function() {
         });
         return filtered;
     };
-});
-
+}
 
 // Filter that is specific to the NodeNetworkingController. Only provide the
 // available modes for that interface type.
-angular.module('MAAS').filter('filterLinkModes', function() {
+export function filterLinkModes() {
     return function(modes, nic) {
         if (!angular.isObject(nic)) {
             return modes;
@@ -129,10 +125,10 @@ angular.module('MAAS').filter('filterLinkModes', function() {
         }
         return filtered;
     };
-});
+}
 
-
-function NodeNetworkingController(
+/* @ngInject */
+export function NodeNetworkingController(
     $scope, $filter, FabricsManager, VLANsManager, SubnetsManager,
     ControllersManager, GeneralManager, UsersManager,
     ManagerHelperService, ValidationService, JSONService) {
@@ -1838,7 +1834,4 @@ function NodeNetworkingController(
 
     // Tell $parent that the networkingController has been loaded.
     $scope.$parent.controllerLoaded('networkingController', $scope);
-};
-
-angular.module('MAAS').controller(
-    'NodeNetworkingController', NodeNetworkingController);
+}

@@ -4,7 +4,8 @@
  * Power parameters directive.
  */
 
-function cachePowerParameters($templateCache) {
+/* @ngInject */
+export function cachePowerParameters($templateCache) {
     // Inject the power-parameters.html into the template cache.
     $templateCache.put('directive/templates/power-parameters.html',
         `<div class="p-form__group u-clearfix">
@@ -45,9 +46,10 @@ function cachePowerParameters($templateCache) {
             </div>
         </div>`
     );
-};
+}
 
-function maasPowerInput($compile) {
+/* @ngInject */
+export function maasPowerInput($compile) {
     return {
         restrict: "E",
         require: "ngModel",
@@ -116,9 +118,9 @@ function maasPowerInput($compile) {
             element.replaceWith($compile(html)(scope.$parent));
         }
     };
-};
+}
 
-function maasPowerParameters() {
+export function maasPowerParameters() {
     return {
         restrict: "A",
         require: "ngModel",
@@ -129,9 +131,4 @@ function maasPowerParameters() {
         },
         templateUrl: 'directive/templates/power-parameters.html'
     };
-};
-
-const maas = angular.module('MAAS');
-maas.run(cachePowerParameters);
-maas.directive('maasPowerInput', maasPowerInput);
-maas.directive('maasPowerParameters', maasPowerParameters);
+}

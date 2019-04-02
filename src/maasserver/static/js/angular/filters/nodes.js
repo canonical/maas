@@ -4,6 +4,7 @@
  * MAAS Nodes Filter
  */
 
+/* @ngInject */
 function nodesFilter($filter, SearchService) {
 
     // Default filter built-in angular. Used on all extra filters that do
@@ -226,6 +227,6 @@ function nodesFilter($filter, SearchService) {
         });
         return filtered;
     };
-};
+}
 
-angular.module('MAAS').filter('nodesFilter', nodesFilter);
+export default nodesFilter;

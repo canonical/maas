@@ -4,6 +4,7 @@
  * MAAS Preferences Controller
  */
 
+/* @ngInject */
 function PreferencesController(
     $scope, UsersManager, ManagerHelperService) {
     $scope.loading = true;
@@ -11,7 +12,6 @@ function PreferencesController(
         $scope, UsersManager).then(function() {
             $scope.loading = false;
         });
-};
+}
 
-angular.module('MAAS').controller(
-    'PreferencesController', PreferencesController);
+export default PreferencesController;

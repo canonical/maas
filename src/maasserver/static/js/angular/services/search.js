@@ -4,8 +4,8 @@
  * MAAS Nodes Search Services
  */
 
-function SearchService() {
 
+function SearchService() {
     // Holds an empty filter object.
     var emptyFilter = { _: [] };
 
@@ -69,7 +69,7 @@ function SearchService() {
         angular.forEach(searchTerms, function(terms) {
             terms = terms.split(':');
             if(terms.length === 1) {
-                // Search term is not specifing a specific field. Gets
+                // Search term is not specifying a specific field. Gets
                 // add to the '_' section of the filters.
                 if(filters._.indexOf(terms[0]) === -1) {
                     filters._.push(terms[0]);
@@ -173,10 +173,10 @@ function SearchService() {
         storedFilters[name] = filters;
     };
 
-    // Retrieve a stored fitler.
+    // Retrieve a stored filter.
     this.retrieveFilters = function(name) {
         return storedFilters[name];
     };
-};
+}
 
-angular.module('MAAS').service('SearchService', SearchService);
+export default SearchService;

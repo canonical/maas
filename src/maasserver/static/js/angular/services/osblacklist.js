@@ -13,6 +13,6 @@ function KVMDeployOSBlacklist() {
     'ubuntu/zesty',
     'ubuntu/artful'
   ];
-};
+}
 
-angular.module('MAAS').service('KVMDeployOSBlacklist', KVMDeployOSBlacklist);
+export default KVMDeployOSBlacklist;

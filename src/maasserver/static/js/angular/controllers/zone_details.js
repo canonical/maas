@@ -4,7 +4,7 @@
  * MAAS Zone Details Controller
  */
 
-
+/* @ngInject */
 function ZoneDetailsController(
     $scope, $rootScope, $routeParams, $location,
     ZonesManager, UsersManager, ManagerHelperService,
@@ -113,7 +113,6 @@ function ZoneDetailsController(
                     });
             }
         });
-};
+}
 
-angular.module('MAAS').controller(
-    'ZoneDetailsController', ZoneDetailsController);
+export default ZoneDetailsController;

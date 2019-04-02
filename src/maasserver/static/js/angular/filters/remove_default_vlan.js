@@ -14,6 +14,6 @@ function removeDefaultVLAN() {
         });
         return filtered;
     };
-};
+}
 
-angular.module('MAAS').filter('removeDefaultVLAN', removeDefaultVLAN);
+export default removeDefaultVLAN;

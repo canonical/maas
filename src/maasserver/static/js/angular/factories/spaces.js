@@ -41,8 +41,8 @@ function SpacesManager(RegionConnection, Manager) {
     };
 
     return new SpacesManager();
-};
+}
 
 SpacesManager.$inject = ['RegionConnection', 'Manager'];
 
-angular.module('MAAS').factory('SpacesManager', SpacesManager);
+export default SpacesManager;

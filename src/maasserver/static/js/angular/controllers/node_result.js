@@ -4,6 +4,7 @@
  * MAAS Script Result Controller
  */
 
+/* @ngInject */
 function NodeResultController(
     $scope, $rootScope, $routeParams, $location, MachinesManager,
     ControllersManager, NodeResultsManagerFactory,
@@ -99,6 +100,6 @@ function NodeResultController(
             nodeResultsManager.destroy();
         }
     });
-};
+}
 
-angular.module('MAAS').controller('NodeResultController', NodeResultController);
+export default NodeResultController;

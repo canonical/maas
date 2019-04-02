@@ -18,6 +18,6 @@ function maasNavigationMobile() {
       });
     }
   };
-};
+}
 
-angular.module('MAAS').directive('maasNavigationMobile', maasNavigationMobile);
+export default maasNavigationMobile;

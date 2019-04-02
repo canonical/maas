@@ -7,7 +7,8 @@
  * connection to the region over the websocket fails or becomes disconnected.
  */
 
-function cacheErrorOverlay($templateCache) {
+/* @ngInject */
+export function cacheErrorOverlay($templateCache) {
     // Inject the error_overlay.html into the template cache.
     $templateCache.put('directive/templates/error_overlay.html', [
         '<header id="error-header" class="page-header" data-ng-show="show()">',
@@ -51,9 +52,11 @@ function cacheErrorOverlay($templateCache) {
         image = new Image();
         image.src = "static/assets/images/icons/error.png";
     }
-};
+}
 
-function maasErrorOverlay($window, $timeout, RegionConnection, ErrorService) {
+/* @ngInject */
+export function maasErrorOverlay(
+    $window, $timeout, RegionConnection, ErrorService) {
     return {
         restrict: "A",
         transclude: true,
@@ -168,8 +171,4 @@ function maasErrorOverlay($window, $timeout, RegionConnection, ErrorService) {
             });
         }
     };
-};
-
-const maas = angular.module('MAAS');
-maas.run(cacheErrorOverlay);
-maas.directive('maasErrorOverlay', maasErrorOverlay);
+}

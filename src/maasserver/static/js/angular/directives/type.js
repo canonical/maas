@@ -47,6 +47,6 @@ function ngType() {
             });
         }
     };
-};
+}
 
-angular.module('MAAS').directive('ngType', ngType);
+export default ngType;

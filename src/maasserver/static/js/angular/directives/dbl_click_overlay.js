@@ -9,7 +9,8 @@
  * that will still receive click events.
  */
 
-function cacheDoubleClickOverlay($templateCache) {
+/* @ngInject */
+export function cacheDoubleClickOverlay($templateCache) {
     // Inject the style for the maas-dbl-overlay class. We inject the style
     // instead of placing it in maas-styles.css because it is required for
     // this directive to work at all.
@@ -42,9 +43,10 @@ function cacheDoubleClickOverlay($templateCache) {
         '<div class="maas-dbl-overlay--overlay"></div>',
         '</div>'
     ].join(''));
-};
+}
 
-function maasDblClickOverlay(BrowserService) {
+/* @ngInject */
+export function maasDblClickOverlay(BrowserService) {
     return {
         restrict: "A",
         transclude: true,
@@ -122,8 +124,4 @@ function maasDblClickOverlay(BrowserService) {
             });
         }
     };
-};
-
-const maas = angular.module('MAAS');
-maas.run(cacheDoubleClickOverlay);
-maas.directive('maasDblClickOverlay', maasDblClickOverlay);
+}

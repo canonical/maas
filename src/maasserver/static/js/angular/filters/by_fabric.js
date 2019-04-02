@@ -22,6 +22,6 @@ function filterByFabric() {
         });
         return filtered;
     };
-};
+}
 
-angular.module('MAAS').filter('filterByFabric', filterByFabric);
+export default filterByFabric;

@@ -33,8 +33,8 @@ function DHCPSnippetsManager(RegionConnection, Manager) {
     };
 
     return new DHCPSnippetsManager();
-};
+}
 
 DHCPSnippetsManager.$inject = ['RegionConnection', 'Manager'];
 
-angular.module('MAAS').factory('DHCPSnippetsManager', DHCPSnippetsManager);
+export default DHCPSnippetsManager;

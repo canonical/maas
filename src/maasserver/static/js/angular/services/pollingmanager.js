@@ -8,6 +8,7 @@
  * notification events about spaces.
  */
 
+/* @ngInject */
 function PollingManager($q, $timeout, Manager) {
 
     function PollingManager() {
@@ -89,8 +90,8 @@ function PollingManager($q, $timeout, Manager) {
     };
 
     return PollingManager;
-};
+}
 
 PollingManager.$inject = ['$q', '$timeout', 'Manager'];
 
-angular.module('MAAS').factory('PollingManager', PollingManager);
+export default PollingManager;

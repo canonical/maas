@@ -6,6 +6,7 @@
 * Renders the machines listing.
 */
 
+/* @ngInject */
 function maasMachinesTable(
   MachinesManager, NotificationsManager, UsersManager,
   GeneralManager, $document) {
@@ -196,7 +197,7 @@ function maasMachinesTable(
             return false;
         }
         switch (machine.testing_status) {
-          // Tests havn't been run
+          // Tests haven't been run
           case -1:
           // Tests have passed
           case 2:
@@ -207,7 +208,7 @@ function maasMachinesTable(
 
       // Return true if the other node status should be shown.
       scope.showNodeStatus = function(machine) {
-        // -1 means tests havn't been run, 2 means tests have passed.
+        // -1 means tests haven't been run, 2 means tests have passed.
         if (!scope.showSpinner(machine) &&
           !scope.showFailedTestWarning(machine) &&
           machine.other_test_status !== -1 &&
@@ -447,6 +448,6 @@ function maasMachinesTable(
       });
     }
   };
-};
+}
 
-angular.module('MAAS').directive('maasMachinesTable', maasMachinesTable);
+export default maasMachinesTable;

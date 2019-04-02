@@ -16,6 +16,6 @@ function maasEnter() {
             });
         }
     };
-};
+}
 
-angular.module('MAAS').directive('maasEnter', maasEnter);
+export default maasEnter;

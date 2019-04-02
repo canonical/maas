@@ -141,6 +141,6 @@ function ConverterService() {
         });
         return groups;
     };
-};
+}
 
-angular.module('MAAS').service('ConverterService', ConverterService);
+export default ConverterService;

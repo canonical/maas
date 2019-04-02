@@ -17,6 +17,6 @@ function ErrorService() {
             this._error = error;
         }
     };
-};
+}
 
-angular.module('MAAS').service('ErrorService', ErrorService);
+export default ErrorService;

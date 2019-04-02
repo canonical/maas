@@ -5,6 +5,7 @@
  */
 
 
+/* @ngInject */
 function ZonesListController(
   $scope, $rootScope, ZonesManager,
   UsersManager, ManagerHelperService) {
@@ -46,6 +47,6 @@ function ZonesListController(
       function() {
         $scope.loading = false;
       });
-};
+}
 
-angular.module('MAAS').controller('ZonesListController', ZonesListController);
+export default ZonesListController;

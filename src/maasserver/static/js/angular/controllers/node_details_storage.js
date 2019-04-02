@@ -8,7 +8,7 @@
 // Filter that is specific to the NodeStorageController. Remove the available
 // disks from the list if being used in the availableNew.
 
-function removeAvailableByNew() {
+export function removeAvailableByNew() {
     return function(disks, availableNew) {
         if (!angular.isObject(availableNew) || (
             !angular.isObject(availableNew.device) &&
@@ -41,9 +41,10 @@ function removeAvailableByNew() {
         });
         return filtered;
     };
-};
+}
 
-function NodeStorageController(
+/* @ngInject */
+export function NodeStorageController(
     $scope, MachinesManager, ConverterService, UsersManager) {
     // From models/partitiontable.py - must be kept in sync.
     var INITIAL_PARTITION_OFFSET = 4 * 1024 * 1024;
@@ -2064,9 +2065,4 @@ function NodeStorageController(
 
     // Tell $parent that the storageController has been loaded.
     $scope.$parent.controllerLoaded('storageController', $scope);
-};
-
-angular.module('MAAS').filter(
-    'removeAvailableByNew', removeAvailableByNew);
-angular.module('MAAS').controller(
-    'NodeStorageController', NodeStorageController);
+}

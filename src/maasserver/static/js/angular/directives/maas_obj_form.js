@@ -7,7 +7,10 @@
  * is an instant save on blur.
  */
 
-function maasObjForm(JSONService) {
+/* @ngInject */
+export function maasObjForm(JSONService) {
+
+    /* @ngInject */
     function MAASFormController($scope) {
         'ngInject';
         this.obj = $scope.obj;
@@ -343,9 +346,9 @@ function maasObjForm(JSONService) {
             'ng-transclude></form>'),
         controller: MAASFormController
     };
-};
+}
 
-function maasObjFieldGroup() {
+export function maasObjFieldGroup() {
     function MAASGroupController($scope, $timeout) {
         'ngInject';
         this.fields = {};
@@ -511,9 +514,10 @@ function maasObjFieldGroup() {
             }
         }
     };
-};
+}
 
-function maasObjField($compile) {
+/* @ngInject */
+export function maasObjField($compile) {
     return {
         restrict: "E",
         require: ["^^maasObjForm", "?^^maasObjFieldGroup"],
@@ -1088,9 +1092,9 @@ function maasObjField($compile) {
             });
         }
     };
-};
+}
 
-function maasObjSave() {
+export function maasObjSave() {
     return {
         restrict: "A",
         require: ["^^maasObjForm"],
@@ -1111,9 +1115,10 @@ function maasObjSave() {
             });
         }
     };
-};
+}
 
-function maasObjErrors($compile) {
+/* @ngInject */
+export function maasObjErrors($compile) {
     return {
         restrict: "E",
         require: ["^^maasObjForm"],
@@ -1150,9 +1155,9 @@ function maasObjErrors($compile) {
             };
         }
     };
-};
+}
 
-function maasObjSaving() {
+export function maasObjSaving() {
     return {
         restrict: "E",
         require: "^^maasObjForm",
@@ -1172,9 +1177,9 @@ function maasObjSaving() {
             });
         }
     };
-};
+}
 
-function maasObjShowSaving() {
+export function maasObjShowSaving() {
     return {
         restrict: "A",
         require: "^^maasObjForm",
@@ -1190,9 +1195,9 @@ function maasObjShowSaving() {
             });
         }
     };
-};
+}
 
-function maasObjHideSaving() {
+export function maasObjHideSaving() {
     return {
         restrict: "A",
         require: "^^maasObjForm",
@@ -1208,14 +1213,4 @@ function maasObjHideSaving() {
             });
         }
     };
-};
-
-const maas = angular.module('MAAS');
-maas.directive('maasObjForm', maasObjForm);
-maas.directive('maasObjFieldGroup', maasObjFieldGroup);
-maas.directive('maasObjField', maasObjField);
-maas.directive('maasObjSave', maasObjSave);
-maas.directive('maasObjErrors', maasObjErrors);
-maas.directive('maasObjSaving', maasObjSaving);
-maas.directive('maasObjShowSaving', maasObjShowSaving)
-maas.directive('maasObjHideSaving', maasObjHideSaving);
+}

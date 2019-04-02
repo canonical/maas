@@ -4,6 +4,7 @@
  * MAAS Domain Details Controller
  */
 
+/* @ngInject */
 function DomainDetailsController(
     $scope, $rootScope, $routeParams, $location,
     DomainsManager, UsersManager, ManagerHelperService, ErrorService) {
@@ -170,7 +171,6 @@ function DomainDetailsController(
                     });
             }
         });
-};
+}
 
-angular.module('MAAS').controller(
-    'DomainDetailsController', DomainDetailsController);
+export default DomainDetailsController;

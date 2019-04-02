@@ -209,10 +209,10 @@ function BootResourcesManager($q, $timeout, RegionConnection, ErrorService) {
     };
 
     return new BootResourcesManager();
-};
+}
 
 BootResourcesManager.$inject = [
     '$q', '$timeout', 'RegionConnection', 'ErrorService'
 ];
 
-angular.module('MAAS').factory('BootResourcesManager', BootResourcesManager);
+export default BootResourcesManager;

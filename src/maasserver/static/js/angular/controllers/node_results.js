@@ -1,9 +1,12 @@
+import NodeResultController from "./node_result";
+
 /* Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * MAAS Node Results Controller
  */
 
+/* @ngInject */
 function NodeResultsController($scope, $routeParams, $location, MachinesManager,
     ControllersManager, NodeResultsManagerFactory,
     ManagerHelperService, ErrorService) {
@@ -220,7 +223,6 @@ function NodeResultsController($scope, $routeParams, $location, MachinesManager,
             $scope.nodeResultsManager.destroy();
         }
     });
-};
+}
 
-angular.module('MAAS').controller(
-    'NodeResultsController', NodeResultsController);
+export default NodeResultsController;

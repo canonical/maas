@@ -33,9 +33,8 @@ function PackageRepositoriesManager(RegionConnection, Manager) {
     };
 
     return new PackageRepositoriesManager();
-};
+}
 
 PackageRepositoriesManager.$inject = ['RegionConnection', 'Manager'];
 
-angular.module('MAAS').factory(
-    'PackageRepositoriesManager', PackageRepositoriesManager);
+export default PackageRepositoriesManager;

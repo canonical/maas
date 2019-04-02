@@ -4,6 +4,7 @@
  * MAAS Networks List Controller
  */
 
+/* @ngInject */
 function NetworksListController($scope, $rootScope, $filter, $location,
     SubnetsManager, FabricsManager, SpacesManager, VLANsManager,
     UsersManager, ManagerHelperService) {
@@ -303,7 +304,6 @@ function NetworksListController($scope, $rootScope, $filter, $location,
                 });
                 $scope.updateGroupBy();
             });
-};
+}
 
-angular.module('MAAS').controller(
-    'NetworksListController', NetworksListController);
+export default NetworksListController;

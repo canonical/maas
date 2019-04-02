@@ -21,6 +21,6 @@ function JSONService() {
         catch (e) { }
         return null;
     };
-};
+}
 
-angular.module('MAAS').service('JSONService', JSONService);
+export default JSONService;

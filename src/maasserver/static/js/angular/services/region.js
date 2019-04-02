@@ -28,9 +28,8 @@ const REGION_STATE = {
     RETRY: 2
 };
 
-/* ngInject */
 class RegionConnection {
-
+    /* @ngInject */
     constructor($q, $rootScope, $timeout, $window, $cookies, LogService) {
         this.$q = $q;
         this.$rootScope = $rootScope;
@@ -432,4 +431,4 @@ class RegionConnection {
     }
 }
 
-angular.module('MAAS').service('RegionConnection', RegionConnection);
+export default RegionConnection;

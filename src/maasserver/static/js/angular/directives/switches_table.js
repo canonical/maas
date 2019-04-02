@@ -6,6 +6,7 @@
 * Renders the switches listing.
 */
 
+/* @ngInject */
 function maasSwitchesTable(SwitchesManager, GeneralManager) {
   return {
     restrict: "E",
@@ -151,6 +152,6 @@ function maasSwitchesTable(SwitchesManager, GeneralManager) {
       });
     }
   };
-};
+}
 
-angular.module('MAAS').directive('maasSwitchesTable', maasSwitchesTable);
+export default maasSwitchesTable;

@@ -16,7 +16,8 @@ module.exports = {
         "makeFakeResponse": false // TODO: export as named function
     },
     "parserOptions": {
-        "ecmaVersion": 2018
+        "ecmaVersion": 2018,
+        "sourceType": "module"
     },
     "rules": {
         "angular/di": [2, "function", { "matchNames": true }]

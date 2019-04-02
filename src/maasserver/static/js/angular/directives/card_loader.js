@@ -4,6 +4,7 @@
  * Controller status icon. Used in the controllers listing on the nodes page.
  */
 
+/* @ngInject */
 function maasCardLoader($compile) {
   return {
     restrict: "A",
@@ -17,6 +18,6 @@ function maasCardLoader($compile) {
       $compile(element.contents())(scope);
     }
   };
-};
+}
 
-angular.module('MAAS').directive('maasCardLoader', maasCardLoader);
+export default maasCardLoader;

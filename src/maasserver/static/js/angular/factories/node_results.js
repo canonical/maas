@@ -318,9 +318,8 @@ function NodeResultsManagerFactory(RegionConnection, Manager) {
     };
 
     return new NodeResultsManagerFactory();
-};
+}
 
 NodeResultsManagerFactory.$inject = ['RegionConnection', 'Manager'];
 
-angular.module('MAAS').factory(
-    'NodeResultsManagerFactory', NodeResultsManagerFactory);
+export default NodeResultsManagerFactory;

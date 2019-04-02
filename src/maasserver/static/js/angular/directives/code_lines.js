@@ -19,7 +19,7 @@ function maasCodeLines() {
 
             function insertContent() {
 
-                // Empty the element contents and include again, this asures
+                // Empty the element contents and include again, this assures
                 // its the most up-to-date content
                 element.empty();
                 element.text(scope.maasCodeLines);
@@ -47,6 +47,6 @@ function maasCodeLines() {
             scope.$watch(scope.maasCodeLines, insertContent);
         }
     };
-};
+}
 
-angular.module('MAAS').directive('maasCodeLines', maasCodeLines)
+export default maasCodeLines;

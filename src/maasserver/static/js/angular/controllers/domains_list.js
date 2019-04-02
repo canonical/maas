@@ -4,6 +4,7 @@
  * MAAS Domains List Controller
  */
 
+/* @ngInject */
 function DomainsListController(
     $scope, $rootScope, DomainsManager,
     UsersManager, ManagerHelperService) {
@@ -60,7 +61,6 @@ function DomainsListController(
             function() {
                 $scope.loading = false;
             });
-};
+}
 
-angular.module('MAAS').controller(
-    'DomainsListController', DomainsListController);
+export default DomainsListController;

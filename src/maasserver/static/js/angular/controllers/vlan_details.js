@@ -4,7 +4,7 @@
  * MAAS VLAN Details Controller
  */
 
-function ignoreSelf() {
+export function ignoreSelf() {
     return function(objects, self) {
         var filtered = [];
         angular.forEach(objects, function(obj) {
@@ -14,9 +14,9 @@ function ignoreSelf() {
         });
         return filtered;
     };
-};
+}
 
-function removeNoDHCP() {
+export function removeNoDHCP() {
     return function(objects) {
         var filtered = [];
         angular.forEach(objects, function(obj) {
@@ -26,10 +26,10 @@ function removeNoDHCP() {
         });
         return filtered;
     }
-};
+}
 
-
-function VLANDetailsController(
+/* @ngInject */
+export function VLANDetailsController(
     $scope, $rootScope, $routeParams, $filter, $location,
     VLANsManager, SubnetsManager, SpacesManager, FabricsManager,
     ControllersManager, UsersManager, ManagerHelperService, ErrorService,
@@ -746,9 +746,4 @@ function VLANDetailsController(
         $scope.$watchCollection(
             "vlanDetails.controllers", updateRelatedControllers);
     });
-};
-
-const maas = angular.module('MAAS');
-maas.filter('ignoreSelf', ignoreSelf);
-maas.filter('removeNoDHCP', removeNoDHCP);
-maas.controller('VLANDetailsController', VLANDetailsController);
+}

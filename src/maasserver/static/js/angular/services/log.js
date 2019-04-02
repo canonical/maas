@@ -11,6 +11,7 @@
  * beginning of the log string.
  */
 
+/* @ngInject */
 function LogService($window) {
     var self = this;
 
@@ -88,6 +89,6 @@ function LogService($window) {
             self.__log(self._error, arguments);
         }
     };
-};
+}
 
-angular.module('MAAS').service('LogService', LogService);
+export default LogService;

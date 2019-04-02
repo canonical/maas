@@ -4,6 +4,7 @@
  * MAAS Intro Controller
  */
 
+/* @ngInject */
 function IntroController(
     $rootScope, $scope, $window, $location,
     ConfigsManager, PackageRepositoriesManager, BootResourcesManager,
@@ -122,6 +123,6 @@ function IntroController(
             }
         });
     }
-};
+}
 
-angular.module('MAAS').controller('IntroController', IntroController);
+export default IntroController;

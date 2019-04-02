@@ -4,7 +4,7 @@
  * MAAS Subnet Details Controller
  */
 
-function filterSource() {
+export function filterSource() {
     return function(subnets, source) {
         var filtered = [];
         angular.forEach(subnets, function(subnet) {
@@ -15,9 +15,10 @@ function filterSource() {
         });
         return filtered;
     };
-};
+}
 
-function SubnetDetailsController(
+/* @ngInject */
+export function SubnetDetailsController(
     $scope, $rootScope, $routeParams, $location, ConfigsManager,
     SubnetsManager, SpacesManager, VLANsManager, UsersManager,
     FabricsManager, StaticRoutesManager, ManagerHelperService, ErrorService,
@@ -400,8 +401,4 @@ function SubnetDetailsController(
                 });
         }
     });
-};
-
-const maas = angular.module('MAAS');
-maas.filter('filterSource', filterSource);
-maas.controller('SubnetDetailsController', SubnetDetailsController);
+}

@@ -51,8 +51,8 @@ function ZonesManager(RegionConnection, Manager) {
     };
 
     return new ZonesManager();
-};
+}
 
 ZonesManager.$inject = ['RegionConnection', 'Manager'];
 
-angular.module('MAAS').factory('ZonesManager', ZonesManager);
+export default ZonesManager;

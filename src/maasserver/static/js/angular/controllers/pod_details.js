@@ -4,6 +4,7 @@
  * MAAS Pod Details Controller
  */
 
+/* @ngInject */
 function PodDetailsController(
     $scope, $rootScope, $location, $routeParams, $filter,
     PodsManager, GeneralManager, UsersManager, DomainsManager,
@@ -700,7 +701,6 @@ function PodDetailsController(
                     });
             }
         });
-};
+}
 
-angular.module('MAAS').controller(
-    'PodDetailsController', PodDetailsController);
+export default PodDetailsController;

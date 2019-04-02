@@ -87,8 +87,8 @@ function SubnetsManager(RegionConnection, Manager) {
     };
 
     return new SubnetsManager();
-};
+}
 
 SubnetsManager.$inject = ['RegionConnection', 'Manager'];
 
-angular.module('MAAS').factory('SubnetsManager', SubnetsManager);
+export default SubnetsManager;

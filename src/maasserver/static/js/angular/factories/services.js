@@ -26,8 +26,8 @@ function ServicesManager(RegionConnection, Manager) {
     ServicesManager.prototype = new Manager();
 
     return new ServicesManager();
-};
+}
 
 ServicesManager.$inject = ['RegionConnection', 'Manager'];
 
-angular.module('MAAS').factory('ServicesManager', ServicesManager);
+export default ServicesManager;

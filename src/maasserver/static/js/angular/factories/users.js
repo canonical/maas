@@ -149,8 +149,8 @@ function UsersManager(Manager, RegionConnection, ErrorService) {
     };
 
     return new UsersManager();
-};
+}
 
 UsersManager.$inject = ['Manager', 'RegionConnection', 'ErrorService'];
 
-angular.module('MAAS').factory('UsersManager', UsersManager);
+export default UsersManager;

@@ -15,6 +15,6 @@ function range() {
       }
       return res;
   };
-};
+}
 
-angular.module('MAAS').filter('range', range);
+export default range;

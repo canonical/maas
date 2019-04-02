@@ -115,8 +115,8 @@ function DomainsManager(RegionConnection, Manager) {
 
     var self = new DomainsManager();
     return self;
-};
+}
 
 DomainsManager.$inject = ['RegionConnection', 'Manager'];
 
-angular.module('MAAS').factory('DomainsManager', DomainsManager);
+export default DomainsManager;

@@ -22,6 +22,6 @@ function orderByDate() {
         });
         return sorted;
     };
-};
+}
 
-angular.module('MAAS').filter('orderByDate', orderByDate);
+export default orderByDate;

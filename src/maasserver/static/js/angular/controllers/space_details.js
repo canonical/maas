@@ -4,6 +4,7 @@
  * MAAS Space Details Controller
  */
 
+/* @ngInject */
 function SpaceDetailsController(
     $scope, $rootScope, $routeParams, $filter, $location,
     SpacesManager, VLANsManager, SubnetsManager, FabricsManager,
@@ -137,7 +138,6 @@ function SpaceDetailsController(
                     });
             }
         });
-};
+}
 
-angular.module('MAAS').controller(
-    'SpaceDetailsController', SpaceDetailsController);
+export default SpaceDetailsController;

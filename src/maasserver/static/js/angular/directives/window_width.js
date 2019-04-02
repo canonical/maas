@@ -10,17 +10,18 @@
  *
  */
 
+/* @ngInject */
 function windowWidth($window) {
     return {
         restrict: 'A',
-        link: function($scope, element, attrs) {
-            $scope.windowWidth = $window.innerWidth;
+        link: function(scope, element, attrs) {
+            scope.windowWidth = $window.innerWidth;
             function onResize() {
                 // uncomment for only fire when $window.innerWidth change
-                if ($scope.windowWidth !== $window.innerWidth) {
-                    $scope.windowWidth = $window.innerWidth;
-                    $scope.$apply(function() {
-                        $scope.message = "Timeout called!";
+                if (scope.windowWidth !== $window.innerWidth) {
+                    scope.windowWidth = $window.innerWidth;
+                    scope.$apply(function() {
+                        scope.message = "Timeout called!";
                     });
                 }
             }
@@ -30,9 +31,9 @@ function windowWidth($window) {
             }
 
             angular.element($window).on('resize', onResize);
-            $scope.$on('$destroy', cleanUp);
+            scope.$on('$destroy', cleanUp);
         }
     };
-};
+}
 
-angular.module('MAAS').directive('windowWidth', windowWidth);
+export default windowWidth;

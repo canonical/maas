@@ -4,7 +4,8 @@
  * Release options directive.
  */
 
-function cacheReleaseOptions($templateCache) {
+/* @ngInject */
+export function cacheReleaseOptions($templateCache) {
     // Inject the release-options.html into the template cache.
     $templateCache.put('directive/templates/release-options.html', [
         '<ul class="p-inline-list--settings u-no-margin--top">',
@@ -36,9 +37,10 @@ function cacheReleaseOptions($templateCache) {
         '</li>',
         '</ul>'
     ].join(''));
-};
+}
 
-function maasReleaseOptions(GeneralManager) {
+/* @ngInject */
+export function maasReleaseOptions(GeneralManager) {
     return {
         restrict: "A",
         scope: {
@@ -66,7 +68,7 @@ function maasReleaseOptions(GeneralManager) {
                 "release_options");
             scope.$watch('globalOptions', function() {
                 if (angular.isDefined(scope.globalOptions.erase)) {
-                    // Set the initial defauls for the release options.
+                    // Set the initial defaults for the release options.
                     scope.maasReleaseOptions.erase = (
                         scope.globalOptions.erase);
                     scope.onEraseChange();
@@ -74,8 +76,4 @@ function maasReleaseOptions(GeneralManager) {
             }, true);
         }
     };
-};
-
-const maas = angular.module('MAAS');
-maas.run(cacheReleaseOptions);
-maas.directive('maasReleaseOptions', maasReleaseOptions);
+}

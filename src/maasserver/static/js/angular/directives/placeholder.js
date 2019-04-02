@@ -18,6 +18,6 @@ function ngPlaceholder() {
             });
         }
     };
-};
+}
 
-angular.module('MAAS').directive('ngPlaceholder', ngPlaceholder);
+export default ngPlaceholder;

@@ -4,7 +4,8 @@
  * Notifications.
  */
 
-function cacheNotifications($templateCache) {
+/* @ngInject */
+export function cacheNotifications($templateCache) {
     // Inject notifications.html into the template cache.
     $templateCache.put('directive/templates/notifications.html', [
         '<div class="" data-ng-repeat="category in categories"',
@@ -59,53 +60,54 @@ function cacheNotifications($templateCache) {
         '</div>',
         '</div>'
     ].join(''));
-};
+}
 
-function maasNotifications(NotificationsManager, ManagerHelperService) {
+/* @ngInject */
+export function maasNotifications(NotificationsManager, ManagerHelperService) {
     return {
         restrict: "E",
         templateUrl: 'directive/templates/notifications.html',
-        link: function($scope, element, attrs) {
-            ManagerHelperService.loadManager($scope, NotificationsManager);
-            $scope.notifications = NotificationsManager.getItems();
-            $scope.dismiss = angular.bind(
+        link: function(scope, element, attrs) {
+            ManagerHelperService.loadManager(scope, NotificationsManager);
+            scope.notifications = NotificationsManager.getItems();
+            scope.dismiss = angular.bind(
                 NotificationsManager, NotificationsManager.dismiss);
 
-            $scope.categories = [
+            scope.categories = [
                 "error",
                 "warning",
                 "success",
                 "info"
             ];
-            $scope.categoryTitles = {
+            scope.categoryTitles = {
                 error: "Errors",
                 warning: "Warnings",
                 success: "Successes",
                 info: "Other messages"
             };
-            $scope.categoryClasses = {
+            scope.categoryClasses = {
                 error: "p-notification--negative",
                 warning: "p-notification--caution",
                 success: "p-notification--positive",
                 info: "p-notification"  // No suffix.
             };
-            $scope.categoryNotifications = {
+            scope.categoryNotifications = {
                 error: [],
                 warning: [],
                 success: [],
                 info: []
             };
 
-            $scope.$watchCollection(
+            scope.$watchCollection(
                 "notifications", function() {
-                    var cns = $scope.categoryNotifications;
+                    var cns = scope.categoryNotifications;
                     angular.forEach(
-                        $scope.categories, function(category) {
+                        scope.categories, function(category) {
                             cns[category].length = 0;
                         }
                     );
                     angular.forEach(
-                        $scope.notifications, function(notification) {
+                        scope.notifications, function(notification) {
                             cns[notification.category].push(notification);
                         }
                     );
@@ -113,8 +115,4 @@ function maasNotifications(NotificationsManager, ManagerHelperService) {
             );
         }
     };
-};
-
-const maas = angular.module('MAAS');
-maas.run(cacheNotifications);
-maas.directive('maasNotifications', maasNotifications);
+}

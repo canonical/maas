@@ -27,8 +27,8 @@ function ScriptsManager(RegionConnection, Manager) {
     ScriptsManager.prototype = new Manager();
 
     return new ScriptsManager();
-};
+}
 
 ScriptsManager.$inject = ['RegionConnection', 'Manager'];
 
-angular.module('MAAS').factory('ScriptsManager', ScriptsManager);
+export default ScriptsManager;

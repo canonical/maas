@@ -460,6 +460,9 @@ $(subst .,%,$(javascript_output)): $(javascript_deps)
 clean-javascript:
 	$(RM) -r src/maasserver/static/js/bundle
 
+watch-javascript:
+	bin/yarn watch
+
 clean: stop clean-failed
 	find . -type f -name '*.py[co]' -print0 | xargs -r0 $(RM)
 	find . -type d -name '__pycache__' -print0 | xargs -r0 $(RM) -r

@@ -4,7 +4,8 @@
  * Script select directive.
  */
 
-function cacheScriptSelect($templateCache) {
+/* @ngInject */
+export function cacheScriptSelect($templateCache) {
     // Inject the script-select.html into the template cache.
     $templateCache.put('directive/templates/script-select.html', [
         '<tags-input data-ng-model="ngModel" placeholder="Select scripts" ',
@@ -29,9 +30,10 @@ function cacheScriptSelect($templateCache) {
         '</div>',
         '</script>'
     ].join(''));
-};
+}
 
-function maasScriptSelect(ScriptsManager, ManagerHelperService) {
+/* @ngInject */
+export function maasScriptSelect(ScriptsManager, ManagerHelperService) {
     return {
         restrict: "A",
         require: "ngModel",
@@ -105,8 +107,4 @@ function maasScriptSelect(ScriptsManager, ManagerHelperService) {
             );
         }
     };
-};
-
-const maas = angular.module('MAAS');
-maas.run(cacheScriptSelect);
-maas.directive('maasScriptSelect', maasScriptSelect);
+}

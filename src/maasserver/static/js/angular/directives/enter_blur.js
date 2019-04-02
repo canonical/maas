@@ -18,6 +18,6 @@ function maasEnterBlur() {
             });
         }
     };
-};
+}
 
-angular.module('MAAS').directive('maasEnterBlur', maasEnterBlur);
+export default maasEnterBlur;

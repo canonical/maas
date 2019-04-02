@@ -6,7 +6,8 @@
  * Provides the interactivity of the MAAS key section of the user profile.
  */
 
-function maasPrefKeys($q, RegionConnection, UsersManager) {
+/* @ngInject */
+export function maasPrefKeys($q, RegionConnection, UsersManager) {
     return {
         restrict: "A",
         controller: function() {
@@ -33,9 +34,10 @@ function maasPrefKeys($q, RegionConnection, UsersManager) {
             };
         }
     };
-};
+}
 
-function maasPrefKeysInject($compile, $templateCache) {
+/* @ngInject */
+export function maasPrefKeysInject($compile, $templateCache) {
     return {
         restrict: 'A',
         require: '^maasPrefKeys',
@@ -62,7 +64,7 @@ function maasPrefKeysInject($compile, $templateCache) {
     };
 }
 
-function maasPrefKeysAdd() {
+export function maasPrefKeysAdd() {
     return {
         restrict: 'A',
         require: '^maasPrefKeys',
@@ -89,7 +91,7 @@ function maasPrefKeysAdd() {
     };
 }
 
-function maasPrefKey() {
+export function maasPrefKey() {
     return {
         restrict: 'A',
         require: '^maasPrefKeys',
@@ -104,6 +106,7 @@ function maasPrefKey() {
         }
     };
 
+    /* @ngInject */
     function DeleteKey($scope, $element) {
         var self = this;
 
@@ -115,9 +118,9 @@ function maasPrefKey() {
             $element.remove();
         };
     }
-};
+}
 
-function maasPrefKeyDelete() {
+export function maasPrefKeyDelete() {
     return {
         restrict: 'A',
         require: '^maasPrefKey',
@@ -131,11 +134,4 @@ function maasPrefKeyDelete() {
             });
         }
     };
-};
-
-const maas = angular.module('MAAS');
-maas.directive('maasPrefKeys', maasPrefKeys);
-maas.directive('maasPrefKeysInject', maasPrefKeysInject);
-maas.directive('maasPrefKeysAdd', maasPrefKeysAdd);
-maas.directive('maasPrefKey', maasPrefKey);
-maas.directive('maasPrefKeyDelete', maasPrefKeyDelete);
+}

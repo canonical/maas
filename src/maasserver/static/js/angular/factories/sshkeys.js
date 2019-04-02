@@ -35,8 +35,8 @@ function SSHKeysManager(RegionConnection, Manager) {
     };
 
     return new SSHKeysManager();
-};
+}
 
 SSHKeysManager.$inject = ['RegionConnection', 'Manager'];
 
-angular.module('MAAS').factory('SSHKeysManager', SSHKeysManager);
+export default SSHKeysManager;

@@ -27,8 +27,8 @@ function ConfigsManager(RegionConnection, Manager) {
     ConfigsManager.prototype = new Manager();
 
     return new ConfigsManager();
-};
+}
 
 ConfigsManager.$inject = ['RegionConnection', 'Manager'];
 
-angular.module('MAAS').factory('ConfigsManager', ConfigsManager);
+export default ConfigsManager;

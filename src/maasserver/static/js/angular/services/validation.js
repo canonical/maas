@@ -6,8 +6,8 @@
  * Used by controllers to validate user inputs.
  */
 
+/* @ngInject */
 function ValidationService(ConverterService) {
-
     // Pattern that matches a domainname.
     // XXX 2016-02-24 lamont: This also matches "example.com.",
     // which is wrong.
@@ -198,6 +198,6 @@ function ValidationService(ConverterService) {
         }
         return false;
     };
-};
+}
 
-angular.module('MAAS').service('ValidationService', ValidationService);
+export default ValidationService;

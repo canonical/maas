@@ -366,8 +366,8 @@ function NodesManager(RegionConnection, Manager, KVMDeployOSBlacklist) {
     };
 
     return NodesManager;
-};
+}
 
 NodesManager.$inject = ['RegionConnection', 'Manager', 'KVMDeployOSBlacklist'];
 
-angular.module('MAAS').service('NodesManager', NodesManager);
+export default NodesManager;

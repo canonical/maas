@@ -36,8 +36,8 @@ function ResourcePoolsManager(RegionConnection, Manager) {
     };
 
     return new ResourcePoolsManager();
-};
+}
 
 ResourcePoolsManager.$inject = ['RegionConnection', 'Manager'];
 
-angular.module('MAAS').factory('ResourcePoolsManager', ResourcePoolsManager);
+export default ResourcePoolsManager;

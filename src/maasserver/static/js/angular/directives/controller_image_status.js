@@ -6,7 +6,8 @@
  * Shows the image status for a controller.
  */
 
-function ControllerImageStatusService(
+/* @ngInject */
+export function ControllerImageStatusService(
     $timeout, $interval, ControllersManager) {
     var self = this;
 
@@ -113,9 +114,10 @@ function ControllerImageStatusService(
             return "Asking for status...";
         }
     };
-};
+}
 
-function maasControllerImageStatus(ControllerImageStatusService) {
+/* @ngInject */
+export function maasControllerImageStatus(ControllerImageStatusService) {
     return {
         restrict: "E",
         scope: {
@@ -153,8 +155,4 @@ function maasControllerImageStatus(ControllerImageStatusService) {
             });
         }
     };
-};
-
-const maas = angular.module('MAAS');
-maas.service('ControllerImageStatusService', ControllerImageStatusService);
-maas.directive('maasControllerImageStatus', maasControllerImageStatus);
+}

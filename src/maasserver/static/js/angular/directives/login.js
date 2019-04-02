@@ -6,16 +6,17 @@
 
 const bakery = require('macaroon-bakery');
 
-function getBakery() {
+export function getBakery() {
     return function(visitPage) {
         return new bakery.Bakery({
             storage: new bakery.BakeryStorage(localStorage, {}),
             visitPage: visitPage
         });
     };
-};
+}
 
-function externalLogin($window, getBakery) {
+/* @ngInject */
+export function externalLogin($window, getBakery) {
     return {
         restrict: 'E',
         scope: {},
@@ -31,40 +32,39 @@ function externalLogin($window, getBakery) {
             '  {{ errorMessage }}',
             '</div>',
         ].join(''),
-        controller: function($scope, $rootScope, $element, $document) {
-            $scope.errorMessage = '';
-            $scope.loginURL = '#';
-            $scope.externalAuthURL = $element.attr('auth-url');
-
-            const visitPage = function(error) {
-                $scope.$apply(function() {
-                    $scope.loginURL = error.Info.VisitURL;
-                    $scope.errorMessage = '';
-                });
-            };
-            const bakery = getBakery(visitPage);
-            const nextPath = $element.attr('next-path');
-            bakery.get(
-                '/MAAS/accounts/discharge-request/',
-                {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                },
-                function(error, response) {
-                    if (response.currentTarget.status != 200) {
-                        $scope.$apply(function() {
-                            $scope.errorMessage = (
-                                response.currentTarget.responseText);
-                        });
-                        localStorage.clear();
-                    } else {
-                        $window.location.replace(nextPath);
-                    }
-                });
-        }
+        controller: ExternalLoginController
     };
-};
 
-const maas = angular.module('MAAS');
-maas.factory('getBakery', getBakery);
-maas.directive('externalLogin', externalLogin);
+    /* @ngInject */
+    function ExternalLoginController($scope, $element) {
+        $scope.errorMessage = '';
+        $scope.loginURL = '#';
+        $scope.externalAuthURL = $element.attr('auth-url');
+
+        const visitPage = function(error) {
+            $scope.$apply(function() {
+                $scope.loginURL = error.Info.VisitURL;
+                $scope.errorMessage = '';
+            });
+        };
+        const bakery = getBakery(visitPage);
+        const nextPath = $element.attr('next-path');
+        bakery.get(
+            '/MAAS/accounts/discharge-request/',
+            {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            function(error, response) {
+                if (response.currentTarget.status != 200) {
+                    $scope.$apply(function() {
+                        $scope.errorMessage = (
+                            response.currentTarget.responseText);
+                    });
+                    localStorage.clear();
+                } else {
+                    $window.location.replace(nextPath);
+                }
+            });
+    }
+}

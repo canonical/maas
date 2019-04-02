@@ -27,8 +27,8 @@ function StaticRoutesManager(RegionConnection, Manager) {
     StaticRoutesManager.prototype = new Manager();
 
     return new StaticRoutesManager();
-};
+}
 
 StaticRoutesManager.$inject = ['RegionConnection', 'Manager'];
 
-angular.module('MAAS').factory('StaticRoutesManager', StaticRoutesManager);
+export default StaticRoutesManager;

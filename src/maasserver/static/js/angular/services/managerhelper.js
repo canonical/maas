@@ -8,6 +8,7 @@
  * before resolving the defer.
  */
 
+/* @ngInject */
 function ManagerHelperService($q, $timeout, ErrorService, RegionConnection) {
 
     // Loads the manager.
@@ -164,6 +165,6 @@ function ManagerHelperService($q, $timeout, ErrorService, RegionConnection) {
             return this.getPrintableString(error, showNames);
         }
     };
-};
+}
 
-angular.module('MAAS').service('ManagerHelperService', ManagerHelperService);
+export default ManagerHelperService;

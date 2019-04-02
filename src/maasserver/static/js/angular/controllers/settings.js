@@ -4,6 +4,7 @@
  * MAAS Settings Controller
  */
 
+/* @ngInject */
 function SettingsController($scope, $rootScope, $routeParams,
     PackageRepositoriesManager, DHCPSnippetsManager,
     MachinesManager, ControllersManager,
@@ -254,7 +255,6 @@ function SettingsController($scope, $rootScope, $routeParams,
             function() {
                 $scope.loading = false;
             });
-};
+}
 
-angular.module('MAAS').controller(
-    'SettingsController', SettingsController);
+export default SettingsController;

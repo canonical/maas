@@ -55,8 +55,8 @@ function FabricsManager(RegionConnection, Manager) {
 
 
     return new FabricsManager();
-};
+}
 
 FabricsManager.$inject = ['RegionConnection', 'Manager'];
 
-angular.module('MAAS').factory('FabricsManager', FabricsManager);
+export default FabricsManager;

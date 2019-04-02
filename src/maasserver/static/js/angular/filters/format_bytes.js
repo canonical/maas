@@ -4,7 +4,7 @@
  * Converts bytes into human readable string, e.g. 10 GB
  */
 
-function formatBytes() {
+export function formatBytes() {
   return function(bytes) {
       var bytesInKilobyte = 1000;
       var kilobytesInMegabyte = 1000;
@@ -52,9 +52,9 @@ function formatBytes() {
         return 0;
       }
   }
-};
+}
 
-function convertGigabyteToBytes() {
+export function convertGigabyteToBytes() {
   return function(gigabytes) {
       var bytesInKilobyte = 1000;
       var kilobytesInMegabyte = 1000;
@@ -71,7 +71,4 @@ function convertGigabyteToBytes() {
         return 0;
       }
   }
-};
-
-angular.module('MAAS').filter('formatBytes', formatBytes);
-angular.module('MAAS').filter('convertGigabyteToBytes', convertGigabyteToBytes);
+}

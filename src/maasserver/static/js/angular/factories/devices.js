@@ -9,7 +9,6 @@
  * notification events about devices.
  */
 
-
 function DevicesManager(RegionConnection, NodesManager) {
 
     function DevicesManager() {
@@ -68,8 +67,8 @@ function DevicesManager(RegionConnection, NodesManager) {
     };
 
     return new DevicesManager();
-};
+}
 
 DevicesManager.$inject = ['RegionConnection', 'NodesManager'];
 
-angular.module('MAAS').factory('DevicesManager', DevicesManager);
+export default DevicesManager;

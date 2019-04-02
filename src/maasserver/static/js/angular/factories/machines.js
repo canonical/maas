@@ -76,8 +76,8 @@ function MachinesManager(RegionConnection, NodesManager) {
         };
 
     return new MachinesManager();
-};
+}
 
 MachinesManager.$inject = ['RegionConnection', 'NodesManager'];
 
-angular.module('MAAS').factory('MachinesManager', MachinesManager);
+export default MachinesManager;

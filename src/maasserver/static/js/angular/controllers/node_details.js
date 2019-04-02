@@ -4,6 +4,7 @@
  * MAAS Node Details Controller
  */
 
+/* @ngInject */
 function NodeDetailsController(
     $scope, $rootScope, $routeParams, $location, DevicesManager,
     MachinesManager, ControllersManager, ZonesManager, GeneralManager,
@@ -1122,7 +1123,7 @@ function NodeDetailsController(
                 return false;
         }
         switch ($scope.node.testing_status) {
-            // Tests havn't been run
+            // Tests haven't been run
             case -1:
             // Tests have passed
             case 2:
@@ -1207,7 +1208,6 @@ function NodeDetailsController(
             $scope.ip_assignment = activeNode.ip_assignment;
         }
     });
-};
+}
 
-angular.module('MAAS').controller(
-    'NodeDetailsController', NodeDetailsController);
+export default NodeDetailsController;

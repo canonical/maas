@@ -48,8 +48,8 @@ function DiscoveriesManager($q, RegionConnection, PollingManager) {
     };
 
     return new DiscoveriesManager();
-};
+}
 
 DiscoveriesManager.$inject = ['$q', 'RegionConnection', 'PollingManager'];
 
-angular.module('MAAS').factory('DiscoveriesManager', DiscoveriesManager);
+export default DiscoveriesManager;

@@ -4,6 +4,7 @@
  * MAAS Dashboard Controller
  */
 
+/* @ngInject */
 function DashboardController($scope, $rootScope, $location,
     DiscoveriesManager, DomainsManager, MachinesManager,
     DevicesManager, SubnetsManager, VLANsManager, ConfigsManager,
@@ -326,7 +327,6 @@ function DashboardController($scope, $rootScope, $location,
                     $scope.closeClearDiscoveriesPanel();
                 });
             });
-};
+}
 
-angular.module('MAAS').controller(
-    'DashboardController', DashboardController);
+export default DashboardController;

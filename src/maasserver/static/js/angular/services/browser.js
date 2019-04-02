@@ -9,6 +9,7 @@
  * last resort to prevent something bad happening on a misbehaving browser.
  */
 
+/* @ngInject */
 function BrowserService($window) {
 
     // The first items in the array will be matched first. So if the user
@@ -45,6 +46,6 @@ function BrowserService($window) {
             self.browser = matcher.name;
         }
     });
-};
+}
 
-angular.module('MAAS').service('BrowserService', BrowserService);
+export default BrowserService;

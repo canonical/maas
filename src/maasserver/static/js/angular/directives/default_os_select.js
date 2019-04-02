@@ -12,10 +12,10 @@ function maasDefaultOsSelect() {
             "osInput": "@maasDefaultOsSelect",
             "seriesInput": "@maasDefaultSeriesSelect",
         },
-        link: function($scope, $element, $attrs) {
-            var osElement = angular.element($element.find($scope.osInput));
+        link: function(scope, element) {
+            var osElement = angular.element(element.find(scope.osInput));
             var seriesElement = angular.element(
-                $element.find($scope.seriesInput));
+                element.find(scope.seriesInput));
             if (!osElement || !seriesElement) {
                 throw new Error("Unable to find os or series elements");
             }
@@ -98,6 +98,6 @@ function maasDefaultOsSelect() {
             switchTo(osElement.val(), true);
         }
     };
-};
+}
 
-angular.module('MAAS').directive('maasDefaultOsSelect', maasDefaultOsSelect);
+export default maasDefaultOsSelect;

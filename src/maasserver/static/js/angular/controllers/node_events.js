@@ -4,6 +4,7 @@
  * MAAS Node Events Controller
  */
 
+/* @ngInject */
 function NodeEventsController($scope, $rootScope,
     $routeParams, $location, MachinesManager, ControllersManager,
     EventsManagerFactory, ManagerHelperService, ErrorService) {
@@ -92,6 +93,6 @@ function NodeEventsController($scope, $rootScope,
             eventsManager.destroy();
         }
     });
-};
+}
 
-angular.module('MAAS').controller('NodeEventsController', NodeEventsController);
+export default NodeEventsController;

@@ -60,8 +60,8 @@ function PodsManager(RegionConnection, Manager) {
     };
 
     return new PodsManager();
-};
+}
 
 PodsManager.$inject = ['RegionConnection', 'Manager'];
 
-angular.module('MAAS').service('PodsManager', PodsManager);
+export default PodsManager;

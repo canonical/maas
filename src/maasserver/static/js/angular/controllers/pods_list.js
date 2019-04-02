@@ -4,6 +4,7 @@
  * MAAS Pods List Controller
  */
 
+/* @ngInject */
 function PodsListController(
     $scope, $rootScope, PodsManager, UsersManager, GeneralManager,
     ZonesManager, ManagerHelperService, ResourcePoolsManager) {
@@ -98,7 +99,7 @@ function PodsListController(
     }
 
     // After an action has been performed check if we can leave all pods
-    // selected or if an error occured and we should only show the failed
+    // selected or if an error occurred and we should only show the failed
     // pods.
     function updateSelectedItems() {
         if (!$scope.hasActionsFailed()) {
@@ -259,7 +260,6 @@ function PodsListController(
             function() {
                 $scope.loading = false;
             });
-};
+}
 
-angular.module('MAAS').controller(
-    'PodsListController', PodsListController);
+export default PodsListController;

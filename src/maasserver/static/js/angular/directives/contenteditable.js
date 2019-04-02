@@ -56,6 +56,6 @@ function contenteditable() {
             });
         }
     };
-};
+}
 
-angular.module('MAAS').directive('contenteditable', contenteditable)
+export default contenteditable;

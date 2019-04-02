@@ -82,8 +82,8 @@ function VLANsManager(RegionConnection, Manager) {
     };
 
     return new VLANsManager();
-};
+}
 
 VLANsManager.$inject = ['RegionConnection', 'Manager'];
 
-angular.module('MAAS').factory('VLANsManager', VLANsManager);
+export default VLANsManager;

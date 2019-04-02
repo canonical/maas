@@ -4,7 +4,8 @@
  * Action button directive.
  */
 
-function cacheActionButton($templateCache) {
+/* @ngInject */
+export function cacheActionButton($templateCache) {
     // Inject action-button.html into the template cache.
     $templateCache.put('directive/templates/action-button.html', [
         '<button data-ng-transclude class="p-action-button" ',
@@ -12,9 +13,9 @@ function cacheActionButton($templateCache) {
             '\'is-done\': doneState }">',
         '</button>'
     ].join(''));
-};
+}
 
-function maasActionButton() {
+export function maasActionButton() {
     return {
         restrict: "E",
         replace: true,
@@ -25,8 +26,4 @@ function maasActionButton() {
         },
         templateUrl: 'directive/templates/action-button.html',
     };
-};
-
-const maas = angular.module('MAAS');
-maas.run(cacheActionButton);
-maas.directive('maasActionButton', maasActionButton);
+}

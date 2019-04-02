@@ -4,6 +4,7 @@
  * MAAS Add Domain Controller
  */
 
+/* @ngInject */
 function AddDomainController($scope, DomainsManager,
     ManagerHelperService, ValidationService) {
     // Set the addDomainScope in the parent, so it can call functions
@@ -102,7 +103,6 @@ function AddDomainController($scope, DomainsManager,
                 ManagerHelperService.parseValidationError(error);
         });
     };
-};
+}
 
-angular.module('MAAS').controller(
-    'AddDomainController', AddDomainController);
+export default AddDomainController;

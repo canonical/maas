@@ -46,6 +46,6 @@ function macAddress() {
             });
         }
     };
-};
+}
 
-angular.module('MAAS').directive('macAddress', macAddress);
+export default macAddress;

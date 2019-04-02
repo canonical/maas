@@ -4,7 +4,7 @@
  * MAAS Nodes List Controller
  */
 
-
+/* @ngInject */
 function NodesListController(
     $q, $scope, $interval, $rootScope, $routeParams, $location,
     MachinesManager, DevicesManager, ControllersManager, GeneralManager,
@@ -55,7 +55,7 @@ function NodesListController(
         var verb = singulars[tab];
         if ($scope.tabs[tab].selectedItems.length > 1) {
             verb = tab;
-        };
+        }
         return verb;
     };
     // Machines tab.
@@ -1067,6 +1067,6 @@ function NodesListController(
         $scope.tabs[$scope.currentpage].search = query;
         $scope.updateFilters($scope.currentpage);
     }
-};
+}
 
-angular.module('MAAS').controller('NodesListController', NodesListController);
+export default NodesListController;

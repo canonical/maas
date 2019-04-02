@@ -17,6 +17,6 @@ function formatStorageType() {
         return storageType;
     }
   }
-};
+}
 
-angular.module('MAAS').filter('formatStorageType', formatStorageType);
+export default formatStorageType;

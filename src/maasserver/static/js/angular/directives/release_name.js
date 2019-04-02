@@ -6,6 +6,7 @@
  * Converts the provided release name into the release title.
  */
 
+/* @ngInject */
 function maasReleaseName(GeneralManager) {
   return {
     restrict: "A",
@@ -42,6 +43,6 @@ function maasReleaseName(GeneralManager) {
       });
     }
   };
-};
+}
 
-angular.module('MAAS').directive('maasReleaseName', maasReleaseName);
+export default maasReleaseName;

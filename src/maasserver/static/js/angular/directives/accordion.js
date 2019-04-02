@@ -38,6 +38,6 @@ function maasAccordion() {
             });
         }
     };
-};
+}
 
-angular.module('MAAS').directive('maasAccordion', maasAccordion)
+export default maasAccordion;

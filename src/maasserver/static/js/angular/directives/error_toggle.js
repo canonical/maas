@@ -7,6 +7,7 @@
  * is present.
  */
 
+/* @ngInject */
 function maasErrorToggle($timeout, RegionConnection, ErrorService) {
     return {
         restrict: "A",
@@ -62,6 +63,6 @@ function maasErrorToggle($timeout, RegionConnection, ErrorService) {
             });
         }
     };
-};
+}
 
-angular.module('MAAS').directive('maasErrorToggle', maasErrorToggle);
+export default maasErrorToggle;

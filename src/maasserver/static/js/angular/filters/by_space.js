@@ -4,7 +4,7 @@
  * MAAS Filter Subnets by Space.
  */
 
-function filterBySpace() {
+export function filterBySpace() {
     return function(objects, space) {
         var filtered = [];
         var id;
@@ -22,9 +22,9 @@ function filterBySpace() {
         });
         return filtered;
     };
-};
+}
 
-function filterByNullSpace() {
+export function filterByNullSpace() {
     return function(objects) {
         var filtered = [];
         angular.forEach(objects, function(object) {
@@ -34,7 +34,4 @@ function filterByNullSpace() {
         });
         return filtered;
     };
-};
-
-angular.module('MAAS').filter('filterBySpace', filterBySpace);
-angular.module('MAAS').filter('filterByNullSpace', filterByNullSpace)
+}

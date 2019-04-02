@@ -9,6 +9,7 @@
  */
 
 
+/* @ngInject */
 function Manager($q, $rootScope, $timeout, RegionConnection) {
 
     // Actions that are used to update the statuses metadata.
@@ -38,8 +39,8 @@ function Manager($q, $rootScope, $timeout, RegionConnection) {
         // object.
         this._items = [];
 
-        // The way this manager recieves its updated information. 'notify'
-        // means this manager recieved notify messages from the websocket.
+        // The way this manager receives its updated information. 'notify'
+        // means this manager received notify messages from the websocket.
         // See PollingManager for the other possible type. This is only
         // used by the `ManagerHelperService` to identify how updating
         // the data should be handled.
@@ -49,7 +50,7 @@ function Manager($q, $rootScope, $timeout, RegionConnection) {
         this._scopes = [];
 
         // True when all of the items have been loaded. This is done on
-        // intial connection to the region.
+        // initial connection to the region.
         this._loaded = false;
 
         // True when the items list is currently being loaded or reloaded.
@@ -72,7 +73,7 @@ function Manager($q, $rootScope, $timeout, RegionConnection) {
         this._actionQueue = [];
 
         // Holds list of all of the currently selected items. This is held
-        // in a seperate list to remove the need to loop through the full
+        // in a separate list to remove the need to loop through the full
         // listing to grab the selected items.
         this._selectedItems = [];
 
@@ -80,8 +81,8 @@ function Manager($q, $rootScope, $timeout, RegionConnection) {
         // to the region.
         this._autoReload = false;
 
-        // Holds the item that is currenly being viewed. This object will
-        // be updated if any notify events are recieved for it. This allows
+        // Holds the item that is currently being viewed. This object will
+        // be updated if any notify events are received for it. This allows
         // the ability of not having to keep pulling the item out of the
         // items list.
         this._activeItem = null;
@@ -90,7 +91,7 @@ function Manager($q, $rootScope, $timeout, RegionConnection) {
         this._metadata = {};
 
         // List of attributes to track on the loaded items. Each attribute
-        // in this list will be placed in _metadata to track its currect
+        // in this list will be placed in _metadata to track its current
         // values and the number of items with that value.
         this._metadataAttributes = [];
     }
@@ -189,7 +190,7 @@ function Manager($q, $rootScope, $timeout, RegionConnection) {
         return this._items;
     };
 
-    // Clears the currect state of the manager.
+    // Clears the current state of the manager.
     Manager.prototype.clear = function() {
         this._loaded = false;
         this._items.length = 0;
@@ -587,7 +588,7 @@ function Manager($q, $rootScope, $timeout, RegionConnection) {
         return null;
     };
 
-    // Add new value to metadatas if it doesnt exists or increment the
+    // Add new value to metadatas if it doesn't exists or increment the
     // count if it already does.
     Manager.prototype._addMetadataValue = function(metadatas, value) {
         var metadata = this._getMetadataValue(metadatas, value);
@@ -770,8 +771,8 @@ function Manager($q, $rootScope, $timeout, RegionConnection) {
     };
 
     return Manager;
-};
+}
 
 Manager.$inject = ['$q', '$rootScope', '$timeout', 'RegionConnection'];
 
-angular.module('MAAS').service('Manager', Manager);
+export default Manager;

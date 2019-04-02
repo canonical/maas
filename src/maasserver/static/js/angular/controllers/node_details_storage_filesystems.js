@@ -49,7 +49,8 @@ class SpecialFilesystem {
     }
 }
 
-function NodeFilesystemsController($scope) {
+/* @ngInject */
+export function NodeFilesystemsController($scope) {
     // Which drop-down is currently selected, e.g. "special".
     $scope.dropdown = null;
 
@@ -66,7 +67,8 @@ function NodeFilesystemsController($scope) {
     };
 }
 
-function NodeAddSpecialFilesystemController($scope, MachinesManager) {
+/* @ngInject */
+export function NodeAddSpecialFilesystemController($scope, MachinesManager) {
     $scope.machineManager = MachinesManager;
     $scope.specialFilesystemTypes = ['tmpfs', 'ramfs'];
     $scope.newFilesystem = {
@@ -104,10 +106,3 @@ function NodeAddSpecialFilesystemController($scope, MachinesManager) {
         $scope.addSpecialFilesystemFinished();
     };
 }
-
-const maas = angular.module("MAAS");
-maas.controller("NodeFilesystemsController",
-    NodeFilesystemsController);
-maas.controller("NodeAddSpecialFilesystemController",
-    NodeAddSpecialFilesystemController);
-

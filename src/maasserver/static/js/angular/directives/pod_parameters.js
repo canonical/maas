@@ -4,7 +4,8 @@
  * Pod parameters directive.
  */
 
-function cachePodParameters($templateCache) {
+/* @ngInject */
+export function cachePodParameters($templateCache) {
     // Inject the power-parameters.html into the template cache.
     $templateCache.put('directive/templates/pod-parameters.html', [
         '<maas-obj-field type="options" key="type" label="Pod type" ',
@@ -16,9 +17,11 @@ function cachePodParameters($templateCache) {
         '</maas-obj-field>',
         '<div pod-fields></div>'
     ].join(''));
-};
+}
 
-function maasPodParameters($compile, GeneralManager, ManagerHelperService) {
+/* @ngInject */
+export function maasPodParameters(
+    $compile, GeneralManager, ManagerHelperService) {
     return {
         restrict: "E",
         require: "^^maasObjForm",
@@ -119,8 +122,4 @@ function maasPodParameters($compile, GeneralManager, ManagerHelperService) {
             ManagerHelperService.loadManager(scope, GeneralManager);
         }
     };
-};
-
-const maas = angular.module('MAAS');
-maas.run(cachePodParameters);
-maas.directive('maasPodParameters', maasPodParameters);
+}

@@ -131,8 +131,8 @@ function EventsManagerFactory(RegionConnection, Manager) {
     };
 
     return new EventsManagerFactory();
-};
+}
 
 EventsManagerFactory.$inject = ['RegionConnection', 'Manager'];
 
-angular.module('MAAS').factory('EventsManagerFactory', EventsManagerFactory);
+export default EventsManagerFactory;

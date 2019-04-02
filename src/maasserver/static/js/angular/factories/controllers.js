@@ -44,10 +44,10 @@ function ControllersManager(RegionConnection, NodesManager, ServicesManager) {
     };
 
     return new ControllersManager();
-};
+}
 
 ControllersManager.$inject = [
     'RegionConnection', 'NodesManager', 'ServicesManager'
 ];
 
-angular.module('MAAS').factory('ControllersManager', ControllersManager);
+export default ControllersManager;

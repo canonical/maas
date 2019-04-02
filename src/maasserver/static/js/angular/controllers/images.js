@@ -4,6 +4,7 @@
  * MAAS Images Controller
  */
 
+/* @ngInject */
 function ImagesController(
     $rootScope, $scope, BootResourcesManager,
     ConfigsManager, UsersManager, ManagerHelperService) {
@@ -36,7 +37,6 @@ function ImagesController(
             $rootScope.title = "Images";
         }
     });
-};
+}
 
-angular.module('MAAS').controller(
-    'ImagesController', ImagesController);
+export default ImagesController;

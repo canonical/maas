@@ -4,6 +4,7 @@
  * MAAS Add Device Controller
  */
 
+/* @ngInject */
 function AddDeviceController(
     $scope, DevicesManager, SubnetsManager, DomainsManager,
     ManagerHelperService, ValidationService) {
@@ -266,6 +267,6 @@ function AddDeviceController(
                 ManagerHelperService.parseValidationError(error);
         });
     };
-};
+}
 
-angular.module('MAAS').controller('AddDeviceController', AddDeviceController);
+export default AddDeviceController;
