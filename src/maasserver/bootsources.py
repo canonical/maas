@@ -1,4 +1,4 @@
-# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Boot Sources."""
@@ -45,6 +45,7 @@ from provisioningserver.logger import (
     get_maas_logger,
     LegacyLogger,
 )
+from provisioningserver.refresh import get_architecture
 from provisioningserver.utils.fs import tempdir
 from provisioningserver.utils.twisted import (
     asynchronous,
@@ -65,13 +66,20 @@ def ensure_boot_source_definition():
     if not BootSource.objects.exists():
         source = BootSource.objects.create(
             url=DEFAULT_IMAGES_URL, keyring_filename=DEFAULT_KEYRINGS_PATH)
-        # Default is to import newest Ubuntu LTS releases, for only amd64
-        # release versions only.
+        # Default is to import newest Ubuntu LTS release, for the current
+        # architecture.
+        architecture = get_architecture()
+        if architecture == '':
+            # Something went wrong detecting the architecture, default to
+            # amd64
+            arch = 'amd64'
+        else:
+            arch, _ = architecture.split('/')
         ubuntu = UbuntuOS()
         BootSourceSelection.objects.create(
             boot_source=source, os=ubuntu.name,
             release=ubuntu.get_default_commissioning_release(),
-            arches=['amd64'], subarches=['*'], labels=['*'])
+            arches=[arch], subarches=['*'], labels=['*'])
         return True
     else:
         return False

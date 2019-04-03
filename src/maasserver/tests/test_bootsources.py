@@ -1,4 +1,4 @@
-# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver.bootsources."""
@@ -115,6 +115,44 @@ class TestHelpers(MAASServerTestCase):
 
     def test_ensure_boot_source_definition_creates_default_source(self):
         BootSource.objects.all().delete()
+        arch = factory.make_name('arch')
+        architecture = '%s/%s' % (arch, factory.make_name('subarch'))
+        mock_get_architecture = self.patch(bootsources, 'get_architecture')
+        mock_get_architecture.return_value = architecture
+        created = ensure_boot_source_definition()
+        self.assertTrue(
+            created,
+            "Should have returned True signaling that the "
+            "sources where added.")
+        sources = BootSource.objects.all()
+        self.assertThat(sources, HasLength(1))
+        [source] = sources
+        self.assertAttributes(
+            source,
+            {
+                'url': DEFAULT_IMAGES_URL,
+                'keyring_filename': (
+                    '/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg'),
+            })
+        selections = BootSourceSelection.objects.filter(boot_source=source)
+        by_release = {
+            selection.release: selection
+            for selection in selections
+            }
+        self.assertItemsEqual(['bionic'], by_release.keys())
+        self.assertAttributes(
+            by_release['bionic'],
+            {
+                'release': 'bionic',
+                'arches': [arch],
+                'subarches': ['*'],
+                'labels': ['*'],
+            })
+
+    def test_ensure_boot_source_definition_creates_with_default_arch(self):
+        BootSource.objects.all().delete()
+        mock_get_architecture = self.patch(bootsources, 'get_architecture')
+        mock_get_architecture.return_value = ''
         created = ensure_boot_source_definition()
         self.assertTrue(
             created,
