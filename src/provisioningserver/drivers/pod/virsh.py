@@ -223,6 +223,7 @@ DOM_TEMPLATE_S390X = dedent("""
       </features>
       <devices>
         <console type='pty'>
+          <log file='/var/log/libvirt/qemu/{name}-serial0.log' append='off'/>
           <target type='sclp' port='0'/>
           <alias name='console0'/>
         </console>
