@@ -144,7 +144,7 @@ class TestHelpers(MAASServerTestCase):
             by_release['bionic'],
             {
                 'release': 'bionic',
-                'arches': [arch],
+                'arches': [arch, 'amd64'],
                 'subarches': ['*'],
                 'labels': ['*'],
             })

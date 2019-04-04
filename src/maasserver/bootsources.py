@@ -68,18 +68,19 @@ def ensure_boot_source_definition():
             url=DEFAULT_IMAGES_URL, keyring_filename=DEFAULT_KEYRINGS_PATH)
         # Default is to import newest Ubuntu LTS release, for the current
         # architecture.
-        architecture = get_architecture()
-        if architecture == '':
-            # Something went wrong detecting the architecture, default to
-            # amd64
-            arch = 'amd64'
+        arch = get_architecture().split('/')[0]
+        # amd64 is the primary architecture for MAAS uses. Make sure its always
+        # selected. If MAAS is running on another architecture select that as
+        # well.
+        if arch in ('', 'amd64'):
+            arches = ['amd64']
         else:
-            arch, _ = architecture.split('/')
+            arches = [arch, 'amd64']
         ubuntu = UbuntuOS()
         BootSourceSelection.objects.create(
             boot_source=source, os=ubuntu.name,
             release=ubuntu.get_default_commissioning_release(),
-            arches=[arch], subarches=['*'], labels=['*'])
+            arches=arches, subarches=['*'], labels=['*'])
         return True
     else:
         return False
