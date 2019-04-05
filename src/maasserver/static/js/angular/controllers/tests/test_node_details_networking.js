@@ -153,6 +153,106 @@ describe("removeInterfaceParents", function() {
 });
 
 
+describe("filterVLANNotOnFabric", function() {
+    // Load the MAAS module.
+    beforeEach(module("MAAS"));
+
+    // Load the filter
+    var filterVLANNotOnFabric;
+    beforeEach(inject(function ($filter) {
+        filterVLANNotOnFabric = $filter("filterVLANNotOnFabric");
+    }));
+
+    it("returns VLANs if undefined type", function() {
+        var vlans = [{ id: 3 }, { id: 4 }];
+        expect(filterVLANNotOnFabric(vlans, null)).toEqual(vlans);
+    });
+
+    it("removes VLANs from a different fabric", function() {
+        var vlans = [{ id: 3 }, { id: 4 }];
+        var vlanIDs = [3];
+        expect(filterVLANNotOnFabric(vlans, vlanIDs)).toEqual([{ id: 3 }]);
+    });
+
+    it("returns all VLANs in fabric", function() {
+        var vlans = [{ id: 3 }, { id: 4 }];
+        var vlanIDs = [3, 4];
+        expect(filterVLANNotOnFabric(vlans, vlanIDs)).toEqual(vlans);
+    });
+});
+
+
+describe("filterEditInterface", function () {
+
+    // Load the MAAS module.
+    beforeEach(module("MAAS"));
+
+    // Load the filter
+    var filterEditInterface;
+    beforeEach(inject(function ($filter) {
+        filterEditInterface = $filter("filterEditInterface");
+    }));
+
+    it("returns interfaces if undefined type", function () {
+        var interfaces = [{ id: 36, name: "eth-AMPnu0" }];
+        expect(filterEditInterface(interfaces, "foo")).toEqual(interfaces);
+    });
+
+    it("removes editInterface", function () {
+        var editInterface = {
+            id: 36,
+            name: "eth-AMPnu0",
+            fabric: {
+                name: "fabric-1"
+            },
+            vlan: {
+                id: 2
+            }
+        };
+
+        var interfaces = [
+            {
+                id: 37,
+                name: "eth-AMPnu1",
+                fabric: {
+                    name: "fabric-1"
+                },
+                vlan: {
+                    id: 2
+                }
+            }
+        ];
+
+        interfaces.push(editInterface);
+
+        expect(
+          filterEditInterface(interfaces, editInterface)
+        ).toEqual([
+          {
+            id: 37,
+            name: "eth-AMPnu1",
+            fabric: {
+              name: "fabric-1"
+            },
+            vlan: {
+              id: 2
+            }
+          }
+        ]);
+    });
+
+    it("removes item on different fabric", function() {
+        var interfaces = [
+            { id: 36, name: "eth=AMPnu0", fabric: { name: "fabric-1" }}
+        ];
+        var editInterface = { fabric: { name: "fabric-2" }};
+
+        expect(filterEditInterface(interfaces, editInterface))
+            .toEqual([]);
+    });
+});
+
+
 describe("removeDefaultVLANIfVLAN", function() {
 
     // Load the MAAS module.
@@ -191,6 +291,71 @@ describe("removeDefaultVLANIfVLAN", function() {
         expect(
             removeDefaultVLANIfVLAN(
                 vlans, "vlan")).toEqual([vlans[1], vlans[2]]);
+    });
+});
+
+
+describe("filterSelectedInterfaces", function() {
+
+    // Load the MAAS module.
+    beforeEach(module("MAAS"));
+
+    // Load the filterSelectedInterfaces.
+    var filterSelectedInterfaces;
+    beforeEach(inject(function($filter) {
+        filterSelectedInterfaces = $filter("filterSelectedInterfaces");
+    }));
+
+    it("removes selected items from interfaces", function() {
+        var interfaces = [{ id: 36, name: "eth-AMPnu0", link_id: -1, fabric: {
+            name: "fabric-1"
+        }}];
+        var selectedInterfaces = ["36/-1"];
+        var newBondInterface = { fabric: { name: "fabric-1" }};
+
+        expect(filterSelectedInterfaces(
+            interfaces,
+            selectedInterfaces,
+            newBondInterface
+        )).toEqual([]);
+    });
+
+    it("does not remove interface if not selected", function() {
+        var interfaces = [
+            {
+                id: 36,
+                name: "eth-AMPnu0",
+                link_id: -1,
+                fabric: {
+                    name: "fabric-1"
+                },
+                vlan: {
+                    id: 2
+                }
+            }
+        ];
+        var selectedInterfaces = ["37/-1"];
+        var newBondInterface = { fabric: { name: "fabric-1" }, vlan: { id: 2}};
+
+        expect(filterSelectedInterfaces(
+            interfaces,
+            selectedInterfaces,
+            newBondInterface
+        )).toEqual(interfaces);
+    });
+
+    it("removes interface if not on same fabric as new bond", function() {
+        var interfaces = [{ id: 36, name: "eth-AMPnu0", link_id: -1, fabric: {
+            name: "fabric-1"
+        }}];
+        var selectedInterfaces = ["37/-1"];
+        var newBondInterface = { fabric: { name: "fabric-2" }};
+
+        expect(filterSelectedInterfaces(
+            interfaces,
+            selectedInterfaces,
+            newBondInterface
+        )).toEqual([]);
     });
 });
 
@@ -333,7 +498,7 @@ describe("NodeNetworkingController", function() {
     }));
 
     // Load the required dependencies for the NodeNetworkingController.
-    var FabricsManager, VLANsManager, SubnetsManager, UsersManager;
+    var FabricsManager, VLANsManager, SubnetsManager;
     var MachinesManager, DevicesManager, GeneralManager, ManagerHelperService;
     beforeEach(inject(function($injector) {
         FabricsManager = $injector.get("FabricsManager");
@@ -342,7 +507,6 @@ describe("NodeNetworkingController", function() {
         MachinesManager = $injector.get("MachinesManager");
         DevicesManager = $injector.get("DevicesManager");
         GeneralManager = $injector.get("GeneralManager");
-        UsersManager = $injector.get("UsersManager");
         ManagerHelperService = $injector.get("ManagerHelperService");
     }));
 
@@ -1711,7 +1875,6 @@ describe("NodeNetworkingController", function() {
             makeController();
             var id = makeInteger(0, 100);
             var name = makeName("nic");
-            var vlan = { id: makeInteger(0, 100) };
             var original_nic = {
                 id: id,
                 name: name,
@@ -1918,7 +2081,11 @@ describe("NodeNetworkingController", function() {
             makeController();
             var nic = {
                 mode: "static",
-                subnet: {}
+                subnet: {
+                    statistics: {
+                        first_address: "172.16.3.1"
+                    }
+                }
             };
             spyOn($scope, "saveInterfaceLink");
             $scope.subnetChanged(nic);
@@ -2055,7 +2222,6 @@ describe("NodeNetworkingController", function() {
                 id: makeInteger(0, 100),
                 link_id: makeInteger(0, 100)
             };
-            var key = $scope.getUniqueKey(nic);
             $scope.toggleInterfaceSelect(nic);
             $scope.toggleInterfaceSelect(nic);
             expect($scope.selectedInterfaces).toEqual([]);
@@ -4394,6 +4560,300 @@ describe("NodeNetworkingController", function() {
             expect($scope.newInterface.macError).toBe(true);
             expect($scope.newInterface.errorMsg).toBe(
                 "MACAddress is already in use");
+        });
+    });
+
+    describe("isBond", function() {
+        it("returns true if has type of bond", function() {
+            makeController();
+            var item = { type: "bond" };
+            expect($scope.isBond(item)).toBe(true);
+        });
+
+        it("returns false if doesn't have type of bond", function() {
+            makeController();
+            var item = {type: "physical" };
+            expect($scope.isBond(item)).toBe(false);
+        });
+    });
+
+    describe("showEditButton", function() {
+        it("returns true if all conditions are met", function() {
+            makeController();
+
+            var editInterface = {
+                id: "foo",
+                type: "bond",
+                fabric: {
+                    name: "fabric-1"
+                },
+                vlan: {
+                    id: 2
+                },
+                members: []
+            };
+
+            var interfaces = [
+                {
+                    id: "foo",
+                    fabric: {
+                        name: "fabric-1"
+                    },
+                    vlan: {
+                        id: 2
+                    }
+                },
+                {
+                    id: "bar",
+                    fabric: {
+                        name: "fabric-1"
+                    },
+                    vlan: {
+                        id: 2
+                    }
+                },
+                {
+                    id: "baz",
+                    fabric: {
+                        name: "fabric-1"
+                    },
+                    vlan: {
+                        id: 2
+                    }
+                }
+            ];
+
+            expect($scope.showEditButton(editInterface, interfaces)).toBe(true);
+        });
+
+        it("returns false if editInterface is not bond", function() {
+            makeController();
+            var editInterface = { id: "foo", type: "physical", fabric: {
+                name: "fabric-1"
+            }};
+            var interfaces = [
+                { id: "foo", fabric: { name: "fabric-1" }},
+                { id: "bar", fabric: { name: "fabric-1" }},
+                { id: "baz", fabric: { name: "fabric-1" }}
+            ];
+            expect($scope.showEditButton(editInterface, interfaces))
+                .toBe(false);
+        });
+
+        it("returns false if no interfaces", function() {
+            makeController();
+            var editInterface = {
+                id: "foo",
+                type: "bond",
+                fabric: {
+                    name: "fabric-1"
+                },
+                members: []
+            };
+            var interfaces = [];
+            expect($scope.showEditButton(editInterface, interfaces))
+                .toBe(false);
+        });
+    });
+
+    describe("showCreateEditButton", function() {
+        it("returns true if interfaces exist", function() {
+            makeController();
+            $scope.selectedInterfaces = [];
+            $scope.newBondInterface = {
+                id: "bar",
+                fabric: {
+                    name: "fabric-1"
+                },
+                vlan: {
+                    id: 2
+                }
+            };
+            $scope.interfaces = [{ id: "foo", fabric: { name: "fabric-1" },
+        vlan: { id: 2}}];
+            expect($scope.showCreateEditButton()).toBe(true);
+        });
+
+        it("returns false if no interfaces", function() {
+            makeController();
+            $scope.selectedInterfaces = [];
+            $scope.newBondInterface = {id: "bar", fabric: {
+                name: "fabric-1"
+            }};
+            $scope.interfaces = [];
+            expect($scope.showCreateEditButton()).toBe(false);
+        });
+    });
+
+    describe("toggleEditInterfaceSelect", function() {
+        it("adds item to selectedInterfaces", function() {
+            makeController();
+            var nic = {
+                id: 1,
+                link_id: -1
+            };
+            $scope.editInterface = {
+                id: 2,
+                link_id: -1,
+                vlan: { id: 2 },
+                fabric: { name: "fabric-2" },
+                members: [],
+                parents: []
+            };
+            $scope.selectedInterfaces = [];
+            $scope.toggleEditInterfaceSelect(nic);
+            expect($scope.selectedInterfaces).toEqual(["1/-1"]);
+        });
+
+        it("adds item to interfaces", function() {
+            makeController();
+            var nic = {
+                id: 1,
+                link_id: -1,
+                vlan: { id: 2 },
+                fabric: { name: "fabric-2" }
+            };
+            $scope.editInterface = {
+                id: 2,
+                link_id: -1,
+                vlan: { id: 2 },
+                fabric: { name: "fabric-2" },
+                members: [],
+                parents: [],
+                primary: nic
+            };
+            $scope.selectedInterfaces = ["1/-1"];
+            $scope.interfaces = [];
+            $scope.toggleEditInterfaceSelect(nic);
+            expect($scope.interfaces).toEqual([nic]);
+        });
+
+        it("adds item to members", function() {
+            makeController();
+            var nic = {
+              id: 1,
+              link_id: -1,
+              vlan: { id: 2 },
+              fabric: { name: "fabric-2" }
+            };
+            $scope.editInterface = {
+              id: 2,
+              link_id: -1,
+              vlan: { id: 2 },
+              fabric: { name: "fabric-2" },
+              members: [],
+              parents: []
+            };
+            $scope.selectedInterfaces = [];
+            $scope.toggleEditInterfaceSelect(nic);
+            expect($scope.editInterface.members).toEqual([nic]);
+        });
+
+        it("adds item to parents", function() {
+            makeController();
+            var nic = {
+                id: 1,
+                link_id: -1,
+                vlan: { id: 2 },
+                fabric: { name: "fabric-2" }
+            };
+            $scope.editInterface = {
+                id: 2,
+                link_id: -1,
+                vlan: { id: 2 },
+                fabric: { name: "fabric-2" },
+                members: [],
+                parents: []
+            };
+            $scope.selectedInterfaces = [];
+            $scope.toggleEditInterfaceSelect(nic);
+            expect($scope.editInterface.parents).toEqual([nic.id]);
+        });
+
+        it("removes item from selectedInterfaces", function() {
+            makeController();
+            var nic = {
+              id: 1,
+              link_id: -1
+            };
+            $scope.editInterface = {
+              id: 2,
+              link_id: -1,
+              vlan: { id: 2 },
+              fabric: { name: "fabric-2" },
+              members: [],
+              parents: [],
+              primary: nic
+            };
+            $scope.selectedInterfaces = ["1/-1"];
+            $scope.toggleEditInterfaceSelect(nic);
+            expect($scope.selectedInterfaces).toEqual([]);
+        });
+
+        it("removes item from interfaces", function() {
+            makeController();
+            var nic = {
+              id: 1,
+              link_id: -1,
+              vlan: { id: 2 },
+              fabric: { name: "fabric-2" }
+            };
+            $scope.editInterface = {
+              id: 2,
+              link_id: -1,
+              vlan: { id: 2 },
+              fabric: { name: "fabric-2" },
+              members: [],
+              parents: []
+            };
+            $scope.selectedInterfaces = [];
+            $scope.interfaces = [nic];
+            $scope.toggleEditInterfaceSelect(nic);
+            expect($scope.interfaces).toEqual([]);
+        });
+
+        it("removes item from members", function() {
+            makeController();
+            var nic = {
+                id: 1,
+                link_id: -1,
+                vlan: { id: 2 },
+                fabric: { name: "fabric-2" }
+            };
+            $scope.editInterface = {
+                id: 2,
+                link_id: -1,
+                vlan: { id: 2 },
+                fabric: { name: "fabric-2" },
+                members: [nic],
+                parents: [],
+                primary: nic
+            };
+            $scope.selectedInterfaces = ["1/-1"];
+            $scope.toggleEditInterfaceSelect(nic);
+            expect($scope.editInterface.members).toEqual([]);
+        });
+
+        it("removes item from parents", function() {
+            makeController();
+            var nic = {
+              id: 1,
+              link_id: -1,
+              vlan: { id: 2 },
+              fabric: { name: "fabric-2" }
+            };
+            $scope.editInterface = {
+              id: 2,
+              link_id: -1,
+              vlan: { id: 2 },
+              fabric: { name: "fabric-2" },
+              members: [],
+              parents: [nic.id],
+              primary: nic
+            };
+            $scope.selectedInterfaces = ["1/-1"];
+            $scope.toggleEditInterfaceSelect(nic);
+            expect($scope.editInterface.parents).toEqual([]);
         });
     });
 });

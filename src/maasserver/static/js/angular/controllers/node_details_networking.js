@@ -78,6 +78,83 @@ export function removeDefaultVLANIfVLAN() {
     };
 }
 
+
+// Filter that is specific to the NodeNetworkingController. Remove
+// VLANs that are no part of current fabric.
+export function filterVLANNotOnFabric() {
+    return function(items, VLANsInFabric) {
+        if (!angular.isArray(VLANsInFabric)) {
+            return items;
+        }
+
+        return items.filter(function(item) {
+            var index = VLANsInFabric.indexOf(item.id);
+            return index !== -1;
+        });
+    }
+}
+
+function isOnSameFabric(item, bondInterface) {
+    if (item.fabric && bondInterface.fabric) {
+        return item.fabric.name === bondInterface.fabric.name;
+    }
+
+    return false;
+}
+
+function isOnSameVLAN(item, bondInterface) {
+    if (item.vlan && bondInterface.vlan) {
+        return item.vlan.id === bondInterface.vlan.id;
+    }
+
+    return false;
+}
+
+
+// Filter that is specific to the NodeNetworkingController. Remove
+// editInterface from list.
+export function filterEditInterface() {
+    return function (items, editInterface) {
+        if (!angular.isObject(editInterface)) {
+            return items;
+        }
+
+        var results = items.filter(function (item) {
+
+
+            return item.id !== editInterface.id
+                && isOnSameFabric(item, editInterface)
+                && isOnSameVLAN(item, editInterface);
+        });
+
+        return results;
+    };
+}
+
+
+// Filter that is specific to the NodeNetworkingController. Remove the
+// selected interfaces
+export function filterSelectedInterfaces() {
+    return function(items, selectedInterfaces, newBondInterface) {
+        if (!angular.isArray(selectedInterfaces)) {
+            return items;
+        }
+
+        if (!angular.isObject(newBondInterface)) {
+            return items;
+        }
+
+        return items.filter(function(item) {
+            var itemKey = item.id + "/" + item.link_id;
+
+            return selectedInterfaces.indexOf(itemKey) === -1
+                && item.fabric.name === newBondInterface.fabric.name
+                && item.vlan.id === newBondInterface.vlan.id;
+        });
+    }
+}
+
+
 // Filter that is specific to the NodeNetworkingController. Only provide the
 // available modes for that interface type.
 export function filterLinkModes() {
@@ -131,7 +208,7 @@ export function filterLinkModes() {
 export function NodeNetworkingController(
     $scope, $filter, FabricsManager, VLANsManager, SubnetsManager,
     ControllersManager, GeneralManager, UsersManager,
-    ManagerHelperService, ValidationService, JSONService) {
+    ManagerHelperService, ValidationService, JSONService, $log) {
 
     // Different interface types.
     var INTERFACE_TYPE = {
@@ -220,6 +297,7 @@ export function NodeNetworkingController(
     $scope.createBondError = null;
     $scope.newInterfaceLinkMonitoring = null;
     $scope.editInterfaceLinkMonitoring = null;
+    $scope.isSaving = false;
     $scope.modes = [
         {
             mode: LINK_MODE.AUTO,
@@ -238,6 +316,10 @@ export function NodeNetworkingController(
             text: LINK_MODE_TEXTS[LINK_MODE.LINK_UP]
         }
     ];
+
+    $scope.isBond = function(item) {
+        return item.type === "bond";
+    };
 
     // Sets loaded to true if both the node has been loaded at the
     // other required managers for this scope have been loaded.
@@ -679,6 +761,38 @@ export function NodeNetworkingController(
         return SubnetsManager.getItemFromList(subnetId);
     };
 
+    // Show button for editing interfaces
+    $scope.showEditButton = function(item, interfaces) {
+        if (item.type !== "bond") {
+            return false;
+        }
+
+        interfaces = $filter("filterEditInterface")(
+            interfaces,
+            $scope.editInterface
+        );
+
+        if (item.members.length <= 2 && !interfaces.length) {
+            return false;
+        }
+
+        return true;
+    };
+
+    $scope.showCreateEditButton = function() {
+        var items = $filter("filterSelectedInterfaces")(
+            $scope.interfaces,
+            $scope.selectedInterfaces,
+            $scope.newBondInterface
+        );
+
+        if (items.length || $scope.selectedInterfaces.length > 2) {
+            return true;
+        }
+
+        return false;
+    };
+
     // Return True if the interface name that the user typed is invalid.
     $scope.isInterfaceNameInvalid = function(nic) {
         if (!angular.isObject(nic) || !nic.hasOwnProperty('name') ||
@@ -737,20 +851,147 @@ export function NodeNetworkingController(
     $scope.toggleInterfaceSelect = function(nic) {
         var key = $scope.getUniqueKey(nic);
         var idx = $scope.selectedInterfaces.indexOf(key);
-        if (idx > -1) {
-            $scope.selectedInterfaces.splice(idx, 1);
+
+        function removeSelectedInterface(index) {
+            $scope.selectedInterfaces.splice(index, 1);
+        }
+
+        function interfaceIsSelected() {
+            return idx > -1;
+        }
+
+        if (interfaceIsSelected()) {
+            removeSelectedInterface(idx);
         } else {
             $scope.selectedInterfaces.push(key);
         }
 
-        if ($scope.selectedInterfaces.length > 1) {
+        function removeCurrentItem(currentItem, items) {
+            return items.filter(function(item) {
+                var itemId = angular.isObject(item) ? item.id : item;
+                return itemId !== currentItem.id;
+            });
+        }
+
+        function getCurrentItem(currentItem, items) {
+            return items.filter(function(item) {
+                var itemId = angular.isObject(item) ? item.id : item;
+                return itemId === currentItem.id;
+            });
+        }
+
+        if ($scope.newBondInterface && $scope.newBondInterface.parents) {
+            var parents = $scope.newBondInterface.parents;
+            var filteredParents = removeCurrentItem(nic, parents);
+
+            if (interfaceIsSelected()) {
+              $scope.newBondInterface.parents = filteredParents;
+              $scope.newBondInterface.primary = filteredParents[0];
+              $scope.newBondInterface.mac_address =
+                filteredParents[0].mac_address;
+              if (!getCurrentItem(nic, $scope.interfaces)) {
+                  $scope.interfaces.push(nic);
+              }
+            } else {
+                $scope.newBondInterface.parents.push(nic);
+            }
+        }
+
+        function isMultipleSelectedInterfaces() {
+            return $scope.selectedInterfaces.length > 1;
+        }
+
+        if (isMultipleSelectedInterfaces()) {
             if ($scope.selectedMode !== SELECTION_MODE.BOND) {
-                $scope.selectedMode = SELECTION_MODE.MULTI;
+                if (!$scope.isShowingCreateBond()) {
+                    $scope.selectedMode = SELECTION_MODE.MULTI;
+                }
             }
         } else if ($scope.selectedInterfaces.length === 1) {
-            $scope.selectedMode = SELECTION_MODE.SINGLE;
+            if (!$scope.isShowingCreateBond()) {
+                $scope.selectedMode = SELECTION_MODE.SINGLE;
+            }
         } else {
-            $scope.selectedMode = SELECTION_MODE.NONE;
+            if (!$scope.isShowingCreateBond()) {
+                $scope.selectedMode = SELECTION_MODE.NONE;
+            }
+        }
+    };
+
+    $scope.toggleEditInterfaceSelect = function (nic) {
+        var key = $scope.getUniqueKey(nic);
+        var keyIndex = $scope.selectedInterfaces.indexOf(key);
+
+        if (keyIndex === -1) {
+            // Select item
+            $scope.selectedInterfaces.push(key);
+
+            // Add to members
+            if (!$scope.editInterface.members.find(function (item) {
+                return item.id === nic.id;
+            })) {
+                $scope.editInterface.members.push(nic);
+            }
+
+            // Add to parents
+            if (!$scope.editInterface.parents.find(function (item) {
+                return item === nic.id;
+            })) {
+                $scope.editInterface.parents.push(nic.id);
+            }
+
+            // Remove from unselected rows
+            var selectedInterface = $scope.interfaces.find(function (item) {
+                return item.id === nic.id;
+            });
+
+            var selectedIndex = $scope.interfaces.indexOf(selectedInterface);
+
+            if (selectedIndex !== -1) {
+                $scope.interfaces.splice(selectedIndex, 1);
+            }
+        } else {
+            // Unselect item
+            $scope.selectedInterfaces.splice(keyIndex, 1);
+
+            // Add to unselected rows
+            if (!$scope.interfaces.find(function (item) {
+                return item.id === nic.id;
+            })) {
+                nic.fabric = $scope.editInterface.fabric;
+                nic.vlan = $scope.editInterface.vlan;
+                $scope.interfaces.push(nic);
+            }
+
+            // Remove from members
+            var member = $scope.editInterface.members.find(function (item) {
+                return item.id === nic.id;
+            });
+
+            var memberIndex = $scope.editInterface.members.indexOf(member);
+
+            if (memberIndex !== -1) {
+                $scope.editInterface.members.splice(memberIndex, 1);
+            }
+
+            // Remove from parents
+            var parentIndex = $scope.editInterface.parents.indexOf(nic.id);
+
+            if (parentIndex !== -1) {
+                $scope.editInterface.parents.splice(parentIndex, 1);
+            }
+
+            // Reset primary and mac address
+            var primaryMember = $scope.editInterface.members[0];
+
+            if ($scope.editInterface.primary.id === nic.id) {
+                $scope.editInterface.primary = primaryMember;
+            }
+
+            if ($scope.editInterface.mac_address === nic.mac_address
+                && primaryMember) {
+                $scope.editInterface.mac_address = primaryMember.mac_address;
+            }
         }
     };
 
@@ -784,6 +1025,7 @@ export function NodeNetworkingController(
 
     // Start editing this interface.
     $scope.edit = function(nic) {
+        $scope.isShowingInterfaces = false;
         $scope.selectedInterfaces = [$scope.getUniqueKey(nic)];
         $scope.selectedMode = SELECTION_MODE.EDIT;
         if ($scope.$parent.isDevice) {
@@ -806,7 +1048,7 @@ export function NodeNetworkingController(
                 bond_updelay: nic.params.bond_updelay,
                 bond_miimon: nic.params.bond_miimon
             };
-            if (nic.subnet !== undefined && nic.subnet !== null) {
+            if (angular.isDefined(nic.subnet) && nic.subnet !== null) {
                 $scope.editInterface.defaultSubnet = nic.subnet;
             } else {
                 $scope.editInterface.defaultSubnet = $scope.subnets[0];
@@ -833,6 +1075,20 @@ export function NodeNetworkingController(
                 bond_updelay: nic.params.bond_updelay,
                 bond_miimon: nic.params.bond_miimon
             };
+
+            $scope.editInterface.parents = nic.parents;
+            $scope.editInterface.members = nic.members;
+            if (nic.members && nic.members.length) {
+                $scope.editInterface.primary = nic.members[0];
+            } else {
+                $scope.editInterface.primary = null;
+            }
+
+            if (nic.members) {
+                nic.members.forEach(function(member) {
+                    $scope.selectedInterfaces.push($scope.getUniqueKey(member));
+                });
+            }
         }
     };
 
@@ -907,8 +1163,19 @@ export function NodeNetworkingController(
                 nic.subnet.id === originalLink.subnet_id) {
                 // Set the original IP address if same subnet.
                 nic.ip_address = originalLink.ip_address;
+            } else {
+                nic.ip_address = nic.subnet.statistics.first_address;
             }
         }
+    };
+
+    // Update VLAN when fabric changed
+    $scope.updateVLAN = function(nic) {
+        var vlans = $filter("filterVLANNotOnFabric")(
+            $scope.vlans,
+            nic.fabric.vlan_ids
+        );
+        nic.vlan = vlans[0];
     };
 
     // Called when the mode is changed on a maas-obj-form.
@@ -927,49 +1194,46 @@ export function NodeNetworkingController(
     };
 
     // Called to cancel edit mode.
-    $scope.editCancel = function(nic) {
+    $scope.editCancel = function() {
+        $scope.isShowingInterfaces = false;
         $scope.selectedInterfaces = [];
         $scope.selectedMode = SELECTION_MODE.NONE;
         $scope.editInterface = null;
+        updateInterfaces();
     };
 
     // Preprocess things for updateInterfaceForm.
     $scope.preProcessInterface = function(nic) {
         var params = angular.copy(nic);
+        $scope.isSaving = true;
 
         delete params.id;
         params.system_id = $scope.node.system_id;
         params.interface_id = nic.id;
 
         // we need IDs not objects.
-        if (nic.fabric !== undefined && nic.fabric !== null) {
+        if (angular.isDefined(nic.fabric) && nic.fabric !== null) {
             params.fabric = nic.fabric.id;
         } else {
             params.fabric = null;
         }
-        if (nic.vlan !== undefined && nic.vlan !== null) {
+        if (angular.isDefined(nic.vlan) && nic.vlan !== null) {
             params.vlan = nic.vlan.id;
         } else {
             params.vlan = null;
         }
-        if (nic.subnet !== undefined && nic.subnet !== null) {
+        if (angular.isDefined(nic.subnet) && nic.subnet !== null) {
             params.subnet = params.subnet.id;
         } else {
             delete params.subnet;
         }
-        if (nic.bridge_stp !== undefined && nic.bridge_stp !== null) {
-            params.bridge_stp = params.bridge_stp;
-        } else {
+        if (angular.isUndefined(nic.bridge_stp) && nic.bridge_stp === null) {
             params.bridge_stp = null;
         }
-        if (nic.bridge_fd !== undefined && nic.bridge_fd !== null) {
-            params.bridge_fd = params.bridge_fd;
-        } else {
+        if (angular.isUndefined(nic.bridge_fd) && nic.bridge_fd === null) {
             params.bridge_fd = null;
         }
-        if (nic.bond_mode !== undefined && nic.bond_mode !== null) {
-            params.bond_mode = params.bond_mode;
-        } else {
+        if (angular.isUndefined(nic.bond_mode) && nic.bond_mode === null) {
             params.bond_mode = null;
         }
 
@@ -1009,17 +1273,17 @@ export function NodeNetworkingController(
                     function(tag) { return tag.text; })
             };
         }
-        if (nic.fabric !== undefined && nic.fabric !== null) {
+        if (angular.isDefined(nic.fabric) && nic.fabric !== null) {
             params.fabric = nic.fabric.id;
         } else {
             params.fabric = null;
         }
-        if (nic.vlan !== undefined && nic.vlan !== null) {
+        if (angular.isDefined(nic.vlan) && nic.vlan !== null) {
             params.vlan = nic.vlan.id;
         } else {
             params.vlan = null;
         }
-        if (nic.subnet !== undefined && nic.subnet !== null) {
+        if (angular.isDefined(nic.subnet) && nic.subnet !== null) {
             params.subnet = nic.subnet.id;
         } else {
             params.subnet = null;
@@ -1036,7 +1300,7 @@ export function NodeNetworkingController(
                 // XXX blake_r: Just log the error in the console, but
                 // we need to expose this as a better message to the
                 // user.
-                console.log(error);
+                $log.error(error);
 
                 // Update the interfaces so it is back to the way it
                 // was before the user changed it.
@@ -1066,7 +1330,7 @@ export function NodeNetworkingController(
         }
         return $scope.$parent.nodesManager.linkSubnet(
             $scope.node, nic.id, params).then(null, function(error) {
-                console.log(error);
+                $log.info(error);
                 if (angular.isDefined(nic.link_id) && nic.link_id >= 0) {
                     $scope.interfaceErrorsByLinkId[nic.link_id] = error;
                 }
@@ -1079,6 +1343,7 @@ export function NodeNetworkingController(
 
     // Called to save the interface.
     $scope.editSave = function(editInterface) {
+        $scope.isSaving = false;
         $scope.editCancel();
         return editInterface;
     };
@@ -1171,6 +1436,7 @@ export function NodeNetworkingController(
 
     // Cancel the current mode go back to sinle selection mode.
     $scope.cancel = function() {
+        $scope.isShowingInterfaces = false;
         $scope.newInterface = {};
         $scope.newBondInterface = {};
         $scope.newBridgeInterface = {};
@@ -1320,7 +1586,7 @@ export function NodeNetworkingController(
                 $scope.node, params).then(null, function(error) {
                     // Should do something better but for now just log
                     // the error.
-                    console.log(error);
+                    $log.error(error);
                 });
         }
 
@@ -1503,11 +1769,20 @@ export function NodeNetworkingController(
                 $scope.newBondInterface.mac_address));
     };
 
+    // Return true if cannot edit the bond.
+    $scope.cannotEditBond = function(nic) {
+        return $scope.isInterfaceNameInvalid(nic)
+            && $scope.isIPAddressInvalid(nic)
+            && $scope.isMACAddressInvalid(nic.mac_address, true);
+    };
+
     // Actually add the bond.
     $scope.addBond = function() {
         if ($scope.cannotAddBond()) {
             return;
         }
+
+        $scope.isSaving = true;
 
         var parents = $scope.newBondInterface.parents.map(
             function(nic) { return nic.id; });
@@ -1559,11 +1834,13 @@ export function NodeNetworkingController(
                         $scope.interfaces.splice(idx, 1);
                     }
                 });
+                $scope.isSaving = false;
             })
             .catch(function(error) {
-                var parsedError = JSON.parse(error);
+                var parsedError = angular.fromJson(error);
                 $scope.createBondError
                     = parsedError[Object.keys(parsedError)[0]][0];
+                $scope.isSaving = false;
             });
 
 
@@ -1713,7 +1990,7 @@ export function NodeNetworkingController(
             $scope.node, params).then(null, function(error) {
                 // Should do something better but for now just log
                 // the error.
-                console.log(error);
+                $log.error(error);
             });
 
         // Remove the parent interface so that they don't show up
@@ -1816,7 +2093,7 @@ export function NodeNetworkingController(
                     if (!angular.isObject(error)) {
                         // Was not a JSON error. This is wrong here as it
                         // should be, so just log to the console.
-                        console.log(errorStr);
+                        $log.error(errorStr);
                     } else {
                         const macError = error.mac_address;
                         if (angular.isArray(macError)) {

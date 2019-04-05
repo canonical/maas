@@ -900,7 +900,11 @@
                             <tbody>
                                 <tr data-ng-repeat="interface in interfaces" data-ng-if="isInterfaceSelected(interface)">
                                     <td class="p-double-row" aria-label="Name">
-                                        <div class="p-double-row__rows-container">
+                                        <div class="p-double-row__checkbox" data-ng-if="isShowingInterfaces">
+                                            <input type="checkbox" class="checkbox" id="{$ getUniqueKey(interface) $}" data-ng-checked="isInterfaceSelected(interface)" data-ng-click="toggleInterfaceSelect(interface)">
+                                            <label for="{$ getUniqueKey(interface) $}"></label>
+                                        </div>
+                                        <div class="p-double-row__rows-container--checkbox">
                                             <div class="p-double-row__main-row">
                                                 <div title="{$ interface.name $}">
                                                     {$ interface.name $}
@@ -956,6 +960,7 @@
                                 </tr>
                             </tbody>
                         </table>
+
                         <div class="p-strip is--shallow p-form--stacked">
                             <div class="row">
                                 <div class="col-6">
@@ -1075,7 +1080,7 @@
                 </div>
 
 
-                <div class="row" data-ng-repeat="interface in interfaces" data-ng-if="isInterfaceSelected(interface) && isShowingEdit()">
+                <div class="row" data-ng-repeat="interface in interfaces" data-ng-if="isInterfaceSelected(interface) && isShowingEdit() && interface.type === editInterface.type">
                     <div class="p-card--highlighted">
                         <h2 class="p-heading--four">Edit {$ getInterfaceTypeText(interface).toLowerCase() $}</h2>
                         <table>
@@ -1094,7 +1099,10 @@
                                             <div>MAC</div>
                                         </div>
                                     </th>
-                                    <th><div data-ng-if="!isController">PXE</div></th>
+                                    <th>
+                                        <div data-ng-if="!isController && !isBond(editInterface)">PXE</div>
+                                        <div data-ng-if="isBond(editInterface)">Primary</div>
+                                    </th>
                                     <th>Type</th>
                                     <th class="p-double-row">
                                         <div>Fabric,</div>
@@ -1111,7 +1119,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr data-ng-repeat="interface in interfaces" data-ng-if="isInterfaceSelected(interface)">
+                                <tr data-ng-repeat="interface in interfaces" data-ng-if="isInterfaceSelected(interface) && !isBond(editInterface)">
                                     <td class="p-double-row" aria-label="Name">
                                         <div class="p-double-row__rows-container">
                                             <div class="p-double-row__main-row">
@@ -1129,12 +1137,13 @@
                                     <td aria-label="Boot interface">
                                         <span class="u-align--center u-hide u-show--large">
                                             <input type="radio" name="bootInterface" id="{$ interface.name $}" checked
-                                                data-ng-if="!isController && isBootInterface(interface)"
-                                                class="u-no-margin">
+                                                data-ng-if="!isController && isBootInterface(interface)" class="u-no-margin">
                                             <label for="{$ interface.name $}"></label>
                                         </span>
-                                        <span class="u-hide--large" data-ng-if="!isController && isBootInterface(interface) && !isEditing(interface)">Yes</span>
-                                        <span class="u-hide--large" data-ng-if="!isController && !isBootInterface(interface) && !isEditing(interface)">No</span>
+                                        <span class="u-hide--large"
+                                            data-ng-if="!isController && isBootInterface(interface) && !isEditing(interface)">Yes</span>
+                                        <span class="u-hide--large"
+                                            data-ng-if="!isController && !isBootInterface(interface) && !isEditing(interface)">No</span>
                                     </td>
                                     <td aria-label="Type">
                                         <span title="{$ getInterfaceTypeText(interface) $}">
@@ -1144,14 +1153,16 @@
                                     <td class="p-double-row">
                                         <div class="p-double-row__rows-container">
                                             <div class="p-double-row__main-row" aria-label="Fabric">
-                                                <span  title="{$ interface.fabric.name || 'Disconnected' $}">
-                                                    <a class="p-link--soft" data-ng-if="interface.fabric" href="/#/fabric/{$ interface.fabric.id $}">{$ interface.fabric.name $}</a>
+                                                <span title="{$ interface.fabric.name || 'Disconnected' $}">
+                                                    <a class="p-link--soft" data-ng-if="interface.fabric" href="/#/fabric/{$ interface.fabric.id $}">{$
+                                                        interface.fabric.name $}</a>
                                                     <span data-ng-if="!interface.fabric.name">Disconnected</span>
                                                 </span>
                                             </div>
                                             <div class="p-double-row__muted-row" aria-label="VLAN">
                                                 <span title="{$ getVLANText(interface.vlan) $}">
-                                                    <a class="p-muted-text p-link--muted" data-ng-if="interface.vlan" href="/#/vlan/{$ interface.vlan.id $}">
+                                                    <a class="p-muted-text p-link--muted" data-ng-if="interface.vlan"
+                                                        href="/#/vlan/{$ interface.vlan.id $}">
                                                         {$ getVLANText(interface.vlan) $}
                                                     </a>
                                                 </span>
@@ -1159,19 +1170,24 @@
                                         </div>
                                     </td>
                                     <td class="p-double-row">
-                                        <div data-ng-if="((isDevice && interface.subnet) || (interface.fabric && !interface.discovered[0].subnet_id))" title="{$ getSubnetText(interface.subnet) $}" class="p-double-row__rows-container">
+                                        <div data-ng-if="((isDevice && interface.subnet) || (interface.fabric && !interface.discovered[0].subnet_id))"
+                                            title="{$ getSubnetText(interface.subnet) $}" class="p-double-row__rows-container">
                                             <div class="p-double-row__main-row" aria-label="Subnet CIDR" title="{$ interface.subnet.cidr $}">
                                                 <span data-ng-if="interface.subnet.cidr">
                                                     <a class="p-link--soft" href="/#/subnet/{$ interface.subnet.id $}">{$ interface.subnet.cidr $}</a>
                                                 </span>
                                                 <span data-ng-if="!interface.subnet.cidr">Unconfigured</span>
                                             </div>
-                                            <div data-ng-if="interface.subnet.name" class="p-double-row__muted-row" aria-label="Subnet name" title="{$ interface.subnet.name $}">
-                                                <a class="p-muted-text p-link--muted" href="/#/subnet/{$ interface.subnet.id $}">{$ interface.subnet.name $}</a>
+                                            <div data-ng-if="interface.subnet.name" class="p-double-row__muted-row" aria-label="Subnet name"
+                                                title="{$ interface.subnet.name $}">
+                                                <a class="p-muted-text p-link--muted" href="/#/subnet/{$ interface.subnet.id $}">{$
+                                                    interface.subnet.name $}</a>
                                             </div>
                                         </div>
-                                        <div data-ng-if="isAllNetworkingDisabled() && interface.discovered[0].subnet_id" class="p-double-row__rows-container">
-                                            <div class="p-double-row__main-row" aria-label="Subnet CIDR" title="{$ getSubnetText(getSubnet(interface.discovered[0].subnet_id)) $}">
+                                        <div data-ng-if="isAllNetworkingDisabled() && interface.discovered[0].subnet_id"
+                                            class="p-double-row__rows-container">
+                                            <div class="p-double-row__main-row" aria-label="Subnet CIDR"
+                                                title="{$ getSubnetText(getSubnet(interface.discovered[0].subnet_id)) $}">
                                                 {$ getSubnetText(getSubnet(interface.discovered[0].subnet_id)) $}
                                             </div>
                                             <div class="p-double-row__muted-row" aria-label="Subnet name" title="">
@@ -1190,7 +1206,8 @@
                                             </div>
                                         </div>
                                         <div data-ng-if="interface.discovered[0].ip_address && interface.fabric" class="p-double-row__rows-container">
-                                            <div class="p-double-row__main-row" aria-label="IP address" title="{$ interface.discovered[0].ip_address $}">
+                                            <div class="p-double-row__main-row" aria-label="IP address"
+                                                title="{$ interface.discovered[0].ip_address $}">
                                                 <span data-ng-if="interface.discovered[0].ip_address">{$ interface.discovered[0].ip_address $}</span>
                                                 <span data-ng-if="!interface.discovered[0].ip_address">DHCP</span>
                                             </div>
@@ -1200,8 +1217,177 @@
                                         </div>
                                     </td>
                                 </tr>
+                                <tr data-ng-repeat="interface in editInterface.members" data-ng-if="isBond(editInterface)">
+                                    <td class=" p-double-row" aria-label="Name">
+                                        <div class="p-double-row__checkbox" data-ng-if="isShowingInterfaces">
+                                            <input type="checkbox" class="checkbox" id="{$ getUniqueKey(interface) $}"
+                                                data-ng-checked="isInterfaceSelected(interface)" data-ng-click="toggleEditInterfaceSelect(interface)">
+                                            <label for="{$ getUniqueKey(interface) $}"></label>
+                                        </div>
+                                        <div class="p-double-row__rows-container--checkbox">
+                                            <div class="p-double-row__main-row">
+                                                <div title="{$ interface.name $}">
+                                                    {$ interface.name $}
+                                                </div>
+                                            </div>
+                                            <div class="p-double-row__muted-row">
+                                                <div title="{$ interface.mac_address $}">
+                                                    {$ interface.mac_address $}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td aria-label="Primary">
+                                        <input type="radio" name="bondPrimary" id="{$ interface.name $}" data-ng-model="editInterface.primary"
+                                            data-ng-value="interface">
+                                        <label for="{$ interface.name $}"></label>
+                                    </td>
+                                    <td aria-label="Type">
+                                        <span title="{$ getInterfaceTypeText(interface) $}">
+                                            {$ getInterfaceTypeText(interface) $}
+                                        </span>
+                                    </td>
+                                    <td class="p-double-row">
+                                        <div class="p-double-row__rows-container">
+                                            <div class="p-double-row__main-row" aria-label="Fabric">
+                                                <span title="{$ editInterface.fabric.name || 'Disconnected' $}">
+                                                    <a class="p-link--soft" data-ng-if="editInterface.fabric"
+                                                        href="/#/fabric/{$ editInterface.fabric.id $}">{$
+                                                        editInterface.fabric.name $}</a>
+                                                    <span data-ng-if="!editInterface.fabric.name">Disconnected</span>
+                                                </span>
+                                            </div>
+                                            <div class="p-double-row__muted-row" aria-label="VLAN">
+                                                <span title="{$ getVLANText(editInterface.vlan) $}">
+                                                    <a class="p-muted-text p-link--muted" data-ng-if="editInterface.vlan"
+                                                        href="/#/vlan/{$ editInterface.vlan.id $}">
+                                                        {$ getVLANText(editInterface.vlan) $}
+                                                    </a>
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="p-double-row">
+                                        <div data-ng-if="((isDevice && editInterface.subnet) || (editInterface.fabric && !editInterface.discovered[0].subnet_id))"
+                                            title="{$ getSubnetText(editInterface.subnet) $}" class="p-double-row__rows-container">
+                                            <div class="p-double-row__main-row" aria-label="Subnet CIDR" title="{$ editInterface.subnet.cidr $}">
+                                                <span data-ng-if="editInterface.subnet.cidr">
+                                                    <a class="p-link--soft" href="/#/subnet/{$ editInterface.subnet.id $}">{$ editInterface.subnet.cidr
+                                                        $}</a>
+                                                </span>
+                                                <span data-ng-if="!editInterface.subnet.cidr">Unconfigured</span>
+                                            </div>
+                                            <div data-ng-if="editInterface.subnet.name" class="p-double-row__muted-row" aria-label="Subnet name"
+                                                title="{$ editInterface.subnet.name $}">
+                                                <a class="p-muted-text p-link--muted" href="/#/subnet/{$ editInterface.subnet.id $}">{$
+                                                    editInterface.subnet.name $}</a>
+                                            </div>
+                                        </div>
+                                        <div data-ng-if="isAllNetworkingDisabled() && editInterface.discovered[0].subnet_id"
+                                            class="p-double-row__rows-container">
+                                            <div class="p-double-row__main-row" aria-label="Subnet CIDR"
+                                                title="{$ getSubnetText(getSubnet(editInterface.discovered[0].subnet_id)) $}">
+                                                {$ getSubnetText(getSubnet(editInterface.discovered[0].subnet_id)) $}
+                                            </div>
+                                            <div class="p-double-row__muted-row" aria-label="Subnet name" title="">
+                                                &nbsp;
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="p-double-row">
+                                        <div data-ng-if="!editInterface.discovered[0].ip_address && editInterface.fabric"
+                                            class="p-double-row__rows-container">
+                                            <div class="p-double-row__main-row" aria-label="IP address" title="{$ editInterface.ip_address $}">
+                                                <span data-ng-if="editInterface.ip_address">{$ editInterface.ip_address $}</span>
+                                                <span data-ng-if="!editInterface.ip_address">{$ getLinkModeText(editInterface) $}</span>
+                                            </div>
+                                            <div class="p-double-row__muted-row" aria-label="Link mode" title="{$ getLinkModeText(editInterface) $}">
+                                                <span data-ng-if="editInterface.ip_address">{$ getLinkModeText(editInterface) $}</span>
+                                            </div>
+                                        </div>
+                                        <div data-ng-if="editInterface.discovered[0].ip_address && editInterface.fabric"
+                                            class="p-double-row__rows-container">
+                                            <div class="p-double-row__main-row" aria-label="IP address"
+                                                title="{$ editInterface.discovered[0].ip_address $}">
+                                                <span data-ng-if="editInterface.discovered[0].ip_address">{$ editInterface.discovered[0].ip_address
+                                                    $}</span>
+                                                <span data-ng-if="!editInterface.discovered[0].ip_address">DHCP</span>
+                                            </div>
+                                            <div class="p-double-row__muted-row" aria-label="Link mode" title="DHCP">
+                                                <span data-ng-if="editInterface.discovered[0].ip_address">DHCP</span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr class="p-table__row--muted"
+                                    data-ng-repeat="interface in interfaces | filterEditInterface:editInterface"
+                                    data-ng-if="isShowingInterfaces && isBond(editInterface)">
+                                    <td class="p-double-row" aria-label="Name">
+                                        <div class="p-double-row__checkbox">
+                                            <input type="checkbox" class="checkbox" id="{$ getUniqueKey(interface) $}"
+                                                data-ng-checked="isInterfaceSelected(interface)" data-ng-click="toggleEditInterfaceSelect(interface)">
+                                            <label for="{$ getUniqueKey(interface) $}"></label>
+                                        </div>
+                                        <div class="p-double-row__rows-container--checkbox">
+                                            <div class="p-double-row__main-row">
+                                                {$ interface.name $}
+                                            </div>
+                                            <div class="p-double-row__muted-row">
+                                                {$ interface.mac_address $}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td aria-label="Primary">
+                                        <input type="radio" name="bondPrimary" id="{$ interface.name $}" data-ng-model="editInterface.primary"
+                                            data-ng-value="interface">
+                                        <label for="{$ interface.name $}"></label>
+                                    </td>
+                                    <td aria-label="Type">
+                                        {$ getInterfaceTypeText(interface) $}
+                                    </td>
+                                    <td class="p-double-row" aria-label="Fabric">
+                                        <div class="p-double-row__main-row">
+                                            <span title="{$ interface.fabric.name || 'Disconnected' $}">
+                                                {$ interface.fabric.name $}
+                                                <span data-ng-if="!interface.fabric.name">Disconnected</span>
+                                            </span>
+                                        </div>
+                                        <div class="p-double-row__muted-row">
+                                            <span title="{$ getVLANText(interface.vlan) $}">
+                                                {$ getVLANText(interface.vlan) $}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td aria-label="Subnet CIDR">
+                                        <span title="{$ interface.subnet.cidr $}">
+                                            <span data-ng-if="interface.subnet.cidr">
+                                                {$ interface.subnet.cidr $}
+                                            </span>
+                                            <span data-ng-if="!interface.subnet.cidr">
+                                                Unconfigured
+                                            </span>
+                                        </span>
+                                    </td>
+                                    <td aria-label="IP address">
+                                        <div data-ng-if="!editInterface.discovered[0].ip_address && editInterface.fabric"
+                                            class="p-double-row__rows-container">
+                                            <div class="p-double-row__main-row" aria-label="IP address" title="{$ editInterface.ip_address $}">
+                                                <span data-ng-if="editInterface.ip_address">{$ editInterface.ip_address $}</span>
+                                                <span data-ng-if="!editInterface.ip_address">{$ getLinkModeText(editInterface) $}</span>
+                                            </div>
+                                            <div class="p-double-row__muted-row" aria-label="Link mode" title="{$ getLinkModeText(editInterface) $}">
+                                                <span data-ng-if="editInterface.ip_address">{$ getLinkModeText(editInterface) $}</span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
                             </tbody>
                         </table>
+
+                        <button class="p-button--neutral" data-ng-click="toggleInterfaces()" data-ng-if="showEditButton(editInterface, interfaces)">
+                            <span data-ng-if="isShowingInterfaces">Hide interfaces</span>
+                            <span data-ng-if="!isShowingInterfaces">Edit bond members</span>
+                        </button>
 
                         <div class="p-form p-form--stacked" data-ng-class="{ 'is-active': isEditing(interface) || isShowingAdd() }">
                             <div class="row" data-ng-if="isShowingAdd()">
@@ -1405,7 +1591,7 @@
                                                 <button class="p-button--base u-no-margin--bottom"
                                                     data-ng-click="editCancel()">Cancel</button>
                                                 <button class="p-button--positive u-no-margin--bottom"
-                                                data-ng-disabled="(isInterfaceNameInvalid(editInterface)) || isIPAddressInvalid(editInterface) || isMACAddressInvalid(editInterface.mac_address, true)"
+                                                data-ng-disabled="cannotEditBond(editInterface)"
                                                 maas-obj-save>Save {$ getInterfaceTypeText(interface).toLowerCase() $}</button>
                                             </div>
                                         </div>
@@ -1481,6 +1667,7 @@
                                                                 name="fabric"
                                                                 data-ng-model="editInterface.fabric"
                                                                 data-ng-options="fabric as fabric.name for fabric in fabrics"
+                                                                data-ng-change="updateVLAN(editInterface)"
                                                             >
                                                             </select>
                                                         </div>
@@ -1490,7 +1677,7 @@
                                                         <div class="p-form__control">
                                                             <select name="vlan"
                                                                 data-ng-model="editInterface.vlan"
-                                                                data-ng-options="vlan as getVLANText(vlan) for vlan in vlans"
+                                                                data-ng-options="vlan as getVLANText(vlan) for vlan in vlans | filterVLANNotOnFabric:editInterface.fabric.vlan_ids"
                                                             >
                                                             </select>
                                                         </div>
@@ -1584,9 +1771,23 @@
                                             <div class="u-float--right">
                                                 <button class="p-button--base u-no-margin--bottom"
                                                     data-ng-click="editCancel()">Cancel</button>
+                                                <span class="p-tooltip p-tooltip--top-right" aria-describedby="save-bond-tooltip"
+                                                    data-ng-if="editInterface.members && editInterface.members.length < 2">
+                                                    <button class="p-button--positive u-no-margin--bottom" disabled>Save {$ getInterfaceTypeText(interface).toLowerCase() $}</button>
+                                                    <span class="p-tooltip__message" role="tooltip" id="save-bond-tooltip">A bond must have at least two interfaces</span>
+                                                </span>
                                                 <button class="p-button--positive u-no-margin--bottom"
-                                                data-ng-disabled="(isInterfaceNameInvalid(editInterface)) || isIPAddressInvalid(editInterface) || isMACAddressInvalid(editInterface.mac_address, true)"
-                                                maas-obj-save>Save {$ getInterfaceTypeText(interface).toLowerCase() $}</button>
+                                                data-ng-disabled="(isInterfaceNameInvalid(editInterface)) || isIPAddressInvalid(editInterface) || isMACAddressInvalid(editInterface.mac_address, true)" data-ng-if="editInterface.members && editInterface.members.length >= 2"
+                                                maas-obj-save>
+                                                    <span data-ng-if="isSaving">
+                                                        <i class="p-icon--spinner is-light u-animation--spin"></i>
+                                                        &nbsp;
+                                                        Saving {$ getInterfaceTypeText(interface).toLowerCase() $}
+                                                    </span>
+                                                    <span data-ng-if="!isSaving">
+                                                        Save {$ getInterfaceTypeText(interface).toLowerCase() $}
+                                                    </span>
+                                                </button>
                                             </div>
                                         </div>
                                     </maas-obj-form>
@@ -1642,20 +1843,34 @@
                                     </th>
                                     <th>Primary</th>
                                     <th>Type</th>
-                                    <th>Fabric</th>
-                                    <th>VLAN</th>
-                                    <th>Subnet</th>
-                                    <th>IP address</th>
+                                    <th class="p-double-row">
+                                        <div>Fabric,</div>
+                                        <div>VLAN</div>
+                                    </th>
+                                    <th class="p-double-row">
+                                        <div>Subnet,</div>
+                                        <div>Name</div>
+                                    </th>
+                                    <th class="p-double-row">
+                                        <div>IP Address,</div>
+                                        <div>IP Mode</div>
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr data-ng-repeat="parent in newBondInterface.parents | orderBy:'name'">
                                     <td class="p-double-row" aria-label="Name">
-                                        <div class="p-double-row__main-row">
-                                            {$ parent.name $}
+                                        <div class="p-double-row__checkbox" data-ng-if="isShowingInterfaces">
+                                            <input type="checkbox" class="checkbox" id="{$ getUniqueKey(parent) $}" data-ng-checked="isInterfaceSelected(parent)" data-ng-click="toggleInterfaceSelect(parent)">
+                                            <label for="{$ getUniqueKey(parent) $}"></label>
                                         </div>
-                                        <div class="p-double-row__muted-row">
-                                            {$ parent.mac_address $}
+                                        <div class="p-double-row__rows-container--checkbox">
+                                            <div class="p-double-row__main-row">
+                                                {$ parent.name $}
+                                            </div>
+                                            <div class="p-double-row__muted-row">
+                                                {$ parent.mac_address $}
+                                            </div>
                                         </div>
                                     </td>
                                     <td aria-label="Primary">
@@ -1665,16 +1880,20 @@
                                     <td aria-label="Type">
                                         {$ getInterfaceTypeText(parent) $}
                                     </td>
-                                    <td aria-label="Fabric">
-                                        <span title="{$ parent.fabric.name || 'Disconnected' $}">
-                                            {$ parent.fabric.name $}
-                                            <span data-ng-if="!parent.fabric.name">Disconnected</span>
-                                        </span>
-                                    </td>
-                                    <td aria-label="VLAN">
-                                        <span title="{$ getVLANText(parent.vlan) $}">
-                                            {$ getVLANText(parent.vlan) $}
-                                        </span>
+                                    <td class="p-double-row" aria-label="Fabric">
+                                        <div class="p-double-row__rows-container">
+                                            <div class="p-double-row__main-row">
+                                                <span title="{$ parent.fabric.name || 'Disconnected' $}">
+                                                    {$ parent.fabric.name $}
+                                                    <span data-ng-if="!parent.fabric.name">Disconnected</span>
+                                                </span>
+                                            </div>
+                                            <div class="p-double-row__muted-row">
+                                                <span title="{$ getVLANText(parent.vlan) $}">
+                                                    {$ getVLANText(parent.vlan) $}
+                                                </span>
+                                            </div>
+                                        </div>
                                     </td>
                                     <td aria-label="Subnet CIDR">
                                         <span title="{$ parent.subnet.cidr $}">
@@ -1697,13 +1916,19 @@
                                         </span>
                                     </td>
                                 </tr>
-                                <tr class="p-table__row--muted" data-ng-repeat="interface in interfaces" data-ng-if="isShowingInterfaces && isCorrectInterfaceType(interface, newBondInterface.parents)">
+                                <tr class="p-table__row--muted" data-ng-repeat="interface in interfaces | filterSelectedInterfaces:selectedInterfaces:newBondInterface" data-ng-if="isShowingInterfaces">
                                     <td class="p-double-row" aria-label="Name">
-                                        <div class="p-double-row__main-row">
-                                            {$ interface.name $}
+                                        <div class="p-double-row__checkbox">
+                                            <input type="checkbox" class="checkbox" id="{$ getUniqueKey(interface) $}" data-ng-checked="isInterfaceSelected(interface)" data-ng-click="toggleInterfaceSelect(interface)">
+                                            <label for="{$ getUniqueKey(interface) $}"></label>
                                         </div>
-                                        <div class="p-double-row__muted-row">
-                                            {$ interface.mac_address $}
+                                        <div class="p-double-row__rows-container--checkbox">
+                                            <div class="p-double-row__main-row">
+                                                {$ interface.name $}
+                                            </div>
+                                            <div class="p-double-row__muted-row">
+                                                {$ interface.mac_address $}
+                                            </div>
                                         </div>
                                     </td>
                                     <td aria-label="Primary">
@@ -1713,16 +1938,20 @@
                                     <td aria-label="Type">
                                         {$ getInterfaceTypeText(interface) $}
                                     </td>
-                                    <td aria-label="Fabric">
-                                        <span title="{$ interface.fabric.name || 'Disconnected' $}">
-                                            {$ interface.fabric.name $}
-                                            <span data-ng-if="!interface.fabric.name">Disconnected</span>
-                                        </span>
-                                    </td>
-                                    <td aria-label="VLAN">
-                                        <span title="{$ getVLANText(interface.vlan) $}">
-                                            {$ getVLANText(interface.vlan) $}
-                                        </span>
+                                    <td class="p-double-row" aria-label="Fabric">
+                                        <div class="p-double-row__rows-container">
+                                            <div class="p-double-row__main-row">
+                                                <span title="{$ interface.fabric.name || 'Disconnected' $}">
+                                                    {$ interface.fabric.name $}
+                                                    <span data-ng-if="!interface.fabric.name">Disconnected</span>
+                                                </span>
+                                            </div>
+                                            <div class="p-double-row__muted-row">
+                                                <span title="{$ getVLANText(interface.vlan) $}">
+                                                    {$ getVLANText(interface.vlan) $}
+                                                </span>
+                                            </div>
+                                        </div>
                                     </td>
                                     <td aria-label="Subnet CIDR">
                                         <span title="{$ interface.subnet.cidr $}">
@@ -1748,9 +1977,9 @@
                             </tbody>
                         </table>
 
-                        <button class="p-button--neutral" data-ng-click="toggleInterfaces()" data-ng-if="interfaces.length > newBondInterface.parents.length">
+                        <button class="p-button--neutral" data-ng-click="toggleInterfaces()" data-ng-if="showCreateEditButton()">
                             <span data-ng-if="isShowingInterfaces">Hide interfaces</span>
-                            <span data-ng-if="!isShowingInterfaces">Show all interfaces</span>
+                            <span data-ng-if="!isShowingInterfaces">Edit bond members</span>
                         </button>
 
                         <div class="p-strip is-shallow">
@@ -1830,7 +2059,7 @@
                                         <div class="p-form__control">
                                             <select name="vlan"
                                                 data-ng-model="newBondInterface.vlan"
-                                                data-ng-options="vlan as getVLANText(vlan) for vlan in vlans"
+                                                data-ng-options="vlan as getVLANText(vlan) for vlan in vlans | filterVLANNotOnFabric:newBondInterface.fabric.vlan_ids"
                                             >
                                             </select>
                                         </div>
@@ -1923,9 +2152,21 @@
                         <div class="row">
                             <div class="col-12 u-align--right">
                                 <button class="p-button--base u-no-margin--bottom" type="button" data-ng-click="cancel()">Cancel</button>
-                                <button class="p-button--positive u-no-margin--bottom"
-                                    data-ng-click="addBond()"
-                                    data-ng-disabled="cannotAddBond()">Save bond</button>
+                                <span class="p-tooltip p-tooltip--top-right" aria-describedby="save-bond-tooltip"
+                                    data-ng-if="newBondInterface.parents && newBondInterface.parents.length < 2">
+                                    <button class="p-button--positive u-no-margin--bottom" disabled>Save bond</button>
+                                    <span class="p-tooltip__message" role="tooltip" id="save-bond-tooltip">A bond must have at least two interfaces</span>
+                                </span>
+                                <button class="p-button--positive u-no-margin--bottom" data-ng-if="newBondInterface.parents && newBondInterface.parents.length >= 2" data-ng-click="addBond()" data-ng-disabled="cannotAddBond()">
+                                    <span data-ng-if="isSaving">
+                                        <i class="p-icon--spinner is-light u-animation--spin"></i>
+                                        &nbsp;
+                                        Saving bond
+                                    </span>
+                                    <span data-ng-if="!isSaving">
+                                        Save bond
+                                    </span>
+                                </button>
                             </div>
                         </div>
                     </div>

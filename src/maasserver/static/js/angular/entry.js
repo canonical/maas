@@ -36,7 +36,10 @@ import {
     filterByUnusedForInterface,
     removeInterfaceParents,
     removeDefaultVLANIfVLAN,
-    filterLinkModes
+    filterLinkModes,
+    filterEditInterface,
+    filterSelectedInterfaces,
+    filterVLANNotOnFabric
 } from "./controllers/node_details_networking"; // TODO: fix export/namespace
 import {
     removeAvailableByNew
@@ -530,6 +533,9 @@ angular
     .filter('orderByDate', orderByDate)
     .filter('range', range)
     .filter('removeDefaultVLAN', removeDefaultVLAN)
+    .filter('filterEditInterface', filterEditInterface)
+    .filter('filterSelectedInterfaces', filterSelectedInterfaces)
+    .filter('filterVLANNotOnFabric', filterVLANNotOnFabric)
     // factories
     .factory('PollingManager', PollingManager)
     .factory('BootResourcesManager', BootResourcesManager)

@@ -435,7 +435,8 @@ function maasMachinesTable(
 
       $document.on('click', event => {
         const targetClasses = event.target.classList || [];
-        const parentClasses = event.target.parentNode.classList || [];
+        const parentClasses = event.target.parentNode ?
+          event.target.parentNode.classList : [];
 
         if (targetClasses.contains("p-table-menu__toggle")
           || targetClasses.contains("p-double-row__icon-container")
