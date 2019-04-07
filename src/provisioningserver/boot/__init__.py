@@ -358,6 +358,10 @@ class BootMethod(metaclass=ABCMeta):
             return 'http://%s:5248/images/' % (
                 convert_host_to_uri_str(params.fs_host))
 
+        def fs_efihost(params):
+            return '(http,%s:5248)/images/' % (
+                convert_host_to_uri_str(params.fs_host))
+
         def image_dir(params):
             return compose_image_path(
                 params.osystem, params.arch, params.subarch,
@@ -404,6 +408,7 @@ class BootMethod(metaclass=ABCMeta):
 
         namespace = {
             "fs_host": fs_host,
+            "fs_efihost": fs_efihost,
             "initrd_path": initrd_path,
             "kernel_command": kernel_command,
             "kernel_params": kernel_params,

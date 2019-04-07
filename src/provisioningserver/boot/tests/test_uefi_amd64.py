@@ -32,6 +32,7 @@ from provisioningserver.boot.uefi_amd64 import (
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 from provisioningserver.utils import typed
 from provisioningserver.utils.fs import tempdir
+from provisioningserver.utils.network import convert_host_to_uri_str
 from testtools.matchers import (
     ContainsAll,
     IsInstance,
@@ -77,6 +78,8 @@ class TestUEFIAMD64BootMethodRender(MAASTestCase):
         # correctly rendered.
         method = UEFIAMD64BootMethod()
         params = make_kernel_parameters(purpose="xinstall")
+        fs_host = '(http,%s:5248)/images' % (
+            convert_host_to_uri_str(params.fs_host))
         output = method.get_reader(backend=None, kernel_params=params)
         # The output is a BytesReader.
         self.assertThat(output, IsInstance(BytesReader))
@@ -96,12 +99,14 @@ class TestUEFIAMD64BootMethodRender(MAASTestCase):
                     r" \[\'MAAS\'\]\\}end_cc.*",
                     re.MULTILINE | re.DOTALL),
                 MatchesRegex(
-                    r'.*^\s+linux  %s/%s .+?$' % (
-                        re.escape(image_dir), params.kernel),
+                    r'.*^\s+linuxefi  %s/%s/%s .+?$' % (
+                        re.escape(fs_host), re.escape(image_dir),
+                        params.kernel),
                     re.MULTILINE | re.DOTALL),
                 MatchesRegex(
-                    r'.*^\s+initrd %s/%s$' % (
-                        re.escape(image_dir), params.initrd),
+                    r'.*^\s+initrdefi %s/%s/%s$' % (
+                        re.escape(fs_host), re.escape(image_dir),
+                        params.initrd),
                     re.MULTILINE | re.DOTALL)))
 
     def test_get_reader_with_extra_arguments_does_not_affect_output(self):
