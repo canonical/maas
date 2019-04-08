@@ -14,6 +14,7 @@ from socket import (
     AF_INET,
     AF_INET6,
 )
+import time
 from unittest.mock import (
     ANY,
     Mock,
@@ -50,7 +51,7 @@ from provisioningserver.rackdservices.tftp import (
     Port,
     TFTPBackend,
     TFTPService,
-    TransferTimeTrackingSession,
+    track_tftp_latency,
     TransferTimeTrackingTFTP,
     UDPServer,
 )
@@ -78,6 +79,7 @@ from tftp.errors import (
     BackendError,
     FileNotFound,
 )
+import tftp.protocol
 from tftp.protocol import TFTP
 from twisted.application import internet
 from twisted.application.service import MultiService
@@ -973,22 +975,18 @@ class TestTFTPService(MAASTestCase):
         })
 
 
-class TestTransferTimeTrackingSession(MAASTestCase):
+class FakeStreamSession:
 
-    def test_track_time(self):
-        prometheus_metrics = create_metrics(
-            METRICS_DEFINITIONS,
-            registry=prometheus_client.CollectorRegistry())
-        session = TransferTimeTrackingSession(
-            'file.txt', BytesReader(b'some data'), _clock=Clock(),
-            prometheus_metrics=prometheus_metrics)
-        session.transport = Mock()
-        session.startProtocol()
-        session.cancel()
-        metrics = prometheus_metrics.generate_latest().decode('ascii')
-        self.assertIn(
-            'maas_tftp_file_transfer_latency_count{filename="file.txt"} 1.0',
-            metrics)
+    cancelled = False
+
+    def cancel(self):
+        self.cancelled = True
+
+
+class FakeSession:
+
+    def __init__(self, stream_session):
+        self.session = stream_session
 
 
 class TestTransferTimeTrackingTFTP(MAASTestCase):
@@ -1025,6 +1023,71 @@ class TestTransferTimeTrackingTFTP(MAASTestCase):
     def test_clean_filename_windows(self):
         self.assertEqual(
             self.clean_filename(b'\\boot\\winpe.wim'), 'boot/winpe.wim')
+
+
+class TestTransferTimeTrackingTFTPStartSession(MAASTestCase):
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    @inlineCallbacks
+    def test_wb_start_session(self):
+        prometheus_metrics = create_metrics(
+            METRICS_DEFINITIONS,
+            registry=prometheus_client.CollectorRegistry())
+        stream_session = FakeStreamSession()
+        session = FakeSession(stream_session)
+        tftp_mock = self.patch(tftp.protocol.TFTP, '_startSession')
+        tftp_mock.return_value = succeed(session)
+        tracking_tftp = TransferTimeTrackingTFTP(sentinel.backend)
+        datagram = RQDatagram(b'file.txt', b'octet', {})
+        result = yield tracking_tftp._startSession(
+            datagram, '192.168.1.1', 'read',
+            prometheus_metrics=prometheus_metrics)
+        result.session.cancel()
+        metrics = prometheus_metrics.generate_latest().decode('ascii')
+        self.assertIs(result, session)
+        self.assertTrue(stream_session.cancelled)
+        self.assertIn(
+            'maas_tftp_file_transfer_latency_count{filename="file.txt"} 1.0',
+            metrics)
+
+
+class TestTrackTFTPLatency(MAASTestCase):
+
+    def test_track_tftp_latency(self):
+        class Thing:
+            did_something = False
+
+            def do_something(self):
+                self.did_something = True
+                return True
+
+        thing = Thing()
+        start_time = time.time()
+        prometheus_metrics = create_metrics(
+            METRICS_DEFINITIONS,
+            registry=prometheus_client.CollectorRegistry())
+        thing.do_something = track_tftp_latency(
+            thing.do_something, start_time=start_time, filename='myfile.txt',
+            prometheus_metrics=prometheus_metrics)
+        time_mock = self.patch(tftp_module, 'time')
+        time_mock.return_value = start_time + 0.5
+        result = thing.do_something()
+        self.assertTrue(result)
+        self.assertTrue(thing.did_something)
+
+        metrics = prometheus_metrics.generate_latest().decode('ascii')
+        self.assertIn(
+            'maas_tftp_file_transfer_latency_count{filename="myfile.txt"} 1.0',
+            metrics)
+        self.assertIn(
+            'maas_tftp_file_transfer_latency_bucket'
+            '{filename="myfile.txt",le="0.5"} 1.0',
+            metrics)
+        self.assertIn(
+            'maas_tftp_file_transfer_latency_bucket'
+            '{filename="myfile.txt",le="0.25"} 0.0',
+            metrics)
 
 
 class DummyProtocol(Protocol):

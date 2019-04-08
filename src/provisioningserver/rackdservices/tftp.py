@@ -51,7 +51,6 @@ from tftp.errors import (
     FileNotFound,
 )
 from tftp.protocol import TFTP
-from tftp.session import ReadSession
 from twisted.application import internet
 from twisted.application.service import MultiService
 from twisted.internet import (
@@ -415,40 +414,36 @@ class UDPServer(internet.UDPServer):
         return p
 
 
-class TransferTimeTrackingSession(ReadSession):
-
-    def __init__(
-            self, filename, reader, _clock=None,
-            prometheus_metrics=PROMETHEUS_METRICS):
-        super().__init__(reader, _clock=_clock)
-        self.prometheus_metrics = prometheus_metrics
-        self.filename = filename
-
-    def startProtocol(self):
-        self.start_time = time()
-        super().startProtocol()
-
-    def cancel(self):
-        latency = time() - self.start_time
-        self.start_time = None
-        self.prometheus_metrics.update(
+def track_tftp_latency(
+        func, start_time, filename, prometheus_metrics=PROMETHEUS_METRICS):
+    """Wraps a function and tracks TFTP transfer latency."""
+    def wrapped():
+        result = func()
+        latency = time() - start_time
+        prometheus_metrics.update(
             'maas_tftp_file_transfer_latency', 'observe',
-            labels={'filename': self.filename},
+            labels={'filename': filename},
             value=latency)
-        super().cancel()
+        return result
+
+    return wrapped
 
 
 class TransferTimeTrackingTFTP(TFTP):
 
     @inlineCallbacks
-    def _startSession(self, datagram, addr, mode):
+    def _startSession(
+            self, datagram, addr, mode, prometheus_metrics=PROMETHEUS_METRICS):
         session = yield super()._startSession(datagram, addr, mode)
         stream_session = getattr(session, 'session', None)
-        # replace the standard ReadSession with one that tracks transfer time
+        # replace the standard cancel() method with one that tracks
+        # transfer time
         if stream_session is not None:
             filename = self._clean_filename(datagram)
-            session.session = TransferTimeTrackingSession(
-                filename, stream_session.reader, _clock=stream_session._clock)
+            start_time = time()
+            stream_session.cancel = track_tftp_latency(
+                stream_session.cancel, start_time, filename,
+                prometheus_metrics=prometheus_metrics)
         returnValue(session)
 
     def _clean_filename(self, datagram):
