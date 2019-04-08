@@ -4423,7 +4423,7 @@ class TestNode(MAASServerTestCase):
 
     def test_storage_layout_issues_is_valid_when_ephemeral_deployment(self):
         # A diskless node is one that it is ephemerally deployed.
-        node = factory.make_Node(with_boot_disk=False)
+        node = factory.make_Node(with_boot_disk=False, osystem='ubuntu')
         self.assertEqual([], node.storage_layout_issues())
 
     def test_storage_layout_issues_is_invalid_when_no_disks_non_ubuntu(self):
@@ -4444,7 +4444,7 @@ class TestNode(MAASServerTestCase):
             node.storage_layout_issues())
 
     def test_storage_layout_issues_is_invalid_when_root_on_bcache(self):
-        node = factory.make_Node(with_boot_disk=False)
+        node = factory.make_Node(with_boot_disk=False, osystem='ubuntu')
         factory.make_Partition(node=node)
         fs_group = factory.make_FilesystemGroup(
             node=node, group_type=FILESYSTEM_GROUP_TYPE.BCACHE)
@@ -7117,17 +7117,16 @@ class TestNode_Start(MAASTransactionServerTestCase):
 
     def test_storage_layout_issues_is_invalid_no_boot_arm64_non_efi(self):
         node = factory.make_Node(
-            architecture="arm64/generic", bios_boot_method="pxe")
+            osystem="ubuntu", architecture="arm64/generic",
+            bios_boot_method="pxe")
         self.assertEqual(
             ["This node cannot be deployed because it needs a separate "
              "/boot partition.  Mount /boot on a device to be able to "
              "deploy this node."], node.storage_layout_issues())
 
-    def test_storage_layout_issues_invalid_non_vmfs_on_esxi(self):
+    def test_storage_layout_issues_none_non_vmfs_on_esxi(self):
         node = factory.make_Node(osystem='esxi', distro_series='6.7')
-        self.assertItemsEqual([
-            "VMware ESXi may only use VMFS6 filesystems."],
-            node.storage_layout_issues())
+        self.assertItemsEqual([], node.storage_layout_issues())
 
     def test_storage_layout_issues_none_for_esxi_default(self):
         node = factory.make_Node(
@@ -7136,6 +7135,19 @@ class TestNode_Start(MAASTransactionServerTestCase):
         layout = VMFS6Layout(node)
         layout.configure()
         self.assertItemsEqual([], node.storage_layout_issues())
+
+    def test_storage_layout_issues_vmfs_not_esxi(self):
+        node = factory.make_Node(
+            osystem=random.choice(['ubuntu', 'centos', 'rhel']),
+            with_boot_disk=False)
+        factory.make_PhysicalBlockDevice(node=node, size=(100 * 1024 ** 3))
+        layout = VMFS6Layout(node)
+        layout.configure()
+        self.assertItemsEqual([
+            "Mount the root '/' filesystem to be able to deploy this node.",
+            "This node cannot be deployed because the selected "
+            "deployment OS, %s, does not support VMFS6." % node.osystem],
+            node.storage_layout_issues())
 
 
 class TestGetBMCClientConnectionInfo(MAASServerTestCase):

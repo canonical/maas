@@ -1352,12 +1352,11 @@ class Node(CleanSave, TimestampedModel):
 
     def retrieve_storage_layout_issues(
             self, has_boot, root_mounted, root_on_bcache,
-            boot_mounted, arch, any_bcache, any_zfs):
+            boot_mounted, arch, any_bcache, any_zfs, any_vmfs):
         """Create and retrieve storage layout issues error messages."""
         issues = []
-        if self.ephemeral_deployment and self.get_osystem() == 'ubuntu':
-            return []
-        elif self.osystem == 'esxi':
+        # Storage isn't applied to an ephemeral_deployment
+        if self.ephemeral_deployment and self.osystem == 'ubuntu':
             return []
         if self.is_diskless:
             issues.append(
@@ -1367,6 +1366,11 @@ class Node(CleanSave, TimestampedModel):
         if not has_boot:
             issues.append(
                 "Specify a storage device to be able to deploy this node.")
+        # The remaining storage issue checks are only for Ubuntu, CentOS, and
+        # RHEL. All other osystems storage isn't supported or in ESXi's case
+        # we ignore unknown filesystems given.
+        if self.osystem not in ['ubuntu', 'centos', 'rhel']:
+            return issues
         if not root_mounted:
             issues.append(
                 "Mount the root '/' filesystem to be able to deploy this "
@@ -1393,6 +1397,10 @@ class Node(CleanSave, TimestampedModel):
                     "This node cannot be deployed because the selected "
                     "deployment OS, %s, does not support ZFS." %
                     self.osystem)
+        if any_vmfs:
+            issues.append(
+                "This node cannot be deployed because the selected "
+                "deployment OS, %s, does not support VMFS6." % self.osystem)
         return issues
 
     def storage_layout_issues(self):
@@ -1418,6 +1426,7 @@ class Node(CleanSave, TimestampedModel):
         root_on_bcache = False
         any_bcache = False
         any_zfs = False
+        any_vmfs = False
         boot_mounted = False
         arch, _ = self.split_arch()
 
@@ -1430,9 +1439,6 @@ class Node(CleanSave, TimestampedModel):
                     fs = partition.get_effective_filesystem()
                     if fs is None:
                         continue
-                    if (self.osystem == 'esxi' and
-                            fs.fstype != FILESYSTEM_TYPE.VMFS6):
-                        return ["VMware ESXi may only use VMFS6 filesystems."]
                     if fs.mount_point == '/':
                         root_mounted = True
                         if on_bcache(block_device):
@@ -1445,13 +1451,11 @@ class Node(CleanSave, TimestampedModel):
                         FILESYSTEM_TYPE.BCACHE_BACKING,
                     )
                     any_zfs |= (fs.fstype == FILESYSTEM_TYPE.ZFSROOT)
+                    any_vmfs |= (fs.fstype == FILESYSTEM_TYPE.VMFS6)
             else:
                 fs = block_device.get_effective_filesystem()
                 if fs is None:
                     continue
-                if (self.osystem == 'esxi' and
-                        fs.fstype != FILESYSTEM_TYPE.VMFS6):
-                    return ["VMware ESXi may only use VMFS6 filesystems."]
                 if fs.mount_point == '/':
                     root_mounted = True
                     if on_bcache(block_device):
@@ -1463,10 +1467,11 @@ class Node(CleanSave, TimestampedModel):
                     FILESYSTEM_TYPE.BCACHE_BACKING,
                 )
                 any_zfs |= (fs.fstype == FILESYSTEM_TYPE.ZFSROOT)
+                any_vmfs |= (fs.fstype == FILESYSTEM_TYPE.VMFS6)
 
         return self.retrieve_storage_layout_issues(
             has_boot, root_mounted, root_on_bcache,
-            boot_mounted, arch, any_bcache, any_zfs)
+            boot_mounted, arch, any_bcache, any_zfs, any_vmfs)
 
     def on_network(self):
         """Return true if the node is connected to a managed network."""
