@@ -1138,8 +1138,20 @@ def get_all_interfaces_definition(annotate_with_monitored: bool=True) -> dict:
     interfaces = {}
     dhclient_info = get_dhclient_info()
     iproute_info = get_ip_route()
-    exclude_types = ["loopback", "ipip"]
+    exclude_types = [
+        # It doesn't make sense for MAAS to manage loopback interfaces.
+        "loopback",
+        # IPv4-in-IPv4 tunnels aren't useful for MAAS to manage.
+        "ipip",
+        # This type of interface is created when hypervisors create virtual
+        # interfaces for guests. By themselves, they're not useful for MAAS to
+        # manage.
+        "ethernet.tunnel",
+    ]
     if not running_in_container():
+        # When not running in a container, we should be able to identify
+        # any Ethernet-variant interfaces that are specific enough to be used
+        # with MAAS. So we can throw away any that can't be classified.
         exclude_types.append("ethernet")
     ipaddr_info = {
         name: ipaddr

@@ -272,6 +272,8 @@ def get_interface_type(
             return 'ethernet.bond'
         if os.path.isfile(os.path.join(proc_net, "vlan", ifname)):
             return 'ethernet.vlan'
+        if os.path.isfile(os.path.join(sys_path, 'tun_flags')):
+            return 'ethernet.tunnel'
         device_path = os.path.join(sys_path, 'device')
         if os.path.islink(device_path):
             device_80211 = os.path.join(sys_path, 'device', 'ieee80211')
