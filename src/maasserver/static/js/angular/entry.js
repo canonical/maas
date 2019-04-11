@@ -236,7 +236,9 @@ function configureMaas($interpolateProvider, $routeProvider, $httpProvider,
 
     tagsInputConfigProvider
         .setDefaults('autoComplete', {
-            minLength: 0
+            minLength: 0,
+            loadOnFocus: true,
+            loadOnEmpty: true
         });
 
     // Set the $httpProvider to send the csrftoken in the header of any

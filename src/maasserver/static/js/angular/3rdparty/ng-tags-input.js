@@ -647,6 +647,11 @@ tagsInput.directive('autoComplete', ["$document","$timeout","$sce","$q","tagsInp
                 return $scope.$parent.$parent.newTag.text;
             };
 
+            $scope.addTag = function(tag) {
+                $scope.$parent.$parent.tagList.items.push({ text: tag });
+                $scope.$parent.$parent.newTag.setText('');
+            };
+
             this.registerAutocompleteMatch = function() {
                 return {
                     getOptions: function() {
@@ -1149,18 +1154,18 @@ tagsInput.run(["$templateCache", function($templateCache) {
   $templateCache.put('ngTagsInput/auto-complete.html',
     '<div class="autocomplete" data-ng-if="suggestionList.visible">' +
     '<ul class="p-list suggestion-list">' +
-    '<li class="suggestion-item">' +
-    'Create new tag <span class="tag-item">{$ getCurrentTag() $}</span>' +
+    '<li class="suggestion-item" data-ng-if="getCurrentTag().length">' +
+    '<span data-ng-click="addTag(getCurrentTag())">Create new tag</span> <span class="tag-item">{$ getCurrentTag() $}</span>' +
     '</li>' +
     '<li class="suggestion-item" data-ng-repeat="item in suggestionList.items track by track(item)" data-ng-class="{selected: item == suggestionList.selected}" data-ng-click="addSuggestionByIndex($index)" data-ng-mouseenter="suggestionList.select($index)">' +
     '<ti-autocomplete-match data="item"></ti-autocomplete-match>' +
     '</li>' +
     '</ul>' +
     '</div>' +
-    '<div class="autocomplete no-suggestion" data-ng-if="!suggestionList.visible && hasFocus && shouldLoadSuggestions">' +
+    '<div class="autocomplete no-suggestion" data-ng-if="!suggestionList.visible && hasFocus && shouldLoadSuggestions && getCurrentTag().length">' +
     '<ul class="p-list suggestion-list">' +
-    '<li class="suggestion-item">' +
-    'Create new tag <span class="tag-item">{$ getCurrentTag() $}</span>' +
+    '<li class="suggestion-item" data-ng-if="getCurrentTag().length">' +
+    '<span data-ng-click="addTag(getCurrentTag())">Create new tag</span> <span class="tag-item">{$ getCurrentTag() $}</span>' +
     '</li>' +
     '</ul>' +
     '</div>'
