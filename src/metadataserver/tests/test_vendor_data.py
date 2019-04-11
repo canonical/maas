@@ -12,6 +12,7 @@ from maasserver.models import (
 from maasserver.server_address import get_maas_facing_server_host
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maastesting.matchers import MockNotCalled
 from metadataserver.vendor_data import (
     generate_ephemeral_deployment_network_configuration,
     generate_ntp_configuration,
@@ -32,6 +33,7 @@ from testtools.matchers import (
     MatchesDict,
     Not,
 )
+import yaml
 
 
 class TestGetVendorData(MAASServerTestCase):
@@ -288,3 +290,36 @@ class TestGenerateEphemeralDeploymentNetworkConfiguration(MAASServerTestCase):
             config['write_files'][0]['path'],
             Contains("/etc/netplan/config.yaml"))
         self.assertThat(config['runcmd'], Contains("netplan apply"))
+
+
+class TestGenerateVcenterConfiguration(MAASServerTestCase):
+    """Tests for `generate_vcenter_configuration`."""
+
+    def test_does_nothing_if_not_vmware(self):
+        mock_get_configs = self.patch(Config.objects, 'get_configs')
+        node = factory.make_Node()
+        config = get_vendor_data(node)
+        self.assertThat(mock_get_configs, MockNotCalled())
+        self.assertDictEqual({}, config)
+
+    def test_returns_nothing_if_no_values_set(self):
+        node = factory.make_Node(osystem='esxi')
+        config = get_vendor_data(node)
+        self.assertDictEqual({}, config)
+
+    def test_returns_vcenter_yaml(self):
+        node = factory.make_Node(osystem='esxi')
+        vcenter = {
+            'vcenter_server': factory.make_name('vcenter_server'),
+            'vcenter_username': factory.make_name('vcenter_username'),
+            'vcenter_password': factory.make_name('vcenter_password'),
+            'vcenter_datacenter': factory.make_name('vcenter_datacenter'),
+        }
+        for key, value in vcenter.items():
+            Config.objects.set_config(key, value)
+        config = get_vendor_data(node)
+        self.assertDictEqual(
+            {'write_files': [{
+                'content': yaml.safe_dump(vcenter),
+                'path': '/altbootbank/maas/vcenter.yaml',
+            }]}, config)

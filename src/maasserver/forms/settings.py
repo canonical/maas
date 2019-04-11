@@ -1,4 +1,4 @@
-# Copyright 2013-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Configuration items definition and utilities."""
@@ -787,6 +787,50 @@ CONFIG_ITEMS = {
             'help_text': (
                 'Enables running all built-in commissioning scripts during '
                 'enlistment.'),
+        }
+    },
+    'vcenter_server': {
+        'default': '',
+        'form': forms.CharField,
+        'form_kwargs': {
+            'label': 'VMware vCenter server FQDN or IP address.',
+            'required': False,
+            'help_text': (
+                'VMware vCenter server FQDN or IP address which is passed '
+                'to a deployed VMware ESXi host.'),
+        }
+    },
+    'vcenter_username': {
+        'default': '',
+        'form': forms.CharField,
+        'form_kwargs': {
+            'label': 'VMware vCenter username.',
+            'required': False,
+            'help_text': (
+                'VMware vCenter server username which is passed to a deployed '
+                'VMware ESXi host.'),
+        }
+    },
+    'vcenter_password': {
+        'default': '',
+        'form': forms.CharField,
+        'form_kwargs': {
+            'label': 'VMware vCenter password.',
+            'required': False,
+            'help_text': (
+                'VMware vCenter server password which is passed to a deployed '
+                'VMware ESXi host.'),
+        }
+    },
+    'vcenter_datacenter': {
+        'default': '',
+        'form': forms.CharField,
+        'form_kwargs': {
+            'label': 'VMware vCenter datacenter.',
+            'required': False,
+            'help_text': (
+                'VMware vCenter datacenter which is passed to a deployed '
+                'VMware ESXi host.'),
         }
     },
 }

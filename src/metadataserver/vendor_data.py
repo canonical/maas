@@ -34,6 +34,7 @@ def get_vendor_data(node):
         generate_rack_controller_configuration(node),
         generate_kvm_pod_configuration(node),
         generate_ephemeral_deployment_network_configuration(node),
+        generate_vcenter_configuration(node),
     ))
 
 
@@ -198,3 +199,25 @@ def generate_kvm_pod_configuration(node):
         if architecture == 'amd64':
             packages.append('qemu-efi')
         yield "packages", packages
+
+
+def generate_vcenter_configuration(node):
+    """Generate vendor config when deploying ESXi."""
+    if node.osystem != 'esxi':
+        # Only return vcenter credentials if vcenter is being deployed.
+        return
+    # Only send values that aren't blank.
+    configs = {
+        key: value
+        for key, value in Config.objects.get_configs([
+            'vcenter_server', 'vcenter_username', 'vcenter_password',
+            'vcenter_datacenter']).items()
+        if value
+    }
+    if len(configs) != 0:
+        yield 'write_files', [
+            {
+                'content': yaml.safe_dump(configs),
+                'path': '/altbootbank/maas/vcenter.yaml',
+            }
+        ]
