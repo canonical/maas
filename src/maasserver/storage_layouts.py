@@ -605,12 +605,27 @@ class VMFS6Layout(StorageLayoutBase):
         return "VMFS6"
 
 
+class BlankStorageLayout(StorageLayoutBase):
+    """Blank layout.
+
+    This layout ensures no disk is configured with any partition table or
+    filesystem. This helps users who want to have a custom storage layout
+    not based on any existing layout.
+    """
+
+    def configure_storage(self, allow_fallback):
+        # StorageLayoutBase has the code to ensure nothing is configured.
+        # Once that is done there is nothing left for us to do.
+        return "blank"
+
+
 # Holds all the storage layouts that can be used.
 STORAGE_LAYOUTS = {
     "flat": ("Flat layout", FlatStorageLayout),
     "lvm": ("LVM layout", LVMStorageLayout),
     "bcache": ("Bcache layout", BcacheStorageLayout),
     "vmfs6": ("VMFS6 layout", VMFS6Layout),
+    "blank": ("No storage (blank) layout", BlankStorageLayout),
     }
 
 

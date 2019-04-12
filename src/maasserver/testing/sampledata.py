@@ -1,4 +1,4 @@
-# Copyright 2016-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Construct sample application data dynamically."""
@@ -30,6 +30,7 @@ from maasserver.models import (
 )
 from maasserver.storage_layouts import STORAGE_LAYOUTS
 from maasserver.testing.factory import factory
+from maasserver.tests.test_storage_layouts import LARGE_BLOCK_DEVICE
 from maasserver.utils.orm import (
     get_one,
     transactional,
@@ -437,7 +438,9 @@ def populate_main():
 
         # Add random storage devices and set a random layout.
         for _ in range(random.randint(1, 5)):
-            factory.make_PhysicalBlockDevice(node=machine)
+            factory.make_PhysicalBlockDevice(
+                node=machine, size=random.randint(
+                    LARGE_BLOCK_DEVICE, LARGE_BLOCK_DEVICE * 10))
         if status in [
                 NODE_STATUS.READY,
                 NODE_STATUS.ALLOCATED,

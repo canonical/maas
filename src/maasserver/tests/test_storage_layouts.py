@@ -24,6 +24,7 @@ from maasserver.models.partitiontable import (
 from maasserver.storage_layouts import (
     BcacheStorageLayout,
     BcacheStorageLayoutBase,
+    BlankStorageLayout,
     calculate_size_from_percentage,
     EFI_PARTITION_SIZE,
     FlatStorageLayout,
@@ -33,6 +34,7 @@ from maasserver.storage_layouts import (
     LVMStorageLayout,
     MIN_BOOT_PARTITION_SIZE,
     MIN_ROOT_PARTITION_SIZE,
+    STORAGE_LAYOUTS,
     StorageLayoutBase,
     StorageLayoutFieldsError,
     StorageLayoutForm,
@@ -84,6 +86,7 @@ class TestFormHelpers(MAASServerTestCase):
             ("lvm", "LVM layout"),
             ("bcache", "Bcache layout"),
             ("vmfs6", "VMFS6 layout"),
+            ('blank', 'No storage (blank) layout'),
             ], get_storage_layout_choices())
 
     def test_get_storage_layout_for_node(self):
@@ -1648,3 +1651,30 @@ class TestVMFS6Layout(MAASServerTestCase):
         self.assertEqual({
             "size": ["Boot disk must be atleast 10G."],
             }, error.message_dict)
+
+
+class TestBlankStorageLayout(MAASServerTestCase):
+
+    def __init__(self, *args, **kwargs):
+        # Make sure any existing storage layout can be cleared.
+        self.scenarios = [
+            (layout_name, {'layout_class': layout_class})
+            for layout_name, layout_class in STORAGE_LAYOUTS.values()
+        ]
+        super().__init__(*args, **kwargs)
+
+    def test__creates_blank_layout(self):
+        node = factory.make_Node(with_boot_disk=False)
+        for _ in range(5):
+            factory.make_PhysicalBlockDevice(
+                node=node, size=LARGE_BLOCK_DEVICE)
+        # Apply another layout to test clearing it
+        other_layout = self.layout_class(node)
+        other_layout.configure()
+
+        layout = BlankStorageLayout(node)
+        self.assertEquals("blank", layout.configure())
+        self.assertFalse(node.virtualblockdevice_set.exists())
+        for bd in node.blockdevice_set.all():
+            self.assertFalse(bd.filesystem_set.exists())
+            self.assertFalse(bd.partitiontable_set.exists())
