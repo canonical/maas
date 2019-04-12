@@ -507,7 +507,7 @@ class TestMachineHandler(MAASServerTestCase):
 
         owner = factory.make_User()
         for _ in range(10):
-            node = factory.make_Node(owner=owner)
+            node = factory.make_Node_with_Interface_on_Subnet(owner=owner)
             commissioning_script_set = factory.make_ScriptSet(
                 node=node, result_type=RESULT_TYPE.COMMISSIONING)
             testing_script_set = factory.make_ScriptSet(
@@ -532,10 +532,10 @@ class TestMachineHandler(MAASServerTestCase):
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
         self.assertEqual(
-            queries_one, 11,
+            queries_one, 21,
             "Number of queries has changed; make sure this is expected.")
         self.assertEqual(
-            queries_total, 11,
+            queries_total, 21,
             "Number of queries has changed; make sure this is expected.")
 
     def test_list_num_queries_is_the_expected_number_with_rbac(self):
@@ -550,7 +550,8 @@ class TestMachineHandler(MAASServerTestCase):
         rbac.store.allow(owner.username, pool, 'admin-machines')
 
         for _ in range(10):
-            node = factory.make_Node(owner=owner, pool=pool)
+            node = factory.make_Node_with_Interface_on_Subnet(
+                owner=owner, pool=pool)
             commissioning_script_set = factory.make_ScriptSet(
                 node=node, result_type=RESULT_TYPE.COMMISSIONING)
             testing_script_set = factory.make_ScriptSet(
@@ -575,15 +576,15 @@ class TestMachineHandler(MAASServerTestCase):
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
         self.assertEqual(
-            queries_one, 11,
+            queries_one, 21,
             "Number of queries has changed; make sure this is expected.")
         self.assertEqual(
-            queries_total, 11,
+            queries_total, 21,
             "Number of queries has changed; make sure this is expected.")
 
     def test_get_num_queries_is_the_expected_number(self):
         owner = factory.make_User()
-        node = factory.make_Node(owner=owner)
+        node = factory.make_Node_with_Interface_on_Subnet(owner=owner)
         commissioning_script_set = factory.make_ScriptSet(
             node=node, result_type=RESULT_TYPE.COMMISSIONING)
         testing_script_set = factory.make_ScriptSet(
@@ -607,7 +608,7 @@ class TestMachineHandler(MAASServerTestCase):
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
         self.assertEqual(
-            queries, 50,
+            queries, 48,
             "Number of queries has changed; make sure this is expected.")
 
     def test_trigger_update_updates_script_result_cache(self):

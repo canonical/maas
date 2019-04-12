@@ -16,6 +16,11 @@ function MachinesManager(RegionConnection, NodesManager) {
         this._pk = "system_id";
         this._handler = "machine";
 
+        // Load the machines in smaller batches, instead of the default 50.
+        // This reduces the loading time of the page as the machines objects
+        // are large in size and reduces the data size between the client.
+        this._batchSize = 25;
+
         this._metadataAttributes = {
             "architecture": null,
             "status": null,

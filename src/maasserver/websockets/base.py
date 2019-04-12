@@ -10,6 +10,7 @@ __all__ = [
     "Handler",
     ]
 
+from functools import wraps
 from operator import attrgetter
 
 from django.contrib.postgres.fields import ArrayField
@@ -383,6 +384,7 @@ class Handler(metaclass=HandlerMetaclass):
                     return d
                 else:
 
+                    @wraps(method)
                     @transactional
                     def prep_user_execute(params):
                         # Clear RBAC and reload the user to ensure that
@@ -393,6 +395,11 @@ class Handler(metaclass=HandlerMetaclass):
 
                         # Perform the work in the database.
                         return method(params)
+
+                    # Force the name of the function to include the handler
+                    # name so the debug logging is useful.
+                    prep_user_execute.__name__ = '%s.%s' % (
+                        self.__class__.__name__, method_name)
 
                     # This is going to block and hold a database connection so
                     # we limit its concurrency.

@@ -28,6 +28,9 @@ function Manager($q, $rootScope, $timeout, RegionConnection) {
         // but not always.
         this._batchKey = "id";
 
+        // Number to load per batch.
+        this._batchSize = 50;
+
         // The field from which to get a human-readable name.
         this._name_field = "name";
 
@@ -135,14 +138,14 @@ function Manager($q, $rootScope, $timeout, RegionConnection) {
         return {};
     };
 
-    // Batch load items from the region in groups of 50.
+    // Batch load items from the region in groups of _batchSize.
     Manager.prototype._batchLoadItems = function(array, extra_func) {
         var self = this;
         var defer = $q.defer();
         var method = this._handler + ".list";
         function callLoad() {
             var params = self._initBatchLoadParameters();
-            params.limit = 50;
+            params.limit = self._batchSize;
 
             // Get the last batchKey in the list so the region knows to
             // start at that offset.
@@ -159,8 +162,8 @@ function Manager($q, $rootScope, $timeout, RegionConnection) {
                     }
 
                     array.push.apply(array, items);
-                    if (items.length === 50) {
-                        // Could be more items, request the next 50.
+                    if (items.length === self._batchSize) {
+                        // Could be more items, request the next batch.
                         callLoad(array);
                     } else {
                         defer.resolve(array);

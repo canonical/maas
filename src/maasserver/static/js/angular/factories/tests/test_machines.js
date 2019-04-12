@@ -30,6 +30,7 @@ describe("MachinesManager", function() {
     it("sanity check", function() {
         expect(MachinesManager._pk).toBe("system_id");
         expect(MachinesManager._handler).toBe("machine");
+        expect(MachinesManager._batchSize).toBe(25);
     });
 
     it("set requires attributes", function() {

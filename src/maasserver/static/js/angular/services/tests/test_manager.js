@@ -157,7 +157,7 @@ describe("Manager", function() {
             });
         });
 
-        it("batch calls in groups of 50", function(done) {
+        it("batch calls in groups of default 50", function(done) {
             var i, fakeNodes = [];
             for (i = 0; i < 3; i++) {
                 var groupOfNodes = makeNodes(50);
@@ -174,6 +174,31 @@ describe("Manager", function() {
                 expect(
                     angular.fromJson(
                         webSocket.sentData[0]).params.limit).toBe(50);
+                expect(
+                    angular.fromJson(
+                        webSocket.receivedData[3]).result).toEqual([]);
+                done();
+            });
+        });
+
+        it("batch calls in groups of _batchSize", function(done) {
+            var i, fakeNodes = [];
+            for (i = 0; i < 3; i++) {
+                var groupOfNodes = makeNodes(20);
+                fakeNodes.push.apply(fakeNodes, groupOfNodes);
+                webSocket.returnData.push(makeFakeResponse(groupOfNodes));
+            }
+            // A total of 4 calls should be completed, with the last one
+            // being an empty list of nodes.
+            webSocket.returnData.push(makeFakeResponse([]));
+            NodesManager._batchSize = 20;
+            NodesManager.loadItems().then(function(nodes) {
+                expect(nodes).toEqual(addSelectedOnNodes(fakeNodes, false));
+                expect(webSocket.sentData.length).toBe(4);
+                expect(webSocket.receivedData.length).toBe(4);
+                expect(
+                    angular.fromJson(
+                        webSocket.sentData[0]).params.limit).toBe(20);
                 expect(
                     angular.fromJson(
                         webSocket.receivedData[3]).result).toEqual([]);

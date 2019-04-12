@@ -8,6 +8,7 @@ __all__ = [
 ]
 
 from django.contrib.auth.models import User
+from django.db.models import Count
 from django.http import HttpRequest
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT
@@ -27,7 +28,8 @@ from provisioningserver.events import EVENT_TYPES
 class UserHandler(Handler):
 
     class Meta:
-        queryset = User.objects.filter(is_active=True)
+        queryset = User.objects.filter(is_active=True).annotate(
+            sshkeys_count=Count('sshkey'))
         pk = 'id'
         allowed_methods = [
             'list',
@@ -75,7 +77,7 @@ class UserHandler(Handler):
             raise HandlerDoesNotExistError(params[self._meta.pk])
 
     def dehydrate(self, obj, data, for_list=False):
-        data["sshkeys_count"] = obj.sshkey_set.count()
+        data["sshkeys_count"] = obj.sshkeys_count
         if obj.id == self.user.id:
             # User is reading information about itself, so provide the global
             # permissions.
@@ -99,6 +101,7 @@ class UserHandler(Handler):
 
     def auth_user(self, params):
         """Return the authenticated user."""
+        self.user.sshkeys_count = self.user.sshkey_set.count()
         return self.full_dehydrate(self.user)
 
     def mark_intro_complete(self, params):

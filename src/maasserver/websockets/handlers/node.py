@@ -10,7 +10,10 @@ __all__ = [
 from collections import Counter
 from itertools import chain
 import logging
-from operator import itemgetter
+from operator import (
+    attrgetter,
+    itemgetter,
+)
 
 from lxml import etree
 from maasserver.enum import (
@@ -72,8 +75,7 @@ NODE_TYPE_TO_LINK_TYPE = {
 def node_prefetch(queryset, *args):
     return (
         queryset
-        .select_related(
-            'boot_interface', 'owner', 'zone', 'pool', 'domain', 'bmc', *args)
+        .select_related('owner', 'zone', 'pool', 'domain', 'bmc', *args)
         .prefetch_related('blockdevice_set__partitiontable_set__partitions')
         .prefetch_related('blockdevice_set__iscsiblockdevice')
         .prefetch_related('blockdevice_set__physicalblockdevice')
@@ -81,6 +83,7 @@ def node_prefetch(queryset, *args):
         .prefetch_related('interface_set__ip_addresses__subnet__vlan__space')
         .prefetch_related('interface_set__ip_addresses__subnet__vlan__fabric')
         .prefetch_related('interface_set__vlan__fabric')
+        .prefetch_related('boot_interface__vlan__fabric')
         .prefetch_related('nodemetadata_set')
         .prefetch_related('special_filesystems')
         .prefetch_related('tags')
@@ -645,7 +648,8 @@ class NodeHandler(TimestampedModelHandler):
                 "ip": ip_address.get_ip(),
                 "is_boot": interface == boot_interface,
             }
-            for interface in obj.interface_set.all().order_by('name')
+            for interface in sorted(
+                obj.interface_set.all(), key=attrgetter('name'))
             for ip_address in interface.ip_addresses.all()
             if ip_address.ip and ip_address.alloc_type in [
                 IPADDRESS_TYPE.DHCP,
@@ -661,7 +665,8 @@ class NodeHandler(TimestampedModelHandler):
                     "ip": ip_address.ip,
                     "is_boot": interface == boot_interface,
                 }
-                for interface in obj.interface_set.all().order_by('name')
+                for interface in sorted(
+                    obj.interface_set.all(), key=attrgetter('name'))
                 for ip_address in interface.ip_addresses.all()
                 if (ip_address.ip and
                     ip_address.alloc_type == IPADDRESS_TYPE.DISCOVERED)

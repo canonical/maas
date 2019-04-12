@@ -103,10 +103,20 @@ class MachineHandler(NodeHandler):
 
     class Meta(NodeHandler.Meta):
         abstract = False
-        queryset = node_prefetch(Machine.objects.all())
+        queryset = (
+            node_prefetch(Machine.objects.all())
+            .prefetch_related(
+                'blockdevice_set__iscsiblockdevice__'
+                'partitiontable_set__partitions')
+            .prefetch_related(
+                'blockdevice_set__physicalblockdevice__'
+                'partitiontable_set__partitions')
+            .prefetch_related(
+                'blockdevice_set__virtualblockdevice__'
+                'partitiontable_set__partitions')
+        )
         list_queryset = (
-            Machine.objects.select_related(
-                'boot_interface', 'owner', 'zone', 'domain', 'bmc')
+            Machine.objects.select_related('owner', 'zone', 'domain', 'bmc')
             .prefetch_related(
                 'blockdevice_set__iscsiblockdevice__'
                 'partitiontable_set__partitions')
@@ -121,6 +131,7 @@ class MachineHandler(NodeHandler):
             .prefetch_related(
                 'interface_set__ip_addresses__subnet__vlan__fabric')
             .prefetch_related('interface_set__vlan__fabric')
+            .prefetch_related('boot_interface__vlan__fabric')
             .prefetch_related('tags')
             .prefetch_related('pool')
         )
@@ -329,7 +340,7 @@ class MachineHandler(NodeHandler):
             "fqdn": device.fqdn,
             "interfaces": [
                 self.dehydrate_interface(interface, device)
-                for interface in device.interface_set.all().order_by('id')
+                for interface in device.interface_set.all()
             ],
         }
 

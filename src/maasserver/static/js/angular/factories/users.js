@@ -16,6 +16,10 @@ function UsersManager(Manager, RegionConnection, ErrorService) {
         this._pk = "id";
         this._handler = "user";
 
+        // Loading users is very small in data, set the batch size higher so
+        // the UI loads faster when lots of users exist.
+        this._batchSize = 200;
+
         // Holds the authenticated user for the connection.
         this._authUser = null;
 

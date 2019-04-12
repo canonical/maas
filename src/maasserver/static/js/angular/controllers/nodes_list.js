@@ -1015,9 +1015,9 @@ function NodesListController(
     // Load the required managers for this controller. The ServicesManager
     // is required by the maasControllerStatus directive that is used
     // in the partial for this controller.
-    ManagerHelperService.loadManagers($scope, [
+    ManagerHelperService.loadManagers($scope, page_managers.concat([
         GeneralManager, ZonesManager, UsersManager, ResourcePoolsManager,
-        ServicesManager, TagsManager].concat(page_managers))
+        ServicesManager, TagsManager]))
         .then(function() {
             $scope.loading = false;
         });

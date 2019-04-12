@@ -447,7 +447,11 @@ def populate_main():
                 NODE_STATUS.RELEASING,
                 NODE_STATUS.FAILED_RELEASING]:
             machine.set_storage_layout(
-                random.choice(list(STORAGE_LAYOUTS.keys())))
+                random.choice([
+                    layout
+                    for layout in STORAGE_LAYOUTS.keys()
+                    if layout != 'vmfs6'
+                ]))
             if status != NODE_STATUS.READY:
                 machine._create_acquired_filesystems()
 

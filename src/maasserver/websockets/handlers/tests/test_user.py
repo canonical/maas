@@ -14,9 +14,11 @@ from maasserver.permissions import (
     ResourcePoolPermission,
 )
 from maasserver.testing.factory import factory
+from maasserver.testing.fixtures import RBACForceOffFixture
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.websockets.base import HandlerDoesNotExistError
 from maasserver.websockets.handlers.user import UserHandler
+from maastesting.djangotestcase import count_queries
 from piston3.models import Token
 from provisioningserver.events import AUDIT
 
@@ -81,6 +83,28 @@ class TestUserHandler(MAASServerTestCase):
         self.assertItemsEqual(
             expected_users,
             handler.list({}))
+
+    def test_list_num_queries_is_the_expected_number(self):
+        # Prevent RBAC from making a query.
+        self.useFixture(RBACForceOffFixture())
+
+        admin = factory.make_admin()
+        handler = UserHandler(admin, {}, None)
+        for _ in range(3):
+            factory.make_User()
+        queries_one, _ = count_queries(handler.list, {'limit': 1})
+        queries_total, _ = count_queries(handler.list, {})
+        # This check is to notify the developer that a change was made that
+        # affects the number of queries performed when doing a user listing.
+        # It is important to keep this number as low as possible. A larger
+        # number means regiond has to do more work slowing down its process
+        # and slowing down the client waiting for the response.
+        self.assertEqual(
+            queries_one, 1,
+            "Number of queries has changed; make sure this is expected.")
+        self.assertEqual(
+            queries_total, 1,
+            "Number of queries has changed; make sure this is expected.")
 
     def test_list_for_standard_user(self):
         user = factory.make_User()

@@ -322,9 +322,10 @@ describe("NodesListController", function() {
                 expect(
                     ManagerHelperService.loadManagers
                 ).toHaveBeenCalledWith(
-                    $scope, [GeneralManager, ZonesManager, UsersManager,
-                    ResourcePoolsManager,
-                    ServicesManager, TagsManager].concat(page_managers));
+                    $scope, page_managers.concat([
+                        GeneralManager, ZonesManager, UsersManager,
+                        ResourcePoolsManager,
+                        ServicesManager, TagsManager]));
             });
         });
 

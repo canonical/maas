@@ -41,6 +41,7 @@ describe("UsersManager", function() {
     it("set requires attributes", function() {
         expect(UsersManager._pk).toBe("id");
         expect(UsersManager._handler).toBe("user");
+        expect(UsersManager._batchSize).toBe(200);
         expect(UsersManager._authUser).toBeNull();
     });
 
