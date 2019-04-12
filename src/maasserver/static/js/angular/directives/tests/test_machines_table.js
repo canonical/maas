@@ -446,6 +446,34 @@ describe("maasMachinesTable", function() {
         });
     });
 
+    describe("getStatusMessage", function() {
+
+        angular.forEach([1, 9, 12, 14, 17, 19, 21], function(code) {
+            it("returns status message when status code: " + code, function() {
+                var directive = compileDirective();
+                var scope = directive.isolateScope();
+                var machine = {
+                    status_code: code,
+                    status_message: makeName("message")
+                };
+
+                expect(scope.getStatusMessage(machine)).toBe(
+                    machine.status_message);
+            });
+        });
+
+        it("returns blank when status code not in above list", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            var machine = {
+                status_code: 2,
+                status_message: makeName("message")
+            };
+
+            expect(scope.getStatusMessage(machine)).toBe('');
+        });
+    });
+
     describe("onListingChange", function() {
 
         it("called when filteredMachines changes", function() {

@@ -11,6 +11,7 @@ from datetime import (
     timedelta,
 )
 import email
+import logging
 import os
 import random
 import re
@@ -4365,18 +4366,82 @@ class TestNode(MAASServerTestCase):
             event_description=event_description,
             system_id=node.system_id))
 
-    def test__status_message_returns_most_recent_event(self):
+    def test__status_event_returns_cached_event(self):
         # The first event won't be returned.
-        event = factory.make_Event(description="Uninteresting event")
+        event = factory.make_Event(
+            type=factory.make_EventType(level=logging.INFO),
+            description="Uninteresting event")
         node = event.node
         # The second (and last) event will be returned.
         message = "Interesting event"
-        factory.make_Event(description=message, node=node)
-        self.assertEqual(message, node.status_message())
+        event = factory.make_Event(
+            type=factory.make_EventType(level=logging.INFO),
+            description=message, node=node)
+        # New event that would be returned if not cached.
+        factory.make_Event(
+            type=factory.make_EventType(level=logging.INFO),
+            description=message, node=node)
+        node._status_event = event
+        self.assertEqual(event, node.status_event())
+
+    def test__status_event_returns_most_recent_event(self):
+        # The first event won't be returned.
+        event = factory.make_Event(
+            type=factory.make_EventType(level=logging.INFO),
+            description="Uninteresting event")
+        node = event.node
+        # The second (and last) event will be returned.
+        message = "Interesting event"
+        event = factory.make_Event(
+            type=factory.make_EventType(level=logging.INFO),
+            description=message, node=node)
+        # DEBUG event will not be returned.
+        factory.make_Event(
+            type=factory.make_EventType(level=logging.DEBUG), node=node)
+        self.assertEqual(event, node.status_event())
+
+    def test__status_event_returns_none_for_new_node(self):
+        node = factory.make_Node()
+        self.assertIsNone(node.status_event())
+
+    def test__status_message_returns_most_recent_event(self):
+        # The first event won't be returned.
+        event = factory.make_Event(
+            type=factory.make_EventType(level=logging.INFO),
+            description="Uninteresting event")
+        node = event.node
+        # The second (and last) event will be returned.
+        type_message = "Event"
+        message = "Interesting event"
+        factory.make_Event(
+            type=factory.make_EventType(
+                level=logging.INFO, description=type_message),
+            description=message, node=node)
+        # DEBUG event will not be returned.
+        factory.make_Event(
+            type=factory.make_EventType(level=logging.DEBUG), node=node)
+        self.assertEqual(
+            '%s - %s' % (type_message, message), node.status_message())
 
     def test__status_message_returns_none_for_new_node(self):
         node = factory.make_Node()
         self.assertIsNone(node.status_message())
+
+    def test__status_action_returns_most_recent_event(self):
+        # The first event won't be returned.
+        event = factory.make_Event(
+            type=factory.make_EventType(level=logging.INFO),
+            action="Uninteresting event")
+        node = event.node
+        # The second (and last) event will be returned.
+        action = "Interesting event"
+        factory.make_Event(
+            type=factory.make_EventType(level=logging.INFO),
+            action=action, node=node)
+        # DEBUG event will not be returned.
+        factory.make_Event(
+            type=factory.make_EventType(level=logging.DEBUG), node=node)
+        self.assertEqual(action, node.status_action())
 
     def test_on_network_returns_true_when_connected(self):
         node = factory.make_Node_with_Interface_on_Subnet(

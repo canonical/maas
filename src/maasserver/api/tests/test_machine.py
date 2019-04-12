@@ -7,6 +7,7 @@ __all__ = []
 
 from base64 import b64encode
 import http.client
+import logging
 from random import choice
 from unittest.mock import (
     ANY,
@@ -328,15 +329,22 @@ class TestMachineAPI(APITestCase.ForUser):
     def test_GET_returns_status_message_with_most_recent_event(self):
         """Makes sure the most recent event from this machine is shown in the
         status_message attribute."""
+        type_description = 'Type description'
+        event_type = factory.make_EventType(
+            level=logging.INFO, description=type_description)
         # The first event won't be returned.
-        event = factory.make_Event(description="Uninteresting event")
+        event = factory.make_Event(
+            type=event_type, description="Uninteresting event")
         machine = event.node
         # The second (and last) event will be returned.
         message = "Interesting event"
-        factory.make_Event(description=message, node=machine)
+        factory.make_Event(
+            type=event_type, description=message, node=machine)
         response = self.client.get(self.get_machine_uri(machine))
         parsed_result = json_load_bytes(response.content)
-        self.assertEqual(message, parsed_result['status_message'])
+        self.assertEqual(
+            '%s - %s' % (type_description, message),
+            parsed_result['status_message'])
 
     def test_GET_returns_status_name(self):
         """GET should display the machine status as a user-friendly string."""

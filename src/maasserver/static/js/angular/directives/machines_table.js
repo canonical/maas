@@ -252,6 +252,16 @@ function maasMachinesTable(
         }
       };
 
+      // Returns the status message to show.
+      scope.getStatusMessage = function(machine) {
+        var showMessage = [1, 9, 12, 14, 17, 19, 21];
+        if (showMessage.indexOf(machine.status_code) >= 0) {
+          return machine.status_message;
+        } else {
+          return '';
+        }
+      };
+
       // When the list of filtered machines change update the all checkbox.
       scope.$watchCollection("table.filteredMachines", function() {
         scope.updateAllChecked();

@@ -21,6 +21,7 @@ import copy
 from datetime import timedelta
 from functools import partial
 from itertools import count
+import logging
 from operator import attrgetter
 import random
 import re
@@ -4246,41 +4247,49 @@ class Node(CleanSave, TimestampedModel):
                 interface.type == INTERFACE_TYPE.PHYSICAL)
         ]
 
-    def status_message(self):
-        """Returns a string representation of the most recent event description
-        (supplied through the status API) associated with this node, None if
-        there are no events."""
+    def status_event(self):
+        """Returns the most recent status event.
+
+        None if there are no events.
+        """
         if hasattr(self, '_status_event'):
-            return self._status_event.description
+            return self._status_event
         else:
             from maasserver.models.event import Event  # Avoid circular import.
             # Id's have a lower (non-zero under heavy load) chance of being out
             # of order than of two timestamps colliding.
-            event = Event.objects.filter(node=self).order_by(
-                '-created', '-id').first()
+            event = Event.objects.filter(
+                node=self, type__level__gte=logging.INFO)
+            event = event.select_related('type')
+            event = event.order_by('-created', '-id').first()
             if event is not None:
                 self._status_event = event
-                return event.description
+                return event
             else:
                 return None
+
+    def status_message(self):
+        """Returns a string representation of the most recent event description
+        (supplied through the status API) associated with this node, None if
+        there are no events."""
+        event = self.status_event()
+        if event is not None:
+            if event.description:
+                return '%s - %s' % (event.type.description, event.description)
+            else:
+                return event.type.description
+        else:
+            return None
 
     def status_action(self):
         """Returns a string representation of the most recent event action name
         (supplied through the status API) associated with this node, None if
         there are no events."""
-        if hasattr(self, '_status_event'):
-            return self._status_event.action
+        event = self.status_event()
+        if event is not None:
+            return event.action
         else:
-            from maasserver.models.event import Event  # Avoid circular import.
-            # Id's have a lower (non-zero under heavy load) chance of being out
-            # of order than of two timestamps colliding.
-            event = Event.objects.filter(node=self).order_by(
-                '-created', '-id').first()
-            if event is not None:
-                self._status_event = event
-                return event.action
-            else:
-                return None
+            return None
 
     @property
     def status_name(self):

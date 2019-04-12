@@ -293,6 +293,7 @@ class TestMachineHandler(MAASServerTestCase):
             "show_os_info": handler.dehydrate_show_os_info(node),
             "status": node.display_status(),
             "status_code": node.status,
+            "status_message": node.status_message(),
             "storage": round(sum([
                 blockdevice.size
                 for blockdevice in node.physicalblockdevice_set.all()
@@ -350,6 +351,7 @@ class TestMachineHandler(MAASServerTestCase):
                 "spaces",
                 "status",
                 "status_code",
+                "status_message",
                 "storage",
                 "storage_tags",
                 "subnets",
@@ -608,7 +610,7 @@ class TestMachineHandler(MAASServerTestCase):
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
         self.assertEqual(
-            queries, 48,
+            queries, 49,
             "Number of queries has changed; make sure this is expected.")
 
     def test_trigger_update_updates_script_result_cache(self):

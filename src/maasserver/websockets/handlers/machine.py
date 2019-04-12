@@ -8,11 +8,16 @@ __all__ = [
 ]
 
 from functools import partial
+import logging
 from operator import itemgetter
 
 from django.core.exceptions import (
     ObjectDoesNotExist,
     ValidationError,
+)
+from django.db.models import (
+    OuterRef,
+    Subquery,
 )
 from maasserver.enum import (
     BMC_TYPE,
@@ -58,6 +63,7 @@ from maasserver.forms.interface import (
 from maasserver.forms.interface_link import InterfaceLinkForm
 from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.cacheset import CacheSet
+from maasserver.models.event import Event
 from maasserver.models.filesystem import Filesystem
 from maasserver.models.filesystemgroup import VolumeGroup
 from maasserver.models.interface import Interface
@@ -134,6 +140,21 @@ class MachineHandler(NodeHandler):
             .prefetch_related('boot_interface__vlan__fabric')
             .prefetch_related('tags')
             .prefetch_related('pool')
+            .annotate(
+                status_event_type_description=Subquery(
+                    Event.objects
+                    .filter(
+                        node=OuterRef('pk'),
+                        type__level__gte=logging.INFO)
+                    .order_by('-created', '-id')
+                    .values('type__description')[:1]),
+                status_event_description=Subquery(
+                    Event.objects
+                    .filter(
+                        node=OuterRef('pk'),
+                        type__level__gte=logging.INFO)
+                    .order_by('-created', '-id')
+                    .values('description')[:1]))
         )
         allowed_methods = [
             'list',
@@ -242,6 +263,18 @@ class MachineHandler(NodeHandler):
             "locked": obj.locked,
             "pool": self.dehydrate_pool(obj.pool),
         })
+        # Try to use the annotated event description so its loaded in the same
+        # query as loading the machines. Otherwise fallback to the method on
+        # the machine.
+        if hasattr(obj, 'status_event_description'):
+            if obj.status_event_description:
+                data['status_message'] = '%s - %s' % (
+                    obj.status_event_type_description,
+                    obj.status_event_description)
+            else:
+                data['status_message'] = obj.status_event_type_description
+        else:
+            data['status_message'] = obj.status_message()
 
         if obj.is_machine or not for_list:
             boot_interface = obj.get_boot_interface()

@@ -7,7 +7,14 @@ __all__ = [
     "ControllerHandler",
     ]
 
+import logging
+
+from django.db.models import (
+    OuterRef,
+    Subquery,
+)
 from maasserver.forms import ControllerForm
+from maasserver.models.event import Event
 from maasserver.models.node import (
     Controller,
     RackController,
@@ -31,6 +38,21 @@ class ControllerHandler(MachineHandler):
             .select_related("controllerinfo", "domain", "bmc")
             .prefetch_related("service_set")
             .prefetch_related("tags")
+            .annotate(
+                status_event_type_description=Subquery(
+                    Event.objects
+                    .filter(
+                        node=OuterRef('pk'),
+                        type__level__gte=logging.INFO)
+                    .order_by('-created', '-id')
+                    .values('type__description')[:1]),
+                status_event_description=Subquery(
+                    Event.objects
+                    .filter(
+                        node=OuterRef('pk'),
+                        type__level__gte=logging.INFO)
+                    .order_by('-created', '-id')
+                    .values('description')[:1]))
         )
         allowed_methods = [
             'list',
