@@ -267,3 +267,9 @@
     flex: 1;
   }
 }
+
+// XXX Prevent "create new tag" showing on certain autocomplete modules
+// Issue: https://bugs.launchpad.net/maas/+bug/1823014
+.hide-create-tag-label .create-tag-label {
+  display: none;
+}
