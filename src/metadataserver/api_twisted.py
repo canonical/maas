@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Metadata API that runs in the Twisted reactor."""
@@ -33,6 +33,7 @@ from metadataserver.api import (
 )
 from metadataserver.enum import SCRIPT_STATUS
 from metadataserver.models import NodeKey
+from provisioningserver.events import EVENT_STATUS_MESSAGES
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils.twisted import deferred
 from twisted.application.internet import TimerService
@@ -307,7 +308,7 @@ class StatusWorkerService(TimerService, object):
 
         # Add this event to the node event log.
         add_event_to_node_event_log(
-            node, origin, activity_name, description, result,
+            node, origin, activity_name, description, event_type, result,
             message['timestamp'])
 
         # Group files together with the ScriptResult they belong.
@@ -494,8 +495,18 @@ class StatusWorkerService(TimerService, object):
                 ] and
             message['event_type'] in ['start', 'finish'] and
             message['origin'] == 'curtin')
+        is_status_message_event = (
+            message['name'] in EVENT_STATUS_MESSAGES and
+            message['event_type'] == 'start')
+        # modules-final is a cloudinit event that is part of
+        # EVENT_STATUS_MESSAGES but we want to create an event for
+        # the 'finish' event_type.
+        is_modules_final_event = (
+            message['name'] == 'modules-final' and
+            message['event_type'] == 'finish')
         if (is_starting_event or is_final_event or has_files or
-                is_curtin_early_late):
+                is_curtin_early_late or is_status_message_event or
+                is_modules_final_event):
             d = deferToDatabase(
                 self._processMessageNow, authorization, message)
             d.addErrback(

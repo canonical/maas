@@ -1,4 +1,4 @@
-# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Metadata API."""
@@ -102,6 +102,7 @@ from metadataserver.vendor_data import get_vendor_data
 from piston3.utils import rc
 from provisioningserver.events import (
     EVENT_DETAILS,
+    EVENT_STATUS_MESSAGES,
     EVENT_TYPES,
 )
 from provisioningserver.logger import LegacyLogger
@@ -190,7 +191,8 @@ def check_version(version):
 
 
 def add_event_to_node_event_log(
-        node, origin, action, description, result=None, created=None):
+        node, origin, action, description,
+        event_type, result=None, created=None):
     """Add an entry to the node's event log."""
     if node.status == NODE_STATUS.COMMISSIONING:
         if result in ['SUCCESS', None]:
@@ -216,10 +218,27 @@ def add_event_to_node_event_log(
     else:
         type_name = EVENT_TYPES.NODE_STATUS_EVENT
 
-    event_details = EVENT_DETAILS[type_name]
+    # Create an extra event for the machine status messages.
+    if action in EVENT_STATUS_MESSAGES:
+        # cloud-init sends the action 'modules-final' for
+        # both commissioning and deployment but we are only interested
+        # in setting the message for deployment.
+        if ((action == 'modules-final' and
+             node.status == NODE_STATUS.DEPLOYING and
+             event_type == 'finish') or (
+                 action != 'modules-final' and event_type == 'start')):
+                Event.objects.register_event_and_event_type(
+                    EVENT_STATUS_MESSAGES[action],
+                    type_level=EVENT_DETAILS[
+                        EVENT_STATUS_MESSAGES[action]].level,
+                    type_description=EVENT_DETAILS[
+                        EVENT_STATUS_MESSAGES[action]].description,
+                    event_action=action, event_description='',
+                    system_id=node.system_id, created=created)
+
     return Event.objects.register_event_and_event_type(
-        type_name, type_level=event_details.level,
-        type_description=event_details.description,
+        type_name, type_level=EVENT_DETAILS[type_name].level,
+        type_description=EVENT_DETAILS[type_name].description,
         event_action=action,
         event_description="'%s' %s" % (origin, description),
         system_id=node.system_id, created=created)

@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the twisted metadata API."""
@@ -64,6 +64,7 @@ from metadataserver.enum import (
     SCRIPT_STATUS,
 )
 from metadataserver.models import NodeKey
+from provisioningserver.events import EVENT_STATUS_MESSAGES
 from testtools import ExpectedException
 from testtools.matchers import (
     Equals,
@@ -296,6 +297,23 @@ class TestStatusWorkerServiceTransactional(MAASTransactionServerTestCase):
         self.assertThat(
             mock_processMessage,
             MockCalledOnceWith(node, message))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_queueMessages_processes_top_level_status_messages_instantly(self):
+        for name in EVENT_STATUS_MESSAGES.keys():
+            worker = StatusWorkerService(sentinel.dbtasks)
+            mock_processMessage = self.patch(worker, "_processMessage")
+            message = self.make_message()
+            message['event_type'] = 'start'
+            message['name'] = name
+            nodes_with_tokens = yield deferToDatabase(
+                self.make_nodes_with_tokens)
+            node, token = nodes_with_tokens[0]
+            yield worker.queueMessage(token.key, message)
+            self.assertThat(
+                mock_processMessage,
+                MockCalledOnceWith(node, message))
 
     @wait_for_reactor
     @inlineCallbacks

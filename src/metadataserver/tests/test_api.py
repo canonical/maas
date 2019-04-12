@@ -1,4 +1,4 @@
-# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the metadata API."""
@@ -103,6 +103,7 @@ from netaddr import IPNetwork
 from provisioningserver.events import (
     EVENT_DETAILS,
     EVENT_TYPES,
+    EVENT_STATUS_MESSAGES,
 )
 from provisioningserver.refresh.node_info_scripts import (
     NODE_INFO_SCRIPTS,
@@ -227,7 +228,8 @@ class TestHelpers(MAASServerTestCase):
             origin = factory.make_name('origin')
             action = factory.make_name('action')
             description = factory.make_name('description')
-            add_event_to_node_event_log(node, origin, action, description)
+            add_event_to_node_event_log(
+                node, origin, action, description, event_type='')
             event = Event.objects.get(node=node)
 
             self.assertEqual(node, event.node)
@@ -236,12 +238,28 @@ class TestHelpers(MAASServerTestCase):
             self.assertIn(description, event.description)
             self.assertEqual(expected_type[node.status], event.type.name)
 
+    def test_add_event_to_node_event_log_creates_events_status_messages(self):
+        for action in EVENT_STATUS_MESSAGES.keys():
+            node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
+            origin = factory.make_name('origin')
+            description = factory.make_name('description')
+            add_event_to_node_event_log(
+                node, origin, action, description,
+                event_type='start' if action != 'modules-final' else 'finish')
+            event = Event.objects.filter(node=node).first()
+
+            self.assertEqual(node, event.node)
+            self.assertEqual(action, event.action)
+            self.assertEqual(EVENT_DETAILS[EVENT_STATUS_MESSAGES[
+                action]].description, event.type.description)
+            self.assertEqual('', event.description)
+
     def test_add_event_to_node_event_log_logs_rack_refresh(self):
         rack = factory.make_RackController()
         origin = factory.make_name('origin')
         action = factory.make_name('action')
         description = factory.make_name('description')
-        add_event_to_node_event_log(rack, origin, action, description)
+        add_event_to_node_event_log(rack, origin, action, description, '')
         event = Event.objects.get(node=rack)
 
         self.assertEqual(rack, event.node)

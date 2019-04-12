@@ -1,10 +1,11 @@
-# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Event catalog."""
 
 __all__ = [
     'EVENT_DETAILS',
+    'EVENT_STATUS_MESSAGES',
     'EVENT_TYPES',
     'send_node_event',
     'send_node_event_mac_address',
@@ -141,6 +142,24 @@ class EVENT_TYPES:
     NETWORKING = "NETWORKING"
     # Zones events
     ZONES = "ZONES"
+    # Status message events
+    CONFIGURING_STORAGE = "CONFIGURING_STORAGE"
+    CONFIGURING_NETWORKING = "CONFIGURING_NETWORKING"
+    INSTALLING_OS = "INSTALLING_OS"
+    CONFIGURING_OS = "CONFIGURING_OS"
+    APPLYING_POST_INSTALLATION_CONFIG = "APPLYING_POST_INSTALLATION_CONFIG"
+    REBOOTING_MACHINE = "REBOOTING_MACHINE"
+
+# Used to create new events used for the machine's status.
+# The keys are the messages sent from cloud-init and curtin
+# to the metadataserver.
+EVENT_STATUS_MESSAGES = {
+    'cmd-install/stage-partitioning': EVENT_TYPES.CONFIGURING_STORAGE,
+    'cmd-install/stage-network': EVENT_TYPES.CONFIGURING_NETWORKING,
+    'cmd-install/stage-extract': EVENT_TYPES.INSTALLING_OS,
+    'cmd-install/stage-curthooks': EVENT_TYPES.CONFIGURING_OS,
+    'modules-final': EVENT_TYPES.APPLYING_POST_INSTALLATION_CONFIG,
+}
 
 
 EventDetail = namedtuple("EventDetail", ("description", "level"))
@@ -400,6 +419,30 @@ EVENT_DETAILS = {
     EVENT_TYPES.ZONES: EventDetail(
         description=("Zones"),
         level=AUDIT,
+    ),
+    EVENT_TYPES.CONFIGURING_STORAGE: EventDetail(
+        description=("Configuring storage"),
+        level=INFO,
+    ),
+    EVENT_TYPES.CONFIGURING_NETWORKING: EventDetail(
+        description=("Configuring networking"),
+        level=INFO,
+    ),
+    EVENT_TYPES.INSTALLING_OS: EventDetail(
+        description=("Installing OS"),
+        level=INFO,
+    ),
+    EVENT_TYPES.CONFIGURING_OS: EventDetail(
+        description=("Configuring OS"),
+        level=INFO,
+    ),
+    EVENT_TYPES.APPLYING_POST_INSTALLATION_CONFIG: EventDetail(
+        description=("Applying post installation config"),
+        level=INFO,
+    ),
+    EVENT_TYPES.REBOOTING_MACHINE: EventDetail(
+        description=("Rebooting machine"),
+        level=INFO,
     ),
 }
 
