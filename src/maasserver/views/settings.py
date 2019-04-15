@@ -1,4 +1,4 @@
-# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Settings views."""
@@ -47,6 +47,7 @@ from maasserver.forms import (
     SyslogForm,
     ThirdPartyDriversForm,
     UbuntuForm,
+    VCenterForm,
     WindowsForm,
 )
 from maasserver.models import (
@@ -283,6 +284,13 @@ def general(request):
     if response is not None:
         return response
 
+    # Process the VMware vCenter form.
+    vcenter_form, response = process_form(
+        request, VCenterForm, reverse('settings_general'), 'vcenter',
+        "Configuration updated.")
+    if response is not None:
+        return response
+
     # Process the Global Kernel Opts form.
     kernelopts_form, response = process_form(
         request, GlobalKernelOptsForm, reverse('settings_general'),
@@ -300,6 +308,7 @@ def general(request):
             'deploy_form': deploy_form,
             'ubuntu_form': ubuntu_form,
             'windows_form': windows_form,
+            'vcenter_form': vcenter_form,
             'kernelopts_form': kernelopts_form,
             'show_license_keys': show_license_keys(),
         })

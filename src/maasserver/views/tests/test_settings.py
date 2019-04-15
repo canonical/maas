@@ -1,4 +1,4 @@
-# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver settings views."""
@@ -242,6 +242,22 @@ class SettingsTest(MAASServerTestCase):
             (
                 Config.objects.get_config('commissioning_distro_series'),
             ))
+
+    def test_settings_vcenter_POST(self):
+        self.client.login(user=factory.make_admin())
+        vcenter = {
+            'vcenter_server': factory.make_name('vcenter_server'),
+            'vcenter_username': factory.make_name('vcenter_username'),
+            'vcenter_password': factory.make_name('vcenter_password'),
+            'vcenter_datacenter': factory.make_name('vcenter_datacenter'),
+        }
+        response = self.client.post(
+            reverse('settings_general'),
+            get_prefixed_form_data(prefix='vcenter', data=vcenter),
+        )
+        self.assertEqual(http.client.FOUND, response.status_code)
+        self.assertDictEqual(
+            vcenter, Config.objects.get_configs(vcenter.keys()))
 
     def test_settings_hides_license_keys_if_no_OS_supporting_keys(self):
         self.client.login(user=factory.make_admin())

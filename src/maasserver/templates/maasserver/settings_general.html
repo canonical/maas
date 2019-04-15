@@ -130,6 +130,22 @@
 
     <div class="p-strip is-bordered">
         <div class="row">
+            <div id="vcenter" class="col-8">
+                <h2 class="p-heading--four">VMware vCenter</h2>
+                <form action="{% url 'settings_general' %}" method="post">
+                    {% csrf_token %}
+                    <ul class="p-list">
+                        {% for field in vcenter_form %} {% include "maasserver/form_field.html" %} {% endfor %}
+                    </ul>
+                    <input type="hidden" name="vcenter_submit" value="1" />
+                    <button type="submit" class="p-button--positive u-float--right">Save</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="p-strip is-bordered">
+        <div class="row">
             <div id="third_party_drivers" class="col-8">
                 <h2 class="p-heading--four">Third Party Drivers Configuration</h2>
                 <form action="{% url 'settings_general' %}" method="post">

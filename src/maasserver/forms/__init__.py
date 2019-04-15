@@ -62,6 +62,7 @@ __all__ = [
     "UpdateRaidForm",
     "UpdateVirtualBlockDeviceForm",
     "UpdateVolumeGroupForm",
+    "VCenterForm",
     "WindowsForm",
     "ZoneForm",
     ]
@@ -1734,6 +1735,14 @@ class UbuntuForm(Form):
 class WindowsForm(ConfigForm):
     """Settings page, Windows section."""
     windows_kms_host = get_config_field('windows_kms_host')
+
+
+class VCenterForm(ConfigForm):
+    """Settings page, VMware vCenter section."""
+    vcenter_server = get_config_field('vcenter_server')
+    vcenter_username = get_config_field('vcenter_username')
+    vcenter_password = get_config_field('vcenter_password')
+    vcenter_datacenter = get_config_field('vcenter_datacenter')
 
 
 class GlobalKernelOptsForm(ConfigForm):
