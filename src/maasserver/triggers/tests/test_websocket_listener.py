@@ -7,6 +7,7 @@
 __all__ = []
 
 from contextlib import contextmanager
+import logging
 import random
 from unittest import skip
 
@@ -1062,6 +1063,52 @@ class TestEventListener(
             event = yield deferToDatabase(self.create_event)
             yield dv.get(timeout=2)
             self.assertEqual(('create', '%s' % event.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+
+class TestNodeEventListener(
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listeners code and the triggers on
+    maasserver_event table that notifies its node."""
+
+    scenarios = (
+        ('machine', {
+            'params': {'node_type': NODE_TYPE.MACHINE},
+            'listener': 'machine',
+            }),
+        ('rack', {
+            'params': {'node_type': NODE_TYPE.RACK_CONTROLLER},
+            'listener': 'controller',
+            }),
+        ('region_and_rack', {
+            'params': {'node_type': NODE_TYPE.REGION_AND_RACK_CONTROLLER},
+            'listener': 'controller',
+            }),
+        ('region', {
+            'params': {'node_type': NODE_TYPE.REGION_CONTROLLER},
+            'listener': 'controller',
+            }),
+    )
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_create(self):
+        yield deferToDatabase(register_websocket_triggers)
+        node = yield deferToDatabase(self.create_node, self.params)
+        event_type = yield deferToDatabase(self.create_event_type, {
+            'level': logging.INFO,
+        })
+
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.create_event, {"node": node, "type": event_type})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
             yield listener.stopService()
 

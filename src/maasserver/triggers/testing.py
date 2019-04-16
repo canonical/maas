@@ -407,6 +407,12 @@ class TransactionalHelpersMixin:
         user.delete()
 
     @transactional
+    def create_event_type(self, params=None):
+        if params is None:
+            params = {}
+        return factory.make_EventType(**params)
+
+    @transactional
     def create_event(self, params=None):
         if params is None:
             params = {}

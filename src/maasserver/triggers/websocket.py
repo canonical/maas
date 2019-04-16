@@ -15,6 +15,7 @@ __all__ = [
     "register_websocket_triggers"
     ]
 
+import logging
 from textwrap import dedent
 
 from maasserver.enum import (
@@ -683,6 +684,34 @@ VLAN_NODE_NOTIFY = dedent("""\
           PERFORM pg_notify('device_update',CAST(node.system_id AS text));
         END IF;
       END LOOP;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
+# Procedure that is called when en event is created linked to a node. DEBUG
+# events do not trigger a notification, event must be >= INFO.
+EVENT_NODE_NOTIFY = dedent("""\
+    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    DECLARE
+      type RECORD;
+      node RECORD;
+    BEGIN
+      SELECT level INTO type
+      FROM maasserver_eventtype
+      WHERE maasserver_eventtype.id = %s;
+      IF type.level >= %d THEN
+        SELECT system_id, node_type INTO node
+        FROM maasserver_node
+        WHERE maasserver_node.id = %s;
+
+        IF node.node_type = %d THEN
+          PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+        ELSIF node.node_type IN (%d, %d, %d) THEN
+          PERFORM pg_notify('controller_update',CAST(node.system_id AS text));
+        END IF;
+      END IF;
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
@@ -1509,6 +1538,17 @@ def register_websocket_triggers():
     register_trigger(
         "maasserver_vlan",
         "vlan_machine_update_notify", "update")
+
+    # Event node notifications
+    register_procedure(
+        EVENT_NODE_NOTIFY % (
+            'event_machine_update_notify', 'NEW.type_id', logging.INFO,
+            'NEW.node_id', NODE_TYPE.MACHINE,
+            NODE_TYPE.RACK_CONTROLLER, NODE_TYPE.REGION_CONTROLLER,
+            NODE_TYPE.REGION_AND_RACK_CONTROLLER))
+    register_trigger(
+        "maasserver_event",
+        "event_machine_update_notify", "insert")
 
     # VLAN subnet notifications
     register_procedure(
