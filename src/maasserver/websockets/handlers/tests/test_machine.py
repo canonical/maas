@@ -3034,7 +3034,8 @@ class TestMachineHandler(MAASServerTestCase):
         factory.make_PhysicalBlockDevice(node=node, size=10 * 2024 ** 3)
         params = {
             'system_id': node.system_id,
-            'storage_layout': factory.pick_choice(get_storage_layout_choices())
+            'storage_layout': factory.pick_choice(
+                get_storage_layout_choices(), but_not='blank')
         }
         handler.apply_storage_layout(params)
         self.assertTrue(node.boot_disk.partitiontable_set.exists())
