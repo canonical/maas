@@ -7,6 +7,7 @@ Django command: Upgrade MAAS regiond database.
 
 __all__ = []
 
+import argparse
 from textwrap import dedent
 
 from django.core.management import call_command
@@ -22,13 +23,15 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         super(Command, self).add_arguments(parser)
-
         parser.add_argument(
             '--database', action='store', dest='database',
             default=DEFAULT_DB_ALIAS,
             help=(
                 'Nominates a database to synchronize. Defaults to the '
                 '"default" database.'))
+        parser.add_argument(
+            '--internal-no-triggers', action='store_true', dest='no_triggers',
+            help=argparse.SUPPRESS)
 
     @classmethod
     def _perform_trigger_installation(cls, database):
@@ -87,6 +90,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         database = options.get('database')
+        no_triggers = options.get('no_triggers')
 
         # First, drop any views that may already exist. We don't want views
         # that that depend on a particular schema to prevent schema
@@ -112,5 +116,6 @@ class Command(BaseCommand):
 
         # Install all database functions, triggers, and views. This is
         # idempotent, so we run it at the end of every database upgrade.
-        self._perform_trigger_installation(database)
+        if not no_triggers:
+            self._perform_trigger_installation(database)
         self._perform_view_installation(database)

@@ -149,7 +149,6 @@ class TestTriggersUsed(MAASServerTestCase):
         "domain_domain_delete_notify",
         "domain_domain_node_update_notify",
         "domain_domain_update_notify",
-        "event_event_create_machine_device_notify",
         "event_event_create_notify",
         "fabric_fabric_create_notify",
         "fabric_fabric_delete_notify",

@@ -294,7 +294,12 @@ test-failed: $(strip $(test-scripts))
 clean-failed:
 	$(RM) .noseids
 
-src/maasserver/testing/initial.maas_test.sql: bin/database syncdb
+src/maasserver/testing/initial.maas_test.sql: bin/maas-region bin/database
+  # Run migrations without any triggers created.
+	$(dbrun) bin/maas-region dbupgrade --internal-no-triggers
+	# Data migration will create a notification, that will break tests. Want the
+	# database to be a clean schema.
+	$(dbrun) bin/maas-region shell -c "from maasserver.models.notification import Notification; Notification.objects.all().delete()"
 	bin/database --preserve run -- \
 	    pg_dump maas --no-owner --no-privileges \
 	        --format=plain > $@
