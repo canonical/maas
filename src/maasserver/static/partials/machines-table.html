@@ -58,10 +58,10 @@
                 </div>
                 <div class="p-double-row__rows-container--checkbox">
                     <div class="p-double-row__main-row">
-                        <span data-ng-if="node.locked" title="This machine is locked. You have to unlock it to perform any actions." aria-describedby="{$ node.fqdn $}-locked-state">
-                            <i class="p-icon--locked">Locked: </i>
-                        </span>
                         <a class="p-domain-name" href="#/{$ node.link_type $}/{$ node.system_id $}" title="{$ node.fqdn $}">
+                            <span data-ng-if="node.locked" title="This machine is locked. You have to unlock it to perform any actions." aria-describedby="{$ node.fqdn $}-locked-state">
+                                <i class="p-icon--locked">Locked: </i>
+                            </span>
                             <span class="p-domain-name__host">{$ node.hostname $}</span><span class="p-domain-name__tld">.{$ node.domain.name $}</span>
                         </a>
                     </div>
