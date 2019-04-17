@@ -219,22 +219,15 @@ def add_event_to_node_event_log(
         type_name = EVENT_TYPES.NODE_STATUS_EVENT
 
     # Create an extra event for the machine status messages.
-    if action in EVENT_STATUS_MESSAGES:
-        # cloud-init sends the action 'modules-final' for
-        # both commissioning and deployment but we are only interested
-        # in setting the message for deployment.
-        if ((action == 'modules-final' and
-             node.status == NODE_STATUS.DEPLOYING and
-             event_type == 'finish') or (
-                 action != 'modules-final' and event_type == 'start')):
-                Event.objects.register_event_and_event_type(
-                    EVENT_STATUS_MESSAGES[action],
-                    type_level=EVENT_DETAILS[
-                        EVENT_STATUS_MESSAGES[action]].level,
-                    type_description=EVENT_DETAILS[
-                        EVENT_STATUS_MESSAGES[action]].description,
-                    event_action=action, event_description='',
-                    system_id=node.system_id, created=created)
+    if action in EVENT_STATUS_MESSAGES and event_type == 'start':
+        Event.objects.register_event_and_event_type(
+            EVENT_STATUS_MESSAGES[action],
+            type_level=EVENT_DETAILS[
+                EVENT_STATUS_MESSAGES[action]].level,
+            type_description=EVENT_DETAILS[
+                EVENT_STATUS_MESSAGES[action]].description,
+            event_action=action, event_description='',
+            system_id=node.system_id, created=created)
 
     return Event.objects.register_event_and_event_type(
         type_name, type_level=EVENT_DETAILS[type_name].level,
@@ -1226,11 +1219,23 @@ class AnonMetaDataHandler(VersionIndexHandler):
         # This is a best-guess. At the moment, netboot_off() only gets
         # called when the node has finished installing, so it's an
         # accurate predictor of the end of the install process.
-        type_name = EVENT_TYPES.NODE_INSTALLATION_FINISHED
-        event_details = EVENT_DETAILS[type_name]
+        netboot_off_type_name = EVENT_TYPES.NODE_INSTALLATION_FINISHED
+        netboot_off_event_details = EVENT_DETAILS[netboot_off_type_name]
+        netboot_off_description = "Node disabled netboot"
         Event.objects.register_event_and_event_type(
-            type_name, type_level=event_details.level,
-            type_description=event_details.description,
-            event_description="Node disabled netboot",
+            netboot_off_type_name,
+            type_level=netboot_off_event_details.level,
+            type_description=netboot_off_event_details.description,
+            event_description=netboot_off_description,
+            system_id=node.system_id)
+
+        # Create status message event for rebooting the machine.
+        reboot_type_name = EVENT_TYPES.REBOOTING
+        reboot_event_details = EVENT_DETAILS[reboot_type_name]
+        Event.objects.register_event_and_event_type(
+            reboot_type_name,
+            type_level=reboot_event_details.level,
+            type_description=reboot_event_details.description,
+            event_description='',
             system_id=node.system_id)
         return rc.ALL_OK

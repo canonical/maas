@@ -498,15 +498,8 @@ class StatusWorkerService(TimerService, object):
         is_status_message_event = (
             message['name'] in EVENT_STATUS_MESSAGES and
             message['event_type'] == 'start')
-        # modules-final is a cloudinit event that is part of
-        # EVENT_STATUS_MESSAGES but we want to create an event for
-        # the 'finish' event_type.
-        is_modules_final_event = (
-            message['name'] == 'modules-final' and
-            message['event_type'] == 'finish')
         if (is_starting_event or is_final_event or has_files or
-                is_curtin_early_late or is_status_message_event or
-                is_modules_final_event):
+                is_curtin_early_late or is_status_message_event):
             d = deferToDatabase(
                 self._processMessageNow, authorization, message)
             d.addErrback(

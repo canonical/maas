@@ -318,6 +318,33 @@ class TestHTTPLogResource(MAASTestCase):
                 event_type=EVENT_TYPES.NODE_HTTP_REQUEST,
                 ip_address=ip, description=path))
 
+    def test_render_GET_logs_node_event_status_message(self):
+        path = factory.make_name('squashfs')
+        ip = factory.make_ip_address()
+        request = Request(DummyChannel(), False)
+        request.requestHeaders = Headers({
+            'X-Original-URI': [path],
+            'X-Original-Remote-IP': [ip],
+        })
+
+        mock_deferLater = self.patch(http, 'deferLater')
+        mock_deferLater.side_effect = always_succeed_with(None)
+        mock_send_node_event_ip_address = self.patch(
+            http, 'send_node_event_ip_address')
+
+        resource = http.HTTPLogResource()
+        resource.render_GET(request)
+
+        self.assertThat(
+            mock_deferLater,
+            MockCalledOnceWith(
+                ANY, 0, http.send_node_event_ip_address,
+                event_type=EVENT_TYPES.NODE_HTTP_REQUEST,
+                ip_address=ip, description=path))
+        self.assertThat(
+            mock_send_node_event_ip_address, MockCalledOnceWith(
+                event_type=EVENT_TYPES.LOADING_EPHEMERAL, ip_address=ip))
+
 
 class TestHTTPBootResource(MAASTestCase):
 

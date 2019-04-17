@@ -144,21 +144,20 @@ class EVENT_TYPES:
     ZONES = "ZONES"
     # Status message events
     CONFIGURING_STORAGE = "CONFIGURING_STORAGE"
-    CONFIGURING_NETWORKING = "CONFIGURING_NETWORKING"
     INSTALLING_OS = "INSTALLING_OS"
     CONFIGURING_OS = "CONFIGURING_OS"
-    APPLYING_POST_INSTALLATION_CONFIG = "APPLYING_POST_INSTALLATION_CONFIG"
-    REBOOTING_MACHINE = "REBOOTING_MACHINE"
+    REBOOTING = "REBOOTING"
+    PERFORMING_PXE_BOOT = "PERFORMING_PXE_BOOT"
+    LOADING_EPHEMERAL = "LOADING_EPHEMERAL"
+
 
 # Used to create new events used for the machine's status.
 # The keys are the messages sent from cloud-init and curtin
 # to the metadataserver.
 EVENT_STATUS_MESSAGES = {
     'cmd-install/stage-partitioning': EVENT_TYPES.CONFIGURING_STORAGE,
-    'cmd-install/stage-network': EVENT_TYPES.CONFIGURING_NETWORKING,
     'cmd-install/stage-extract': EVENT_TYPES.INSTALLING_OS,
     'cmd-install/stage-curthooks': EVENT_TYPES.CONFIGURING_OS,
-    'modules-final': EVENT_TYPES.APPLYING_POST_INSTALLATION_CONFIG,
 }
 
 
@@ -168,24 +167,24 @@ EventDetail = namedtuple("EventDetail", ("description", "level"))
 EVENT_DETAILS = {
     # Event type -> EventDetail mapping.
     EVENT_TYPES.NODE_POWER_ON_STARTING: EventDetail(
-        description="Powering node on",
+        description="Powering on",
         level=INFO,
     ),
     EVENT_TYPES.NODE_POWER_OFF_STARTING: EventDetail(
-        description="Powering node off",
+        description="Powering off",
         level=INFO,
     ),
     EVENT_TYPES.NODE_POWER_CYCLE_STARTING: EventDetail(
-        description="Power cycling node",
+        description="Power cycling",
         level=INFO,
     ),
     EVENT_TYPES.NODE_POWERED_ON: EventDetail(
         description="Node powered on",
-        level=INFO,
+        level=DEBUG,
     ),
     EVENT_TYPES.NODE_POWERED_OFF: EventDetail(
         description="Node powered off",
-        level=INFO,
+        level=DEBUG,
     ),
     EVENT_TYPES.NODE_POWER_ON_FAILED: EventDetail(
         description="Failed to power on node",
@@ -201,7 +200,7 @@ EVENT_DETAILS = {
     ),
     EVENT_TYPES.NODE_POWER_QUERIED: EventDetail(
         description="Queried node's BMC",
-        level=INFO,
+        level=DEBUG,
     ),
     EVENT_TYPES.NODE_POWER_QUERIED_DEBUG: EventDetail(
         description="Queried node's BMC",
@@ -221,15 +220,15 @@ EVENT_DETAILS = {
     ),
     EVENT_TYPES.NODE_PXE_REQUEST: EventDetail(
         description="PXE Request",
-        level=INFO,
+        level=DEBUG,
     ),
     EVENT_TYPES.NODE_INSTALLATION_FINISHED: EventDetail(
         description="Installation complete",
-        level=INFO,
+        level=DEBUG,
     ),
     EVENT_TYPES.NODE_CHANGED_STATUS: EventDetail(
         description="Node changed status",
-        level=INFO,
+        level=DEBUG,
     ),
     EVENT_TYPES.NODE_STATUS_EVENT: EventDetail(
         description="Node status event",
@@ -273,47 +272,47 @@ EVENT_DETAILS = {
     ),
     EVENT_TYPES.REQUEST_NODE_START_COMMISSIONING: EventDetail(
         description="User starting node commissioning",
-        level=INFO,
+        level=DEBUG,
     ),
     EVENT_TYPES.REQUEST_NODE_ABORT_COMMISSIONING: EventDetail(
         description="User aborting node commissioning",
-        level=INFO,
+        level=DEBUG,
     ),
     EVENT_TYPES.REQUEST_NODE_START_TESTING: EventDetail(
         description="User starting node testing",
-        level=INFO,
+        level=DEBUG,
     ),
     EVENT_TYPES.REQUEST_NODE_ABORT_TESTING: EventDetail(
         description="User aborting node testing",
-        level=INFO,
+        level=DEBUG,
     ),
     EVENT_TYPES.REQUEST_NODE_OVERRIDE_FAILED_TESTING: EventDetail(
         description="User overrode 'Failed testing' status",
-        level=INFO,
+        level=DEBUG,
     ),
     EVENT_TYPES.REQUEST_NODE_ABORT_DEPLOYMENT: EventDetail(
         description="User aborting deployment",
-        level=INFO,
+        level=DEBUG,
     ),
     EVENT_TYPES.REQUEST_NODE_ACQUIRE: EventDetail(
         description="User acquiring node",
-        level=INFO,
+        level=DEBUG,
     ),
     EVENT_TYPES.REQUEST_NODE_ERASE_DISK: EventDetail(
         description="User erasing disk",
-        level=INFO,
+        level=DEBUG,
     ),
     EVENT_TYPES.REQUEST_NODE_ABORT_ERASE_DISK: EventDetail(
         description="User aborting disk erase",
-        level=INFO,
+        level=DEBUG,
     ),
     EVENT_TYPES.REQUEST_NODE_RELEASE: EventDetail(
         description="User releasing node",
-        level=INFO,
+        level=DEBUG,
     ),
     EVENT_TYPES.REQUEST_NODE_MARK_FAILED: EventDetail(
         description="User marking node failed",
-        level=INFO,
+        level=DEBUG,
     ),
     EVENT_TYPES.REQUEST_NODE_MARK_FAILED_SYSTEM: EventDetail(
         description="Marking node failed",
@@ -321,48 +320,48 @@ EVENT_DETAILS = {
     ),
     EVENT_TYPES.REQUEST_NODE_MARK_BROKEN: EventDetail(
         description="User marking node broken",
-        level=INFO,
+        level=DEBUG,
     ),
     EVENT_TYPES.REQUEST_NODE_MARK_FIXED: EventDetail(
         description="User marking node fixed",
-        level=INFO,
+        level=DEBUG,
     ),
     EVENT_TYPES.REQUEST_NODE_LOCK: EventDetail(
         description="User locking node",
-        level=INFO,
+        level=DEBUG,
     ),
     EVENT_TYPES.REQUEST_NODE_UNLOCK: EventDetail(
         description="User unlocking node",
-        level=INFO,
+        level=DEBUG,
     ),
     EVENT_TYPES.REQUEST_NODE_START_DEPLOYMENT: EventDetail(
         description="User starting deployment",
-        level=INFO,
+        level=DEBUG,
     ),
     EVENT_TYPES.REQUEST_NODE_START: EventDetail(
         description="User powering up node",
-        level=INFO,
+        level=DEBUG,
     ),
     EVENT_TYPES.REQUEST_NODE_STOP: EventDetail(
         description="User powering down node",
-        level=INFO,
+        level=DEBUG,
     ),
     EVENT_TYPES.REQUEST_NODE_START_RESCUE_MODE: EventDetail(
         description="User starting rescue mode",
-        level=INFO,
+        level=DEBUG,
     ),
     EVENT_TYPES.REQUEST_NODE_STOP_RESCUE_MODE: EventDetail(
         description="User stopping rescue mode",
-        level=INFO,
+        level=DEBUG,
     ),
     EVENT_TYPES.REQUEST_CONTROLLER_REFRESH: EventDetail(
         description=("Starting refresh of controller hardware and networking "
                      "information"),
-        level=INFO,
+        level=DEBUG,
     ),
     EVENT_TYPES.REQUEST_RACK_CONTROLLER_ADD_CHASSIS: EventDetail(
         description=("Querying chassis and enlisting all machines"),
-        level=INFO,
+        level=DEBUG,
     ),
     EVENT_TYPES.RACK_IMPORT_WARNING: EventDetail(
         description=("Rack import warning"),
@@ -374,7 +373,7 @@ EVENT_DETAILS = {
     ),
     EVENT_TYPES.RACK_IMPORT_INFO: EventDetail(
         description=("Rack import info"),
-        level=INFO,
+        level=DEBUG,
     ),
     EVENT_TYPES.REGION_IMPORT_WARNING: EventDetail(
         description=("Region import warning"),
@@ -386,7 +385,7 @@ EVENT_DETAILS = {
     ),
     EVENT_TYPES.REGION_IMPORT_INFO: EventDetail(
         description=("Region import info"),
-        level=INFO,
+        level=DEBUG,
     ),
     EVENT_TYPES.SCRIPT_RESULT_ERROR: EventDetail(
         description=("Script result lookup or storage error"),
@@ -424,10 +423,6 @@ EVENT_DETAILS = {
         description=("Configuring storage"),
         level=INFO,
     ),
-    EVENT_TYPES.CONFIGURING_NETWORKING: EventDetail(
-        description=("Configuring networking"),
-        level=INFO,
-    ),
     EVENT_TYPES.INSTALLING_OS: EventDetail(
         description=("Installing OS"),
         level=INFO,
@@ -436,14 +431,19 @@ EVENT_DETAILS = {
         description=("Configuring OS"),
         level=INFO,
     ),
-    EVENT_TYPES.APPLYING_POST_INSTALLATION_CONFIG: EventDetail(
-        description=("Applying post installation config"),
+    EVENT_TYPES.REBOOTING: EventDetail(
+        description=("Rebooting"),
         level=INFO,
     ),
-    EVENT_TYPES.REBOOTING_MACHINE: EventDetail(
-        description=("Rebooting machine"),
+    EVENT_TYPES.PERFORMING_PXE_BOOT: EventDetail(
+        description="Performing PXE boot",
         level=INFO,
     ),
+    EVENT_TYPES.LOADING_EPHEMERAL: EventDetail(
+        description="Loading ephemeral",
+        level=INFO,
+    ),
+
 }
 
 

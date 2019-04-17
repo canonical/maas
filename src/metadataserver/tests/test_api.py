@@ -240,12 +240,11 @@ class TestHelpers(MAASServerTestCase):
 
     def test_add_event_to_node_event_log_creates_events_status_messages(self):
         for action in EVENT_STATUS_MESSAGES.keys():
-            node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
+            node = factory.make_Node()
             origin = factory.make_name('origin')
             description = factory.make_name('description')
             add_event_to_node_event_log(
-                node, origin, action, description,
-                event_type='start' if action != 'modules-final' else 'finish')
+                node, origin, action, description, event_type='start')
             event = Event.objects.filter(node=node).first()
 
             self.assertEqual(node, event.node)
@@ -2862,13 +2861,13 @@ class TestAnonymousAPI(MAASServerTestCase):
         response = self.client.get(anon_node_url, {'op': 'get_preseed'})
         self.assertThat(response, HasStatusCode(http.client.OK))
 
-    def test_anoymous_netboot_off_adds_installation_finished_event(self):
+    def test_anonymous_netboot_off_adds_install_and_reboot_events(self):
         node = factory.make_Node(netboot=True)
         anon_netboot_off_url = reverse(
             'metadata-node-by-id', args=['latest', node.system_id])
         self.client.post(
             anon_netboot_off_url, {'op': 'netboot_off'})
-        latest_event = Event.objects.filter(node=node).last()
+        events = Event.objects.filter(node=node)
         self.assertEqual(
             (
                 EVENT_TYPES.NODE_INSTALLATION_FINISHED,
@@ -2877,9 +2876,20 @@ class TestAnonymousAPI(MAASServerTestCase):
                 "Node disabled netboot",
             ),
             (
-                latest_event.type.name,
-                latest_event.type.description,
-                latest_event.description,
+                events[0].type.name,
+                events[0].type.description,
+                events[0].description,
+            ))
+        self.assertEqual(
+            (
+                EVENT_TYPES.REBOOTING,
+                EVENT_DETAILS[EVENT_TYPES.REBOOTING].description,
+                "",
+            ),
+            (
+                events[1].type.name,
+                events[1].type.description,
+                events[1].description,
             ))
 
 

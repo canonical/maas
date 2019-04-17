@@ -1,4 +1,4 @@
-# Copyright 2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2018-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """HTTP service for the rack controller."""
@@ -219,6 +219,12 @@ class HTTPLogResource(resource.Resource):
         path = request.getHeader('X-Original-URI')
         remote_host = request.getHeader('X-Original-Remote-IP')
 
+        def log_event_ephemeral_loading(result):
+            if 'squashfs' in path:
+                send_node_event_ip_address(
+                    event_type=EVENT_TYPES.LOADING_EPHEMERAL,
+                    ip_address=remote_host)
+
         # Log the HTTP request to rackd.log and push that event to the
         # region controller.
         log.info(
@@ -228,8 +234,8 @@ class HTTPLogResource(resource.Resource):
             reactor, 0, send_node_event_ip_address,
             event_type=EVENT_TYPES.NODE_HTTP_REQUEST,
             ip_address=remote_host, description=path)
+        d.addCallback(log_event_ephemeral_loading)
         d.addErrback(log.err, "Logging HTTP request failed.")
-
         # Respond empty to nginx.
         return b''
 
