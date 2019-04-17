@@ -51,7 +51,9 @@ function maasMachinesTable(
       };
       scope.statusMenuActions = [
         "commission",
+        "acquire",
         "deploy",
+        "release",
         "abort",
         "test",
         "rescue-mode",
@@ -98,8 +100,6 @@ function maasMachinesTable(
             return `release ${name}`;
           case "rescue-mode":
             return `enter rescue mode of ${name}`;
-          case "release":
-            return `release ${name}`;
           case "set-pool":
             return `set pool of ${name}`;
           case "set-zone":
