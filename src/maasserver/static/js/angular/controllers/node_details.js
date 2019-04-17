@@ -243,6 +243,7 @@ function NodeDetailsController(
                 ResourcePoolsManager.getItemFromList($scope.node.pool.id));
         }
         $scope.summary.architecture.selected = $scope.node.architecture;
+        $scope.summary.description = $scope.node.description;
         $scope.summary.min_hwe_kernel.selected = $scope.node.min_hwe_kernel;
         $scope.summary.tags = angular.copy($scope.node.tags);
 
@@ -895,6 +896,7 @@ function NodeDetailsController(
         var node = angular.copy($scope.node);
         node.zone = angular.copy($scope.summary.zone.selected);
         node.pool = angular.copy($scope.summary.pool.selected);
+        node.description = angular.copy($scope.summary.description);
         node.architecture = $scope.summary.architecture.selected;
         if ($scope.summary.min_hwe_kernel.selected === null) {
             node.min_hwe_kernel = "";

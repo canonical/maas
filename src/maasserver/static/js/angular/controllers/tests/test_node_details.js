@@ -1875,6 +1875,7 @@ describe("NodeDetailsController", function() {
             $scope.summary.editing = true;
             $scope.summary.zone.selected = makeZone();
             $scope.summary.pool.selected = makeResourcePool();
+            $scope.summary.description = "This is a description"
             $scope.summary.architecture.selected = makeName("architecture");
             $scope.summary.tags = [
                 { text: makeName("tag") },
@@ -1931,6 +1932,7 @@ describe("NodeDetailsController", function() {
             configureSummary();
             var newZone = $scope.summary.zone.selected;
             var newPool = $scope.summary.pool.selected;
+            var newDescription = $scope.summary.description;
             var newArchitecture = $scope.summary.architecture.selected;
             var newTags = [];
             angular.forEach($scope.summary.tags, function(tag) {
@@ -1942,6 +1944,7 @@ describe("NodeDetailsController", function() {
             expect(calledWithNode.zone).toEqual(newZone);
             expect(calledWithNode.zone).not.toBe(newZone);
             expect(calledWithNode.pool).not.toBe(newPool);
+            expect(calledWithNode.description).toBe(newDescription);
             expect(calledWithNode.architecture).toBe(newArchitecture);
             expect(calledWithNode.tags).toEqual(newTags);
         });

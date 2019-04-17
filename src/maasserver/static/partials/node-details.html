@@ -566,6 +566,16 @@
                                 </select>
                             </div>
                         </div>
+                        <div class="p-form__group u-clearfix" data-ng-if="!isDevice && !isController">
+                            <label for="pool"
+                                class="p-form__label col-2 mobile-col-2 tablet-col-2"
+                                data-ng-class="{'is-disabled': !summary.editing }">Note</label>
+                            <div class="p-form__control col-3 mobile-col-2 tablet-col-3">
+                                <input name="note" id="note" type="text"
+                                    data-ng-disabled="!summary.editing"
+                                    data-ng-model="summary.description" />
+                            </div>
+                        </div>
                         <div class="p-form__group u-clearfix">
                             <label class="p-form__label col-2 mobile-col-2 tablet-col-2"
                                 data-ng-class="{'is-disabled': !summary.editing }">Tags</label>
