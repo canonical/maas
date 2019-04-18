@@ -260,6 +260,7 @@ class NodeHandler(TimestampedModelHandler):
             data["distro_series"] = obj.distro_series
             data["memory"] = obj.display_memory()
             data["status"] = obj.display_status()
+            data["description"] = obj.description
             data["status_code"] = obj.status
 
         # Filters are only available on machines and devices.

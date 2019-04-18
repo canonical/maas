@@ -429,6 +429,12 @@ def populate_main():
             interface=False, with_boot_disk=False, power_type='manual',
             domain=random.choice(domains),
             memory=random.choice([1024, 4096, 8192]),
+            description=random.choice([
+                '',
+                'Scheduled for removeal',
+                'Firmware old',
+                'Earmarked for Project Fuse in April'
+            ]),
             cpu_count=random.randint(2, 8))
         machine.set_random_hostname()
         machines.append(machine)

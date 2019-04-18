@@ -32,7 +32,10 @@
                 <span role="columnheader" data-ng-click="sortTable('owner')" data-ng-class="{'is-sorted': table.predicate === 'owner', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Owner,</span>
                 <div>Tags</div>
             </th>
-            <th class="p-table__col--pool" title="Pool" role="columnheader" data-ng-click="sortTable('pool.name')" data-ng-class="{'is-sorted': table.predicate === 'pool.name', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Pool</th>
+            <th class="p-table__col--pool p-double-row" title="Pool, Note">
+                <span role="columnheader" data-ng-click="sortTable('pool.name')" data-ng-class="{'is-sorted': table.predicate === 'pool.name', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Pool,</span>
+                <div>Note</div>
+            </th>
             <th class="p-table__col--zone p-double-row" title="Zone">
                 <span role="columnheader" data-ng-click="sortTable('zone.name')" data-ng-class="{'is-sorted': table.predicate === 'zone.name', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Zone</span>
             </th>
@@ -245,11 +248,18 @@
                     </span>
                 </div>
             </td>
-            <td class="p-table__col--pool" aria-label="{$ node.pool.name $}">
+            <td class="p-table__col--pool p-double-row" aria-label="Pool, Note">
                 <div class="p-table-menu">
-                    <i class="p-icon--spinner u-animation--spin" data-ng-if="node['set-pool-transition']">Setting pool</i>
-                    <span data-ng-if="node.pool.name"><a class="p-link--soft" href="#/pools" title="{$ node.pool.name $}"> {$ node.pool.name $}</a></span>
-                    <span data-ng-if="!node.pool.name">-</span>
+                    <div class="p-double-row__rows-container">
+                        <div class="p-double-row__main-row" aria-label="Pool">
+                            <i class="p-icon--spinner u-animation--spin" data-ng-if="node['set-pool-transition']">Setting pool</i>
+                            <span data-ng-if="node.pool.name"><a class="p-link--soft" href="#/pools" title="{$ node.pool.name $}"> {$ node.pool.name $}</a></span>
+                            <span data-ng-if="!node.pool.name">-</span>
+                        </div>
+                        <div data-ng-if="node.description" class="p-double-row__muted-row" aria-label="Note" title="{$ node.description $}">
+                            <span>{$ node.description $}</span>
+                        </div>
+                    </div>
                     <button
                         data-ng-if="node.actions.indexOf('set-pool') !== -1"
                         data-ng-click="toggleMenu(node.system_id + '-pool')"

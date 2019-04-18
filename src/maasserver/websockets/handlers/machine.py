@@ -235,6 +235,7 @@ class MachineHandler(NodeHandler):
             "owner",
             "cpu_count",
             "cpu_speed",
+            "description",
             "memory",
             "power_state",
             "domain",

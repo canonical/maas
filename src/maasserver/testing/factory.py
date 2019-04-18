@@ -394,7 +394,7 @@ class Factory(maastesting.factory.Factory):
 
     def make_Node(
             self, interface=False, hostname=None, domain=None, status=None,
-            architecture="i386/generic", min_hwe_kernel=None,
+            architecture="i386/generic", description=None, min_hwe_kernel=None,
             hwe_kernel=None, node_type=NODE_TYPE.MACHINE, updated=None,
             created=None, zone=None, networks=None, sortable_name=False,
             power_type=None, power_parameters=None, power_state=None,
@@ -418,6 +418,8 @@ class Factory(maastesting.factory.Factory):
             hostname = self.make_string(20)
         if domain is None:
             domain = Domain.objects.get_default_domain()
+        if description is None:
+            description = ''
         if sortable_name:
             hostname = hostname.lower()
         if status is None:
@@ -436,7 +438,7 @@ class Factory(maastesting.factory.Factory):
         node = Node(
             hostname=hostname, status=status, architecture=architecture,
             min_hwe_kernel=min_hwe_kernel, hwe_kernel=hwe_kernel,
-            node_type=node_type, zone=zone,
+            node_type=node_type, zone=zone, description=description,
             power_state=power_state, power_state_updated=power_state_updated,
             domain=domain, bmc=bmc, hardware_uuid=hardware_uuid,
             ephemeral_deploy=ephemeral_deploy, **kwargs)
