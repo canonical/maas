@@ -396,6 +396,28 @@ function maasMachinesTable(
         return;
       }
 
+      if (field === "owner") {
+        const grouped = $scope.groupBy(
+          $scope.table.filteredMachines,
+          machine => machine.owner
+        );
+
+        const groupedByOwner = Array.from(grouped).map(
+          ([label, machines]) => {
+            if (label == "") {
+              label = "No owner";
+            }
+            return {
+              label,
+              machines
+            };
+          }
+        );
+
+        $scope.groupedMachines = groupedByOwner;
+        return;
+      }
+
       $scope.groupedMachines = [
         {
           label: 'none',

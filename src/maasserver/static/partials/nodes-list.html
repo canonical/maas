@@ -977,6 +977,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                 <div>
                     <select data-ng-model="tabs.machines.groupByLabel" ng-init="tabs.machines.groupByLabel='status'">
                         <option value="status" selected="selected">Group by status</option>
+                        <option value="owner">Group by owner</option>
                         <option value="none">No Grouping</option>
                     </select>
                 </div>

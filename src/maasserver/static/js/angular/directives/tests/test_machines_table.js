@@ -871,5 +871,19 @@ describe("maasMachinesTable", function() {
                  { label: 'Other', machines: []}]);
         });
 
+        it("returns machines grouped by owner", () => {
+            const directive = compileDirective();
+            const scope = directive.isolateScope();
+
+            const machines = [makeMachine(), makeMachine()];
+            machines[0].owner = 'admin';
+            machines[1].owner = 'user1';
+            scope.filteredMachines = machines;
+            scope.updateGroupedMachines('owner');
+
+            expect(scope.groupedMachines).toEqual(
+                [{ label: 'admin', machines: [machines[0]] },
+                 { label: 'user1', machines: [machines[1]]}]);
+        });
     });
 });
