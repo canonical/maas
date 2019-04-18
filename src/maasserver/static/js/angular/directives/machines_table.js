@@ -29,7 +29,7 @@ function maasMachinesTable(
       'static/partials/machines-table.html?v=' + (
         $window.MAAS_config.files_version)),
     link: function(scope) {
-      $document.on('click', event => {
+      scope.clickHandler = event => {
         const targetClasses = event.target.classList || [];
         const parentClasses = event.target.parentNode.classList || [];
 
@@ -40,7 +40,10 @@ function maasMachinesTable(
           return;
         }
         scope.$apply(scope.closeMenu);
-      });
+      };
+
+      $document.on('click', scope.clickHandler);
+      scope.$on('$destroy', () => $document.off('click', scope.clickHandler));
     },
     controller: MachinesTableController
   };
@@ -593,9 +596,8 @@ function maasMachinesTable(
       } else {
         $log.error(error);
       }
-    }
+    };
   }
-
 }
 
 export default maasMachinesTable;
