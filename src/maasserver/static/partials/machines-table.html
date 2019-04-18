@@ -1,7 +1,6 @@
-
-<table class="p-table--sortable p-table--machines" role="grid">
+<table data-ng-repeat="group in groupedMachines" class="p-table--sortable p-table--machines" role="grid">
     <thead>
-        <tr class="p-table__row">
+        <tr class="p-table__row" data-ng-if="$first">
             <th class="p-table__col--name p-double-row u-align--left">
                 <div class="p-double-row__checkbox" data-ng-if="!hideCheckboxes">
                     <input class="checkbox" type="checkbox" data-ng-click="toggleCheckAll()" data-ng-checked="table.allViewableChecked" id="check-all" data-ng-disabled="ngDisabled()" />
@@ -48,9 +47,24 @@
             <th class="p-table__col--disks u-align--right" role="columnheader" data-ng-click="sortTable('physical_disk_count')" data-ng-class="{'is-sorted': table.predicate === 'physical_disk_count', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="Disks">Disks</th>
             <th class="p-table__col--storage u-align--right" role="columnheader" data-ng-click="sortTable('storage')" data-ng-class="{'is-sorted': table.predicate === 'storage', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="Storage">Storage</th>
         </tr>
+        <tr class="p-table__row" data-ng-if="group.label != 'none' && group.machines.length && !actionOption && search != 'in:(Selected)'">
+            <th class="p-table__col--name p-double-row u-align--left">{$ group.label $}</th>
+            <th class="p-table__col--power" role="columnheader"></th>
+            <th class="p-table__col--status p-double-row" title="Status"></th>
+            <th class="p-table__col--owner p-double-row" title="Owner, Tags"></th>
+            <th class="p-table__col--pool" title="Pool" role="columnheader"></th>
+            <th class="p-table__col--zone p-double-row" title="Zone"></th>
+            <th class="p-table__col--fabric p-double-row" title="Fabric, VLAN"></th>
+            <th class="p-table__col--cores u-align--right" role="columnheader"></th>
+            <th class="p-table__col--ram u-align--right" role="columnheader"></th>
+            <th class="p-table__col--disks u-align--right" role="columnheader"></th>
+            <th class="p-table__col--storage u-align--right" role="columnheader"></th>
+        </tr>
     </thead>
-    <tbody vs-repeat vs-scroll-parent="window">
-        <tr class="p-table__row" data-ng-repeat="node in table.filteredMachines = (table.machines | nodesFilter:search | orderBy:table.predicate:table.reverse) track by node.system_id" data-ng-class="{ 'table--error': machineHasError({ $machine: node }), 'is-active': node.$selected }">
+    <tbody vs-repeat>
+        <tr class="p-table__row" data-ng-repeat="node in group.machines | nodesFilter:search | orderBy:table.predicate:table.reverse track by node.system_id"
+            data-ng-class="{ 'table--error': machineHasError({ $machine: node }),
+                             'is-active': node.$selected }">
             <td class="p-table__col--name p-double-row" aria-label="FQDN" data-ng-if="table.column === 'fqdn' || table.column === 'ip_address'">
                 <div class="p-double-row__checkbox" data-ng-if="!hideCheckboxes">
                     <input type="checkbox" data-ng-click="toggleChecked(node)" data-ng-checked="node.$selected" id="{$ node.fqdn $}" data-ng-disabled="ngDisable()" />

@@ -77,7 +77,7 @@ describe("maasMachinesTable", function() {
           reverse: false,
           allViewableChecked: false,
           machines: MachinesManager.getItems(),
-          filteredMachines: [],
+          filteredMachines: MachinesManager.getItems(),
           osinfo: GeneralManager.getData("osinfo")
         });
         expect(scope.table.machines).toBe(MachinesManager.getItems());
@@ -813,5 +813,63 @@ describe("maasMachinesTable", function() {
             expect(scope.getActionSentence("on", machine))
                 .toEqual(`power on ${machine.hostname}`);
         });
+    });
+
+    describe("groupBy", () => {
+        it("returns a grouped map accessible by key", () => {
+            const directive = compileDirective();
+            const scope = directive.isolateScope();
+            const items = [
+                {id: 1, type: 'a'},
+                {id: 2, type: 'a'},
+                {id: 3, type: 'b'}
+            ];
+            const grouped = scope.groupBy(items, item => item.type);
+
+            expect(grouped.get('a')).toEqual(
+                [{id:1, type: 'a'}, {id:2, type: 'a'}]);
+            expect(grouped.get('b')).toEqual(
+                [{id:3, type: 'b'}]);
+
+        });
+    });
+
+    describe("updateGroupedMachines", () => {
+        it("returns ungrouped machines with label 'none'", () => {
+            const directive = compileDirective();
+            const scope = directive.isolateScope();
+
+            const machines = [makeMachine(), makeMachine()];
+            scope.filteredMachines = machines;
+            scope.updateGroupedMachines('none');
+
+            expect(scope.groupedMachines).toEqual(
+                [{ label: 'none', machines }])
+        });
+
+        it("returns machines grouped by status", () => {
+            const directive = compileDirective();
+            const scope = directive.isolateScope();
+
+            const machines = [makeMachine(), makeMachine()];
+            machines[0].status = 'New';
+            machines[1].status = 'Broken';
+            scope.filteredMachines = machines;
+            scope.updateGroupedMachines('status');
+
+            expect(scope.groupedMachines).toEqual(
+                [{ label: 'New', machines: [machines[0]] },
+                 { label: 'Commissioning', machines: []},
+                 { label: 'Ready', machines: []},
+                 { label: 'Allocated and deployed', machines: []},
+                 { label: 'Deploying', machines: []},
+                 { label: 'Testing', machines: []},
+                 { label: 'Disk erasing', machines: []},
+                 { label: 'Rescue mode', machines: []},
+                 { label: 'Failures', machines: [machines[1]]},
+                 { label: 'Retired', machines: []},
+                 { label: 'Other', machines: []}]);
+        });
+
     });
 });

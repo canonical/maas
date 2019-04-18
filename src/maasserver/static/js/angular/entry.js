@@ -8,13 +8,6 @@
  * conflicts with Django templates.
  */
 
-/*
-import angular from "angular";
-import ngRoute from 'angular-route';
-import ngCookies from 'angular-cookies';
-import ngSanitize from 'angular-sanitize';
-*/
-
 // Run template caches
 import { cacheActionButton } from "./directives/action_button";
 import { cacheCta } from "./directives/call_to_action";

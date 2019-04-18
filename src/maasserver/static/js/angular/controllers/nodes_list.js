@@ -6,7 +6,7 @@
 
 /* @ngInject */
 function NodesListController(
-    $q, $scope, $interval, $rootScope, $routeParams, $location,
+    $q, $scope, $interval, $rootScope, $routeParams, $location, $window,
     MachinesManager, DevicesManager, ControllersManager, GeneralManager,
     ManagerHelperService, SearchService, ZonesManager, UsersManager,
     ServicesManager, ScriptsManager, SwitchesManager,
@@ -24,7 +24,7 @@ function NodesListController(
     $rootScope.page = "machines";
 
     // Set initial values.
-    $scope.MAAS_config = MAAS_config;
+    $scope.MAAS_config = $window.MAAS_config;
     $scope.machines = MachinesManager.getItems();
     $scope.zones = ZonesManager.getItems();
     $scope.pools = ResourcePoolsManager.getItems();

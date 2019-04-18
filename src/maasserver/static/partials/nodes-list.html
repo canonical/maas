@@ -961,7 +961,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
         </aside>
         <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
         <div class="col-12 ng-hide" data-ng-show="currentpage === 'machines'">
-            <form>
+            <form class="p-space-between">
                 <div id="search-bar" class="p-search-box prefix-3 mobile-prefix-2">
                     <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
                     <input
@@ -973,13 +973,26 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                         data-ng-click="clearSearch('machines')"
                         data-ng-show="tabs.machines.search.length > 0"><i class="p-icon--close"></i></button>
                     <button type="submit" class="p-search-box__button" alt="search"><i class="p-icon--search"></i></button>
-
                 </div>
                 <div>
-                    <maas-machines-table id="machines-listing" search="tabs.machines.search" action-option="tabs.machines.actionOption"
-                    ng-disabled="hasActionsInProgress('machines')" machine-has-error="!supportsAction($machine, 'machines')"
-                    on-listing-change="onNodeListingChanged($machines, 'machines')" on-check-all="toggleCheckAll('machines')"
-                    on-check="toggleChecked($machine, 'machines')" pools="pools" zones="zones"></maas-machines-table>
+                    <select data-ng-model="tabs.machines.groupByLabel" ng-init="tabs.machines.groupByLabel='status'">
+                        <option value="status" selected="selected">Group by status</option>
+                        <option value="none">No Grouping</option>
+                    </select>
+                </div>
+                <div>
+                    <maas-machines-table id="machines-listing"
+                        search="tabs.machines.search"
+                        group-by-label="tabs.machines.groupByLabel"
+                        action-option="tabs.machines.actionOption"
+                        ng-disabled="hasActionsInProgress('machines')"
+                        machine-has-error="!supportsAction($machine, 'machines')"
+                        on-listing-change="onNodeListingChanged($machines, 'machines')"
+                        on-check-all="toggleCheckAll('machines')"
+                        on-check="toggleChecked($machine, 'machines')"
+                        pools="pools"
+                        zones="zones">
+                    </maas-machines-table>
                 </div>
             </form>
         </div>
