@@ -1,4 +1,4 @@
-# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Node actions.
@@ -44,6 +44,7 @@ from maasserver.exceptions import (
     StaticIPAddressExhaustion,
 )
 from maasserver.models import (
+    Config,
     ResourcePool,
     Tag,
     Zone,
@@ -476,6 +477,12 @@ class Deploy(NodeAction):
                 self.node.save()
             except ValidationError as e:
                 raise NodeActionError(e)
+        else:
+            configs = Config.objects.get_configs(
+                ['default_osystem', 'default_distro_series'])
+            self.node.osystem = configs['default_osystem']
+            self.node.distro_series = configs['default_distro_series']
+            self.node.save()
         try:
             self.node.hwe_kernel = validate_hwe_kernel(
                 hwe_kernel, self.node.min_hwe_kernel,
