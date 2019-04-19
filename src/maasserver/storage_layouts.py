@@ -138,13 +138,15 @@ class StorageLayoutBase(Form):
     def get_root_device(self):
         """Get the device that should be the root partition.
 
-        Return of None means to use the boot disk.
+        Return the boot_disk if no root_device was defined.
         """
         if self.cleaned_data.get('root_device'):
             root_id = self.cleaned_data['root_device']
             return self.node.physicalblockdevice_set.get(id=root_id)
         else:
-            return None
+            # User didn't specify a root disk so use the currently defined
+            # boot disk.
+            return self.boot_disk
 
     def get_boot_size(self):
         """Get the size of the boot partition."""
@@ -209,7 +211,7 @@ class StorageLayoutBase(Form):
                 mount_point="/boot")
         root_device = self.get_root_device()
         root_size = self.get_root_size()
-        if root_device is None or root_device == self.boot_disk:
+        if root_device == self.boot_disk:
             partition_table = boot_partition_table
             root_device = self.boot_disk
         else:
@@ -566,7 +568,7 @@ class VMFS6Layout(StorageLayoutBase):
         from maasserver.models.partitiontable import PartitionTable
 
         boot_partition_table = PartitionTable.objects.create(
-            block_device=self.boot_disk,
+            block_device=self.get_root_device(),
             table_type=PARTITION_TABLE_TYPE.GPT)
         now = datetime.now()
         new_part = partial(
@@ -598,7 +600,11 @@ class VMFS6Layout(StorageLayoutBase):
             new_part(size=2560 * 1024 ** 2),
         ])
         vmfs_part = boot_partition_table.partitions.get(size=0)
-        vmfs_part.size = boot_partition_table.get_available_size()
+        root_size = self.get_root_size()
+        if root_size is not None:
+            vmfs_part.size = root_size
+        else:
+            vmfs_part.size = boot_partition_table.get_available_size()
         vmfs_part.save()
         # datastore1 is the default name VMware uses.
         VMFS.objects.create_vmfs(name="datastore1", partitions=[vmfs_part])
