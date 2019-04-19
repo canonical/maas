@@ -654,6 +654,9 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         @param (boolean) "ephemeral_deploy" [required=false] If true, machine
         will be deployed ephemerally even if it has disks.
 
+        @param (boolean) "vcenter_registration" [required=false] If false, do
+        not send globally defined VMware vCenter credentials to the machine.
+
         @success (http-status-code) "200" 200
         @success (json) "success-json" A JSON object containing information
         about the deployed machine.
@@ -743,6 +746,18 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
             except Exception as e:
                 raise MAASAPIBadRequest(
                     "Failed to render preseed: %s" % e)
+
+        if machine.osystem == 'esxi' and request.user.has_perm(
+                NodePermission.admin, machine):
+            if get_optional_param(
+                    request.POST, 'vcenter_registration', default=True,
+                    validator=StringBool):
+                NodeMetadata.objects.update_or_create(
+                    node=machine, key='vcenter_registration',
+                    defaults={'value': 'True'})
+            else:
+                NodeMetadata.objects.filter(
+                    node=machine, key='vcenter_registration').delete()
 
         return self.power_on(request, system_id)
 
@@ -904,7 +919,7 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         @param (string) "{system_id}" [required=true] The machines's system_id.
 
         @param (string) "storage_layout" [required=true] Storage layout for the
-        machine: ``flat``, ``lvm``, and ``bcache``.
+        machine: ``flat``, ``lvm``, ``bcache``, ``vmfs6``, or ``blank``.
 
         @param (string) "boot_size" [required=false] All layouts. Size of the
         boot partition (e.g. 512M, 1G).

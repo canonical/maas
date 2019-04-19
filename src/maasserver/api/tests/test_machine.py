@@ -824,6 +824,167 @@ class TestMachineAPI(APITestCase.ForUser):
                 bridge_all=True, bridge_fd=7,
                 bridge_stp=True, comment=None))
 
+    def test_POST_deploy_stores_vcenter_registration_by_default(self):
+        self.become_admin()
+        self.patch(node_module.Node, "_start")
+        self.patch(machines_module, "get_curtin_merged_config")
+        machine = factory.make_Node(
+            owner=self.user, interface=True,
+            power_type='manual',
+            status=NODE_STATUS.READY,
+            architecture=make_usable_architecture(self))
+        osystem = make_usable_osystem(self, 'esxi', ['6.7'])
+        distro_series = osystem['default_release']
+        response = self.client.post(
+            self.get_machine_uri(machine), {
+                'op': 'deploy',
+                'distro_series': distro_series,
+            })
+        self.assertEqual(
+            (http.client.OK, machine.system_id),
+            (response.status_code,
+             json_load_bytes(response.content)['system_id']))
+        self.assertTrue(
+            machine.nodemetadata_set.filter(
+                key='vcenter_registration').exists())
+
+    def test_POST_deploy_stores_vcenter_registration_when_defined(self):
+        self.become_admin()
+        self.patch(node_module.Node, "_start")
+        self.patch(machines_module, "get_curtin_merged_config")
+        machine = factory.make_Node(
+            owner=self.user, interface=True,
+            power_type='manual',
+            status=NODE_STATUS.READY,
+            architecture=make_usable_architecture(self))
+        osystem = make_usable_osystem(self, 'esxi', ['6.7'])
+        distro_series = osystem['default_release']
+        response = self.client.post(
+            self.get_machine_uri(machine), {
+                'op': 'deploy',
+                'distro_series': distro_series,
+                'vcenter_registration': True,
+            })
+        self.assertEqual(
+            (http.client.OK, machine.system_id),
+            (response.status_code,
+             json_load_bytes(response.content)['system_id']))
+        self.assertTrue(
+            machine.nodemetadata_set.filter(
+                key='vcenter_registration').exists())
+
+    def test_POST_deploy_removes_vcenter_registration_when_false(self):
+        self.become_admin()
+        self.patch(node_module.Node, "_start")
+        self.patch(machines_module, "get_curtin_merged_config")
+        machine = factory.make_Node(
+            owner=self.user, interface=True,
+            power_type='manual',
+            status=NODE_STATUS.READY,
+            architecture=make_usable_architecture(self))
+        machine.nodemetadata_set.create(
+            key='vcenter_registration', value='True')
+        osystem = make_usable_osystem(self, 'esxi', ['6.7'])
+        distro_series = osystem['default_release']
+        response = self.client.post(
+            self.get_machine_uri(machine), {
+                'op': 'deploy',
+                'distro_series': distro_series,
+                'vcenter_registration': False,
+            })
+        self.assertEqual(
+            (http.client.OK, machine.system_id),
+            (response.status_code,
+             json_load_bytes(response.content)['system_id']))
+        self.assertFalse(
+            machine.nodemetadata_set.filter(
+                key='vcenter_registration').exists())
+
+    def test_POST_deploy_sets_vcenter_registration_only_when_esxi(self):
+        self.become_admin()
+        self.patch(node_module.Node, "_start")
+        self.patch(machines_module, "get_curtin_merged_config")
+        machine = factory.make_Node(
+            owner=self.user, interface=True,
+            power_type='manual',
+            status=NODE_STATUS.READY,
+            architecture=make_usable_architecture(self))
+        osystem = make_usable_osystem(self)
+        distro_series = osystem['default_release']
+        response = self.client.post(
+            self.get_machine_uri(machine), {
+                'op': 'deploy',
+                'distro_series': distro_series,
+                'vcenter_registration': True,
+            })
+        self.assertEqual(
+            (http.client.OK, machine.system_id),
+            (response.status_code,
+             json_load_bytes(response.content)['system_id']))
+        self.assertFalse(
+            machine.nodemetadata_set.filter(
+                key='vcenter_registration').exists())
+
+    def test_POST_deploy_sets_vcenter_registration_rbac_admin(self):
+        self.patch(node_module.Node, "_start")
+        self.patch(machines_module, "get_curtin_merged_config")
+        self.patch(auth, 'validate_user_external_auth').return_value = True
+        rbac = self.useFixture(RBACEnabled())
+        self.become_non_local()
+        # The api allows the updating of a Machine.
+        machine = factory.make_Node(
+            hostname='diane', owner=self.user, interface=True,
+            power_type='manual',
+            status=NODE_STATUS.READY,
+            architecture=make_usable_architecture(self))
+        rbac.store.add_pool(machine.pool)
+        rbac.store.allow(self.user.username, machine.pool, 'admin-machines')
+        osystem = make_usable_osystem(self, 'esxi', ['6.7'])
+        distro_series = osystem['default_release']
+        response = self.client.post(
+            self.get_machine_uri(machine), {
+                'op': 'deploy',
+                'distro_series': distro_series,
+                'vcenter_registration': True,
+            })
+        self.assertEqual(
+            (http.client.OK, machine.system_id),
+            (response.status_code,
+             json_load_bytes(response.content)['system_id']))
+        self.assertTrue(
+            machine.nodemetadata_set.filter(
+                key='vcenter_registration').exists())
+
+    def test_POST_deploy_doesnt_set_vcenter_registration_rbac_user(self):
+        self.patch(node_module.Node, "_start")
+        self.patch(machines_module, "get_curtin_merged_config")
+        self.patch(auth, 'validate_user_external_auth').return_value = True
+        rbac = self.useFixture(RBACEnabled())
+        self.become_non_local()
+        # The api allows the updating of a Machine.
+        machine = factory.make_Node(
+            owner=self.user, interface=True,
+            power_type='manual',
+            status=NODE_STATUS.READY,
+            architecture=make_usable_architecture(self))
+        rbac.store.add_pool(machine.pool)
+        rbac.store.allow(self.user.username, machine.pool, 'deploy-machines')
+        osystem = make_usable_osystem(self, 'esxi', ['6.7'])
+        distro_series = osystem['default_release']
+        response = self.client.post(
+            self.get_machine_uri(machine), {
+                'op': 'deploy',
+                'distro_series': distro_series,
+                'vcenter_registration': True,
+            })
+        self.assertEqual(
+            (http.client.OK, machine.system_id),
+            (response.status_code,
+             json_load_bytes(response.content)['system_id']))
+        self.assertFalse(
+            machine.nodemetadata_set.filter(
+                key='vcenter_registration').exists())
+
     def test_POST_release_releases_owned_machine(self):
         self.patch(node_module.Machine, '_stop')
         owned_statuses = [

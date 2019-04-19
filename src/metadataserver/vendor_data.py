@@ -17,6 +17,7 @@ from maasserver.models import (
     Config,
     NodeMetadata,
 )
+from maasserver.permissions import NodePermission
 from maasserver.preseed import get_network_yaml_settings
 from maasserver.preseed_network import NodeNetworkConfiguration
 from maasserver.server_address import get_maas_facing_server_host
@@ -205,6 +206,15 @@ def generate_vcenter_configuration(node):
     """Generate vendor config when deploying ESXi."""
     if node.osystem != 'esxi':
         # Only return vcenter credentials if vcenter is being deployed.
+        return
+    if not node.owner or not node.owner.has_perm(NodePermission.admin, node):
+        # VMware vCenter credentials are only given to machines deployed by
+        # administrators.
+        return
+    vcenter_registration = NodeMetadata.objects.get(
+        node=node, key='vcenter_registration')
+    if not vcenter_registration:
+        # Only send credentials if told to at deployment time.
         return
     # Only send values that aren't blank.
     configs = {
