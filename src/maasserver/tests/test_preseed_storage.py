@@ -29,7 +29,7 @@ from maasserver.models.partitiontable import (
     PREP_PARTITION_SIZE,
 )
 from maasserver.preseed_storage import compose_curtin_storage_config
-from maasserver.storage_layouts import VMFS6Layout
+from maasserver.storage_layouts import VMFS6StorageLayout
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from testtools.content import text_content
@@ -2203,7 +2203,7 @@ class TestVMFS(MAASServerTestCase, AssertStorageConfigMixin):
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node, size=100 * 1024 ** 3, name='sda',
             model='vendor', serial='serial-a')
-        layout = VMFS6Layout(node)
+        layout = VMFS6StorageLayout(node)
         layout.configure()
         extra_disk = factory.make_PhysicalBlockDevice(
             node=node, size=100 * 1024 ** 3, name='sdb', model='vendor',

@@ -142,7 +142,7 @@ import maasserver.server_address as server_address_module
 from maasserver.storage_layouts import (
     StorageLayoutError,
     StorageLayoutMissingBootDiskError,
-    VMFS6Layout,
+    VMFS6StorageLayout,
 )
 from maasserver.testing.eventloop import (
     RegionEventLoopFixture,
@@ -7197,7 +7197,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
         node = factory.make_Node(
             osystem='esxi', distro_series='6.7', with_boot_disk=False)
         factory.make_PhysicalBlockDevice(node=node, size=(100 * 1024 ** 3))
-        layout = VMFS6Layout(node)
+        layout = VMFS6StorageLayout(node)
         layout.configure()
         self.assertItemsEqual([], node.storage_layout_issues())
 
@@ -7206,7 +7206,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
             osystem=random.choice(['ubuntu', 'centos', 'rhel']),
             with_boot_disk=False)
         factory.make_PhysicalBlockDevice(node=node, size=(100 * 1024 ** 3))
-        layout = VMFS6Layout(node)
+        layout = VMFS6StorageLayout(node)
         layout.configure()
         self.assertItemsEqual([
             "Mount the root '/' filesystem to be able to deploy this node.",

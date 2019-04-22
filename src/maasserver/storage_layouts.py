@@ -7,7 +7,6 @@ __all__ = [
     ]
 
 from datetime import datetime
-from functools import partial
 
 from django import forms
 from django.core.exceptions import ValidationError
@@ -68,7 +67,13 @@ class StorageLayoutBase(Form):
 
     def _load_physical_block_devices(self):
         """Load all the `PhysicalBlockDevice`'s for node."""
-        return list(self.node.physicalblockdevice_set.order_by('id').all())
+        # The websocket prefetches node.blockdevice_set, creating a queryset
+        # on node.physicalblockdevice_set adds addtional queries.
+        return sorted(
+            [
+                bd.actual_instance for bd in self.node.blockdevice_set.all()
+                if bd.type == "physical"
+            ], key=lambda bd: bd.id)
 
     def setup_root_device_field(self):
         """Setup the possible root devices."""
@@ -241,6 +246,44 @@ class StorageLayoutBase(Form):
         """
         raise NotImplementedError()
 
+    def is_uefi_partition(self, partition):
+        """Returns whether or not the given partition is a UEFI partition."""
+        if partition.partition_table.table_type != PARTITION_TABLE_TYPE.GPT:
+            return False
+        if partition.size != EFI_PARTITION_SIZE:
+            return False
+        if not partition.bootable:
+            return False
+        fs = partition.get_effective_filesystem()
+        if fs is None:
+            return False
+        if fs.fstype != FILESYSTEM_TYPE.FAT32:
+            return False
+        if fs.label != "efi":
+            return False
+        if fs.mount_point != "/boot/efi":
+            return False
+        return True
+
+    def is_boot_partition(self, partition):
+        """Returns whether or not the given partition is a boot partition."""
+        if not partition.bootable:
+            return False
+        fs = partition.get_effective_filesystem()
+        if fs is None:
+            return False
+        if fs.fstype != FILESYSTEM_TYPE.EXT4:
+            return False
+        if fs.label != "boot":
+            return False
+        if fs.mount_point != "/boot":
+            return False
+        return True
+
+    def is_layout(self):
+        """Returns the block device the layout was applied on."""
+        raise NotImplementedError()
+
 
 class FlatStorageLayout(StorageLayoutBase):
     """Flat layout.
@@ -262,6 +305,36 @@ class FlatStorageLayout(StorageLayoutBase):
             label="root",
             mount_point="/")
         return "flat"
+
+    def is_layout(self):
+        """Checks if the node is using a flat layout."""
+        for bd in self.block_devices:
+            pt = bd.get_partitiontable()
+            if pt is None:
+                continue
+            for partition in pt.partitions.all():
+                # On UEFI systems the first partition is for the bootloader. If
+                # found check the next partition.
+                if (partition.get_partition_number() == 1 and
+                        self.is_uefi_partition(partition)):
+                    continue
+                # Most layouts allow you to define a boot partition, skip it
+                # if its defined.
+                if self.is_boot_partition(partition):
+                    continue
+                # Check if the partition is an EXT4 partition. If it isn't
+                # move onto the next block device.
+                fs = partition.get_effective_filesystem()
+                if fs is None:
+                    break
+                if fs.fstype != FILESYSTEM_TYPE.EXT4:
+                    break
+                if fs.label != "root":
+                    break
+                if fs.mount_point != "/":
+                    break
+                return bd
+        return None
 
 
 class LVMStorageLayout(StorageLayoutBase):
@@ -366,6 +439,49 @@ class LVMStorageLayout(StorageLayoutBase):
             label="root",
             mount_point="/")
         return "lvm"
+
+    def is_layout(self):
+        """Checks if the node is using an LVM layout."""
+        for bd in self.block_devices:
+            pt = bd.get_partitiontable()
+            if pt is None:
+                continue
+            for partition in pt.partitions.all():
+                # On UEFI systems the first partition is for the bootloader. If
+                # found check the next partition.
+                if (partition.get_partition_number() == 1 and
+                        self.is_uefi_partition(partition)):
+                    continue
+                # Most layouts allow you to define a boot partition, skip it
+                # if its defined.
+                if self.is_boot_partition(partition):
+                    continue
+                # Check if the partition is an LVM PV.
+                fs = partition.get_effective_filesystem()
+                if fs is None:
+                    break
+                if fs.fstype != FILESYSTEM_TYPE.LVM_PV:
+                    break
+                fsg = fs.filesystem_group
+                if fsg is None:
+                    break
+                # Don't use querysets here incase the given data has already
+                # been cached.
+                if len(fsg.virtual_devices.all()) == 0:
+                    break
+                # self.configure() always puts the LV as the first device.
+                vbd = fsg.virtual_devices.all()[0]
+                vfs = vbd.get_effective_filesystem()
+                if vfs is None:
+                    break
+                if vfs.fstype != FILESYSTEM_TYPE.EXT4:
+                    break
+                if vfs.label != "root":
+                    break
+                if vfs.mount_point != "/":
+                    break
+                return bd
+        return None
 
 
 class BcacheStorageLayoutBase(StorageLayoutBase):
@@ -536,8 +652,56 @@ class BcacheStorageLayout(FlatStorageLayout, BcacheStorageLayoutBase):
             mount_point="/")
         return "bcache"
 
+    def is_layout(self):
+        """Checks if the node is using a Bcache layout."""
+        for bd in self.block_devices:
+            pt = bd.get_partitiontable()
+            if pt is None:
+                continue
+            found_boot = False
+            for partition in pt.partitions.all():
+                # On UEFI systems the first partition is for the bootloader. If
+                # found check the next partition.
+                if (partition.get_partition_number() == 1 and
+                        self.is_uefi_partition(partition)):
+                    continue
+                # Bcache always has a boot partition. Keep searching until its
+                # found.
+                if self.is_boot_partition(partition):
+                    found_boot = True
+                    continue
+                elif not found_boot:
+                    continue
+                # Check if the partition is Bcache backing
+                fs = partition.get_effective_filesystem()
+                if fs is None:
+                    break
+                if fs.fstype != FILESYSTEM_TYPE.BCACHE_BACKING:
+                    break
+                fsg = fs.filesystem_group
+                if fsg is None:
+                    break
+                # Don't use querysets here incase the given data has already
+                # been cached.
+                if len(fsg.virtual_devices.all()) == 0:
+                    break
+                # self.configure() always uses the first virtual device for
+                # the EXT4 filesystem.
+                vbd = fsg.virtual_devices.all()[0]
+                vfs = vbd.get_effective_filesystem()
+                if vfs is None:
+                    break
+                if vfs.fstype != FILESYSTEM_TYPE.EXT4:
+                    break
+                if vfs.label != "root":
+                    break
+                if vfs.mount_point != "/":
+                    break
+                return bd
+        return None
 
-class VMFS6Layout(StorageLayoutBase):
+
+class VMFS6StorageLayout(StorageLayoutBase):
     """VMFS6 layout.
 
     The VMware ESXi 6+ image is a DD. The image has 8 partitions which are
@@ -555,6 +719,26 @@ class VMFS6Layout(StorageLayoutBase):
     VMFS                3           Remaining 7555          End of disk
     """
 
+    base_partitions = [
+        # EFI System
+        {'size': 3 * 1024 ** 2, 'bootable': True},
+        # Basic Data
+        {'size': 4 * 1024 ** 3},
+        # VMFS Datastore, size is 0 so the partition order is correct, its
+        # fixed after everything is applied.
+        {'size': 0},
+        # Basic Data
+        {'size': 249 * 1024 ** 2},
+        # Basic Data
+        {'size': 249 * 1024 ** 2},
+        # VMKCore Diagnostic
+        {'size': 109 * 1024 ** 2},
+        # Basic Data
+        {'size': 285 * 1024 ** 2},
+        # VMKCore Diagnostic
+        {'size': 2560 * 1024 ** 2},
+    ]
+
     def clean(self):
         cleaned_data = super().clean()
         if self.boot_disk.size < 1024 ** 3:
@@ -571,9 +755,6 @@ class VMFS6Layout(StorageLayoutBase):
             block_device=self.get_root_device(),
             table_type=PARTITION_TABLE_TYPE.GPT)
         now = datetime.now()
-        new_part = partial(
-            Partition, partition_table=boot_partition_table,
-            created=now, updated=now)
         # The model rounds partition sizes for performance and has a min size
         # of 4MB. VMware ESXi does not conform to these constraints so add each
         # partition directly to get around the model. VMware ESXi always uses
@@ -581,23 +762,10 @@ class VMFS6Layout(StorageLayoutBase):
         # get around so leave them unset.
         # See https://kb.vmware.com/s/article/1036609
         Partition.objects.bulk_create([
-            # EFI System
-            new_part(size=3 * 1024 ** 2, bootable=True),
-            # Basic Data
-            new_part(size=4 * 1024 ** 3),
-            # VMFS Datastore, size is 0 so the partition order is correct, its
-            # fixed below.
-            new_part(size=0),
-            # Basic Data
-            new_part(size=249 * 1024 ** 2),
-            # Basic Data
-            new_part(size=249 * 1024 ** 2),
-            # VMKCore Diagnostic
-            new_part(size=109 * 1024 ** 2),
-            # Basic Data
-            new_part(size=285 * 1024 ** 2),
-            # VMKCore Diagnostic
-            new_part(size=2560 * 1024 ** 2),
+            Partition(
+                partition_table=boot_partition_table, created=now, updated=now,
+                **partition)
+            for partition in self.base_partitions
         ])
         vmfs_part = boot_partition_table.partitions.get(size=0)
         root_size = self.get_root_size()
@@ -609,6 +777,33 @@ class VMFS6Layout(StorageLayoutBase):
         # datastore1 is the default name VMware uses.
         VMFS.objects.create_vmfs(name="datastore1", partitions=[vmfs_part])
         return "VMFS6"
+
+    def is_layout(self):
+        """Checks if the node is using a VMFS6 layout."""
+        for bd in self.block_devices:
+            pt = bd.get_partitiontable()
+            if pt is None:
+                continue
+            if pt.table_type != PARTITION_TABLE_TYPE.GPT:
+                continue
+            if len(pt.partitions.all()) < len(self.base_partitions):
+                continue
+            ordered_partitions = sorted(
+                pt.partitions.all(),
+                key=lambda part: part.get_partition_number())
+            for i, (partition, base_partition) in enumerate(
+                    zip(ordered_partitions, self.base_partitions)):
+                if partition.bootable != base_partition.get('bootable', False):
+                    break
+                # Skip checking the size of the Datastore partition as that
+                # changes based on available disk size/user input.
+                if base_partition['size'] == 0:
+                    continue
+                if partition.size != base_partition['size']:
+                    break
+                if (i + 1) == len(self.base_partitions):
+                    return bd
+        return None
 
 
 class BlankStorageLayout(StorageLayoutBase):
@@ -624,13 +819,24 @@ class BlankStorageLayout(StorageLayoutBase):
         # Once that is done there is nothing left for us to do.
         return "blank"
 
+    def is_layout(self):
+        """Checks if the node is using a blank layout."""
+        for bd in self.block_devices:
+            if len(bd.filesystem_set.all()) != 0:
+                return None
+            if len(bd.partitiontable_set.all()) != 0:
+                return None
+        # The blank layout is applied to every storage device so return
+        # the boot disk.
+        return self.boot_disk
+
 
 # Holds all the storage layouts that can be used.
 STORAGE_LAYOUTS = {
     "flat": ("Flat layout", FlatStorageLayout),
     "lvm": ("LVM layout", LVMStorageLayout),
     "bcache": ("Bcache layout", BcacheStorageLayout),
-    "vmfs6": ("VMFS6 layout", VMFS6Layout),
+    "vmfs6": ("VMFS6 layout", VMFS6StorageLayout),
     "blank": ("No storage (blank) layout", BlankStorageLayout),
     }
 
@@ -653,6 +859,15 @@ def get_storage_layout_for_node(name, node, params: dict=None):
             node, params=({} if params is None else params))
     else:
         return None
+
+
+def get_applied_storage_layout_for_node(node):
+    """Returns the detected storage layout on the node."""
+    for name, (_, layout_class) in STORAGE_LAYOUTS.items():
+        layout = layout_class(node)
+        if layout.is_layout() is not None:
+            return name
+    return "unknown"
 
 
 class StorageLayoutForm(Form):

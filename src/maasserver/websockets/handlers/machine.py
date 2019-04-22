@@ -116,7 +116,7 @@ class MachineHandler(NodeHandler):
                 'partitiontable_set__partitions')
             .prefetch_related(
                 'blockdevice_set__physicalblockdevice__'
-                'partitiontable_set__partitions')
+                'partitiontable_set__partitions__filesystem_set')
             .prefetch_related(
                 'blockdevice_set__virtualblockdevice__'
                 'partitiontable_set__partitions')

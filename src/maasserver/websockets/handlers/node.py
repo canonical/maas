@@ -34,6 +34,7 @@ from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.tag import Tag
 from maasserver.models.virtualblockdevice import VirtualBlockDevice
 from maasserver.node_action import compile_node_actions
+from maasserver.storage_layouts import get_applied_storage_layout_for_node
 from maasserver.third_party_drivers import get_third_party_driver
 from maasserver.utils.converters import (
     human_readable_bytes,
@@ -322,6 +323,8 @@ class NodeHandler(TimestampedModelHandler):
                 ]
                 data["grouped_storages"] = self.get_grouped_storages(
                     physical_blockdevices)
+                detected_layout = get_applied_storage_layout_for_node(obj)
+                data["detected_storage_layout"] = detected_layout
 
                 # Events
                 data["events"] = self.dehydrate_events(obj)

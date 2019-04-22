@@ -66,7 +66,10 @@ from maasserver.rbac import (
     FakeRBACClient,
     rbac,
 )
-from maasserver.storage_layouts import get_storage_layout_choices
+from maasserver.storage_layouts import (
+    get_applied_storage_layout_for_node,
+    get_storage_layout_choices,
+)
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import (
@@ -369,6 +372,8 @@ class TestMachineHandler(MAASServerTestCase):
                 "dhcp_on": node.interface_set.filter(
                     vlan__dhcp_on=True).exists(),
                 "grouped_storages": handler.get_grouped_storages(blockdevices),
+                "detected_storage_layout": get_applied_storage_layout_for_node(
+                    node),
                 "metadata": {},
             })
 
