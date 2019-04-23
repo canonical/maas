@@ -2125,42 +2125,42 @@ class TestVMFS(MAASServerTestCase, AssertStorageConfigMixin):
             size: 99451142144B
             uuid: 54e698a9-e15d-409b-9e0a-2791374f6c12
             wipe: superblock
-          - id: sda-part4
-            name: sda-part4
-            device: sda
-            number: 4
-            type: partition
-            size: 261095424B
-            uuid: af8404ca-5d62-402c-8f11-604dc0ba30a6
-            wipe: superblock
           - id: sda-part5
             name: sda-part5
             device: sda
             number: 5
             type: partition
             size: 261095424B
-            uuid: 34949af8-dc2f-4f9a-b81a-f26e12499f7b
+            uuid: af8404ca-5d62-402c-8f11-604dc0ba30a6
             wipe: superblock
           - id: sda-part6
             name: sda-part6
             device: sda
             number: 6
             type: partition
-            size: 114294784B
-            uuid: e29dd323-671e-4e8f-81fe-f1f71492f231
+            size: 261095424B
+            uuid: 34949af8-dc2f-4f9a-b81a-f26e12499f7b
             wipe: superblock
           - id: sda-part7
             name: sda-part7
             device: sda
             number: 7
             type: partition
-            size: 298844160B
-            uuid: 817ddd58-f5af-4d9a-8896-c20c06cf0f7f
+            size: 114294784B
+            uuid: e29dd323-671e-4e8f-81fe-f1f71492f231
             wipe: superblock
           - id: sda-part8
             name: sda-part8
             device: sda
             number: 8
+            type: partition
+            size: 298844160B
+            uuid: 817ddd58-f5af-4d9a-8896-c20c06cf0f7f
+            wipe: superblock
+          - id: sda-part9
+            name: sda-part9
+            device: sda
+            number: 9
             type: partition
             size: 2684354560B
             uuid: b5a745b6-7247-4397-a9a9-d484de69e35c

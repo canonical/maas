@@ -1,10 +1,11 @@
-# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for all forms that are used with `Partition`."""
 
 __all__ = []
 
+import random
 import uuid
 
 from django.core.exceptions import ValidationError
@@ -16,8 +17,10 @@ from maasserver.forms import (
 from maasserver.models import Filesystem
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.partition import PARTITION_ALIGNMENT_SIZE
+from maasserver.storage_layouts import VMFS6StorageLayout
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.tests.test_storage_layouts import LARGE_BLOCK_DEVICE
 from maasserver.utils.converters import round_size_to_nearest_block
 from maasserver.utils.orm import (
     get_one,
@@ -168,6 +171,17 @@ class TestFormatPartitionForm(MAASServerTestCase):
             }
         form = FormatPartitionForm(partition, data=data)
         self.assertRaises(ValidationError, form.save)
+
+    def test_is_not_valid_if_vmfs_partition(self):
+        node = factory.make_Node(with_boot_disk=False)
+        bd = factory.make_PhysicalBlockDevice(
+            node=node, size=LARGE_BLOCK_DEVICE)
+        layout = VMFS6StorageLayout(node)
+        layout.configure()
+        pt = bd.get_partitiontable()
+        partition = random.choice(list(pt.partitions.all()))
+        form = FormatPartitionForm(partition, {'fstype': FILESYSTEM_TYPE.EXT4})
+        self.assertFalse(form.is_valid())
 
     def test_creates_filesystem(self):
         fsuuid = "%s" % uuid.uuid4()

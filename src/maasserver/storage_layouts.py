@@ -69,11 +69,13 @@ class StorageLayoutBase(Form):
         """Load all the `PhysicalBlockDevice`'s for node."""
         # The websocket prefetches node.blockdevice_set, creating a queryset
         # on node.physicalblockdevice_set adds addtional queries.
-        return sorted(
-            [
-                bd.actual_instance for bd in self.node.blockdevice_set.all()
-                if bd.type == "physical"
-            ], key=lambda bd: bd.id)
+        physical_bds = []
+        for bd in self.node.blockdevice_set.all():
+            try:
+                physical_bds.append(bd.physicalblockdevice)
+            except:
+                pass
+        return sorted(physical_bds, key=lambda bd: bd.id)
 
     def setup_root_device_field(self):
         """Setup the possible root devices."""
@@ -789,8 +791,7 @@ class VMFS6StorageLayout(StorageLayoutBase):
             if len(pt.partitions.all()) < len(self.base_partitions):
                 continue
             ordered_partitions = sorted(
-                pt.partitions.all(),
-                key=lambda part: part.get_partition_number())
+                pt.partitions.all(), key=lambda part: part.id)
             for i, (partition, base_partition) in enumerate(
                     zip(ordered_partitions, self.base_partitions)):
                 if partition.bootable != base_partition.get('bootable', False):

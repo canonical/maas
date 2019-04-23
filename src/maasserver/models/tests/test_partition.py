@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `Partition`."""
@@ -28,8 +28,10 @@ from maasserver.models.partitiontable import (
     PARTITION_TABLE_EXTRA_SPACE,
     PREP_PARTITION_SIZE,
 )
+from maasserver.storage_layouts import VMFS6StorageLayout
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.tests.test_storage_layouts import LARGE_BLOCK_DEVICE
 from maasserver.utils.orm import reload_object
 from testtools.matchers import Equals
 
@@ -403,6 +405,17 @@ class TestPartition(MAASServerTestCase):
             self.expectThat(idx, Equals(partition.get_partition_number()))
             idx += 1
 
+    def test_get_partition_number_returns_vmfs_order(self):
+        node = factory.make_Node(with_boot_disk=False)
+        bd = factory.make_PhysicalBlockDevice(
+            node=node, size=LARGE_BLOCK_DEVICE)
+        layout = VMFS6StorageLayout(node)
+        layout.configure()
+        pt = bd.get_partitiontable()
+        self.assertItemsEqual(
+            [1, 2, 3, 5, 6, 7, 8, 9],
+            [part.get_partition_number() for part in pt.partitions.all()])
+
     def test_get_partition_number_returns_starting_at_2_for_amd64_gpt(self):
         node = factory.make_Node(
             architecture="amd64/generic", bios_boot_method="pxe",
@@ -442,6 +455,38 @@ class TestPartition(MAASServerTestCase):
                 # Skip the extended partition.
                 idx += 1
 
+    def test_is_vmfs_partition(self):
+        node = factory.make_Node(with_boot_disk=False)
+        bd = factory.make_PhysicalBlockDevice(
+            node=node, size=LARGE_BLOCK_DEVICE)
+        layout = VMFS6StorageLayout(node)
+        layout.configure()
+        pt = bd.get_partitiontable()
+        for partition in pt.partitions.all():
+            self.assertTrue(partition.is_vmfs_partition())
+
+    def test_is_vmfs_partition_false_no_vmfs(self):
+        partition = factory.make_Partition()
+        self.assertFalse(partition.is_vmfs_partition())
+
+    def test_is_vmfs_partition_false_different_block_device(self):
+        node = factory.make_Node(with_boot_disk=False)
+        factory.make_PhysicalBlockDevice(node=node, size=LARGE_BLOCK_DEVICE)
+        layout = VMFS6StorageLayout(node)
+        layout.configure()
+        other_bd_part = factory.make_Partition(node=node)
+        self.assertFalse(other_bd_part.is_vmfs_partition())
+
+    def test_is_vmfs_partition_false_extra_partition(self):
+        node = factory.make_Node(with_boot_disk=False)
+        bd = factory.make_PhysicalBlockDevice(
+            node=node, size=LARGE_BLOCK_DEVICE)
+        layout = VMFS6StorageLayout(node, {'root_size': 10 * 1024 ** 3})
+        layout.configure()
+        pt = bd.get_partitiontable()
+        extra_partition = pt.add_partition()
+        self.assertFalse(extra_partition.is_vmfs_partition())
+
     def test_delete_not_allowed_if_part_of_filesystem_group(self):
         partition = factory.make_Partition(
             size=1024 ** 3, block_device_size=2 * 1024 ** 3)
@@ -451,6 +496,16 @@ class TestPartition(MAASServerTestCase):
         self.assertEqual(
             "Cannot delete partition because its part of a volume group.",
             error.message)
+
+    def test_delete_not_allowed_if_part_of_vmfs_layout(self):
+        node = factory.make_Node(with_boot_disk=False)
+        bd = factory.make_PhysicalBlockDevice(
+            node=node, size=LARGE_BLOCK_DEVICE)
+        layout = VMFS6StorageLayout(node)
+        layout.configure()
+        pt = bd.get_partitiontable()
+        partition = random.choice(list(pt.partitions.all()))
+        self.assertRaises(ValidationError, partition.delete)
 
     def test_delete(self):
         partition = factory.make_Partition()

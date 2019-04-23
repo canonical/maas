@@ -2632,6 +2632,13 @@ class FormatPartitionForm(Form):
         self.partition = partition
         self.node = partition.get_node()
 
+    def clean(self):
+        cleaned_data = super().clean()
+        if self.partition.is_vmfs_partition():
+            set_form_error(
+                self, 'VMFS6', 'VMFS6 partitions may not be formatted.')
+        return cleaned_data
+
     def save(self):
         """Add the Filesystem to the partition.
 

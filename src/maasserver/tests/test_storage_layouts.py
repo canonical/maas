@@ -1809,11 +1809,11 @@ class TestVMFS6StorageLayout(MAASServerTestCase):
                 node.boot_disk.size - 3 * 1024 ** 2 - 4 * 1024 ** 3 -
                 249 * 1024 ** 2 - 249 * 1024 ** 2 - 109 * 1024 ** 2 -
                 285 * 1024 ** 2 - 2560 * 1024 ** 2 - 5 * 1024 ** 2),
-            '%s-part4' % node.boot_disk.name: 249 * 1024 ** 2,
             '%s-part5' % node.boot_disk.name: 249 * 1024 ** 2,
-            '%s-part6' % node.boot_disk.name: 109 * 1024 ** 2,
-            '%s-part7' % node.boot_disk.name: 285 * 1024 ** 2,
-            '%s-part8' % node.boot_disk.name: 2560 * 1024 ** 2,
+            '%s-part6' % node.boot_disk.name: 249 * 1024 ** 2,
+            '%s-part7' % node.boot_disk.name: 109 * 1024 ** 2,
+            '%s-part8' % node.boot_disk.name: 285 * 1024 ** 2,
+            '%s-part9' % node.boot_disk.name: 2560 * 1024 ** 2,
         }, {part.name: part.size for part in pt.partitions.all()})
 
     def test__clean_validates_min_size(self):
@@ -1843,11 +1843,11 @@ class TestVMFS6StorageLayout(MAASServerTestCase):
                 root_disk.size - 3 * 1024 ** 2 - 4 * 1024 ** 3 -
                 249 * 1024 ** 2 - 249 * 1024 ** 2 - 109 * 1024 ** 2 -
                 285 * 1024 ** 2 - 2560 * 1024 ** 2 - 5 * 1024 ** 2),
-            '%s-part4' % root_disk.name: 249 * 1024 ** 2,
             '%s-part5' % root_disk.name: 249 * 1024 ** 2,
-            '%s-part6' % root_disk.name: 109 * 1024 ** 2,
-            '%s-part7' % root_disk.name: 285 * 1024 ** 2,
-            '%s-part8' % root_disk.name: 2560 * 1024 ** 2,
+            '%s-part6' % root_disk.name: 249 * 1024 ** 2,
+            '%s-part7' % root_disk.name: 109 * 1024 ** 2,
+            '%s-part8' % root_disk.name: 285 * 1024 ** 2,
+            '%s-part9' % root_disk.name: 2560 * 1024 ** 2,
         }, {part.name: part.size for part in pt.partitions.all()})
 
     def test__accepts_root_size_param(self):
@@ -1861,11 +1861,11 @@ class TestVMFS6StorageLayout(MAASServerTestCase):
             '%s-part1' % node.boot_disk.name: 3 * 1024 ** 2,
             '%s-part2' % node.boot_disk.name: 4 * 1024 ** 3,
             '%s-part3' % node.boot_disk.name: 10 * 1024 ** 3,
-            '%s-part4' % node.boot_disk.name: 249 * 1024 ** 2,
             '%s-part5' % node.boot_disk.name: 249 * 1024 ** 2,
-            '%s-part6' % node.boot_disk.name: 109 * 1024 ** 2,
-            '%s-part7' % node.boot_disk.name: 285 * 1024 ** 2,
-            '%s-part8' % node.boot_disk.name: 2560 * 1024 ** 2,
+            '%s-part6' % node.boot_disk.name: 249 * 1024 ** 2,
+            '%s-part7' % node.boot_disk.name: 109 * 1024 ** 2,
+            '%s-part8' % node.boot_disk.name: 285 * 1024 ** 2,
+            '%s-part9' % node.boot_disk.name: 2560 * 1024 ** 2,
         }, {part.name: part.size for part in pt.partitions.all()})
 
     def test__is_layout(self):
