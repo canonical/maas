@@ -1,6 +1,6 @@
-<table data-ng-repeat="group in groupedMachines" class="p-table--sortable p-table--machines" role="grid">
+<table data-ng-repeat="group in groupedMachines" data-ng-if="group.machines.length" class="p-table--sortable p-table--machines" role="grid">
     <thead>
-        <tr class="p-table__row" data-ng-if="$first">
+        <tr class="p-table__header p-table__row" data-ng-if="$first">
             <th class="p-table__col--name p-double-row u-align--left">
                 <div class="p-double-row__checkbox" data-ng-if="!hideCheckboxes">
                     <input class="checkbox" type="checkbox" data-ng-click="toggleCheckAll()" data-ng-checked="table.allViewableChecked" id="check-all" data-ng-disabled="ngDisabled()" />
@@ -50,8 +50,10 @@
             <th class="p-table__col--disks u-align--right" role="columnheader" data-ng-click="sortTable('physical_disk_count')" data-ng-class="{'is-sorted': table.predicate === 'physical_disk_count', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="Disks">Disks</th>
             <th class="p-table__col--storage u-align--right" role="columnheader" data-ng-click="sortTable('storage')" data-ng-class="{'is-sorted': table.predicate === 'storage', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="Storage">Storage</th>
         </tr>
-        <tr class="p-table__row" data-ng-if="group.label != 'none' && group.machines.length && !actionOption && search != 'in:(Selected)'">
-            <th class="p-table__col--name p-double-row u-align--left">{$ group.label $}</th>
+        <tr class="p-table__group p-table__row" data-ng-if="group.label != 'none' && group.machines.length && !actionOption && search != 'in:(Selected)'">
+            <th class="p-table__group-label p-table__col--name p-double-row u-align--left">
+                {$ group.label $}
+            </th>
             <th class="p-table__col--power" role="columnheader"></th>
             <th class="p-table__col--status p-double-row" title="Status"></th>
             <th class="p-table__col--owner p-double-row" title="Owner, Tags"></th>
@@ -67,7 +69,9 @@
     <tbody vs-repeat>
         <tr class="p-table__row" data-ng-repeat="node in group.machines | nodesFilter:search | orderBy:table.predicate:table.reverse track by node.system_id"
             data-ng-class="{ 'table--error': machineHasError({ $machine: node }),
-                             'is-active': node.$selected }">
+                             'is-active': node.$selected,
+                             'is-grouped': group.label !== 'none'
+                            }">
             <td class="p-table__col--name p-double-row" aria-label="FQDN" data-ng-if="table.column === 'fqdn' || table.column === 'ip_address'">
                 <div class="p-double-row__checkbox" data-ng-if="!hideCheckboxes">
                     <input type="checkbox" data-ng-click="toggleChecked(node)" data-ng-checked="node.$selected" id="{$ node.fqdn $}" data-ng-disabled="ngDisable()" />
@@ -256,8 +260,9 @@
                             <span data-ng-if="node.pool.name"><a class="p-link--soft" href="#/pools" title="{$ node.pool.name $}"> {$ node.pool.name $}</a></span>
                             <span data-ng-if="!node.pool.name">-</span>
                         </div>
-                        <div data-ng-if="node.description" class="p-double-row__muted-row" aria-label="Note" title="{$ node.description $}">
-                            <span>{$ node.description $}</span>
+                        <div class="p-double-row__muted-row" aria-label="Note" title="{$ node.description $}">
+                            <span data-ng-if="node.description">{$ node.description $}</span>
+                            <span data-ng-if="!node.description">&nbsp;</span>
                         </div>
                     </div>
                     <button

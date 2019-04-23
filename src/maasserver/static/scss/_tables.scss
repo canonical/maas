@@ -363,7 +363,46 @@
   }
 
   .p-table--machines {
+    $group-padding-left: 2.5rem;
+    @extend %vf-pseudo-border--bottom;
+    margin: 0;
+    position: relative;
+
+    .p-table__header {
+      border-bottom: 1px solid $color-mid-light;
+    }
+
+    .p-table__group {
+      border: 0;
+
+      .p-table__group-label {
+        color: $color-dark;
+        font-size: 1rem;
+        padding: $spv-inter--regular 0 $spv-inter--regular $group-padding-left;
+        text-transform: none;
+      }
+    }
+
     .p-table__row {
+      position: relative;
+
+      &.is-grouped {
+        border: 0;
+
+        &::after {
+          content: '';
+          position: absolute;
+          left: $group-padding-left;
+          right: 0;
+          height: $px;
+          background-color: $color-light-new;
+        }
+
+        & td:first-child {
+          padding-left: $group-padding-left;
+        }
+      }
+
       td {
         vertical-align: top;
       }

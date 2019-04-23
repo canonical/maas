@@ -69,11 +69,6 @@
       &:not(:first-child){
         border-top-color: $color-light-new;
       }
-      &.vs-repeat-after-content,
-      &.vs-repeat-before-content,
-      &.vs-repeat-before-content + tr {
-        border-top-color: transparent; // invisible row after the last one; doesn't need a border-top
-      }
     }
   }
 
