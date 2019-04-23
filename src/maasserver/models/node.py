@@ -78,6 +78,7 @@ from maasserver.enum import (
     ALLOCATED_NODE_STATUSES,
     BMC_TYPE,
     FILESYSTEM_FORMAT_TYPE_CHOICES_DICT,
+    FILESYSTEM_GROUP_TYPE,
     FILESYSTEM_TYPE,
     INTERFACE_LINK_TYPE,
     INTERFACE_TYPE,
@@ -159,6 +160,7 @@ from maasserver.storage_layouts import (
     get_storage_layout_for_node,
     StorageLayoutError,
     StorageLayoutMissingBootDiskError,
+    VMFS6StorageLayout,
 )
 from maasserver.utils import synchronised
 from maasserver.utils.dns import validate_hostname
@@ -1367,6 +1369,22 @@ class Node(CleanSave, TimestampedModel):
         if not has_boot:
             issues.append(
                 "Specify a storage device to be able to deploy this node.")
+        if self.osystem == 'esxi':
+            # MAAS 2.6 added VMware ESXi storage support. To be backwards
+            # compatible with previous versions of MAAS deploying with a Linux
+            # layout is fine. In this case the default VMware ESXi storage
+            # layout is created with a datastore. If the user applied the VMFS
+            # storage layout a datastore must be defined as one will always be
+            # created.
+            vmfs_layout = VMFS6StorageLayout(self)
+            if vmfs_layout.is_layout() is not None:
+                fs_groups = self.virtualblockdevice_set.filter(
+                    filesystem_group__group_type=FILESYSTEM_GROUP_TYPE.VMFS6)
+                if not fs_groups.exists():
+                    issues.append(
+                        "A datastore must be defined when deploying "
+                        "VMware ESXi.")
+                    return issues
         # The remaining storage issue checks are only for Ubuntu, CentOS, and
         # RHEL. All other osystems storage isn't supported or in ESXi's case
         # we ignore unknown filesystems given.

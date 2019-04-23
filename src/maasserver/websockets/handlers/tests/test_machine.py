@@ -69,6 +69,7 @@ from maasserver.rbac import (
 from maasserver.storage_layouts import (
     get_applied_storage_layout_for_node,
     get_storage_layout_choices,
+    VMFS6StorageLayout,
 )
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
@@ -81,6 +82,7 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
+from maasserver.tests.test_storage_layouts import LARGE_BLOCK_DEVICE
 from maasserver.third_party_drivers import get_third_party_driver
 from maasserver.utils.converters import (
     human_readable_bytes,
@@ -2966,18 +2968,22 @@ class TestMachineHandler(MAASServerTestCase):
     def test_create_vmfs_datastore(self):
         user = factory.make_admin()
         handler = MachineHandler(user, {}, None)
-        node = factory.make_Node()
+        node = factory.make_Node(with_boot_disk=False)
+        node.boot_disk = factory.make_PhysicalBlockDevice(
+            node=node, size=LARGE_BLOCK_DEVICE)
+        layout = VMFS6StorageLayout(node)
+        layout.configure()
         bd_ids = [
             factory.make_PhysicalBlockDevice(node=node).id
             for _ in range(3)
         ]
         params = {
             'system_id': node.system_id,
-            'name': 'datastore1',
+            'name': 'datastore2',
             'block_devices': bd_ids,
         }
         handler.create_vmfs_datastore(params)
-        vbd = node.virtualblockdevice_set.get(name='datastore1')
+        vbd = node.virtualblockdevice_set.get(name='datastore2')
         vmfs = vbd.filesystem_group
         self.assertItemsEqual(
             bd_ids,

@@ -7201,6 +7201,17 @@ class TestNode_Start(MAASTransactionServerTestCase):
         layout.configure()
         self.assertItemsEqual([], node.storage_layout_issues())
 
+    def test_storage_layout_issues_is_invalid_no_datastore_on_esxi(self):
+        node = factory.make_Node(
+            osystem='esxi', distro_series='6.7', with_boot_disk=False)
+        factory.make_PhysicalBlockDevice(node=node, size=(100 * 1024 ** 3))
+        layout = VMFS6StorageLayout(node)
+        layout.configure()
+        node.virtualblockdevice_set.delete()
+        self.assertEqual(
+            ["A datastore must be defined when deploying VMware ESXi."],
+            node.storage_layout_issues())
+
     def test_storage_layout_issues_vmfs_not_esxi(self):
         node = factory.make_Node(
             osystem=random.choice(['ubuntu', 'centos', 'rhel']),

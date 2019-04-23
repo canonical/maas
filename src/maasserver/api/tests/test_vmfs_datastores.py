@@ -15,9 +15,11 @@ from maasserver.enum import (
 )
 from maasserver.models.partition import MIN_PARTITION_SIZE
 from maasserver.models.partitiontable import PARTITION_TABLE_EXTRA_SPACE
+from maasserver.storage_layouts import VMFS6StorageLayout
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.matchers import HasStatusCode
+from maasserver.tests.test_storage_layouts import LARGE_BLOCK_DEVICE
 from maasserver.utils.converters import (
     human_readable_bytes,
     json_load_bytes,
@@ -89,7 +91,12 @@ class TestVMFSDatastoresAPI(APITestCase.ForUser):
 
     def test_POST_creates_with_block_devices_and_partitions(self):
         self.become_admin()
-        node = factory.make_Machine(status=NODE_STATUS.READY)
+        node = factory.make_Machine(
+            status=NODE_STATUS.READY, with_boot_disk=False)
+        node.boot_disk = factory.make_PhysicalBlockDevice(
+            node=node, size=LARGE_BLOCK_DEVICE)
+        layout = VMFS6StorageLayout(node)
+        layout.configure()
         block_devices = [
             factory.make_PhysicalBlockDevice(node=node)
             for _ in range(3)

@@ -166,6 +166,7 @@ from maasserver.permissions import (
     NodePermission,
     ResourcePoolPermission,
 )
+from maasserver.storage_layouts import VMFS6StorageLayout
 from maasserver.utils.converters import machine_readable_bytes
 from maasserver.utils.forms import (
     compose_invalid_choice_text,
@@ -3792,6 +3793,17 @@ class CreateLogicalVolumeForm(Form):
 
 class CreateVMFSForm(CreateVolumeGroupForm):
     """For validating and saving a new VMFS group."""
+
+    def clean(self):
+        """Validate that the VMFS6 storage layout is applied."""
+        cleaned_data = super().clean()
+        vmfs_layout = VMFS6StorageLayout(self.node)
+        vmfs_bd = vmfs_layout.is_layout()
+        if vmfs_bd is None:
+            set_form_error(
+                self, 'VMFS6', 'VMFS Datastores may only be created after the '
+                'VMFS6 storage layout has been applied.')
+        return cleaned_data
 
     def save(self):
         """Persist the `VMFS` into the database."""

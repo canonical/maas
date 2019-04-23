@@ -14,20 +14,32 @@ from maasserver.forms import (
 )
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.partitiontable import PARTITION_TABLE_EXTRA_SPACE
+from maasserver.storage_layouts import VMFS6StorageLayout
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.tests.test_storage_layouts import LARGE_BLOCK_DEVICE
+
+
+def make_Node_with_VMFS6_layout(*args, **kwargs):
+    """Create a node with the VMFS6 storage layout applied."""
+    kwargs['with_boot_disk'] = False
+    node = factory.make_Node(*args, **kwargs)
+    factory.make_PhysicalBlockDevice(node=node, size=LARGE_BLOCK_DEVICE)
+    layout = VMFS6StorageLayout(node)
+    layout.configure()
+    return node
 
 
 class TestCreateVMFSForm(MAASServerTestCase):
 
     def test_requires_fields(self):
-        node = factory.make_Node()
+        node = make_Node_with_VMFS6_layout()
         form = CreateVMFSForm(node, data={})
         self.assertFalse(form.is_valid(), form.errors)
         self.assertItemsEqual(['name'], form.errors.keys())
 
     def test_is_not_valid_if_invalid_uuid(self):
-        node = factory.make_Node()
+        node = make_Node_with_VMFS6_layout()
         block_device = factory.make_PhysicalBlockDevice(node=node)
         data = {
             'name': factory.make_name("name"),
@@ -41,7 +53,7 @@ class TestCreateVMFSForm(MAASServerTestCase):
         self.assertEqual({'uuid': ['Enter a valid value.']}, form._errors)
 
     def test_is_not_valid_missing_block_devices_and_partitions(self):
-        node = factory.make_Node()
+        node = make_Node_with_VMFS6_layout()
         data = {
             'name': factory.make_name('name'),
             'uuid': uuid.uuid4(),
@@ -57,7 +69,7 @@ class TestCreateVMFSForm(MAASServerTestCase):
                 ]}, form._errors)
 
     def test_is_not_valid_if_block_device_does_not_belong_to_node(self):
-        node = factory.make_Node()
+        node = make_Node_with_VMFS6_layout()
         block_device = factory.make_PhysicalBlockDevice()
         data = {
             'name': factory.make_name('name'),
@@ -75,7 +87,7 @@ class TestCreateVMFSForm(MAASServerTestCase):
                 ]}, form._errors)
 
     def test_is_not_valid_if_partition_does_not_belong_to_node(self):
-        node = factory.make_Node()
+        node = make_Node_with_VMFS6_layout()
         partition = factory.make_Partition()
         data = {
             'name': factory.make_name('name'),
@@ -92,8 +104,19 @@ class TestCreateVMFSForm(MAASServerTestCase):
                 'choices.' % partition.id,
                 ]}, form._errors)
 
+    def test_is_not_valid_if_vmfs_layout_is_not_applied(self):
+        node = factory.make_Node(with_boot_disk=False)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        data = {
+            'name': factory.make_name('name'),
+            'block_devices': [block_device.id],
+        }
+        form = CreateVMFSForm(node, data=data)
+        self.assertFalse(form.is_valid())
+        self.assertIn('VMFS6', form.errors)
+
     def test_creates_volume_group_with_block_devices(self):
-        node = factory.make_Node()
+        node = make_Node_with_VMFS6_layout()
         block_devices = [
             factory.make_PhysicalBlockDevice(node=node)
             for _ in range(3)
@@ -117,7 +140,7 @@ class TestCreateVMFSForm(MAASServerTestCase):
             ])
 
     def test_creates_with_block_devices_by_name(self):
-        node = factory.make_Node()
+        node = make_Node_with_VMFS6_layout()
         block_devices = [
             factory.make_PhysicalBlockDevice(node=node)
             for _ in range(3)
@@ -142,7 +165,7 @@ class TestCreateVMFSForm(MAASServerTestCase):
             ])
 
     def test_creates_with_partitions(self):
-        node = factory.make_Node()
+        node = make_Node_with_VMFS6_layout()
         block_device = factory.make_PhysicalBlockDevice(
             node=node,
             size=(MIN_BLOCK_DEVICE_SIZE * 3) + PARTITION_TABLE_EXTRA_SPACE)
@@ -168,7 +191,7 @@ class TestCreateVMFSForm(MAASServerTestCase):
             [fs.get_parent().id for fs in vmfs.filesystems.all()])
 
     def test_creates_with_partitions_by_name(self):
-        node = factory.make_Node()
+        node = make_Node_with_VMFS6_layout()
         block_device = factory.make_PhysicalBlockDevice(
             node=node,
             size=(MIN_BLOCK_DEVICE_SIZE * 3) + PARTITION_TABLE_EXTRA_SPACE)
@@ -228,7 +251,7 @@ class TestUpdateVMFSForm(MAASServerTestCase):
         self.assertEqual(new_uuid, vmfs.uuid)
 
     def test_adds_block_device(self):
-        node = factory.make_Node()
+        node = make_Node_with_VMFS6_layout()
         vmfs = factory.make_VMFS(node=node)
         block_device = factory.make_PhysicalBlockDevice(node=node)
         data = {
@@ -243,7 +266,7 @@ class TestUpdateVMFSForm(MAASServerTestCase):
             part.get_effective_filesystem().filesystem_group_id)
 
     def test_adds_block_device_by_name(self):
-        node = factory.make_Node()
+        node = make_Node_with_VMFS6_layout()
         vmfs = factory.make_VMFS(node=node)
         block_device = factory.make_PhysicalBlockDevice(node=node)
         data = {
@@ -258,7 +281,7 @@ class TestUpdateVMFSForm(MAASServerTestCase):
             part.get_effective_filesystem().filesystem_group_id)
 
     def test_adds_partition(self):
-        node = factory.make_Node()
+        node = make_Node_with_VMFS6_layout()
         vmfs = factory.make_VMFS(node=node)
         block_device = factory.make_PhysicalBlockDevice(node=node)
         partition_table = factory.make_PartitionTable(
@@ -275,7 +298,7 @@ class TestUpdateVMFSForm(MAASServerTestCase):
             partition.get_effective_filesystem().filesystem_group.id)
 
     def test_adds_partition_by_name(self):
-        node = factory.make_Node()
+        node = make_Node_with_VMFS6_layout()
         vmfs = factory.make_VMFS(node=node)
         block_device = factory.make_PhysicalBlockDevice(node=node)
         partition_table = factory.make_PartitionTable(
@@ -292,7 +315,7 @@ class TestUpdateVMFSForm(MAASServerTestCase):
             partition.get_effective_filesystem().filesystem_group.id)
 
     def test_removes_partition(self):
-        node = factory.make_Node()
+        node = make_Node_with_VMFS6_layout()
         vmfs = factory.make_VMFS(node=node)
         block_device = factory.make_PhysicalBlockDevice(node=node)
         partition_table = factory.make_PartitionTable(
@@ -310,7 +333,7 @@ class TestUpdateVMFSForm(MAASServerTestCase):
         self.assertIsNone(partition.get_effective_filesystem())
 
     def test_removes_partition_by_name(self):
-        node = factory.make_Node()
+        node = make_Node_with_VMFS6_layout()
         vmfs = factory.make_VMFS(node=node)
         block_device = factory.make_PhysicalBlockDevice(node=node)
         partition_table = factory.make_PartitionTable(
