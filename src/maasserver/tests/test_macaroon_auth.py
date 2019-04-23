@@ -16,6 +16,7 @@ from django.contrib.auth.models import User
 from django.http import HttpResponse
 import maasserver.macaroon_auth
 from maasserver.macaroon_auth import (
+    _candid_login,
     _get_authentication_caveat,
     _get_bakery_client,
     _get_macaroon_oven_key,
@@ -785,3 +786,79 @@ class TestGetBakeryClient(MAASTestCase):
         # Use the in-browser interaction
         self.assertIs(
             interaction_method._open_web_browser, visit_page_with_browser)
+
+
+class TestCandidLogin(MAASTestCase):
+
+    def test_no_credentials(self):
+        self.assertIs(_candid_login(None), visit_page_with_browser)
+
+    def test_malformed_credentials(self):
+        self.assertIs(_candid_login('user'), visit_page_with_browser)
+
+    def test_with_credentials(self):
+        mock_session = mock.Mock()
+        mock_session.get.return_value = mock.Mock(
+            status_code=200,
+            headers={'Content-Type': 'text/html'},
+            url='http://example.com/newurl')
+        self.patch(
+            maasserver.macaroon_auth.requests, 'Session', lambda: mock_session)
+        login = _candid_login('user:password')
+        login('http://example.com/someurl')
+        mock_session.get.assert_called_once_with(
+            'http://example.com/someurl',
+            headers={'Accept': 'application/json'})
+        mock_session.post.assert_called_once_with(
+            'http://example.com/newurl',
+            data={'username': 'user', 'password': 'password'})
+
+    def test_with_credentials_json_response(self):
+        mock_response = mock.Mock(
+            status_code=200,
+            headers={'Content-Type': 'application/json'},
+            url='http://example.com/newurl')
+        mock_response.json.return_value = {
+            'idps': [
+                {
+                    'name': 'test',
+                    'url': 'http://example.com/idps/test'
+                },
+            ]
+        }
+        mock_session = mock.Mock()
+        mock_session.get.return_value = mock_response
+        self.patch(
+            maasserver.macaroon_auth.requests, 'Session', lambda: mock_session)
+        login = _candid_login('user:password')
+        login('http://example.com/someurl')
+        mock_session.get.assert_called_once_with(
+            'http://example.com/someurl',
+            headers={'Accept': 'application/json'})
+        mock_session.post.assert_called_once_with(
+            'http://example.com/idps/test',
+            data={'username': 'user', 'password': 'password'})
+
+    def test_with_credentials_json_response_multiple_backends(self):
+        mock_response = mock.Mock(
+            status_code=200,
+            headers={'Content-Type': 'application/json'},
+            url='http://example.com/newurl')
+        mock_response.json.return_value = {
+            'idps': [
+                {
+                    'name': 'test1',
+                    'url': 'http://example.com/idps/test1'
+                },
+                {
+                    'name': 'test2',
+                    'url': 'http://example.com/idps/test2'
+                },
+            ]
+        }
+        mock_session = mock.Mock()
+        mock_session.get.return_value = mock_response
+        self.patch(
+            maasserver.macaroon_auth.requests, 'Session', lambda: mock_session)
+        login = _candid_login('user:password')
+        self.assertRaises(RuntimeError, login, 'http://example.com/someurl')

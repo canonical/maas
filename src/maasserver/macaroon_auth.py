@@ -40,6 +40,7 @@ from macaroonbakery import (
     checkers,
     httpbakery,
 )
+from macaroonbakery._utils import visit_page_with_browser
 from macaroonbakery.httpbakery.agent import (
     Agent,
     AgentInteractor,
@@ -399,37 +400,47 @@ class _IDClient(bakery.IdentityClient):
 
 def _get_bakery_client(auth_info=None):
     """Return an httpbakery.Client."""
-    interaction_methods = None
     if auth_info is not None:
-        interaction_methods = [AgentInteractor(auth_info)]
+        interactor = AgentInteractor(auth_info)
     else:
-        username, password = None, None
-        credentials = os.environ.get('MAAS_CANDID_CREDENTIALS')
-        if credentials:
-            user_pass = credentials.split(':', 1)
-            if len(user_pass) == 2:
-                username, password = user_pass
-        if username and password:
+        interactor = httpbakery.WebBrowserInteractor(
+            open=_candid_login(os.environ.get('MAAS_CANDID_CREDENTIALS')))
+    return httpbakery.Client(interaction_methods=[interactor])
 
-            def login_with_credentials(visit_url):
-                """Login with Candid's builtin username/password form.
 
-                This is only intended for use in automated testing.
+def _candid_login(credentials):
+    username, password = None, None
+    if credentials:
+        user_pass = credentials.split(':', 1)
+        if len(user_pass) == 2:
+            username, password = user_pass
+    if not (username and password):
+        return visit_page_with_browser
 
-                """
-                resp = requests.get(visit_url)
-                assert resp.status_code == 200
-                requests.post(
-                    resp.url,
-                    data={
-                        'username': username,
-                        'password': password
-                    })
+    def login_with_credentials(visit_url):
+        session = requests.Session()
+        # get the page, as it redirects. If the 'Accept' header is
+        # supported, JSON content with the list of available IDPS is
+        # returned.
+        resp = session.get(
+            visit_url, headers={'Accept': 'application/json'})
+        assert resp.status_code == 200
+        if resp.headers['Content-Type'] == 'application/json':
+            idps = resp.json()['idps']
+            if len(idps) > 1:
+                raise RuntimeError(
+                    'Multiple authentication backends available')
+            url = idps[0]['url']
+        else:
+            # The redirected page is the login form
+            url = resp.url
+        session.post(
+            url, data={
+                'username': username,
+                'password': password
+            })
 
-            interaction_methods = [
-                httpbakery.WebBrowserInteractor(open=login_with_credentials)]
-
-    return httpbakery.Client(interaction_methods=interaction_methods)
+    return login_with_credentials
 
 
 def _get_bakery(request):
