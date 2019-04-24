@@ -34,8 +34,9 @@ MD_VERSION = '2012-03-01'
 
 # See fcntl(2), re. F_SETPIPE_SZ. By requesting this many bytes from a pipe on
 # each read we can be sure that we are always draining its buffer completely.
-with open("/proc/sys/fs/pipe-max-size") as _pms:
-    PIPE_MAX_SIZE = int(_pms.read())
+# with open("/proc/sys/fs/pipe-max-size") as _pms:
+#     PIPE_MAX_SIZE = int(_pms.read())
+PIPE_MAX_SIZE = 1048576
 
 
 def oauth_headers(url, consumer_key, token_key, token_secret, consumer_secret,
