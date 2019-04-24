@@ -1,14 +1,12 @@
-#!/bin/bash
+#!/bin/bash -e
 # Copyright 2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
-set -e
 
 # Create the required directories for services to run.
 mkdir -p "$SNAP_COMMON/log/"{proxy,http}
 mkdir -p "$SNAP_COMMON/proxy/"{cache,spool}
-chown -R nobody:nogroup "$SNAP_COMMON/log/proxy"
-chown -R nobody:nogroup "$SNAP_COMMON/proxy/"{cache,spool}
+chown -R daemon:daemon "$SNAP_COMMON/log/proxy"
+chown -R daemon:daemon "$SNAP_COMMON/proxy/"{cache,spool}
 mkdir -p "$SNAP_DATA/preseeds"
 mkdir -p "$SNAP_DATA/bind"
 mkdir -p "$SNAP_DATA/proxy"
@@ -16,6 +14,12 @@ mkdir -p "$SNAP_DATA/syslog"
 mkdir -p "$SNAP_DATA/supervisord"
 mkdir -p "$SNAP_DATA/var/lib/maas"
 mkdir -p "$SNAP_DATA/var/lib/chrony"
+
+# XXX this should be dropped once we move have transitioned to a fully confined
+# snap
+if  [ -n "$(compgen -G '/dev/shm/snap.maas.*.shm')" ]; then
+    chown -R daemon:daemon /dev/shm/snap.maas.*.shm
+fi
 
 # Always overwrite sample preseeds to ensure samples are up-to-date in case
 # we do changes that need to be reflected.
@@ -37,18 +41,18 @@ if [ -d "$SNAP_COMMON/db" ] && [ -e "$SNAP_COMMON/db/PG_VERSION" ]; then
 
         # Make an upgrade folder so upgrade logs can be stored.
         mkdir "$SNAP_COMMON/pg_upgrade"
-        chown nobody:nogroup "$SNAP_COMMON/pg_upgrade"
+        chown daemon:daemon "$SNAP_COMMON/pg_upgrade"
         cd "$SNAP_COMMON/pg_upgrade"
 
         # Initialize the new PostgreSQL 10 database.
         rm -rf "$SNAP_COMMON/db-10"
         mkdir "$SNAP_COMMON/db-10"
-        chown nobody:nogroup "$SNAP_COMMON/db-10"
-        sudo -u nobody -E "$SNAP/snap/command-chain/snapcraft-runner" "$SNAP/usr/lib/postgresql/10/bin/initdb" \
+        chown daemon:daemon "$SNAP_COMMON/db-10"
+        sudo -u daemon -E "$SNAP/snap/command-chain/snapcraft-runner" "$SNAP/usr/lib/postgresql/10/bin/initdb" \
             -D "$SNAP_COMMON/db-10" -U postgres -E UTF8 --locale=C
 
         # Perform the actual upgrade.
-        sudo -u nobody -E "$SNAP/snap/command-chain/snapcraft-runner" "$SNAP/usr/lib/postgresql/10/bin/pg_upgrade" \
+        sudo -u daemon -E "$SNAP/snap/command-chain/snapcraft-runner" "$SNAP/usr/lib/postgresql/10/bin/pg_upgrade" \
             --old-bindir "$SNAP/usr/postgresql-9.5/bin" \
             --old-datadir "$SNAP_COMMON/db-9.5" \
             --new-bindir "$SNAP/usr/lib/postgresql/10/bin" \
