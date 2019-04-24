@@ -73,12 +73,19 @@ def get_running_pids_with_command(
     pids = []
     for pid in running_pids:
         try:
+            # XXX Previously comm was read instead of cmdline. If we
+            # want to use comm, we need to add it it the system-observe
+            # interface.
             pid_command = read_text_file(
-                os.path.join(proc_path, pid, "comm")).strip()
+                os.path.join(proc_path, pid, "cmdline")).strip()
         except (FileNotFoundError, ProcessLookupError):
             # Process was closed while running.
             pass
         else:
+            if ':' in pid_command:
+                pid_command, _ = pid_command.split(':', 1)
+            if '/' in pid_command:
+                pid_command = pid_command.split('/')[-1]
             if pid_command == command:
                 pids.append(int(pid))
 
