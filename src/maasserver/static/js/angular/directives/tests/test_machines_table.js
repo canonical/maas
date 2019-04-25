@@ -170,6 +170,51 @@ describe("maasMachinesTable", function() {
         });
     });
 
+    describe("toggleCheckGroup", () => {
+        it("selects all unselected machines in a group", () => {
+            const directive = compileDirective();
+            const scope = directive.isolateScope();
+
+            const machines = [makeMachine(), makeMachine(), makeMachine()];
+            machines[0].status = 'New';
+            machines[1].status = 'Broken';
+            machines[2].status = 'New';
+            scope.table.filteredMachines = machines;
+            scope.groupedMachines = [
+                { label: 'New', machines: [machines[0], machines[2]] },
+                { label: 'Broken', machines: [machines[1]]}
+            ];
+            scope.toggleCheckGroup('New');
+
+            expect(machines[0].$selected).toBe(true);
+            expect(machines[1].$selected).toBe(false);
+            expect(machines[2].$selected).toBe(true);
+        });
+
+        it("unselects all machines in a group if all are selected", () => {
+            const directive = compileDirective();
+            const scope = directive.isolateScope();
+
+            const machines = [makeMachine(), makeMachine(), makeMachine()];
+            machines[0].status = 'New';
+            machines[0].$selected = true;
+            machines[1].status = 'Broken';
+            machines[1].$selected = true;
+            machines[2].status = 'New';
+            machines[2].$selected = true;
+            scope.table.filteredMachines = machines;
+            scope.groupedMachines = [
+                { label: 'New', machines: [machines[0], machines[2]] },
+                { label: 'Broken', machines: [machines[1]]}
+            ];
+            scope.toggleCheckGroup('New');
+
+            expect(machines[0].$selected).toBe(false);
+            expect(machines[1].$selected).toBe(true);
+            expect(machines[2].$selected).toBe(false);
+        });
+    });
+
     describe("toggleChecked", function() {
 
         it("selects machine", function() {
@@ -191,6 +236,26 @@ describe("maasMachinesTable", function() {
             scope.toggleChecked(machine);
             expect(machine.$selected).toBe(false);
             expect(scope.table.allViewableChecked).toBe(false);
+        });
+    });
+
+    describe("toggleOpenGroup", () => {
+        it("removes group from scope.closedGroups if present", () => {
+            const directive = compileDirective();
+            const scope = directive.isolateScope();
+            const group = makeName("group");
+            scope.closedGroups = [group];
+            scope.toggleOpenGroup(group);
+            expect(scope.closedGroups).toEqual([]);
+        });
+
+        it("adds group to scope.closedGroups if not present", () => {
+            const directive = compileDirective();
+            const scope = directive.isolateScope();
+            const group = makeName("group");
+            scope.closedGroups = [];
+            scope.toggleOpenGroup(group);
+            expect(scope.closedGroups).toEqual([group]);
         });
     });
 
@@ -920,6 +985,69 @@ describe("maasMachinesTable", function() {
             expect(scope.groupedMachines).toEqual(
                 [{ label: 'admin', machines: [machines[0]] },
                  { label: 'user1', machines: [machines[1]]}]);
+        });
+    });
+
+    describe("getGroupSelectedState", () => {
+        it("returns true if all machines in a group are selected", () => {
+            const directive = compileDirective();
+            const scope = directive.isolateScope();
+
+            const machines = [makeMachine(), makeMachine()];
+            machines[0].status = 'New';
+            machines[0].$selected = true;
+            machines[1].status = 'New';
+            machines[1].$selected = true;
+            scope.table.filteredMachines = machines;
+            scope.groupedMachines = [
+                { label: 'New', machines: [machines[0], machines[1]] }
+            ];
+            scope.getGroupSelectedState('New');
+
+            expect(scope.getGroupSelectedState('New')).toBe(true);
+        });
+
+        it("returns false if not all machines in a group are selected", () => {
+            const directive = compileDirective();
+            const scope = directive.isolateScope();
+
+            const machines = [makeMachine(), makeMachine()];
+            machines[0].status = 'New';
+            machines[0].$selected = true;
+            machines[1].status = 'New';
+            scope.table.filteredMachines = machines;
+            scope.groupedMachines = [
+                { label: 'New', machines: [machines[0], machines[1]] }
+            ];
+            scope.getGroupSelectedState('New');
+
+            expect(scope.getGroupSelectedState('New')).toBe(false);
+        });
+    });
+
+    describe("getGroupCountString", () => {
+        it(`correctly returns a string of the number of machines in a group,
+            and the selected machines in that group`, () => {
+            const directive = compileDirective();
+            const scope = directive.isolateScope();
+            const machines = Array.from(Array(6)).map(makeMachine);
+            machines[0].$selected = true;
+            machines[1].$selected = true;
+            machines[2].$selected = true;
+            scope.groupedMachines = [
+                { label: 'New', machines: [machines[0], machines[1]] },
+                { label: 'Ready', machines: [machines[2], machines[3]] },
+                { label: 'Failed', machines: [machines[4], machines[5]] }
+            ];
+
+            expect(
+                scope.getGroupCountString('New')).toBe("2 machines selected");
+            expect(
+                scope.getGroupCountString('Ready')).toBe(
+                    "2 machines, 1 selected");
+            expect(
+                scope.getGroupCountString('Failed')).toBe(
+                    "2 machines");
         });
     });
 });

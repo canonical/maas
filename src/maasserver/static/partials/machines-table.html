@@ -1,6 +1,6 @@
-<table data-ng-repeat="group in groupedMachines" data-ng-if="group.machines.length" class="p-table--sortable p-table--machines" role="grid">
+<table class="p-table--sortable p-table--machines" role="grid">
     <thead>
-        <tr class="p-table__header p-table__row" data-ng-if="$first">
+        <tr class="p-table__header p-table__row">
             <th class="p-table__col--name p-double-row u-align--left">
                 <div class="p-double-row__checkbox" data-ng-if="!hideActions">
                     <input class="checkbox" type="checkbox" data-ng-click="toggleCheckAll()" data-ng-checked="table.allViewableChecked" id="check-all" data-ng-disabled="ngDisabled()" />
@@ -50,11 +50,32 @@
             <th class="p-table__col--disks u-align--right" role="columnheader" data-ng-click="sortTable('physical_disk_count')" data-ng-class="{'is-sorted': table.predicate === 'physical_disk_count', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="Disks">Disks</th>
             <th class="p-table__col--storage u-align--right" role="columnheader" data-ng-click="sortTable('storage')" data-ng-class="{'is-sorted': table.predicate === 'storage', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="Storage">Storage</th>
         </tr>
-        <tr class="p-table__group p-table__row" data-ng-if="group.label != 'none' && group.machines.length && !actionOption && search != 'in:(Selected)'">
+    </thead>
+</table>
+<table data-ng-repeat="group in groupedMachines" data-ng-if="group.machines.length" class="p-table--machines" role="grid">
+    <thead>
+        <tr
+            class="p-table__group p-table__row"
+            data-ng-class="{
+                'is-active': getGroupSelectedState(group.label),
+                'p-table__placeholder': group.label === 'none'
+            }"
+        >
             <th class="p-table__group-label p-table__col--name p-double-row u-align--left">
-                {$ group.label $}
+                <input type="checkbox" id="{$ group.label $}" data-ng-click="toggleCheckGroup(group.label)" data-ng-checked="getGroupSelectedState(group.label)" />
+                <label class="p-checkbox--action u-no-margin--bottom" for="{$ group.label $}">{$ group.label $}</label>
+                <div class="p-muted-text">{$ getGroupCountString(group.label) $}</div>
             </th>
-            <th class="p-table__col--power" role="columnheader"></th>
+            <th class="p-table__col--power" role="columnheader">
+                <button class="p-table__group-toggle p-button--base p-button--narrow" data-ng-click="toggleOpenGroup(group.label)">
+                    <i data-ng-class="{
+                        'p-icon--minus': !closedGroups.includes(group.label),
+                        'p-icon--plus': closedGroups.includes(group.label)
+                    }">
+                        Toggle
+                    </i>
+                </button>
+            </th>
             <th class="p-table__col--status p-double-row" title="Status"></th>
             <th class="p-table__col--owner p-double-row" title="Owner, Tags"></th>
             <th class="p-table__col--pool" title="Pool" role="columnheader"></th>
@@ -66,7 +87,7 @@
             <th class="p-table__col--storage u-align--right" role="columnheader"></th>
         </tr>
     </thead>
-    <tbody vs-repeat>
+    <tbody vs-repeat data-ng-if="!closedGroups.includes(group.label)">
         <tr class="p-table__row" data-ng-repeat="node in group.machines | nodesFilter:search | orderBy:table.predicate:table.reverse track by node.system_id"
             data-ng-class="{ 'table--error': machineHasError({ $machine: node }),
                              'is-active': node.$selected,

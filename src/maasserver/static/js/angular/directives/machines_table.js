@@ -9,7 +9,7 @@
 /* @ngInject */
 function maasMachinesTable(
   MachinesManager, NotificationsManager, UsersManager,
-  GeneralManager, $document, $window, $log) {
+  GeneralManager, $filter, $document, $window, $log) {
   return {
     restrict: "E",
     scope: {
@@ -90,7 +90,10 @@ function maasMachinesTable(
       "lock",
       "unlock"
     ];
+
     $scope.openMenu = "";
+
+    $scope.closedGroups = [];
 
     $scope.groupBy = (list, keyGetter) => {
       const map = new Map();
@@ -198,6 +201,32 @@ function maasMachinesTable(
         MachinesManager.selectItem(machine.system_id);
       }
       $scope.updateAllChecked();
+    };
+
+    $scope.toggleCheckGroup = groupLabel => {
+      const machineGroup = $scope.groupedMachines.find(group => {
+        return group.label === groupLabel
+      });
+      if ($scope.getGroupSelectedState(groupLabel)) {
+        machineGroup.machines.forEach(machine => {
+          MachinesManager.unselectItem(machine.system_id);
+        });
+      } else {
+        machineGroup.machines.forEach(machine => {
+          MachinesManager.selectItem(machine.system_id);
+        });
+      }
+      $scope.updateAllChecked();
+    };
+
+    $scope.toggleOpenGroup = groupLabel => {
+      if ($scope.closedGroups.includes(groupLabel)) {
+        $scope.closedGroups = $scope.closedGroups.filter(group => (
+          group !== groupLabel
+        ));
+      } else {
+        $scope.closedGroups = [...$scope.closedGroups, groupLabel];
+      }
     };
 
     // Sorts the table by predicate.
@@ -308,6 +337,29 @@ function maasMachinesTable(
       }
     };
 
+    $scope.getGroupSelectedState = groupLabel => {
+      const machineGroup = $scope.groupedMachines.find(group => {
+        return group.label === groupLabel
+      });
+      return !machineGroup.machines.some(machine => !machine.$selected);
+    };
+
+    $scope.getGroupCountString = groupLabel => {
+      const machineGroup = $scope.groupedMachines.find(group => {
+        return group.label === groupLabel
+      });
+      const machines = machineGroup.machines.length;
+      const selected
+        = machineGroup.machines.filter(item => item.$selected).length;
+      const machinesString
+        = `${machines} ${machines === 1 ? "machine" : "machines"}`;
+
+      if (selected && selected === machines) {
+        return `${machinesString} selected`;
+      }
+      return `${machinesString}${selected ? `, ${selected} selected` : ""}`;
+    };
+
     $scope.updateGroupedMachines = function(field) {
       if ($scope.table.filteredMachines.length === 0) { return; }
 
@@ -393,7 +445,7 @@ function maasMachinesTable(
               ...(machines.get('Reserved') || [])
             ]
           }
-        ]
+        ];
         return;
       }
 
@@ -424,7 +476,7 @@ function maasMachinesTable(
           label: 'none',
           machines: $scope.table.filteredMachines
         }
-      ]
+      ];
       return;
     }
 
@@ -439,19 +491,18 @@ function maasMachinesTable(
       $scope.updateGroupedMachines($scope.groupByLabel);
     });
 
-    // When the list of machines changes update grouping.
-    $scope.$watch("table.machines", function() {
-      if ($scope.groupByLabel !== 'none') {
-        $scope.updateGroupedMachines($scope.groupByLabel);
-      }
-    }, true);
+    $scope.$watch("search", function() {
+      $scope.table.filteredMachines
+        = $filter('nodesFilter')($scope.table.machines, $scope.search);
+    });
 
-    // Watch a simplified list of machines for changes to power state,
-    // then set transitional state accordingly.
+    // Watch simplified list of machines for changes to power state and status,
+    // then make changes accordingly.
     $scope.$watch(
       scope =>
         scope.table.machines.map(machine => ({
           id: machine.id,
+          status: machine.status,
           state: machine.power_state
         })),
       (newMachines, oldMachines) => {
@@ -460,10 +511,18 @@ function maasMachinesTable(
             oldMachines.find(
               machine => machine.id === newMachine.id
             ) || {};
+
+          // Check if power state has changed, then set transitional state
           if (newMachine.state !== oldMachine.state) {
             $scope.table.machines.find(
               machine => machine.id === newMachine.id
             ).powerTransition = undefined;
+          }
+
+          // Check if status has changed, then run function to regroup machines
+          if (newMachine.status !== oldMachine.status
+            && $scope.groupByLabel !== "none") {
+            $scope.updateGroupedMachines($scope.groupByLabel);
           }
         });
       },

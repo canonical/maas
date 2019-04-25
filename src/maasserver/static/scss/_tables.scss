@@ -374,23 +374,38 @@
 
     .p-table__group {
       border: 0;
+      position: relative;
 
       .p-table__group-label {
         color: $color-dark;
         font-size: 1rem;
-        padding: $spv-inter--regular 0 $spv-inter--regular $group-padding-left;
+        padding: $spv-intra 0 $spv-intra $sph-intra--condensed;
         text-transform: none;
+      }
+
+      .p-table__group-toggle {
+        padding: 0 $sp-x-small;
+        position: absolute;
+        right: $spv-intra--expanded;
+        top: $spv-inter--regular;
+      }
+
+      &.is-open {
+        @include vf-icon-minus($color-mid-dark);
       }
     }
 
     .p-table__row {
       position: relative;
 
+      &::after {
+        content: '';
+      }
+
       &.is-grouped {
         border: 0;
 
         &::after {
-          content: '';
           position: absolute;
           left: $group-padding-left;
           right: 0;
@@ -463,6 +478,15 @@
       }
     }
 
+    // Needed to keep widths of machine table correct when no grouping selected
+    .p-table__placeholder {
+      * {
+        height: 0 !important;
+        padding: 0 !important;
+        visibility: hidden;
+      }
+    }
+
     .p-icon--placeholder {
       @extend %icon;
       height: map-get($icon-sizes, default);
@@ -473,6 +497,10 @@
     .p-tooltip__message--latest-event {
       max-width: 500px;
       white-space: inherit;
+    }
+
+    &:last-of-type::after {
+      display: none;
     }
   }
 
@@ -705,6 +733,11 @@
     color: $color-mid-dark;
     margin: 0;
     padding: 0;
+
+    .p-table__group-label & {
+      font-weight: 300;
+      padding-left: $sp-x-large;
+    }
   }
 
   .p-link--muted {

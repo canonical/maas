@@ -57,7 +57,7 @@
       }
     }
 
-    th & + label {
+    th:not(.p-table__group-label) & + label {
       &::before {
         top: .65em;
       }
