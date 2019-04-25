@@ -142,9 +142,9 @@ class PodHandler(OperationsHandler):
         associated with this pod -- composed machines will be assigned to this
         resource pool by default.
         @param (int) "cpu_over_commit_ratio" [required=false] CPU overcommit
-        ratio (1-10)
+        ratio (0-10)
         @param (int) "memory_over_commit_ratio" [required=false] CPU overcommit
-        ratio (1-10)
+        ratio (0-10)
         @param (string) "default_storage_pool" [required=false] Default KVM
         storage pool to use when the pod has storage pools.
         @param (string) "power_address" [required=false] Address for power
