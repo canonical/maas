@@ -46,6 +46,19 @@ describe("maasMachinesTable", function() {
         return machine;
     }
 
+    // Make OS choice.
+    function makeOS() {
+        const name = makeName("os");
+        return [name, name.toUpperCase()];
+    }
+
+    // Make release choice for OS.
+    function makeRelease(os) {
+        const release = makeName("release");
+        const osRelease = os[0] + "/" + release;
+        return [osRelease, release];
+    }
+
     // Return the compiled directive with the items from the scope.
     function compileDirective(design) {
         var directive;
@@ -78,7 +91,8 @@ describe("maasMachinesTable", function() {
           allViewableChecked: false,
           machines: MachinesManager.getItems(),
           filteredMachines: MachinesManager.getItems(),
-          osinfo: GeneralManager.getData("osinfo")
+          osinfo: GeneralManager.getData("osinfo"),
+          machineActions: GeneralManager.getData("machine_actions")
         });
         expect(scope.table.machines).toBe(MachinesManager.getItems());
     });
@@ -764,16 +778,38 @@ describe("maasMachinesTable", function() {
         it("returns the correct action title, given an action name", () => {
             const directive = compileDirective();
             const scope = directive.isolateScope();
-            const actions = [
-                { title: "this action title", name: "this_action" },
-                { title: "other action title", name: "other_action" }
-            ];
+            scope.table = {
+                machineActions: [
+                    { title: "this action title", name: "this_action" },
+                    { title: "other action title", name: "other_action" }
+                ]
+            };
 
-            spyOn(GeneralManager, "getData")
-                .and.returnValue(actions);
+            expect(scope.getActionTitle(scope.table.machineActions[0].name))
+                .toEqual(scope.table.machineActions[0].title);
+        });
 
-            expect(scope.getActionTitle(actions[0].name))
-                .toEqual(actions[0].title);
+        it("returns the default OS and release if action is 'deploy'", () => {
+            const directive = compileDirective();
+            const scope = directive.isolateScope();
+            const [defaultOS, otherOS] = [makeOS(), makeOS()];
+            const [defaultRelease, otherRelease]
+                = [makeRelease(defaultOS), makeRelease(otherOS)];
+
+            scope.table = {
+                osinfo: {
+                    default_osystem: defaultOS[0],
+                    default_release: defaultRelease[0].split("/")[1],
+                    osystems: [defaultOS, otherOS],
+                    releases: [defaultRelease, otherRelease]
+                },
+                machineActions: [
+                    { title: "Deploy...", name: "deploy" }
+                ]
+            };
+
+            expect(scope.getActionTitle("deploy"))
+                .toEqual(`Deploy ${defaultOS[1]} ${defaultRelease[1]}...`);
         });
     });
 

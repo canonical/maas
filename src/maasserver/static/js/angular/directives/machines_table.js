@@ -18,7 +18,7 @@ function maasMachinesTable(
       actionOption: "=",
       ngDisabled: "&",
       machineHasError: "&",
-      hideCheckboxes: "=?",
+      hideActions: "=?",
       onListingChange: "&",
       onCheckAll: "&",
       onCheck: "=",
@@ -71,7 +71,8 @@ function maasMachinesTable(
       allViewableChecked: false,
       machines,
       filteredMachines: machines,
-      osinfo: GeneralManager.getData("osinfo")
+      osinfo: GeneralManager.getData("osinfo"),
+      machineActions: GeneralManager.getData("machine_actions")
     };
 
     $scope.statusMenuActions = [
@@ -584,7 +585,28 @@ function maasMachinesTable(
     };
 
     $scope.getActionTitle = actionName => {
-      const machineActions = GeneralManager.getData('machine_actions');
+      const { table } = $scope;
+      const { machineActions, osinfo } = table;
+
+      // Display default OS and release if in-table action is "deploy"
+      if (actionName === "deploy" && osinfo) {
+        const {
+          osystems,
+          releases,
+          default_osystem,
+          default_release
+        } = osinfo;
+        const os = osystems && osystems.find(os => os[0] === default_osystem);
+        const release = releases && releases.find(
+          release => release[0] === `${default_osystem}/${default_release}`
+        );
+        if (os && release) {
+          return `Deploy ${os[1]} ${release[1]}...`;
+        }
+        return `Deploy ${default_osystem}/${default_release}...`;
+      }
+
+      // Otherwise, just display the action's title
       if (machineActions.length) {
         return machineActions
           .find(action => action.name === actionName)

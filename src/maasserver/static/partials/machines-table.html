@@ -2,7 +2,7 @@
     <thead>
         <tr class="p-table__header p-table__row" data-ng-if="$first">
             <th class="p-table__col--name p-double-row u-align--left">
-                <div class="p-double-row__checkbox" data-ng-if="!hideCheckboxes">
+                <div class="p-double-row__checkbox" data-ng-if="!hideActions">
                     <input class="checkbox" type="checkbox" data-ng-click="toggleCheckAll()" data-ng-checked="table.allViewableChecked" id="check-all" data-ng-disabled="ngDisabled()" />
                     <label class="p-checkbox--action" for="check-all" ng-class="getAllCheckboxClass(table.filteredMachines)"></label>
                 </div>
@@ -73,7 +73,7 @@
                              'is-grouped': group.label !== 'none'
                             }">
             <td class="p-table__col--name p-double-row" aria-label="FQDN" data-ng-if="table.column === 'fqdn' || table.column === 'ip_address'">
-                <div class="p-double-row__checkbox" data-ng-if="!hideCheckboxes">
+                <div class="p-double-row__checkbox" data-ng-if="!hideActions">
                     <input type="checkbox" data-ng-click="toggleChecked(node)" data-ng-checked="node.$selected" id="{$ node.fqdn $}" data-ng-disabled="ngDisable()" />
                     <label class="p-checkbox--action" for="{$ node.fqdn $}" ng-class="getCheckboxClass(node)"></label>
                 </div>
@@ -101,7 +101,7 @@
                 </div>
             </td>
             <td class="p-table__col--name" aria-label="MAC" data-ng-if="table.column === 'pxe_mac'">
-                <div class="u-float--left" data-ng-if="!hideCheckboxes">
+                <div class="u-float--left" data-ng-if="!hideActions">
                     <input class="checkbox" type="checkbox" data-ng-click="toggleChecked(node)" data-ng-checked="node.$selected" id="{$ node.fqdn $}" data-ng-disabled="ngDisable()" />
                     <label class="p-checkbox--action checkbox-label" for="{$ node.fqdn $}" ng-class="getCheckboxClass(node)"></label>
                 </div>
@@ -110,7 +110,7 @@
             </td>
             <td class="p-table__col--power p-double-row" aria-label="Power state">
                 <span class="p-table-menu">
-                    <div data-ng-click="toggleMenu(node.system_id + '-power')" class="p-double-row__icon-container">
+                    <div data-ng-click="!hideActions && toggleMenu(node.system_id + '-power')" class="p-double-row__icon-container">
                         <i
                             title="{$ node.power_state $}"
                             data-ng-class="{
@@ -131,7 +131,7 @@
                             <span title="{$ node.power_type $}">{$ node.power_type $}</span>
                         </div>
                     </div>
-                    <button class="p-table-menu__toggle p-icon--contextual-menu u-hide--br3" data-ng-click="toggleMenu(node.system_id + '-power')"></button>
+                    <button class="p-table-menu__toggle p-icon--contextual-menu u-hide--br3" data-ng-click="toggleMenu(node.system_id + '-power')" data-ng-if="!hideActions"></button>
                     <span class="p-table-menu__dropdown" data-ng-show="openMenu === node.system_id + '-power'" data-ng-if="!node.powerTransition">
                         <div class="p-table-menu__title--icon">Take action:</div>
                         <button
@@ -167,7 +167,7 @@
             </td>
             <td class="p-table__col--status p-double-row" aria-label="Status, Events" title="{$ getStatusText(node) $}">
                 <span class="p-table-menu">
-                    <div class="p-double-row__icon-container" data-ng-click="toggleMenu(node.system_id + '-status')">
+                    <div class="p-double-row__icon-container" data-ng-click="!hideActions && toggleMenu(node.system_id + '-status')">
                         <i data-ng-if="showSpinner(node)" class="p-icon--spinner u-animation--spin"></i>
                         <i data-ng-if="showNodeStatus(node)" data-maas-script-status="script-status" data-script-status="node.other_test_status" aria-label="{$ node.other_test_status_tooltip $}"></i>
                         <span class="p-tooltip p-tooltip--top-left" data-ng-if="showFailedTestWarning(node)">
@@ -184,7 +184,7 @@
                             <span>{$ getStatusMessage(node) $}</span>
                         </div>
                     </div>
-                    <button class="p-table-menu__toggle p-icon--contextual-menu u-hide--br3" data-ng-click="toggleMenu(node.system_id + '-status')"></button>
+                    <button class="p-table-menu__toggle p-icon--contextual-menu u-hide--br3" data-ng-click="toggleMenu(node.system_id + '-status')" data-ng-if="!hideActions"></button>
                     <span class="p-table-menu__dropdown" data-ng-show="openMenu === node.system_id + '-status'">
                         <div class="p-table-menu__title">Take action:</div>
                         <div class="p-contextual-menu__group" data-ng-if="getStatusActions(node).length">
@@ -225,7 +225,7 @@
                             <span>{$ node.tags.join(', ') $}</span>
                         </div>
                     </div>
-                    <button class="p-table-menu__toggle p-icon--contextual-menu u-hide--br2" data-ng-click="toggleMenu(node.system_id + '-owner')"></button>
+                    <button class="p-table-menu__toggle p-icon--contextual-menu u-hide--br2" data-ng-click="toggleMenu(node.system_id + '-owner')" data-ng-if="!hideActions"></button>
                     <span class="p-table-menu__dropdown" data-ng-if="openMenu === node.system_id + '-owner'">
                         <div class="p-table-menu__title">Take action:</div>
                         <button
@@ -266,7 +266,7 @@
                         </div>
                     </div>
                     <button
-                        data-ng-if="node.actions.indexOf('set-pool') !== -1"
+                        data-ng-if="node.actions.indexOf('set-pool') !== -1 && !hideActions"
                         data-ng-click="toggleMenu(node.system_id + '-pool')"
                         class="p-table-menu__toggle p-icon--contextual-menu"
                     >
@@ -301,7 +301,7 @@
                         </div>
                     </div>
                     <button
-                        data-ng-if="node.actions.indexOf('set-zone') !== -1"
+                        data-ng-if="node.actions.indexOf('set-zone') !== -1 && !hideActions"
                         data-ng-click="toggleMenu(node.system_id + '-zone')"
                         class="p-table-menu__toggle p-icon--contextual-menu"
                     >
