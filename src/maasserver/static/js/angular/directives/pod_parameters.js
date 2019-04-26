@@ -73,14 +73,14 @@ export function maasPodParameters(
                         html += (
                             '<maas-obj-field type="slider" key="' +
                             'cpu_over_commit_ratio" label="CPU overcommit" ' +
-                            'min="1" max="10" label-width="2" step=".1" '
+                            'min="0.1" max="10" label-width="2" step=".1" '
                             + 'label-width-tablet="2" input-width="4" '
                             + 'input-width-tablet="3">' +
                             '</maas-obj-field>');
                         html += (
                             '<maas-obj-field type="slider" key="' +
                             'memory_over_commit_ratio" label="' +
-                            'Memory overcommit" min="1" max="10" ' +
+                            'Memory overcommit" min="0.1" max="10" ' +
                             'label-width="2" label-width-tablet="2" ' +
                             'step=".1" ' +
                             'input-width="4" input-width-tablet="3">' +
