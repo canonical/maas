@@ -13,17 +13,10 @@ from pathlib import Path
 import re
 from sys import __stderr__
 
-from maasserver.testing import tablecounts
-from maastesting.matchers import GreaterThanOrEqual
 from postgresfixture import ClusterFixture
 import psycopg2
 from psycopg2.errorcodes import DUPLICATE_DATABASE
 from testresources import TestResourceManager
-from testtools.matchers import (
-    Equals,
-    GreaterThan,
-    MatchesDict,
-)
 
 
 here = Path(__file__).parent
@@ -166,54 +159,25 @@ def close_all_connections():
         conn.close()
 
 
-# These are the expected row counts for tables in MAAS; those not mentioned
-# are assumed to have zero rows.
-expected_table_counts = {
-    'auth_permission': GreaterThan(0),
-    'auth_user': GreaterThanOrEqual(0),
-    'django_content_type': GreaterThan(0),
-    'django_migrations': GreaterThan(0),
-    # Mystery Django stuff here. No idea what django_site does; it seems to
-    # only ever contain a single row referring to "example.com".
-    'django_site': Equals(1),
-    # Tests do not use migrations, but were they to do so the following
-    # maasserver_* tables would have one row or more each.
-    'maasserver_dnspublication': Equals(1),
-    'maasserver_domain': Equals(1),
-    'maasserver_fabric': Equals(1),
-    'maasserver_packagerepository': Equals(2),
-    'maasserver_vlan': Equals(1),
-    'maasserver_zone': Equals(1),
-}
-
-
-def are_table_row_counts_expected():
-    """Check if all tables have expected row counts.
-
-    This considers only tables in the database's public schema, which, for
-    MAAS, means only application tables.
-    """
-    observed = tablecounts.get_table_row_counts()
-    expected = dict.fromkeys(observed, Equals(0))
-    expected.update(expected_table_counts)
-    mismatch = MatchesDict(expected).match(observed)
-    if mismatch is None:
-        return True
-    else:
-        debug("Table count mismatch: {desc}", desc=mismatch.describe)
-        return False
-
-
 class DjangoDatabasesManager(TestResourceManager):
-    """Resource manager for a Django database used for a test."""
+    """Resource manager for a Django database used for a test.
+
+    Since it's hard to determine whether a database has been modified,
+    this manager assumes that it has and mark it as dirty by default.
+
+    Tests that know that the database hasn't been modified can either
+    pass in the assume_dirty=False when creating the manager, or set the
+    dirty attribute.
+    """
 
     resources = (
         ("templates", DjangoPristineDatabaseManager()),
     )
 
-    def __init__(self):
+    def __init__(self, assume_dirty=True):
         super(DjangoDatabasesManager, self).__init__()
         self._count = count(1)
+        self.dirty = assume_dirty
 
     def make(self, dependencies):
         databases = dependencies["templates"]
@@ -272,14 +236,4 @@ class DjangoDatabasesManager(TestResourceManager):
             dbname=dbname, stmt=stmt)
 
     def isDirty(self):
-        from django.db import connections
-        in_transaction = any(
-            connection.in_atomic_block
-            for connection in connections.all())
-        if in_transaction:
-            debug("Database is CLEAN (in transaction)")
-            return False
-        else:
-            clean = are_table_row_counts_expected()
-            debug("Database is {state}", state="CLEAN" if clean else "DIRTY")
-            return not clean
+        return self.dirty

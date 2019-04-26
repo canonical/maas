@@ -140,7 +140,7 @@ class MAASServerTestCase(MAASRegionTestCaseBase, MAASTestCase):
     """:class:`TestCase` variant for region testing."""
 
     resources = (
-        ("databases", DjangoDatabasesManager()),
+        ("databases", DjangoDatabasesManager(assume_dirty=False)),
     )
 
     # The database may be used in tests. See `MAASTestCase` for details.
@@ -154,9 +154,17 @@ class MAASServerTestCase(MAASRegionTestCaseBase, MAASTestCase):
 
     def beginTransaction(self):
         """Begin new transaction using Django's `atomic`."""
+        def fail_on_commit():
+            raise AssertionError(
+                "Tests using MAASServerTestCase aren't allowed to commit. "
+                "Use MAASTransactionServerTestCase instead.")
+
         self.assertNotInTransaction()
         self.__atomic = transaction.atomic()
         self.__atomic.__enter__()
+        # Fail if any test commits this transaction, since we want to
+        # roll it back, so that the database can be reused.
+        transaction.on_commit(fail_on_commit)
 
     def endTransaction(self):
         """Rollback transaction using Django's `atomic`."""
@@ -169,7 +177,7 @@ class MAASTransactionServerTestCase(MAASRegionTestCaseBase, MAASTestCase):
     """:class:`TestCase` variant for *transaction* region testing."""
 
     resources = (
-        ("databases", DjangoDatabasesManager()),
+        ("databases", DjangoDatabasesManager(assume_dirty=True)),
     )
 
     # The database may be used in tests. See `MAASTestCase` for details.

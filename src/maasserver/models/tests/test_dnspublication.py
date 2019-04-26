@@ -41,13 +41,17 @@ class TestZoneSerial(MAASServerTestCase):
     def test_parameters_in_database(self):
         zone_serial.create_if_not_exists()
         query = (
-            "SELECT last_value, log_cnt, is_called FROM %s" % zone_serial.name
+            "SELECT last_value, is_called FROM %s" % zone_serial.name
         )
         with connection.cursor() as cursor:
             cursor.execute(query)
-            self.assertThat(
-                cursor.fetchone(), Equals(
-                    (3, 0, True)))
+            last_value1, is_called1 = cursor.fetchone()
+            next(zone_serial)
+            cursor.execute(query)
+            last_value2, is_called2 = cursor.fetchone()
+            self.assertEqual(1, last_value2 - last_value1)
+            self.assertTrue(is_called1)
+            self.assertTrue(is_called2)
 
 
 class TestDNSPublication(MAASServerTestCase):

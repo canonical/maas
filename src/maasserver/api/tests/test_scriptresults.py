@@ -632,7 +632,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
         self.assertThat(response, HasStatusCode(http.client.OK))
         script_set = reload_object(script_set)
         self.assertIsNotNone(script_set)
-        self.assertEquals(script_set.id, script_result.id)
+        self.assertEquals(script_set.id, script_result.script_set.id)
         script_result = reload_object(script_result)
         self.assertTrue(script_result.suppressed)
         for script_result in script_results:
@@ -666,7 +666,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
         self.assertThat(response, HasStatusCode(http.client.OK))
         script_set = reload_object(script_set)
         self.assertIsNotNone(script_set)
-        self.assertEquals(script_set.id, script_result.id)
+        self.assertEquals(script_set.id, script_result.script_set.id)
         script_result = reload_object(script_result)
         self.assertTrue(script_result.suppressed)
         for script_result in script_results:
@@ -702,7 +702,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
         self.assertThat(response, HasStatusCode(http.client.OK))
         script_set = reload_object(script_set)
         self.assertIsNotNone(script_set)
-        self.assertEquals(script_set.id, script_result.id)
+        self.assertEquals(script_set.id, script_result.script_set.id)
         script_result = reload_object(script_result)
         self.assertTrue(script_result.suppressed)
         self.assertEquals(

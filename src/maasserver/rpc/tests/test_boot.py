@@ -38,7 +38,10 @@ from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.orm import reload_object
+from maasserver.utils.orm import (
+    post_commit_hooks,
+    reload_object,
+)
 from maasserver.utils.osystems import get_release_from_distro_info
 from maastesting.djangotestcase import count_queries
 from maastesting.matchers import MockCalledOnceWith
@@ -97,6 +100,13 @@ class TestGetConfig(MAASServerTestCase):
     def setUp(self):
         super(TestGetConfig, self).setUp()
         self.useFixture(RegionConfigurationFixture())
+
+    def tearDown(self):
+        # None of tests depend on the post commit hooks, but they might
+        # generate them. Remove them, since the MAASServerTestCase tear
+        # down might complain that there are commit hooks.
+        post_commit_hooks.reset()
+        super().tearDown()
 
     def make_node(self, arch_name=None, **kwargs):
         architecture = make_usable_architecture(self, arch_name=arch_name)
