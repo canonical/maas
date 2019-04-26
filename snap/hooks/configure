@@ -26,5 +26,46 @@ cp "$SNAP/etc/maas/preseeds/curtin_userdata_centos" "$SNAP_DATA/preseeds/curtin_
 cp "$SNAP/etc/maas/preseeds/curtin_userdata_custom" "$SNAP_DATA/preseeds/curtin_userdata_custom.sample"
 cp "$SNAP/etc/maas/preseeds/curtin_userdata_windows" "$SNAP_DATA/preseeds/curtin_userdata_windows.sample"
 
+# Upgrade from PostgreSQL 9.5 to 10.
+if [ -d "$SNAP_COMMON/db" ] && [ -e "$SNAP_COMMON/db/PG_VERSION" ]; then
+    PG_VERSION=`cat $SNAP_COMMON/db/PG_VERSION`
+    if [ "$PG_VERSION" = "9.5" ]; then
+        echo "Upgrading from PostgreSQL 9.5 to 10."
+
+        # Move copy of 9.5 database to db-9.5. On successful upgrade 'db' will
+        # now be a PostgreSQL 10 database.
+        ORIG_DIR=$PWD
+        mv "$SNAP_COMMON/db" "$SNAP_COMMON/db-9.5"
+
+        # Make an upgrade folder so upgrade logs can be stored.
+        mkdir "$SNAP_COMMON/pg_upgrade"
+        chown nobody:nogroup "$SNAP_COMMON/pg_upgrade"
+        cd "$SNAP_COMMON/pg_upgrade"
+
+        # Initialize the new PostgreSQL 10 database.
+        rm -rf "$SNAP_COMMON/db-10"
+        mkdir "$SNAP_COMMON/db-10"
+        chown nobody:nogroup "$SNAP_COMMON/db-10"
+        sudo -u nobody -E "$SNAP/snap/command-chain/snapcraft-runner" "$SNAP/usr/lib/postgresql/10/bin/initdb" \
+            -D "$SNAP_COMMON/db-10" -U postgres -E UTF8 --locale=C
+
+        # Perform the actual upgrade.
+        sudo -u nobody -E "$SNAP/snap/command-chain/snapcraft-runner" "$SNAP/usr/lib/postgresql/10/bin/pg_upgrade" \
+            --old-bindir "$SNAP/usr/postgresql-9.5/bin" \
+            --old-datadir "$SNAP_COMMON/db-9.5" \
+            --new-bindir "$SNAP/usr/lib/postgresql/10/bin" \
+            --new-datadir "$SNAP_COMMON/db-10" \
+            -U postgres
+
+        # Change back to previous directory and cleanup.
+        cd "$ORIG_DIR"
+        rm -rf "$SNAP_COMMON/pg_upgrade"
+        mv "$SNAP_COMMON/db-10" "$SNAP_COMMON/db"
+    elif [ "$PG_VERSION" != "10" ]; then
+        echo "Failed to upgrage PostgreSQL from $PG_VERSION; unknown version."
+        exit 1
+    fi
+fi
+
 # Perform migrations. Does nothing in 'rack' or 'none' mode.
 exec "$SNAP/snap/command-chain/snapcraft-runner" "$SNAP/command-maas.wrapper" migrate --configure

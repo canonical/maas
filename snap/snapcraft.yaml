@@ -7,6 +7,7 @@ description: |
 grade: stable
 confinement: strict
 base: core18
+epoch: 1*
 
 apps:
   supervisor:
@@ -127,10 +128,10 @@ parts:
     override-build: |
       snapcraftctl build
       cp -a ../../snap/src/bin ../../snap/src/sbin $SNAPCRAFT_PART_INSTALL
-      ln -s ../usr/lib/postgresql/10/bin/initdb $SNAPCRAFT_PART_INSTALL/bin/initdb
-      ln -s ../usr/lib/postgresql/10/bin/pg_ctl $SNAPCRAFT_PART_INSTALL/bin/pg_ctl
-      ln -s ../usr/lib/postgresql/10/bin/postgres $SNAPCRAFT_PART_INSTALL/bin/postgres
-      ln -s ../usr/lib/postgresql/10/bin/psql $SNAPCRAFT_PART_INSTALL/bin/psql
+      ln -s -f ../usr/lib/postgresql/10/bin/initdb $SNAPCRAFT_PART_INSTALL/bin/initdb
+      ln -s -f ../usr/lib/postgresql/10/bin/pg_ctl $SNAPCRAFT_PART_INSTALL/bin/pg_ctl
+      ln -s -f ../usr/lib/postgresql/10/bin/postgres $SNAPCRAFT_PART_INSTALL/bin/postgres
+      ln -s -f ../usr/lib/postgresql/10/bin/psql $SNAPCRAFT_PART_INSTALL/bin/psql
       # If python3-netaddr contains absolute symlinks.
       # See https://bugs.launchpad.net/snapcraft/+bug/1774410
       ln -s -f ../../../../../../var/lib/ieee-data/oui.txt $SNAPCRAFT_PART_INSTALL/usr/lib/python3/dist-packages/netaddr/eui/oui.txt
@@ -148,3 +149,60 @@ parts:
       conf/chrony.conf: usr/share/maas/chrony.conf
       conf/supervisord.conf.template: usr/share/maas/supervisord.conf.template
       nginx: usr/share/maas/nginx
+  postgres-95:
+    plugin: autotools
+    source: http://archive.ubuntu.com/ubuntu/ubuntu/pool/main/p/postgresql-9.5/postgresql-9.5_9.5.16.orig.tar.gz
+    build-packages:
+      - bison
+      - flex
+      - libreadline-dev
+      - zlib1g-dev
+      - python-dev
+      - tcl8.6-dev
+      - libssl-dev
+      - libpam0g-dev
+      - libxml2-dev
+      - libldap2-dev
+      - libxslt1-dev
+      - uuid-dev
+      - libxml2-utils
+      - openjade
+      - opensp
+      - xsltproc
+      - gettext
+      - libperl-dev
+      - dpkg-dev
+    override-build: |
+      HOST_MULTIARCH=$(gcc -print-multiarch)
+      ARCH=$(dpkg-architecture -qDEB_HOST_ARCH_BITS)
+      if [ $ARCH -eq 64 ]; then
+        EXTRA_CFLAGS="-fno-omit-frame-pointer"
+      elif [ $ARCH -eq 32 ]; then
+        EXTRA_CFLAGS="-fPIC -pie"
+      fi
+      ./configure \
+        LDFLAGS="-Wl,--as-needed -L/usr/lib/mit-krb5 -L/usr/lib/$HOST_MULTIARCH/mit-krb5" \
+        CFLAGS="-I/usr/include/mit-krb5 $EXTRA_CFLAGS" \
+        --prefix=/usr/postgresql-9.5 \
+        --localstatedir=/etc/postgresql-9.5 \
+        --sysconfdir=/var/postgresql-9.5 \
+        --enable-nls \
+        --enable-integer-datetimes \
+        --enable-thread-safety \
+        --enable-tap-tests \
+        --enable-debug \
+        --disable-rpath \
+        --with-uuid=e2fs \
+        --with-gnu-ld \
+        --with-pgport=5432 \
+        --with-system-tzdata=/usr/share/zoneinfo \
+        --with-ldap \
+        --with-tcl \
+        --with-tclconfig=/usr/lib/tcl8.6/ \
+        --with-perl \
+        --with-python \
+        --with-pam \
+        --with-openssl \
+        --with-libxml \
+        --with-libxslt && make world
+      make install-world DESTDIR=$SNAPCRAFT_PART_INSTALL
