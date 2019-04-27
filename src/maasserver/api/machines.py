@@ -798,6 +798,10 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         and at the end of the drive to make data recovery inconvenient and
         unlikely to happen by accident. This is not secure.
 
+        @param (boolean) "force" [required=false] Will force the release of a
+        machine. If the machine was deployed as a KVM host, this will be
+        deleted as well as all machines inside the KVM host. USE WITH CAUTION.
+
         @success (http-status-code) "200" 200
         @success (json) "success-json" A JSON object containing information
         about the released machine.
@@ -826,6 +830,8 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
             request.POST, 'quick_erase', default=None, validator=StringBool)
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.edit)
+        force = get_optional_param(
+            request.POST, 'force', default=None, validator=StringBool)
         if machine.status in (NODE_STATUS.RELEASING, NODE_STATUS.READY):
             # Nothing to do if this machine is already releasing, otherwise
             # this may be a redundant retry, and the
@@ -835,7 +841,8 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
             machine.release_or_erase(
                 request.user, comment,
                 erase=erase, secure_erase=secure_erase,
-                quick_erase=quick_erase)
+                quick_erase=quick_erase,
+                force=force)
         else:
             raise NodeStateViolation(
                 "Machine cannot be released in its current state ('%s')."
