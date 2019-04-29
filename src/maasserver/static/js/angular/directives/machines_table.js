@@ -349,6 +349,22 @@ function maasMachinesTable(
       }
     };
 
+    $scope.getSpacesTooltipMessage = spaces => {
+      var spacesMessage = "";
+
+      if (spaces.length > 1) {
+        spaces.forEach((space, index) => {
+          spacesMessage += space;
+
+          if (index !== spaces.length - 1) {
+            spacesMessage += "\n";
+          }
+        });
+      }
+
+      return spacesMessage;
+    };
+
     $scope.getGroupSelectedState = groupLabel => {
       const machineGroup = $scope.groupedMachines.find(group => {
         return group.label === groupLabel;

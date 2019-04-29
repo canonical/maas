@@ -1013,4 +1013,20 @@ describe("maasMachinesTable", function() {
       expect(scope.getGroupCountString("Failed")).toBe("2 machines");
     });
   });
+
+  describe("getSpacesTooltipMessage", () => {
+    it("correctly returns a list of spaces or empty string", () => {
+      const directive = compileDirective();
+      const scope = directive.isolateScope();
+      const machines = Array.from(Array(3)).map(makeMachine);
+      machines[0].spaces = [];
+      machines[1].spaces = ["foobar"];
+      machines[2].spaces = ["foobar", "barbaz"];
+
+      expect(scope.getSpacesTooltipMessage(machines[0].spaces)).toBe("");
+      expect(scope.getSpacesTooltipMessage(machines[1].spaces)).toBe("");
+      expect(scope.getSpacesTooltipMessage(machines[2].spaces)).toBe(`foobar
+barbaz`); // Has to be formatted this way for tooltip
+    });
+  });
 });

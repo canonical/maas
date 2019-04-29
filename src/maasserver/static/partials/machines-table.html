@@ -36,8 +36,9 @@
                 <span role="columnheader" data-ng-click="sortTable('pool.name')" data-ng-class="{'is-sorted': table.predicate === 'pool.name', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Pool,</span>
                 <div>Note</div>
             </th>
-            <th class="p-table__col--zone p-double-row" title="Zone">
-                <span role="columnheader" data-ng-click="sortTable('zone.name')" data-ng-class="{'is-sorted': table.predicate === 'zone.name', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Zone</span>
+            <th class="p-table__col--zone p-double-row" title="Zone, Spaces">
+                <span role="columnheader" data-ng-click="sortTable('zone.name')" data-ng-class="{'is-sorted': table.predicate === 'zone.name', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Zone,</span>
+                <div>Spaces</div>
             </th>
             <th class="p-table__col--fabric p-double-row" title="Fabric, VLAN">
                 <span role="columnheader" data-ng-click="sortTable('vlan.fabric_name')" data-ng-class="{'is-sorted': table.predicate === 'vlan.fabric_name', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Fabric,</span>
@@ -312,13 +313,22 @@
                     </span>
                 </div>
             </td>
-            <td class="p-table__col--zone p-double-row" aria-label="Zone" title="{$ node.zone.name $}">
+            <td class="p-table__col--zone p-double-row" aria-label="Zone">
                 <div class="p-table-menu">
                     <div class="p-double-row__rows-container">
-                        <div class="p-double-row__main-row" aria-label="Zone">
+                        <div class="p-double-row__main-row" aria-label="Zone" title="{$ node.zone.name $}">
                             <i class="p-icon--spinner u-animation--spin" data-ng-if="node['set-zone-transition']">Setting zone</i>
                             <span data-ng-if="node.zone.name"><a class="p-link--soft" href="#/zone/{$ node.zone.id $}" title="{$ node.zone.name $}">{$ node.zone.name $}</a></span>
                             <span data-ng-if="!node.zone.name">-</span>
+                        </div>
+                        <div class="p-double-row__muted-row" style="overflow: visible">
+                            <span data-ng-if="node.spaces.length === 1">
+                                {$ node.spaces[0] $}
+                            </span>
+                            <span data-ng-if="node.spaces.length > 1" class="p-tooltip p-tooltip--btm-left" aria-described-by="{$ node.hostname $}-spaces" style="overflow: visible">
+                                {$ node.spaces.length $} spaces
+                                <span class="p-tooltip__message" role="tooltip" id="{$ node.hostname $}-spaces">{$ getSpacesTooltipMessage(node.spaces) $}</span>
+                            </span>
                         </div>
                     </div>
                     <button
