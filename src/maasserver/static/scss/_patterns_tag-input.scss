@@ -1,5 +1,4 @@
 @mixin maas-tag-input {
-
   tags-input {
     display: block;
 
@@ -11,12 +10,12 @@
       width: 100%;
       background-color: #fff;
       border-radius: 0 0 3px 3px;
-      border: 1px solid rgba(0,0,0,.2);
-      -webkit-box-shadow: 0 5px 10px rgba(0,0,0,.2);
-      -moz-box-shadow: 0 5px 10px rgba(0,0,0,.2);
-      box-shadow: 0 5px 10px rgba(0,0,0,.2);
+      border: 1px solid rgba(0, 0, 0, 0.2);
+      -webkit-box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
+      -moz-box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
+      box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
       max-height: 300px;
-      transition: max-height .3s ease-in;
+      transition: max-height 0.3s ease-in;
       overflow-y: scroll;
       overflow-x: visible;
 
@@ -63,11 +62,10 @@
   }
 
   .tags--inline {
-
     .host {
-        position: relative;
-        margin-bottom: 5px;
-        height: 100%;
+      position: relative;
+      margin-bottom: 5px;
+      height: 100%;
     }
 
     .tags {

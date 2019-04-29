@@ -4,56 +4,54 @@
  * Unit tests for SpacesManager.
  */
 
-
 describe("SpacesManager", function() {
+  // Load the MAAS module.
+  beforeEach(module("MAAS"));
 
-    // Load the MAAS module.
-    beforeEach(module("MAAS"));
+  // Load the SpacesManager.
+  var SpacesManager, SubnetsManager, RegionConnection;
+  beforeEach(inject(function($injector) {
+    SpacesManager = $injector.get("SpacesManager");
+    SubnetsManager = $injector.get("SubnetsManager");
+    RegionConnection = $injector.get("RegionConnection");
+  }));
 
-    // Load the SpacesManager.
-    var SpacesManager, SubnetsManager, RegionConnection;
-    beforeEach(inject(function($injector) {
-        SpacesManager = $injector.get("SpacesManager");
-        SubnetsManager = $injector.get("SubnetsManager");
-        RegionConnection = $injector.get("RegionConnection");
-    }));
+  // Make a fake subnet.
+  function makeSubnet() {
+    return {
+      id: makeInteger(0, 5000),
+      name: makeName("subnet")
+    };
+  }
 
-    // Make a fake subnet.
-    function makeSubnet() {
-        return {
-            id: makeInteger(0, 5000),
-            name: makeName("subnet")
-        };
-    }
+  it("set requires attributes", function() {
+    expect(SpacesManager._pk).toBe("id");
+    expect(SpacesManager._handler).toBe("space");
+  });
 
-    it("set requires attributes", function() {
-        expect(SpacesManager._pk).toBe("id");
-        expect(SpacesManager._handler).toBe("space");
+  describe("create", function() {
+    it("calls the region with expected parameters", function() {
+      var obj = {};
+      var result = {};
+      spyOn(RegionConnection, "callMethod").and.returnValue(result);
+      expect(SpacesManager.create(obj)).toBe(result);
+      expect(RegionConnection.callMethod).toHaveBeenCalledWith(
+        "space.create",
+        obj
+      );
     });
+  });
 
-    describe("create", function() {
-
-        it("calls the region with expected parameters", function() {
-            var obj = {};
-            var result = {};
-            spyOn(RegionConnection, "callMethod").and.returnValue(result);
-            expect(SpacesManager.create(obj)).toBe(result);
-            expect(RegionConnection.callMethod).toHaveBeenCalledWith(
-                "space.create", obj
-            );
-        });
+  describe("delete", function() {
+    it("calls the region with expected parameters", function() {
+      var obj = {};
+      var result = {};
+      spyOn(RegionConnection, "callMethod").and.returnValue(result);
+      expect(SpacesManager.deleteSpace(obj)).toBe(result);
+      expect(RegionConnection.callMethod).toHaveBeenCalledWith(
+        "space.delete",
+        obj
+      );
     });
-
-    describe("delete", function() {
-
-        it("calls the region with expected parameters", function() {
-            var obj = {};
-            var result = {};
-            spyOn(RegionConnection, "callMethod").and.returnValue(result);
-            expect(SpacesManager.deleteSpace(obj)).toBe(result);
-            expect(RegionConnection.callMethod).toHaveBeenCalledWith(
-                "space.delete", obj
-            );
-        });
-    });
+  });
 });

@@ -4,22 +4,20 @@
  * Unit tests for DiscoveriesManager.
  */
 
-
 describe("DiscoveriesManager", function() {
+  // Load the MAAS module.
+  beforeEach(module("MAAS"));
 
-    // Load the MAAS module.
-    beforeEach(module("MAAS"));
+  // Load the DiscoveriesManager.
+  var DiscoveriesManager;
+  beforeEach(inject(function($injector) {
+    DiscoveriesManager = $injector.get("DiscoveriesManager");
+  }));
 
-    // Load the DiscoveriesManager.
-    var DiscoveriesManager;
-    beforeEach(inject(function($injector) {
-        DiscoveriesManager = $injector.get("DiscoveriesManager");
-    }));
-
-    it("set requires attributes", function() {
-        expect(DiscoveriesManager._pk).toBe("first_seen");
-        expect(DiscoveriesManager._batchKey).toBe("first_seen");
-        expect(DiscoveriesManager._handler).toBe("discovery");
-        expect(DiscoveriesManager._pollEmptyTimeout).toBe(5000);
-    });
+  it("set requires attributes", function() {
+    expect(DiscoveriesManager._pk).toBe("first_seen");
+    expect(DiscoveriesManager._batchKey).toBe("first_seen");
+    expect(DiscoveriesManager._handler).toBe("discovery");
+    expect(DiscoveriesManager._pollEmptyTimeout).toBe(5000);
+  });
 });

@@ -9,32 +9,36 @@
  */
 
 function PackageRepositoriesManager(RegionConnection, Manager) {
+  function PackageRepositoriesManager() {
+    Manager.call(this);
 
-    function PackageRepositoriesManager() {
-        Manager.call(this);
+    this._pk = "id";
+    this._handler = "packagerepository";
 
-        this._pk = "id";
-        this._handler = "packagerepository";
+    // Listen for notify events for the PackageRepository object.
+    var self = this;
+    RegionConnection.registerNotifier("packagerepository", function(
+      action,
+      data
+    ) {
+      self.onNotify(action, data);
+    });
+  }
 
-        // Listen for notify events for the PackageRepository object.
-        var self = this;
-        RegionConnection.registerNotifier("packagerepository",
-            function(action, data) {
-                self.onNotify(action, data);
-            });
-    }
+  PackageRepositoriesManager.prototype = new Manager();
 
-    PackageRepositoriesManager.prototype = new Manager();
+  // Create the repository.
+  PackageRepositoriesManager.prototype.create = function(repository) {
+    return RegionConnection.callMethod(
+      this._handler + ".create",
+      repository,
+      true
+    );
+  };
 
-    // Create the repository.
-    PackageRepositoriesManager.prototype.create = function(repository) {
-        return RegionConnection.callMethod(
-            this._handler + ".create", repository, true);
-    };
-
-    return new PackageRepositoriesManager();
+  return new PackageRepositoriesManager();
 }
 
-PackageRepositoriesManager.$inject = ['RegionConnection', 'Manager'];
+PackageRepositoriesManager.$inject = ["RegionConnection", "Manager"];
 
 export default PackageRepositoriesManager;

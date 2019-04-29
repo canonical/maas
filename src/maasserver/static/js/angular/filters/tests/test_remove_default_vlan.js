@@ -5,26 +5,27 @@
  */
 
 describe("removeDefaultVLAN", function() {
+  // Load the MAAS module.
+  beforeEach(module("MAAS"));
 
-    // Load the MAAS module.
-    beforeEach(module("MAAS"));
+  // Load the removeDefaultVLAN.
+  var removeDefaultVLAN;
+  beforeEach(inject(function($filter) {
+    removeDefaultVLAN = $filter("removeDefaultVLAN");
+  }));
 
-    // Load the removeDefaultVLAN.
-    var removeDefaultVLAN;
-    beforeEach(inject(function($filter) {
-        removeDefaultVLAN = $filter("removeDefaultVLAN");
-    }));
-
-    it("only returns vlans without vid 0", function() {
-        var i, vlan, vlans = [];
-        for(i = 0; i < 3; i++) {
-            vlan = {
-                id: i,
-                vid: i,
-                fabric: 0
-            };
-            vlans.push(vlan);
-        }
-        expect(removeDefaultVLAN(vlans)).toEqual([vlans[1], vlans[2]]);
-    });
+  it("only returns vlans without vid 0", function() {
+    var i,
+      vlan,
+      vlans = [];
+    for (i = 0; i < 3; i++) {
+      vlan = {
+        id: i,
+        vid: i,
+        fabric: 0
+      };
+      vlans.push(vlan);
+    }
+    expect(removeDefaultVLAN(vlans)).toEqual([vlans[1], vlans[2]]);
+  });
 });

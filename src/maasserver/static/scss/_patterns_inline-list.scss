@@ -1,4 +1,3 @@
-
 @mixin maas-inline-lists {
   //Used to display an inline list of settings, usually labels and checkboxes
   .p-inline-list--settings {
@@ -8,7 +7,7 @@
       vertical-align: top;
     }
 
-    [type='checkbox'] {
+    [type="checkbox"] {
       float: none;
     }
 

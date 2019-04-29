@@ -1,5 +1,4 @@
 @mixin maas {
-
   .u-baseline-grid {
     $baseline-color: #f00 !default;
     $baseline-offset: 0 !default;
@@ -8,7 +7,13 @@
     position: relative;
 
     &::after {
-      background: linear-gradient(to top, transparentize($baseline-color, .7), transparentize($baseline-color, .7) 1px, transparent 1px, transparent);
+      background: linear-gradient(
+        to top,
+        transparentize($baseline-color, 0.7),
+        transparentize($baseline-color, 0.7) 1px,
+        transparent 1px,
+        transparent
+      );
       background-size: 100% $baseline-size;
       bottom: 0;
       content: "";
@@ -75,7 +80,8 @@
       min-height: 2rem;
     }
 
-    td, tr {
+    td,
+    tr {
       @media (max-width: $breakpoint-medium) {
         overflow-x: visible;
       }
@@ -151,13 +157,12 @@
     border: 0;
   }
 
-
   .p-list-tree .p-list-tree::after {
     display: none !important;
   }
 
   .editable {
-    padding: .5rem 1rem;
+    padding: 0.5rem 1rem;
     border: 1px solid transparent;
 
     &:hover,
@@ -185,12 +190,13 @@
 
   // Sidebar selected state
   .sidebar__second-level .is-active {
-    background: transparent url('../assets/images/89c10794-remove.svg') top $sp-small right $sp-large no-repeat;
+    background: transparent url("../assets/images/89c10794-remove.svg") top
+      $sp-small right $sp-large no-repeat;
     background-size: 12px;
   }
 
   // Checkbox height is not needed
-  .p-form__control [type='checkbox'] {
+  .p-form__control [type="checkbox"] {
     height: auto;
     min-height: auto;
   }
@@ -266,7 +272,6 @@
   .flex-item {
     flex: 1;
   }
-
 }
 
 // XXX Prevent "create new tag" showing on certain autocomplete modules

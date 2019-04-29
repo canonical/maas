@@ -58,12 +58,12 @@
 
         &::before {
           background-color: $color-mid-light;
-          content: '';
+          content: "";
           height: 100%;
           $factor: 100 / 65.47483;
           $gutter-width--inside-8-col-nested: 3.57551%;
-          $offset: $gutter-width--inside-8-col-nested * .5 * $factor;
-          left: - $offset;
+          $offset: $gutter-width--inside-8-col-nested * 0.5 * $factor;
+          left: -$offset;
           position: absolute;
           width: 1px;
         }
@@ -103,7 +103,7 @@
     &__name {
       @extend .col-4;
 
-      margin-top: - $sp-unit;
+      margin-top: -$sp-unit;
     }
 
     &__meter {
@@ -114,13 +114,13 @@
       @media (max-width: $breakpoint-small) {
         width: 100%;
       }
-
     }
 
     &__disk-name {
       float: left;
-      margin-bottom: map-get($sp-after, default-text) - map-get($nudges, nudge--p);
-      margin-right: - $p-storage-info-width;
+      margin-bottom: map-get($sp-after, default-text) -
+        map-get($nudges, nudge--p);
+      margin-right: -$p-storage-info-width;
       width: calc(100% - #{$p-storage-info-width});
     }
 
@@ -144,7 +144,7 @@
   }
 
   .faded {
-    opacity: .5
+    opacity: 0.5;
   }
 
   .p-overcommit-switch {

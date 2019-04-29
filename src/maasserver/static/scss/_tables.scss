@@ -55,7 +55,7 @@
   .p-table__row {
     .p-table--machines tbody &:hover {
       background-color: $color-x-light;
-      box-shadow: 0 1px 3px 0 transparentize($color-dark, .8);
+      box-shadow: 0 1px 3px 0 transparentize($color-dark, 0.8);
 
       .p-table-menu__toggle {
         display: inline-block;
@@ -65,7 +65,6 @@
     &--muted {
       background: $color-light;
     }
-
   }
 
   .p-table--network-discovery {
@@ -75,7 +74,8 @@
       justify-content: space-between;
     }
 
-    th, td {
+    th,
+    td {
       flex: 0 0 auto;
     }
 
@@ -142,60 +142,62 @@
   .p-table--pod-networking-config,
   .p-table--pod-storage-config {
     input {
-        // overriding min-width to make inputs fit within container
-        min-width: auto;
-        @extend %u-input-min-margin--bottom;
+      // overriding min-width to make inputs fit within container
+      min-width: auto;
+      @extend %u-input-min-margin--bottom;
     }
   }
 
   $border-thickness: $px;
   $icon-margin-right: $sph-intra--condensed;
-  $icon-button-width: $icon-margin-right + 2 * ($border-thickness + $vanilla-2-icon-button-side-padding) + map-get($icon-sizes, default);
-
+  $icon-button-width: $icon-margin-right + 2 *
+    ($border-thickness + $vanilla-2-icon-button-side-padding) +
+    map-get($icon-sizes, default);
 
   .p-table--pod-networking-config {
     select {
-        @extend %u-input-min-margin--bottom;
+      @extend %u-input-min-margin--bottom;
     }
 
     @media (min-width: $breakpoint-small) {
-        margin-bottom: 0;
+      margin-bottom: 0;
 
-        .p-table__row {
-            th, td {
-                &:nth-child(1) {
-                  width: $icon-button-width;
-                }
+      .p-table__row {
+        th,
+        td {
+          &:nth-child(1) {
+            width: $icon-button-width;
+          }
 
-                &:nth-child(2) {
-                    width: 10%;
-                }
+          &:nth-child(2) {
+            width: 10%;
+          }
 
-                &:nth-child(3) {
-                    width: 25%;
-                }
+          &:nth-child(3) {
+            width: 25%;
+          }
 
-                &:nth-child(4) {
-                    width: 15%;
-                }
+          &:nth-child(4) {
+            width: 15%;
+          }
 
-                &:nth-child(5) {
-                    width: 23%;
-                }
+          &:nth-child(5) {
+            width: 23%;
+          }
 
-                &:nth-child(6) {
-                    width: 10%;
-                }
+          &:nth-child(6) {
+            width: 10%;
+          }
 
-                &:nth-child(7) {
-                    width: 12%;
-                }
+          &:nth-child(7) {
+            width: 12%;
+          }
 
-                &:nth-child(8) {
-                    width: 5%;
-                }
-            }
+          &:nth-child(8) {
+            width: 5%;
+          }
         }
+      }
     }
   }
 
@@ -204,31 +206,31 @@
       margin-bottom: 0;
 
       .p-table__row {
-        th, td {
+        th,
+        td {
           &:nth-child(1) {
-              width: $icon-button-width;
+            width: $icon-button-width;
           }
 
           &:nth-child(2) {
-              width: 10%;
+            width: 10%;
           }
 
           &:nth-child(3) {
-             width: 40%;
+            width: 40%;
           }
 
           &:nth-child(4) {
-              width: 40%;
+            width: 40%;
           }
 
           &:nth-child(5) {
-              width: 10%;
+            width: 10%;
           }
         }
       }
     }
   }
-
 
   .p-table--pod-networking-config--message {
     margin-left: 35%;
@@ -399,7 +401,7 @@
       position: relative;
 
       &::after {
-        content: '';
+        content: "";
       }
 
       &.is-grouped {
@@ -506,7 +508,8 @@
 
   .p-table--controller-interfaces {
     .p-table--is-device {
-      th, td {
+      th,
+      td {
         &:nth-child(1) {
           width: 30%;
         }
@@ -523,7 +526,8 @@
     }
 
     .p-table--is-not-device {
-      th, td {
+      th,
+      td {
         &:nth-child(1) {
           width: 20%;
         }
@@ -551,7 +555,8 @@
 
   .p-table--controllers-commissioning {
     .p-table__row {
-      th, td {
+      th,
+      td {
         &:nth-child(1) {
           width: 15%;
         }
@@ -576,7 +581,8 @@
   .p-table--controller-vlans {
     .p-table__row {
       @media (min-width: $breakpoint-small) {
-        th, td {
+        th,
+        td {
           &:nth-child(1) {
             width: 15%;
           }
@@ -709,7 +715,8 @@
       @extend %small-text;
       @extend %p-double-row__row;
       color: $color-mid-dark;
-      margin-bottom: map-get($line-heights, default-text) - map-get($line-heights, small) - map-get($nudges, nudge--small);
+      margin-bottom: map-get($line-heights, default-text) -
+        map-get($line-heights, small) - map-get($nudges, nudge--small);
     }
   }
 
@@ -759,7 +766,8 @@
 
     .p-domain-name__tld {
       @extend %small-text;
-      margin-bottom: map-get($line-heights, default-text) - map-get($line-heights, small) - map-get($nudges, nudge--small);
+      margin-bottom: map-get($line-heights, default-text) -
+        map-get($line-heights, small) - map-get($nudges, nudge--small);
     }
   }
 
@@ -778,7 +786,7 @@
         background-position: center;
         background-repeat: no-repeat;
         background-size: map-get($icon-sizes, default);
-        content: '';
+        content: "";
         height: 17px;
         left: $sph-intra;
         position: absolute;
@@ -790,7 +798,7 @@
     %table-menu-title {
       border-bottom: 1px solid $color-light-new;
       color: $color-mid-dark;
-      font-size: .75rem;
+      font-size: 0.75rem;
       font-weight: 400;
       padding: $spv-intra--condensed $sph-intra;
       text-transform: uppercase;
@@ -816,7 +824,7 @@
       border: 0;
       cursor: pointer;
       display: none;
-      opacity: .25;
+      opacity: 0.25;
       position: absolute;
       right: 0;
       top: 2px;
@@ -898,5 +906,4 @@
       display: none !important;
     }
   }
-
 }

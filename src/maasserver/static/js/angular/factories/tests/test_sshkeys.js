@@ -4,34 +4,32 @@
  * Unit tests for SSHKeysManager.
  */
 
-
 describe("SSHKeysManager", function() {
+  // Load the MAAS module.
+  beforeEach(module("MAAS"));
 
-    // Load the MAAS module.
-    beforeEach(module("MAAS"));
+  // Load the SSHKeysManager.
+  var SSHKeysManager, RegionConnection;
+  beforeEach(inject(function($injector) {
+    SSHKeysManager = $injector.get("SSHKeysManager");
+    RegionConnection = $injector.get("RegionConnection");
+  }));
 
-    // Load the SSHKeysManager.
-    var SSHKeysManager, RegionConnection;
-    beforeEach(inject(function($injector) {
-        SSHKeysManager = $injector.get("SSHKeysManager");
-        RegionConnection = $injector.get("RegionConnection");
-    }));
+  it("set requires attributes", function() {
+    expect(SSHKeysManager._pk).toBe("id");
+    expect(SSHKeysManager._handler).toBe("sshkey");
+  });
 
-    it("set requires attributes", function() {
-        expect(SSHKeysManager._pk).toBe("id");
-        expect(SSHKeysManager._handler).toBe("sshkey");
+  describe("importKeys", function() {
+    it("calls the region", function() {
+      var obj = {};
+      var result = {};
+      spyOn(RegionConnection, "callMethod").and.returnValue(result);
+      expect(SSHKeysManager.importKeys(obj)).toBe(result);
+      expect(RegionConnection.callMethod).toHaveBeenCalledWith(
+        "sshkey.import_keys",
+        obj
+      );
     });
-
-    describe("importKeys", function() {
-
-        it("calls the region", function() {
-            var obj = {};
-            var result = {};
-            spyOn(RegionConnection, "callMethod").and.returnValue(result);
-            expect(SSHKeysManager.importKeys(obj)).toBe(result);
-            expect(RegionConnection.callMethod).toHaveBeenCalledWith(
-                "sshkey.import_keys", obj
-            );
-        });
-    });
+  });
 });

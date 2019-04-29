@@ -9,40 +9,37 @@
  */
 
 function SpacesManager(RegionConnection, Manager) {
+  function SpacesManager() {
+    Manager.call(this);
 
-    function SpacesManager() {
-        Manager.call(this);
+    this._pk = "id";
+    this._handler = "space";
 
-        this._pk = "id";
-        this._handler = "space";
+    // Listen for notify events for the space object.
+    var self = this;
+    RegionConnection.registerNotifier("space", function(action, data) {
+      self.onNotify(action, data);
+    });
+  }
 
-        // Listen for notify events for the space object.
-        var self = this;
-        RegionConnection.registerNotifier("space",
-            function(action, data) {
-                self.onNotify(action, data);
-            });
-    }
+  SpacesManager.prototype = new Manager();
 
-    SpacesManager.prototype = new Manager();
+  // Create a space.
+  SpacesManager.prototype.create = function(space) {
+    // We don't add the item to the list because a NOTIFY event will
+    // add the domain to the list. Adding it here will cause angular to
+    // complain because the same object exist in the list.
+    return RegionConnection.callMethod("space.create", space);
+  };
 
-    // Create a space.
-    SpacesManager.prototype.create = function(space) {
-        // We don't add the item to the list because a NOTIFY event will
-        // add the domain to the list. Adding it here will cause angular to
-        // complain because the same object exist in the list.
-        return RegionConnection.callMethod("space.create", space);
-    };
+  // Delete the space.
+  SpacesManager.prototype.deleteSpace = function(space) {
+    return RegionConnection.callMethod("space.delete", space);
+  };
 
-
-    // Delete the space.
-    SpacesManager.prototype.deleteSpace = function(space) {
-        return RegionConnection.callMethod("space.delete", space);
-    };
-
-    return new SpacesManager();
+  return new SpacesManager();
 }
 
-SpacesManager.$inject = ['RegionConnection', 'Manager'];
+SpacesManager.$inject = ["RegionConnection", "Manager"];
 
 export default SpacesManager;

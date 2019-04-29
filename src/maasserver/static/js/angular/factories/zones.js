@@ -9,50 +9,47 @@
  */
 
 function ZonesManager(RegionConnection, Manager) {
+  function ZonesManager() {
+    Manager.call(this);
 
-    function ZonesManager() {
-        Manager.call(this);
+    this._pk = "id";
+    this._handler = "zone";
 
-        this._pk = "id";
-        this._handler = "zone";
+    // Listen for notify events for the zone object.
+    var self = this;
+    RegionConnection.registerNotifier("zone", function(action, data) {
+      self.onNotify(action, data);
+    });
+  }
 
-        // Listen for notify events for the zone object.
-        var self = this;
-        RegionConnection.registerNotifier("zone",
-            function(action, data) {
-                self.onNotify(action, data);
-            });
+  ZonesManager.prototype = new Manager();
+
+  // Return the default zone.
+  ZonesManager.prototype.getDefaultZone = function(pod) {
+    var zoneId = 0;
+    var i;
+    var itemsLength = this._items.length;
+
+    if (pod) {
+      zoneId = pod.zone;
     }
 
-    ZonesManager.prototype = new Manager();
+    if (itemsLength === 0) {
+      return null;
+    }
 
-    // Return the default zone.
-    ZonesManager.prototype.getDefaultZone = function(pod) {
-        var zoneId = 0;
-        var i;
-        var itemsLength = this._items.length;
+    for (i = 0; i < itemsLength; i++) {
+      if (this._items[i].id === zoneId) {
+        return this._items[i];
+      }
+    }
 
-        if (pod) {
-            zoneId = pod.zone;
-        }
+    return this._items[0];
+  };
 
-        if (itemsLength === 0) {
-            return null;
-        }
-
-        for (i = 0; i < itemsLength; i++) {
-            if (this._items[i].id === zoneId) {
-                return this._items[i];
-            }
-        }
-
-
-        return this._items[0];
-    };
-
-    return new ZonesManager();
+  return new ZonesManager();
 }
 
-ZonesManager.$inject = ['RegionConnection', 'Manager'];
+ZonesManager.$inject = ["RegionConnection", "Manager"];
 
 export default ZonesManager;

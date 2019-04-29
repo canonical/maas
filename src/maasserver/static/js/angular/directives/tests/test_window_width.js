@@ -5,49 +5,44 @@
  */
 
 describe("maasWindowWidth", function() {
+  // Load the MAAS module.
+  beforeEach(module("MAAS"));
 
-    // Load the MAAS module.
-    beforeEach(module("MAAS"));
+  // Create a new scope before each test.
+  var $scope;
+  var $window;
 
-    // Create a new scope before each test.
-    var $scope;
-    var $window;
+  beforeEach(inject(function($rootScope, _$window_) {
+    $window = _$window_;
+    $scope = $rootScope.$new();
+  }));
 
-    beforeEach(inject(function($rootScope, _$window_) {
-        $window = _$window_;
-        $scope = $rootScope.$new();
-    }));
+  // Return the compiled directive with the items from the scope.
+  function compileDirective() {
+    var directive;
+    var html = ["<div>", "<div window-width></div>", "</div>"].join("");
 
-    // Return the compiled directive with the items from the scope.
-    function compileDirective() {
-        var directive;
-        var html = [
-            '<div>',
-                '<div window-width></div>',
-            '</div>'
-            ].join('');
-
-        // Compile the directive.
-        inject(function($compile) {
-            directive = $compile(html)($scope);
-        });
-
-        // Perform the digest cycle to finish the compile.
-        $scope.$digest();
-        return directive.find("div[window-width]");
-    }
-
-    it('windowWidth set to initial value', function () {
-        $window.innerWidth = 1026;
-        var directive = compileDirective();
-        expect($scope.windowWidth).toEqual($window.innerWidth);
+    // Compile the directive.
+    inject(function($compile) {
+      directive = $compile(html)($scope);
     });
 
-    it('windowWidth set on resize', function () {
-        $window.innerWidth = 1026;
-        var directive = compileDirective();
-        $window.innerWidth = 800;
-        angular.element($window).triggerHandler('resize');
-        expect($scope.windowWidth).toEqual($window.innerWidth);
-    });
+    // Perform the digest cycle to finish the compile.
+    $scope.$digest();
+    return directive.find("div[window-width]");
+  }
+
+  it("windowWidth set to initial value", function() {
+    $window.innerWidth = 1026;
+    var directive = compileDirective();
+    expect($scope.windowWidth).toEqual($window.innerWidth);
+  });
+
+  it("windowWidth set on resize", function() {
+    $window.innerWidth = 1026;
+    var directive = compileDirective();
+    $window.innerWidth = 800;
+    angular.element($window).triggerHandler("resize");
+    expect($scope.windowWidth).toEqual($window.innerWidth);
+  });
 });

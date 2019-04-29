@@ -5,23 +5,23 @@
  */
 
 function filterByFabric() {
-    return function(vlans, fabric) {
-        var filtered = [];
-        var id;
-        if (angular.isObject(fabric)) {
-            id = fabric.id;
-        } else if (angular.isNumber(fabric)) {
-            id = fabric;
-        } else {
-            return filtered;
-        }
-        angular.forEach(vlans, function(vlan) {
-            if (vlan.fabric === id) {
-                filtered.push(vlan);
-            }
-        });
-        return filtered;
-    };
+  return function(vlans, fabric) {
+    var filtered = [];
+    var id;
+    if (angular.isObject(fabric)) {
+      id = fabric.id;
+    } else if (angular.isNumber(fabric)) {
+      id = fabric;
+    } else {
+      return filtered;
+    }
+    angular.forEach(vlans, function(vlan) {
+      if (vlan.fabric === id) {
+        filtered.push(vlan);
+      }
+    });
+    return filtered;
+  };
 }
 
 export default filterByFabric;

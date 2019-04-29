@@ -1,11 +1,11 @@
 //does not work with colors containing alpha
 @function encodecolor($string) {
-	@if type-of($string) == 'color' {
-      $hex: str-slice(ie-hex-str($string), 4);
-      $string:unquote("#{$hex}");
-    }
-    $string: '%23' + $string;
-	@return $string;
+  @if type-of($string) == "color" {
+    $hex: str-slice(ie-hex-str($string), 4);
+    $string: unquote("#{$hex}");
+  }
+  $string: "%23" + $string;
+  @return $string;
 }
 
 .u-position-relative {
@@ -33,19 +33,19 @@ $table-h-indent: $sph-intra--condensed;
   // - $px * 3 is to allow for the accessibility outline, which otherwise gets clipped by overflow: hidden on any of the parents
 
   &--left {
-    margin-left: - $table-h-indent;
+    margin-left: -$table-h-indent;
   }
 
   &--right {
-    margin-right: - $table-h-indent;
+    margin-right: -$table-h-indent;
   }
 
   &-focusable--left {
-    margin-left: - $table-h-indent + $px * 3;
+    margin-left: -$table-h-indent + $px * 3;
   }
 
   &-focusable--right {
-    margin-right: - $table-h-indent + $px * 3;
+    margin-right: -$table-h-indent + $px * 3;
   }
 }
 
@@ -53,15 +53,13 @@ $table-h-indent: $sph-intra--condensed;
   vertical-align: middle;
 }
 
-
 .u-space-between {
   display: flex;
   justify-content: space-between;
 }
 
-
 .u-disable {
-  opacity: .5;
+  opacity: 0.5;
   pointer-events: none !important;
   user-select: none;
 }

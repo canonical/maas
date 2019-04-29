@@ -4,20 +4,18 @@
  * Unit tests for StaticRoutesManager.
  */
 
-
 describe("StaticRoutesManager", function() {
+  // Load the MAAS module.
+  beforeEach(module("MAAS"));
 
-    // Load the MAAS module.
-    beforeEach(module("MAAS"));
+  // Load the StaticRoutesManager.
+  var StaticRoutesManager;
+  beforeEach(inject(function($injector) {
+    StaticRoutesManager = $injector.get("StaticRoutesManager");
+  }));
 
-    // Load the StaticRoutesManager.
-    var StaticRoutesManager;
-    beforeEach(inject(function($injector) {
-        StaticRoutesManager = $injector.get("StaticRoutesManager");
-    }));
-
-    it("set requires attributes", function() {
-        expect(StaticRoutesManager._pk).toBe("id");
-        expect(StaticRoutesManager._handler).toBe("staticroute");
-    });
+  it("set requires attributes", function() {
+    expect(StaticRoutesManager._pk).toBe("id");
+    expect(StaticRoutesManager._handler).toBe("staticroute");
+  });
 });

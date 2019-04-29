@@ -1,13 +1,13 @@
 $color--used: $color-link;
-$color--free: transparentize($color-link, .8);
+$color--free: transparentize($color-link, 0.8);
 $color--request: $color-positive;
-$color--other-request: transparentize($color-positive, .33);
+$color--other-request: transparentize($color-positive, 0.33);
 $color--request-warning: $color-warning;
 
 @mixin maas-meter {
   %align-with-p {
-      padding-top: .2rem; // to align it vertically with h5,p etc
-      margin-bottom: -.2rem;
+    padding-top: 0.2rem; // to align it vertically with h5,p etc
+    margin-bottom: -0.2rem;
   }
 
   .p-meter {
@@ -118,11 +118,13 @@ $color--request-warning: $color-warning;
     }
 
     &__graph-content {
-      background-image: linear-gradient( 90deg,
+      background-image: linear-gradient(
+        90deg,
         $color--used 0%,
         $color--used 100%,
         transparent 100%,
-        transparent 100%);
+        transparent 100%
+      );
       background-size: 100% 100%;
       display: block;
       text-indent: -9999px;
@@ -141,7 +143,9 @@ $color--request-warning: $color-warning;
       padding-left: 0;
     }
 
-    &::after {content: unset}
+    &::after {
+      content: unset;
+    }
 
     &__item {
       display: block;
@@ -183,5 +187,4 @@ $color--request-warning: $color-warning;
       margin-bottom: $sp-unit * 2 - map-get($nudges, nudge--p);
     }
   }
-
 }

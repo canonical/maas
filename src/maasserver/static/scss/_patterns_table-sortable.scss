@@ -1,6 +1,5 @@
 @mixin maas-table-sortable {
   .p-table--sortable {
-
     [role="columnheader"] {
       @extend th[role="columnheader"][aria-sort];
 

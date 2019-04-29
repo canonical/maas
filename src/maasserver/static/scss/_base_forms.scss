@@ -10,20 +10,20 @@
 
   // XXX: Lyubo: override vertically-condensed an vertically narrow styling which is meant to happen only in narrow tds, not expanded ones.
   // Can be removed once this is merged: https://github.com/vanilla-framework/vanilla-framework/pull/1920/commits/c48e325a842f5f73fc70dd1b727f70a68836fd28
-  [type='text'],
-  [type='date'],
-  [type='datetime'],
-  [type='datatime-local'],
-  [type='month'],
-  [type='time'],
-  [type='week'],
-  [type='color'],
-  [type='number'],
-  [type='search'],
-  [type='password'],
-  [type='email'],
-  [type='url'],
-  [type='tel'],
+  [type="text"],
+  [type="date"],
+  [type="datetime"],
+  [type="datatime-local"],
+  [type="month"],
+  [type="time"],
+  [type="week"],
+  [type="color"],
+  [type="number"],
+  [type="search"],
+  [type="password"],
+  [type="email"],
+  [type="url"],
+  [type="tel"],
   textarea,
   select {
     table & {
@@ -36,8 +36,8 @@
 
     .is-small & {
       margin-bottom: $spv-nudge-compensation;
-      padding-bottom: $spv-nudge - $sp-unit * .5 - $px;
-      padding-top: $spv-nudge - $sp-unit * .5 - $px;
+      padding-bottom: $spv-nudge - $sp-unit * 0.5 - $px;
+      padding-top: $spv-nudge - $sp-unit * 0.5 - $px;
     }
 
     &.u-min-margin--bottom {
@@ -59,7 +59,7 @@
 
     th:not(.p-table__group-label) & + label {
       &::before {
-        top: .65em;
+        top: 0.65em;
       }
 
       &::after {
@@ -69,7 +69,7 @@
 
     .p-inline-list__item & + label {
       &::before {
-        top: .5rem;
+        top: 0.5rem;
       }
 
       &::after {
@@ -83,6 +83,6 @@
   }
 
   .obj-saving {
-    margin-right: .5rem;
+    margin-right: 0.5rem;
   }
 }

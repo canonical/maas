@@ -5,15 +5,15 @@
  */
 
 function removeDefaultVLAN() {
-    return function(vlans) {
-        var filtered = [];
-        angular.forEach(vlans, function(vlan) {
-            if(vlan.vid !== 0) {
-                filtered.push(vlan);
-            }
-        });
-        return filtered;
-    };
+  return function(vlans) {
+    var filtered = [];
+    angular.forEach(vlans, function(vlan) {
+      if (vlan.vid !== 0) {
+        filtered.push(vlan);
+      }
+    });
+    return filtered;
+  };
 }
 
 export default removeDefaultVLAN;

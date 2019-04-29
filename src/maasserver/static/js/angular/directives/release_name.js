@@ -35,10 +35,10 @@ function maasReleaseName(GeneralManager) {
       };
 
       // Update the text when the release name or osinfo changes.
-      scope.$watch('releaseName', function() {
+      scope.$watch("releaseName", function() {
         setText();
       });
-      scope.$watchCollection('osinfo.releases', function() {
+      scope.$watchCollection("osinfo.releases", function() {
         setText();
       });
     }

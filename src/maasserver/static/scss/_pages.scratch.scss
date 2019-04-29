@@ -1,7 +1,5 @@
 @mixin maas-pages {
-
   table thead {
-
     @media screen and (min-width: $breakpoint-medium + 1) {
       display: table-header-group !important;
     }
@@ -18,7 +16,7 @@
       left: 0 !important;
       right: 0 !important;
       border-top: 1px dotted #d2d2d2;
-      box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+      box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
       height: auto !important;
 
       tr th {
@@ -28,7 +26,6 @@
   }
 
   .u-upper-case {
-
     &--first {
       text-transform: capitalize;
     }
@@ -55,9 +52,7 @@
   }
 
   .nav {
-
     @media only screen and (max-width: 768px) {
-
       .nav-toggle {
         background-color: $transparent;
       }
@@ -67,9 +62,7 @@
       }
 
       &.no-ng {
-
         &:hover {
-
           ul {
             display: block;
           }
@@ -95,7 +88,6 @@
   }
 
   .banner {
-
     .nav-primary {
       overflow: visible;
 
@@ -124,34 +116,33 @@
   }
 
   .page-navigation__link {
-      background-color: transparent;
-      height: initial;
-      border-radius: 0;
+    background-color: transparent;
+    height: initial;
+    border-radius: 0;
 
-      &:hover {
-        background-color: $transparent;
-
-        &:focus,
-        &:active {
-          outline: none;
-          box-shadow: inset 0 -3px #d2d2d2, 0px 0px 0px 1px $color-focus;
-        }
-      }
+    &:hover {
+      background-color: $transparent;
 
       &:focus,
       &:active {
         outline: none;
-        box-shadow: 0px 0px 0px 1px $color-focus;
+        box-shadow: inset 0 -3px #d2d2d2, 0px 0px 0px 1px $color-focus;
       }
+    }
 
-      &.is-active {
+    &:focus,
+    &:active {
+      outline: none;
+      box-shadow: 0px 0px 0px 1px $color-focus;
+    }
 
-        &:focus,
-        &:active {
-          outline: none;
-          box-shadow: inset 0 -3px #e95420, 0px 0px 0px 1px $color-focus;
-        }
+    &.is-active {
+      &:focus,
+      &:active {
+        outline: none;
+        box-shadow: inset 0 -3px #e95420, 0px 0px 0px 1px $color-focus;
       }
+    }
   }
 
   .page-navigation {
@@ -169,20 +160,18 @@
     border-bottom: 3px solid transparent;
   }
 
-  .tabs .is-active .tabs__tab-link, .tabs .is-active:hover .tabs__tab-link {
+  .tabs .is-active .tabs__tab-link,
+  .tabs .is-active:hover .tabs__tab-link {
     border-bottom: 3px solid #e95420;
   }
 
   .table {
-
     .table__row {
-
       &:hover {
         background-color: $transparent;
       }
 
       &.is-active {
-
         &:hover {
           background-color: $white;
         }
@@ -201,7 +190,7 @@
           display: inline-block;
           padding: 0;
           background-color: $transparent;
-          background-image: url('#{$asset-path}images/b0b97dfc-contextual-menu.svg');
+          background-image: url("#{$asset-path}images/b0b97dfc-contextual-menu.svg");
           background-position: center;
           background-repeat: no-repeat;
           text-indent: -9999px;
@@ -223,7 +212,7 @@
           border: 1px solid #d2d2d2;
           z-index: 20;
           max-height: 1000px;
-          transition: max-height .3s ease-in;
+          transition: max-height 0.3s ease-in;
           position: absolute;
           right: 0;
           top: 33px;
@@ -278,14 +267,11 @@
   }
 
   .accordion {
-
     .accordion__tab {
-
       .accordion__tab-title {
         padding: 14px 20px;
 
         &.is-active {
-
           + .accordion__tab-content {
             display: block;
           }
@@ -296,9 +282,7 @@
         display: none;
 
         .accordion__tab-list {
-
           .accordion__tab-item {
-
             .accordion__tab-link {
               height: initial;
             }
@@ -307,7 +291,6 @@
       }
     }
   }
-
 
   .u-text--truncate {
     white-space: nowrap;
@@ -318,7 +301,7 @@
   .u-width--two-thirds {
     box-sizing: border-box;
     float: left;
-    width: 66.66666%!important;
+    width: 66.66666% !important;
   }
 
   .hidden {
@@ -326,12 +309,12 @@
   }
 
   .small-icon {
-      width: 12px;
+    width: 12px;
   }
 
   .images-info {
-      text-align: center;
-      padding: 10px;
+    text-align: center;
+    padding: 10px;
   }
 
   .images-warning {
@@ -340,8 +323,8 @@
     list-style: none;
     padding: 15px 20px 15px 45px;
     background-repeat: no-repeat;
-    box-shadow: 0 1px 1px rgba(0, 0, 0, .1);
-    background: $white url('#{$asset-path}images/d730daea-error.svg') no-repeat;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+    background: $white url("#{$asset-path}images/d730daea-error.svg") no-repeat;
     background-size: 16px 16px;
     background-position: 15px center;
     margin-bottom: 20px;
@@ -369,15 +352,12 @@
   }
 
   .p-notification--group {
-
     .p-notification__status:before {
       line-height: 24px;
     }
 
     .p-notification__item {
-
       .p-notification__msg {
-
         .button--inline {
           vertical-align: initial;
         }
@@ -400,7 +380,7 @@
     background: $white;
     background-position: top 50% left 15px;
     background-repeat: no-repeat;
-    box-shadow: 0 1px 1px rgba(0, 0, 0, .1);
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
 
     .spinner {
       margin-top: -3px;
@@ -414,7 +394,7 @@
     display: inline-block;
     vertical-align: middle;
     text-indent: 999em;
-    background: url('#{$asset-path}images/8b7b3046-loading.png') no-repeat;
+    background: url("#{$asset-path}images/8b7b3046-loading.png") no-repeat;
     background-size: 100% 100%;
   }
 
@@ -430,7 +410,7 @@
 
   @charset 'UTF-8';
 
-/**
+  /**
  * MAAS account styles
  *
  * @project     MAAS
@@ -440,49 +420,48 @@
  */
 
   .accounts {
-
-      .logout {
-
-          .divide {
-              padding: 0 20px 0 30px;
-              display: inline-block;
-          }
+    .logout {
+      .divide {
+        padding: 0 20px 0 30px;
+        display: inline-block;
       }
+    }
 
-      .api {
+    .api {
+      li {
+        position: relative;
 
-          li {
-              position: relative;
+        input[type="text"] {
+          line-height: 30px;
+          padding-right: 30px;
+          width: 100%;
 
-                  input[type='text'] {
-                      line-height: 30px;
-                      padding-right: 30px;
-                      width: 100%;
-
-                      &::-webkit-input-placeholder {
-                         color: #333;
-                      }
-
-                      &:-moz-placeholder { /* Firefox 18- */
-                         color: #333;
-                      }
-
-                      &::-moz-placeholder {  /* Firefox 19+ */
-                         color: #333;
-                      }
-
-                      &:-ms-input-placeholder {
-                         color: #333;
-                      }
-                  }
-
-              .delete-link {
-                  position: absolute;
-                  top: 13px;
-                  right: 15px;
-              }
+          &::-webkit-input-placeholder {
+            color: #333;
           }
+
+          &:-moz-placeholder {
+            /* Firefox 18- */
+            color: #333;
+          }
+
+          &::-moz-placeholder {
+            /* Firefox 19+ */
+            color: #333;
+          }
+
+          &:-ms-input-placeholder {
+            color: #333;
+          }
+        }
+
+        .delete-link {
+          position: absolute;
+          top: 13px;
+          right: 15px;
+        }
       }
+    }
   }
 
   .script-content {
@@ -523,12 +502,12 @@
       width: 100%;
       background-color: #fff;
       border-radius: 0 0 3px 3px;
-      border: 1px solid rgba(0,0,0,.2);
-      -webkit-box-shadow: 0 5px 10px rgba(0,0,0,.2);
-      -moz-box-shadow: 0 5px 10px rgba(0,0,0,.2);
-      box-shadow: 0 5px 10px rgba(0,0,0,.2);
+      border: 1px solid rgba(0, 0, 0, 0.2);
+      -webkit-box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
+      -moz-box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
+      box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
       max-height: 300px;
-      transition: max-height .3s ease-in;
+      transition: max-height 0.3s ease-in;
       overflow: scroll;
 
       .suggestion-list {
@@ -563,12 +542,11 @@
   }
 
   .tags--inline {
-
     .host {
-        position: relative;
-        margin-top: 5px;
-        margin-bottom: 5px;
-        height: 100%;
+      position: relative;
+      margin-top: 5px;
+      margin-bottom: 5px;
+      height: 100%;
     }
 
     .tags {

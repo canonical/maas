@@ -1,10 +1,10 @@
 /* Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
-* GNU Affero General Public License version 3 (see the file LICENSE).
-*
-* Switches listing directive.
-*
-* Renders the switches listing.
-*/
+ * GNU Affero General Public License version 3 (see the file LICENSE).
+ *
+ * Switches listing directive.
+ *
+ * Renders the switches listing.
+ */
 
 /* @ngInject */
 function maasSwitchesTable(SwitchesManager, GeneralManager) {
@@ -19,25 +19,24 @@ function maasSwitchesTable(SwitchesManager, GeneralManager) {
       onCheckAll: "&",
       onCheck: "&"
     },
-    templateUrl: (
-      'static/partials/switches-table.html?v=' + (
-        MAAS_config.files_version)),
+    templateUrl:
+      "static/partials/switches-table.html?v=" + MAAS_config.files_version,
     link: function(scope, element, attrs) {
       // Statuses that should show spinner.
       var SPINNER_STATUSES = [
-        1,   // commissioning
-        9,   // deploying
-        12,  // releasing
-        14,  // disk erasing
-        17,  // entering rescue mode
-        19,  // exiting rescue mode
-        21   // testing
+        1, // commissioning
+        9, // deploying
+        12, // releasing
+        14, // disk erasing
+        17, // entering rescue mode
+        19, // exiting rescue mode
+        21 // testing
       ];
 
       // Scope variables.
       scope.table = {
-        column: 'fqdn',
-        predicate: 'fqdn',
+        column: "fqdn",
+        predicate: "fqdn",
         reverse: false,
         allViewableChecked: false,
         switches: SwitchesManager.getItems(),
@@ -67,15 +66,13 @@ function maasSwitchesTable(SwitchesManager, GeneralManager) {
       // Selects and deselects visible switches.
       scope.toggleCheckAll = function() {
         if (scope.table.allViewableChecked) {
-          angular.forEach(
-            scope.table.filteredSwitches, function(switch_) {
-              SwitchesManager.unselectItem(switch_.system_id);
-            });
+          angular.forEach(scope.table.filteredSwitches, function(switch_) {
+            SwitchesManager.unselectItem(switch_.system_id);
+          });
         } else {
-          angular.forEach(
-            scope.table.filteredSwitches, function(switch_) {
-              SwitchesManager.selectItem(switch_.system_id);
-            });
+          angular.forEach(scope.table.filteredSwitches, function(switch_) {
+            SwitchesManager.selectItem(switch_.system_id);
+          });
         }
         scope.updateAllChecked();
         scope.onCheckAll();
@@ -127,12 +124,13 @@ function maasSwitchesTable(SwitchesManager, GeneralManager) {
 
       // Returns the status text to show.
       scope.getStatusText = function(switch_) {
-        var showRelease = ['Deploying', 'Deployed'];
+        var showRelease = ["Deploying", "Deployed"];
         if (showRelease.indexOf(switch_.status) === -1) {
           return switch_.status;
         } else {
           var releaseTitle = scope.getReleaseTitle(
-            switch_.osystem + '/' + switch_.distro_series);
+            switch_.osystem + "/" + switch_.distro_series
+          );
           if (switch_.osystem === "ubuntu") {
             releaseTitle = releaseTitle.split('"')[0].trim();
           }
@@ -140,7 +138,7 @@ function maasSwitchesTable(SwitchesManager, GeneralManager) {
             return releaseTitle;
           }
           if (switch_.status === "Deploying") {
-            return switch_.status + ' ' + releaseTitle;
+            return switch_.status + " " + releaseTitle;
           }
         }
       };

@@ -4,39 +4,33 @@
  * Unit tests for TagsManager.
  */
 
-
 describe("TagsManager", function() {
+  // Load the MAAS module.
+  beforeEach(module("MAAS"));
 
-    // Load the MAAS module.
-    beforeEach(module("MAAS"));
+  // Load the TagsManager.
+  var TagsManager;
+  beforeEach(inject(function($injector) {
+    TagsManager = $injector.get("TagsManager");
+  }));
 
-    // Load the TagsManager.
-    var TagsManager;
-    beforeEach(inject(function($injector) {
-        TagsManager = $injector.get("TagsManager");
-    }));
+  it("set requires attributes", function() {
+    expect(TagsManager._pk).toBe("id");
+    expect(TagsManager._handler).toBe("tag");
+  });
 
-    it("set requires attributes", function() {
-        expect(TagsManager._pk).toBe("id");
-        expect(TagsManager._handler).toBe("tag");
+  describe("autocomplete", function() {
+    it("returns array of matching tags", function() {
+      var tags = ["apple", "banana", "cake", "donut"];
+      angular.forEach(tags, function(tag) {
+        TagsManager._items.push({ name: tag });
+      });
+      expect(TagsManager.autocomplete("a")).toEqual([
+        "apple",
+        "banana",
+        "cake"
+      ]);
+      expect(TagsManager.autocomplete("do")).toEqual(["donut"]);
     });
-
-    describe("autocomplete", function() {
-
-        it("returns array of matching tags", function() {
-            var tags = [
-                "apple",
-                "banana",
-                "cake",
-                "donut"
-                ];
-            angular.forEach(tags, function(tag) {
-                TagsManager._items.push({ name: tag });
-            });
-            expect(TagsManager.autocomplete("a")).toEqual(
-                ["apple", "banana", "cake"]);
-            expect(TagsManager.autocomplete("do")).toEqual(
-                ["donut"]);
-        });
-    });
+  });
 });

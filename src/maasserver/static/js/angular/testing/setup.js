@@ -6,7 +6,9 @@
  * Special setup that occurs only for unit testing.
  */
 
-angular.module('MAAS').run(['LogService', function (LogService) {
+angular.module("MAAS").run([
+  "LogService",
+  function(LogService) {
     // Silence logging by default in the tests.
     LogService.logging = false;
 
@@ -14,6 +16,7 @@ angular.module('MAAS').run(['LogService', function (LogService) {
     // won't have $window.performance.
     var time = 0;
     LogService.now = function() {
-        return time++;
+      return time++;
     };
-}]);
+  }
+]);

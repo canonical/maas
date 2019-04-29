@@ -4,12 +4,14 @@
  * MAAS Zones List Controller
  */
 
-
 /* @ngInject */
 function ZonesListController(
-  $scope, $rootScope, ZonesManager,
-  UsersManager, ManagerHelperService) {
-
+  $scope,
+  $rootScope,
+  ZonesManager,
+  UsersManager,
+  ManagerHelperService
+) {
   // Set title and page.
   $rootScope.title = "Zones";
   $rootScope.page = "zones";
@@ -42,11 +44,11 @@ function ZonesListController(
     return UsersManager.isSuperUser();
   };
 
-  ManagerHelperService.loadManagers(
-    $scope, [ZonesManager, UsersManager]).then(
-      function() {
-        $scope.loading = false;
-      });
+  ManagerHelperService.loadManagers($scope, [ZonesManager, UsersManager]).then(
+    function() {
+      $scope.loading = false;
+    }
+  );
 }
 
 export default ZonesListController;

@@ -393,6 +393,7 @@ lint-js:
 		-not -path '*-min.js' -a \
 	    '(' -name '*.html' -o -name '*.js' ')' -print0 \
 		| xargs -r0 -n20 -P4 $(pocketlint)
+		bin/yarn prettier-check
 
 # Apply automated formatting to all Python files.
 format: sources = $(wildcard *.py contrib/*.py) src utilities etc

@@ -49,7 +49,8 @@
 
     .p-form__control {
       $input-v-padding-amount: $spv-nudge - $px;
-      $form-control-min-height: map-get($line-heights, default-text) + $input-v-padding-amount * 2 + 2 * $px;
+      $form-control-min-height: map-get($line-heights, default-text) +
+        $input-v-padding-amount * 2 + 2 * $px;
       @extend .tablet-col-4;
       @extend .col-4;
 

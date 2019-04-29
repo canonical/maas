@@ -5,138 +5,137 @@
  */
 
 describe("maasReleaseOptions", function() {
+  // Load the MAAS module.
+  beforeEach(module("MAAS"));
 
-    // Load the MAAS module.
-    beforeEach(module("MAAS"));
+  // Get the required managers.
+  var GeneralManager;
+  beforeEach(inject(function($injector) {
+    GeneralManager = $injector.get("GeneralManager");
+  }));
 
-    // Get the required managers.
-    var GeneralManager;
-    beforeEach(inject(function($injector) {
-        GeneralManager = $injector.get("GeneralManager");
-    }));
+  // Create a new scope before each test.
+  var $scope;
+  beforeEach(inject(function($rootScope) {
+    $scope = $rootScope.$new();
+  }));
 
-    // Create a new scope before each test.
-    var $scope;
-    beforeEach(inject(function($rootScope) {
-        $scope = $rootScope.$new();
-    }));
+  // Return the compiled directive with the osinfo from the scope.
+  function compileDirective() {
+    var directive;
+    var html =
+      '<div><div data-maas-release-options="options">' + "</div></div>";
 
-    // Return the compiled directive with the osinfo from the scope.
-    function compileDirective() {
-        var directive;
-        var html = '<div><div data-maas-release-options="options">' +
-            '</div></div>';
-
-        // Compile the directive.
-        inject(function($compile) {
-            directive = $compile(html)($scope);
-        });
-
-        // Perform the digest cycle to finish the compile.
-        $scope.$digest();
-        return directive.find("div");
-    }
-
-    it("sets erase and options from GeneralManager", function() {
-        var options = {};
-        $scope.options = options;
-
-        var managerOptions = {
-            erase: true,
-            secure_erase: true,
-            quick_erase: true
-        };
-        spyOn(GeneralManager, "getData").and.returnValue(managerOptions);
-
-        var directive = compileDirective();
-        expect(options).toEqual({
-            erase: true,
-            secureErase: true,
-            quickErase: true
-        });
+    // Compile the directive.
+    inject(function($compile) {
+      directive = $compile(html)($scope);
     });
 
-    it("sets erase and not options from GeneralManager", function() {
-        var options = {};
-        $scope.options = options;
+    // Perform the digest cycle to finish the compile.
+    $scope.$digest();
+    return directive.find("div");
+  }
 
-        var managerOptions = {
-            erase: false,
-            secure_erase: true,
-            quick_erase: true
-        };
-        spyOn(GeneralManager, "getData").and.returnValue(managerOptions);
+  it("sets erase and options from GeneralManager", function() {
+    var options = {};
+    $scope.options = options;
 
-        // Since erase is false all other options should be false so the
-        // checkboxes are not selected.
-        var directive = compileDirective();
-        expect(options).toEqual({
-            erase: false,
-            secureErase: false,
-            quickErase: false
-        });
+    var managerOptions = {
+      erase: true,
+      secure_erase: true,
+      quick_erase: true
+    };
+    spyOn(GeneralManager, "getData").and.returnValue(managerOptions);
+
+    var directive = compileDirective();
+    expect(options).toEqual({
+      erase: true,
+      secureErase: true,
+      quickErase: true
     });
+  });
 
-    it("setting erase sets options from GeneralManager", function() {
-        var options = {};
-        $scope.options = options;
+  it("sets erase and not options from GeneralManager", function() {
+    var options = {};
+    $scope.options = options;
 
-        var managerOptions = {
-            erase: false,
-            secure_erase: true,
-            quick_erase: true
-        };
-        spyOn(GeneralManager, "getData").and.returnValue(managerOptions);
+    var managerOptions = {
+      erase: false,
+      secure_erase: true,
+      quick_erase: true
+    };
+    spyOn(GeneralManager, "getData").and.returnValue(managerOptions);
 
-        // When erase is set to true by the user the other global options
-        // should then be set to the global defaults.
-        var directive = compileDirective();
-        options.erase = true;
-        directive.isolateScope().onEraseChange();
-        expect(options).toEqual({
-            erase: true,
-            secureErase: true,
-            quickErase: true
-        });
+    // Since erase is false all other options should be false so the
+    // checkboxes are not selected.
+    var directive = compileDirective();
+    expect(options).toEqual({
+      erase: false,
+      secureErase: false,
+      quickErase: false
     });
+  });
 
-    it("deselecting erase clears options", function() {
-        var options = {};
-        $scope.options = options;
+  it("setting erase sets options from GeneralManager", function() {
+    var options = {};
+    $scope.options = options;
 
-        var managerOptions = {
-            erase: false,
-            secure_erase: true,
-            quick_erase: true
-        };
-        spyOn(GeneralManager, "getData").and.returnValue(managerOptions);
+    var managerOptions = {
+      erase: false,
+      secure_erase: true,
+      quick_erase: true
+    };
+    spyOn(GeneralManager, "getData").and.returnValue(managerOptions);
 
-        // When erase is deselected the other selected options should go
-        // back to false so there checkboxes are not selected.
-        var directive = compileDirective();
-        options.erase = true;
-        directive.isolateScope().onEraseChange();
-        options.erase = false;
-        directive.isolateScope().onEraseChange();
-        expect(options).toEqual({
-            erase: false,
-            secureErase: false,
-            quickErase: false
-        });
+    // When erase is set to true by the user the other global options
+    // should then be set to the global defaults.
+    var directive = compileDirective();
+    options.erase = true;
+    directive.isolateScope().onEraseChange();
+    expect(options).toEqual({
+      erase: true,
+      secureErase: true,
+      quickErase: true
     });
+  });
 
-    it("GeneralManager erase disables erase deselection", function() {
-        var options = {};
-        $scope.options = options;
+  it("deselecting erase clears options", function() {
+    var options = {};
+    $scope.options = options;
 
-        var managerOptions = {
-            erase: true,
-            secure_erase: true,
-            quick_erase: true
-        };
-        spyOn(GeneralManager, "getData").and.returnValue(managerOptions);
+    var managerOptions = {
+      erase: false,
+      secure_erase: true,
+      quick_erase: true
+    };
+    spyOn(GeneralManager, "getData").and.returnValue(managerOptions);
 
-        var directive = compileDirective();
-        expect(directive.find("#diskErase").attr("disabled")).toBe("disabled");
+    // When erase is deselected the other selected options should go
+    // back to false so there checkboxes are not selected.
+    var directive = compileDirective();
+    options.erase = true;
+    directive.isolateScope().onEraseChange();
+    options.erase = false;
+    directive.isolateScope().onEraseChange();
+    expect(options).toEqual({
+      erase: false,
+      secureErase: false,
+      quickErase: false
     });
+  });
+
+  it("GeneralManager erase disables erase deselection", function() {
+    var options = {};
+    $scope.options = options;
+
+    var managerOptions = {
+      erase: true,
+      secure_erase: true,
+      quick_erase: true
+    };
+    spyOn(GeneralManager, "getData").and.returnValue(managerOptions);
+
+    var directive = compileDirective();
+    expect(directive.find("#diskErase").attr("disabled")).toBe("disabled");
+  });
 });

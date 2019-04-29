@@ -6,7 +6,7 @@
   }
 
   //XXX: card padding shouldn't be scaleable. can be removed once https://github.com/vanilla-framework/vanilla-framework/pull/1920 is merged
-  div[class*='p-card--'],
+  div[class*="p-card--"],
   .p-card {
     padding: $spv-inter--regular;
   }
@@ -17,7 +17,7 @@
 
     h2 + &,
     .p-heading--2 + & {
-      margin-top: - $sp-unit * 2;
+      margin-top: -$sp-unit * 2;
     }
 
     .muted-label {

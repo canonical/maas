@@ -8,28 +8,25 @@
  * notification events about IPRanges.
  */
 
-
 function IPRangesManager(RegionConnection, Manager) {
+  function IPRangesManager() {
+    Manager.call(this);
 
-    function IPRangesManager() {
-        Manager.call(this);
+    this._pk = "id";
+    this._handler = "iprange";
 
-        this._pk = "id";
-        this._handler = "iprange";
+    // Listen for notify events for the iprange object.
+    var self = this;
+    RegionConnection.registerNotifier("iprange", function(action, data) {
+      self.onNotify(action, data);
+    });
+  }
 
-        // Listen for notify events for the iprange object.
-        var self = this;
-        RegionConnection.registerNotifier("iprange",
-            function(action, data) {
-                self.onNotify(action, data);
-            });
-    }
+  IPRangesManager.prototype = new Manager();
 
-    IPRangesManager.prototype = new Manager();
-
-    return new IPRangesManager();
+  return new IPRangesManager();
 }
 
-IPRangesManager.$inject = ['RegionConnection', 'Manager'];
+IPRangesManager.$inject = ["RegionConnection", "Manager"];
 
 export default IPRangesManager;

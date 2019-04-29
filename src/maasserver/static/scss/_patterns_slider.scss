@@ -1,7 +1,7 @@
 //XXX: patch - add missing autoprefixed rules; remove once an autoprefixer has been added to maas
 .p-slider {
   -webkit-appearance: none;
-     -moz-appearance: none;
+  -moz-appearance: none;
 }
 .p-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
@@ -16,7 +16,7 @@
   margin: 0 0 1rem 0;
 
   &__wrapper {
-    margin-top: -1rem;//XXX
+    margin-top: -1rem; //XXX
   }
 
   &__input {

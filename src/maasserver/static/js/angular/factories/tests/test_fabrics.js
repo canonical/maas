@@ -4,66 +4,62 @@
  * Unit tests for FabricsManager.
  */
 
-
 describe("FabricsManager", function() {
+  // Load the MAAS module.
+  beforeEach(module("MAAS"));
 
-    // Load the MAAS module.
-    beforeEach(module("MAAS"));
+  // Load the FabricsManager.
+  var FabricsManager, VLANsManager, RegionConnection;
+  beforeEach(inject(function($injector) {
+    FabricsManager = $injector.get("FabricsManager");
+    VLANsManager = $injector.get("VLANsManager");
+    RegionConnection = $injector.get("RegionConnection");
+  }));
 
-    // Load the FabricsManager.
-    var FabricsManager, VLANsManager, RegionConnection;
-    beforeEach(inject(function($injector) {
-        FabricsManager = $injector.get("FabricsManager");
-        VLANsManager = $injector.get("VLANsManager");
-        RegionConnection = $injector.get("RegionConnection");
-    }));
+  // Make a fake VLAN.
+  function makeVLAN() {
+    return {
+      id: makeInteger(0, 5000),
+      name: makeName("vlan")
+    };
+  }
 
-    // Make a fake VLAN.
-    function makeVLAN() {
-        return {
-            id: makeInteger(0, 5000),
-            name: makeName("vlan")
-        };
-    }
+  it("set requires attributes", function() {
+    expect(FabricsManager._pk).toBe("id");
+    expect(FabricsManager._handler).toBe("fabric");
+  });
 
-    it("set requires attributes", function() {
-        expect(FabricsManager._pk).toBe("id");
-        expect(FabricsManager._handler).toBe("fabric");
+  describe("getName", function() {
+    it("returns undefined if no object is passed in", function() {
+      expect(FabricsManager.getName()).toBe(undefined);
     });
 
-    describe("getName", function() {
-
-        it("returns undefined if no object is passed in", function() {
-            expect(FabricsManager.getName()).toBe(undefined);
-        });
-
-        it("returns name if name exists", function() {
-            var fabric = {
-                name: "jury-rigged"
-            };
-            expect(FabricsManager.getName(fabric)).toBe('jury-rigged');
-        });
-
-        it("returns name if name is null", function() {
-            var fabric = {
-                id: makeInteger(0, 1000),
-                name: null
-            };
-            expect(FabricsManager.getName(fabric)).toBe('fabric-' + fabric.id);
-        });
-
+    it("returns name if name exists", function() {
+      var fabric = {
+        name: "jury-rigged"
+      };
+      expect(FabricsManager.getName(fabric)).toBe("jury-rigged");
     });
 
-    describe("create", function() {
-
-        it("calls the region with expected parameters", function() {
-            var obj = {};
-            var result = {};
-            spyOn(RegionConnection, "callMethod").and.returnValue(result);
-            expect(FabricsManager.create(obj)).toBe(result);
-            expect(RegionConnection.callMethod).toHaveBeenCalledWith(
-                "fabric.create", obj
-            );
-        });
+    it("returns name if name is null", function() {
+      var fabric = {
+        id: makeInteger(0, 1000),
+        name: null
+      };
+      expect(FabricsManager.getName(fabric)).toBe("fabric-" + fabric.id);
     });
+  });
+
+  describe("create", function() {
+    it("calls the region with expected parameters", function() {
+      var obj = {};
+      var result = {};
+      spyOn(RegionConnection, "callMethod").and.returnValue(result);
+      expect(FabricsManager.create(obj)).toBe(result);
+      expect(RegionConnection.callMethod).toHaveBeenCalledWith(
+        "fabric.create",
+        obj
+      );
+    });
+  });
 });

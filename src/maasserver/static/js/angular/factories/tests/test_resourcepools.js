@@ -4,39 +4,37 @@
  * Unit tests for ResourcePoolsManager.
  */
 
-
 describe("ResourcePoolsManager", function() {
+  // Load the MAAS module.
+  beforeEach(module("MAAS"));
 
-    // Load the MAAS module.
-    beforeEach(module("MAAS"));
+  // Load the ResourcePoolsManager.
+  var ResourcePools;
+  beforeEach(inject(function($injector) {
+    ResourcePoolsManager = $injector.get("ResourcePoolsManager");
+  }));
 
-    // Load the ResourcePoolsManager.
-    var ResourcePools;
-    beforeEach(inject(function($injector) {
-        ResourcePoolsManager = $injector.get("ResourcePoolsManager");
-    }));
-
-    function makeResourcePool(id) {
-        var pool = {
-            name: makeName("name")
-        };
-        if(angular.isDefined(id)) {
-            pool.id = id;
-        } else {
-            pool.id = makeInteger(1, 100);
-        }
-        return pool;
+  function makeResourcePool(id) {
+    var pool = {
+      name: makeName("name")
+    };
+    if (angular.isDefined(id)) {
+      pool.id = id;
+    } else {
+      pool.id = makeInteger(1, 100);
     }
+    return pool;
+  }
 
-    it("set requires attributes", function() {
-        expect(ResourcePoolsManager._pk).toBe("id");
-        expect(ResourcePoolsManager._handler).toBe("resourcepool");
-    });
+  it("set requires attributes", function() {
+    expect(ResourcePoolsManager._pk).toBe("id");
+    expect(ResourcePoolsManager._handler).toBe("resourcepool");
+  });
 
-    it("getDefaultPool returns pool with id = 0", function() {
-        var defaultPool = makeResourcePool(0);
-        ResourcePoolsManager._items.push(makeResourcePool());
-        ResourcePoolsManager._items.push(defaultPool);
-        expect(ResourcePoolsManager.getDefaultPool()).toBe(defaultPool);
-    });
+  it("getDefaultPool returns pool with id = 0", function() {
+    var defaultPool = makeResourcePool(0);
+    ResourcePoolsManager._items.push(makeResourcePool());
+    ResourcePoolsManager._items.push(defaultPool);
+    expect(ResourcePoolsManager.getDefaultPool()).toBe(defaultPool);
+  });
 });

@@ -6,69 +6,60 @@
 
 export function formatBytes() {
   return function(bytes) {
-      var bytesInKilobyte = 1000;
-      var kilobytesInMegabyte = 1000;
-      var megabytesInGigabyte = 1000;
-      var gigabytesInTerabyte = 1000;
+    var bytesInKilobyte = 1000;
+    var kilobytesInMegabyte = 1000;
+    var megabytesInGigabyte = 1000;
+    var gigabytesInTerabyte = 1000;
 
-      var bytesInMegabyte = (
-        bytesInKilobyte * kilobytesInMegabyte
-      );
-      var bytesInGigabyte = (
-        bytesInKilobyte * kilobytesInMegabyte * megabytesInGigabyte
-      );
-      var bytesInTerabyte = (
-        bytesInKilobyte *
-        kilobytesInMegabyte *
-        megabytesInGigabyte * gigabytesInTerabyte
-      );
+    var bytesInMegabyte = bytesInKilobyte * kilobytesInMegabyte;
+    var bytesInGigabyte =
+      bytesInKilobyte * kilobytesInMegabyte * megabytesInGigabyte;
+    var bytesInTerabyte =
+      bytesInKilobyte *
+      kilobytesInMegabyte *
+      megabytesInGigabyte *
+      gigabytesInTerabyte;
 
-      if (bytes >= bytesInTerabyte) {
-        return Math.round(
+    if (bytes >= bytesInTerabyte) {
+      return (
+        Math.round(
           bytes /
-          bytesInKilobyte /
-          kilobytesInMegabyte /
-          megabytesInGigabyte /
-          gigabytesInTerabyte
-        ) + ' TB';
-      } else if (bytes >= bytesInGigabyte) {
-        return Math.round(
-          bytes /
-          bytesInKilobyte /
-          kilobytesInMegabyte /
-          megabytesInGigabyte
-        ) +  ' GB';
-      } else if (bytes >= bytesInMegabyte) {
-        return Math.round(
-          bytes /
-          bytesInKilobyte /
-          kilobytesInMegabyte
-        ) + ' MB';
-      } else if (bytes >= bytesInKilobyte) {
-        return Math.round(bytes / bytesInKilobyte) + ' KB';
-      } else if (bytes > 0) {
-        return bytes + ' B';
-      } else {
-        return 0;
-      }
-  }
+            bytesInKilobyte /
+            kilobytesInMegabyte /
+            megabytesInGigabyte /
+            gigabytesInTerabyte
+        ) + " TB"
+      );
+    } else if (bytes >= bytesInGigabyte) {
+      return (
+        Math.round(
+          bytes / bytesInKilobyte / kilobytesInMegabyte / megabytesInGigabyte
+        ) + " GB"
+      );
+    } else if (bytes >= bytesInMegabyte) {
+      return Math.round(bytes / bytesInKilobyte / kilobytesInMegabyte) + " MB";
+    } else if (bytes >= bytesInKilobyte) {
+      return Math.round(bytes / bytesInKilobyte) + " KB";
+    } else if (bytes > 0) {
+      return bytes + " B";
+    } else {
+      return 0;
+    }
+  };
 }
 
 export function convertGigabyteToBytes() {
   return function(gigabytes) {
-      var bytesInKilobyte = 1000;
-      var kilobytesInMegabyte = 1000;
-      var megabytesInGigabyte = 1000;
+    var bytesInKilobyte = 1000;
+    var kilobytesInMegabyte = 1000;
+    var megabytesInGigabyte = 1000;
 
-      if (gigabytes) {
-        return Math.round(
-          gigabytes *
-          bytesInKilobyte *
-          kilobytesInMegabyte *
-          megabytesInGigabyte
-        );
-      } else {
-        return 0;
-      }
-  }
+    if (gigabytes) {
+      return Math.round(
+        gigabytes * bytesInKilobyte * kilobytesInMegabyte * megabytesInGigabyte
+      );
+    } else {
+      return 0;
+    }
+  };
 }

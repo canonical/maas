@@ -5,7 +5,7 @@
       background-color: $color-x-light;
       margin-bottom: 0;
       margin-left: 0 !important; //XXX: this should be in vanilla. we need to remove the margin:0 from all tds as that has sideeffects on nested tables
-      padding: $spv-inter--condensed;   //XXX: card padding shouldn't be scaleable. can be removed once https://github.com/vanilla-framework/vanilla-framework/pull/1920 is merged
+      padding: $spv-inter--condensed; //XXX: card padding shouldn't be scaleable. can be removed once https://github.com/vanilla-framework/vanilla-framework/pull/1920 is merged
       width: 100%; // overrides mobile card-table width
       white-space: wrap; // inherits no-wrap from td, whic leads to overflows
       &.is-active {
@@ -19,7 +19,7 @@
 
     td {
       display: table-cell;
-      &[colspan='2'] {
+      &[colspan="2"] {
         flex: 2;
       }
     }

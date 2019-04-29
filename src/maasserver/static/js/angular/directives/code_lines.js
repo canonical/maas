@@ -10,43 +10,40 @@
  */
 
 function maasCodeLines() {
-    return {
-        restrict: "A",
-        scope: {
-            maasCodeLines: '&'
-        },
-        link: function(scope, element, attributes) {
+  return {
+    restrict: "A",
+    scope: {
+      maasCodeLines: "&"
+    },
+    link: function(scope, element, attributes) {
+      function insertContent() {
+        // Empty the element contents and include again, this assures
+        // its the most up-to-date content
+        element.empty();
+        element.text(scope.maasCodeLines);
 
-            function insertContent() {
+        // Count the line contents
+        var lines = element.html().split("\n"),
+          newLine = "",
+          insert = "<code>";
 
-                // Empty the element contents and include again, this assures
-                // its the most up-to-date content
-                element.empty();
-                element.text(scope.maasCodeLines);
+        // Each line is to be wrapped by a span which is style & given
+        // its appropriate line number
+        $.each(lines, function() {
+          insert += newLine + '<span class="code-line">' + this + "</span>";
+          newLine = "\n";
+        });
+        insert += "</code>";
 
-                // Count the line contents
-                var lines = element.html().split('\n'),
-                    newLine = '',
-                    insert = "<code>";
+        // Re-insert the contents
+        element.html(insert);
+      }
 
-                // Each line is to be wrapped by a span which is style & given
-                // its appropriate line number
-                $.each(lines, function() {
-                    insert += newLine + '<span class="code-line">' +
-                        this + '</span>';
-                    newLine = '\n';
-                });
-                insert += "</code>";
-
-                // Re-insert the contents
-                element.html(insert);
-            }
-
-            // Watch the contents of the element so when it changes to
-            // re-add the line numbers.
-            scope.$watch(scope.maasCodeLines, insertContent);
-        }
-    };
+      // Watch the contents of the element so when it changes to
+      // re-add the line numbers.
+      scope.$watch(scope.maasCodeLines, insertContent);
+    }
+  };
 }
 
 export default maasCodeLines;

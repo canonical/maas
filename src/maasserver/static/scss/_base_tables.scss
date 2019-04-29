@@ -1,5 +1,4 @@
 @mixin maas-tables {
-
   %ellipse-text {
     @media (min-width: $breakpoint-small) {
       text-overflow: ellipsis;
@@ -27,7 +26,8 @@
       th {
         @extend %smallest-text;
         margin-bottom: 0;
-        padding-bottom: map-get($line-heights, default-text) - $line-height--smallest - $nudge--smallest;
+        padding-bottom: map-get($line-heights, default-text) -
+          $line-height--smallest - $nudge--smallest;
         padding-top: map-get($nudges, nudge--smallest);
         text-transform: uppercase;
       }
@@ -66,7 +66,7 @@
     }
 
     tbody & {
-      &:not(:first-child){
+      &:not(:first-child) {
         border-top-color: $color-light-new;
       }
     }

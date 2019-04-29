@@ -14,7 +14,7 @@
 
       .p-button--close {
         margin-left: $sph-intra--condensed;
-        float:none;
+        float: none;
       }
     }
 
@@ -63,7 +63,7 @@
       }
 
       &.is-over {
-        opacity: .5;
+        opacity: 0.5;
         pointer-events: none;
         cursor: not-allowed;
       }
@@ -302,7 +302,7 @@
 
 .p-key-icon--free {
   @extend %p-key-icon;
-  background-color: transparentize($color-link, .8);
+  background-color: transparentize($color-link, 0.8);
 }
 
 .p-key-icon--used {
@@ -317,5 +317,5 @@
 
 .p-key-icon--other {
   @extend %p-key-icon;
-  background-color: transparentize($color--request, .8);
+  background-color: transparentize($color--request, 0.8);
 }

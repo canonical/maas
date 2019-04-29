@@ -1,15 +1,22 @@
 /* Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
-* GNU Affero General Public License version 3 (see the file LICENSE).
-*
-* Machines listing directive.
-*
-* Renders the machines listing.
-*/
+ * GNU Affero General Public License version 3 (see the file LICENSE).
+ *
+ * Machines listing directive.
+ *
+ * Renders the machines listing.
+ */
 
 /* @ngInject */
 function maasMachinesTable(
-  MachinesManager, NotificationsManager, UsersManager,
-  GeneralManager, $filter, $document, $window, $log) {
+  MachinesManager,
+  NotificationsManager,
+  UsersManager,
+  GeneralManager,
+  $filter,
+  $document,
+  $window,
+  $log
+) {
   return {
     restrict: "E",
     scope: {
@@ -25,25 +32,27 @@ function maasMachinesTable(
       pools: "=",
       zones: "="
     },
-    templateUrl: (
-      'static/partials/machines-table.html?v=' + (
-        $window.MAAS_config.files_version)),
+    templateUrl:
+      "static/partials/machines-table.html?v=" +
+      $window.MAAS_config.files_version,
     link: function(scope) {
       scope.clickHandler = event => {
         const targetClasses = event.target.classList || [];
         const parentClasses = event.target.parentNode.classList || [];
 
-        if (targetClasses.contains("p-table-menu__toggle")
-          || targetClasses.contains("p-double-row__icon-container")
-          || parentClasses.contains("p-table-menu__dropdown")
-          || parentClasses.contains("p-double-row__icon-container")) {
+        if (
+          targetClasses.contains("p-table-menu__toggle") ||
+          targetClasses.contains("p-double-row__icon-container") ||
+          parentClasses.contains("p-table-menu__dropdown") ||
+          parentClasses.contains("p-double-row__icon-container")
+        ) {
           return;
         }
         scope.$apply(scope.closeMenu);
       };
 
-      $document.on('click', scope.clickHandler);
-      scope.$on('$destroy', () => $document.off('click', scope.clickHandler));
+      $document.on("click", scope.clickHandler);
+      scope.$on("$destroy", () => $document.off("click", scope.clickHandler));
     },
     controller: MachinesTableController
   };
@@ -52,21 +61,21 @@ function maasMachinesTable(
   function MachinesTableController($scope) {
     // Statuses that should show spinner.
     var SPINNER_STATUSES = [
-      1,   // commissioning
-      9,   // deploying
-      12,  // releasing
-      14,  // disk erasing
-      17,  // entering rescue mode
-      19,  // exiting rescue mode
-      21   // testing
+      1, // commissioning
+      9, // deploying
+      12, // releasing
+      14, // disk erasing
+      17, // entering rescue mode
+      19, // exiting rescue mode
+      21 // testing
     ];
 
     const machines = MachinesManager.getItems();
 
     // Scope variables.
     $scope.table = {
-      column: 'fqdn',
-      predicate: 'fqdn',
+      column: "fqdn",
+      predicate: "fqdn",
       reverse: false,
       allViewableChecked: false,
       machines,
@@ -97,7 +106,7 @@ function maasMachinesTable(
 
     $scope.groupBy = (list, keyGetter) => {
       const map = new Map();
-      list.forEach((item) => {
+      list.forEach(item => {
         const key = keyGetter(item);
         const collection = map.get(key);
         if (!collection) {
@@ -107,7 +116,7 @@ function maasMachinesTable(
         }
       });
       return map;
-    }
+    };
 
     $scope.getActionSentence = (action, machine) => {
       let name = "machine";
@@ -159,10 +168,12 @@ function maasMachinesTable(
     // Ensures that the checkbox for select all is the correct value.
     $scope.updateAllChecked = function() {
       // Not checked when the filtered machines are empty.
-      if ($scope.table.filteredMachines &&
-        $scope.table.filteredMachines.length === 0) {
-          $scope.table.allViewableChecked = false;
-          return;
+      if (
+        $scope.table.filteredMachines &&
+        $scope.table.filteredMachines.length === 0
+      ) {
+        $scope.table.allViewableChecked = false;
+        return;
       }
 
       // Loop through all filtered machines and see if all are checked.
@@ -179,15 +190,13 @@ function maasMachinesTable(
     // Selects and deselects visible machines.
     $scope.toggleCheckAll = function() {
       if ($scope.table.allViewableChecked) {
-        angular.forEach(
-          $scope.table.filteredMachines, function(machine) {
-            MachinesManager.unselectItem(machine.system_id);
-          });
+        angular.forEach($scope.table.filteredMachines, function(machine) {
+          MachinesManager.unselectItem(machine.system_id);
+        });
       } else {
-        angular.forEach(
-          $scope.table.filteredMachines, function(machine) {
-            MachinesManager.selectItem(machine.system_id);
-          });
+        angular.forEach($scope.table.filteredMachines, function(machine) {
+          MachinesManager.selectItem(machine.system_id);
+        });
       }
       $scope.updateAllChecked();
       $scope.onCheckAll();
@@ -205,7 +214,7 @@ function maasMachinesTable(
 
     $scope.toggleCheckGroup = groupLabel => {
       const machineGroup = $scope.groupedMachines.find(group => {
-        return group.label === groupLabel
+        return group.label === groupLabel;
       });
       if ($scope.getGroupSelectedState(groupLabel)) {
         machineGroup.machines.forEach(machine => {
@@ -221,9 +230,9 @@ function maasMachinesTable(
 
     $scope.toggleOpenGroup = groupLabel => {
       if ($scope.closedGroups.includes(groupLabel)) {
-        $scope.closedGroups = $scope.closedGroups.filter(group => (
-          group !== groupLabel
-        ));
+        $scope.closedGroups = $scope.closedGroups.filter(
+          group => group !== groupLabel
+        );
       } else {
         $scope.closedGroups = [...$scope.closedGroups, groupLabel];
       }
@@ -284,10 +293,12 @@ function maasMachinesTable(
     // Return true if the other node status should be shown.
     $scope.showNodeStatus = function(machine) {
       // -1 means tests haven't been run, 2 means tests have passed.
-      if (!$scope.showSpinner(machine) &&
+      if (
+        !$scope.showSpinner(machine) &&
         !$scope.showFailedTestWarning(machine) &&
         machine.other_test_status !== -1 &&
-        machine.other_test_status !== 2) {
+        machine.other_test_status !== 2
+      ) {
         return true;
       } else {
         return false;
@@ -309,12 +320,13 @@ function maasMachinesTable(
 
     // Returns the status text to show.
     $scope.getStatusText = function(machine) {
-      var showRelease = ['Deploying', 'Deployed'];
+      var showRelease = ["Deploying", "Deployed"];
       if (showRelease.indexOf(machine.status) === -1) {
         return machine.status;
       } else {
         var releaseTitle = $scope.getReleaseTitle(
-          machine.osystem + '/' + machine.distro_series);
+          machine.osystem + "/" + machine.distro_series
+        );
         if (machine.osystem === "ubuntu") {
           releaseTitle = releaseTitle.split('"')[0].trim();
         }
@@ -322,7 +334,7 @@ function maasMachinesTable(
           return releaseTitle;
         }
         if (machine.status === "Deploying") {
-          return machine.status + ' ' + releaseTitle;
+          return machine.status + " " + releaseTitle;
         }
       }
     };
@@ -333,26 +345,27 @@ function maasMachinesTable(
       if (showMessage.indexOf(machine.status_code) >= 0) {
         return machine.status_message;
       } else {
-        return '';
+        return "";
       }
     };
 
     $scope.getGroupSelectedState = groupLabel => {
       const machineGroup = $scope.groupedMachines.find(group => {
-        return group.label === groupLabel
+        return group.label === groupLabel;
       });
       return !machineGroup.machines.some(machine => !machine.$selected);
     };
 
     $scope.getGroupCountString = groupLabel => {
       const machineGroup = $scope.groupedMachines.find(group => {
-        return group.label === groupLabel
+        return group.label === groupLabel;
       });
       const machines = machineGroup.machines.length;
-      const selected
-        = machineGroup.machines.filter(item => item.$selected).length;
-      const machinesString
-        = `${machines} ${machines === 1 ? "machine" : "machines"}`;
+      const selected = machineGroup.machines.filter(item => item.$selected)
+        .length;
+      const machinesString = `${machines} ${
+        machines === 1 ? "machine" : "machines"
+      }`;
 
       if (selected && selected === machines) {
         return `${machinesString} selected`;
@@ -361,89 +374,79 @@ function maasMachinesTable(
     };
 
     $scope.updateGroupedMachines = function(field) {
-      if ($scope.table.filteredMachines.length === 0) { return; }
+      if ($scope.table.filteredMachines.length === 0) {
+        return;
+      }
 
-      if (field === 'status') {
+      if (field === "status") {
         const machines = $scope.groupBy(
-          $scope.table.filteredMachines, machine => machine.status);
+          $scope.table.filteredMachines,
+          machine => machine.status
+        );
 
         $scope.groupedMachines = [
           {
-            label: 'New',
+            label: "New",
+            machines: [...(machines.get("New") || [])]
+          },
+          {
+            label: "Commissioning",
+            machines: [...(machines.get("Commissioning") || [])]
+          },
+          {
+            label: "Ready",
             machines: [
-              ...(machines.get('New') || [])
+              ...(machines.get("Ready") || []),
+              ...(machines.get("Releasing") || [])
             ]
           },
           {
-            label: 'Commissioning',
+            label: "Allocated and deployed",
             machines: [
-              ...(machines.get('Commissioning') || [])
+              ...(machines.get("Allocated") || []),
+              ...(machines.get("Deployed") || [])
             ]
           },
           {
-            label: 'Ready',
+            label: "Deploying",
+            machines: [...(machines.get("Deploying") || [])]
+          },
+          {
+            label: "Testing",
+            machines: [...(machines.get("Testing") || [])]
+          },
+          {
+            label: "Disk erasing",
+            machines: [...(machines.get("Disk erasing") || [])]
+          },
+          {
+            label: "Rescue mode",
             machines: [
-              ...(machines.get('Ready') || []),
-              ...(machines.get('Releasing') || [])
+              ...(machines.get("Entering rescue mode") || []),
+              ...(machines.get("Exiting rescue mode") || [])
             ]
           },
           {
-            label: 'Allocated and deployed',
+            label: "Failures",
             machines: [
-              ...(machines.get('Allocated') || []),
-              ...(machines.get('Deployed') || [])
+              ...(machines.get("Failed commissioning") || []),
+              ...(machines.get("Broken") || []),
+              ...(machines.get("Missing") || []),
+              ...(machines.get("Failed deployment") || []),
+              ...(machines.get("Releasing failed") || []),
+              ...(machines.get("Failed disk erasing") || []),
+              ...(machines.get("Failed to enter rescue mode") || []),
+              ...(machines.get("Failed to exit rescue mode") || []),
+              ...(machines.get("Failed testing") || [])
             ]
           },
           {
-            label: 'Deploying',
-            machines: [
-              ...(machines.get('Deploying') || [])
-            ]
+            label: "Retired",
+            machines: [...(machines.get("Retired") || [])]
           },
           {
-            label: 'Testing',
-            machines: [
-              ...(machines.get('Testing') || []),
-            ]
-          },
-          {
-            label: 'Disk erasing',
-            machines: [
-              ...(machines.get('Disk erasing') || [])
-            ]
-          },
-          {
-            label: 'Rescue mode',
-            machines: [
-              ...(machines.get('Entering rescue mode') || []),
-              ...(machines.get('Exiting rescue mode') || [])
-            ]
-          },
-          {
-            label: 'Failures',
-            machines: [
-              ...(machines.get('Failed commissioning') || []),
-              ...(machines.get('Broken') || []),
-              ...(machines.get('Missing') || []),
-              ...(machines.get('Failed deployment') || []),
-              ...(machines.get('Releasing failed') || []),
-              ...(machines.get('Failed disk erasing') || []),
-              ...(machines.get('Failed to enter rescue mode') || []),
-              ...(machines.get('Failed to exit rescue mode') || []),
-              ...(machines.get('Failed testing') || [])
-            ]
-          },
-          {
-            label: 'Retired',
-            machines: [
-              ...(machines.get('Retired') || [])
-            ]
-          },
-          {
-            label: 'Other',
-            machines: [
-              ...(machines.get('Reserved') || [])
-            ]
+            label: "Other",
+            machines: [...(machines.get("Reserved") || [])]
           }
         ];
         return;
@@ -455,17 +458,15 @@ function maasMachinesTable(
           machine => machine.owner
         );
 
-        const groupedByOwner = Array.from(grouped).map(
-          ([label, machines]) => {
-            if (label == "") {
-              label = "No owner";
-            }
-            return {
-              label,
-              machines
-            };
+        const groupedByOwner = Array.from(grouped).map(([label, machines]) => {
+          if (label == "") {
+            label = "No owner";
           }
-        );
+          return {
+            label,
+            machines
+          };
+        });
 
         $scope.groupedMachines = groupedByOwner;
         return;
@@ -473,12 +474,12 @@ function maasMachinesTable(
 
       $scope.groupedMachines = [
         {
-          label: 'none',
+          label: "none",
           machines: $scope.table.filteredMachines
         }
       ];
       return;
-    }
+    };
 
     // When the list of filtered machines change update the all checkbox.
     $scope.$watchCollection("table.filteredMachines", function() {
@@ -492,8 +493,10 @@ function maasMachinesTable(
     });
 
     $scope.$watch("search", function() {
-      $scope.table.filteredMachines
-        = $filter('nodesFilter')($scope.table.machines, $scope.search);
+      $scope.table.filteredMachines = $filter("nodesFilter")(
+        $scope.table.machines,
+        $scope.search
+      );
     });
 
     // Watch simplified list of machines for changes to power state and status,
@@ -508,9 +511,7 @@ function maasMachinesTable(
       (newMachines, oldMachines) => {
         newMachines.forEach(newMachine => {
           const oldMachine =
-            oldMachines.find(
-              machine => machine.id === newMachine.id
-            ) || {};
+            oldMachines.find(machine => machine.id === newMachine.id) || {};
 
           // Check if power state has changed, then set transitional state
           if (newMachine.state !== oldMachine.state) {
@@ -520,8 +521,10 @@ function maasMachinesTable(
           }
 
           // Check if status has changed, then run function to regroup machines
-          if (newMachine.status !== oldMachine.status
-            && $scope.groupByLabel !== "none") {
+          if (
+            newMachine.status !== oldMachine.status &&
+            $scope.groupByLabel !== "none"
+          ) {
             $scope.updateGroupedMachines($scope.groupByLabel);
           }
         });
@@ -534,9 +537,9 @@ function maasMachinesTable(
       var memory = parseFloat(ram);
       return {
         value: memory.toString(),
-        unit: 'GiB',
-      }
-    }
+        unit: "GiB"
+      };
+    };
 
     // Converts GB into TB if necessary and output three sig-figs
     $scope.formatStorageUnit = function(gb) {
@@ -544,37 +547,39 @@ function maasMachinesTable(
       if (storage < 1000) {
         return {
           value: Number(storage.toPrecision(3)).toString(),
-          unit: 'GB',
+          unit: "GB"
         };
       } else {
         return {
           value: Number((storage / 1000).toPrecision(3)).toString(),
-          unit: 'TB',
+          unit: "TB"
         };
       }
     };
 
     $scope.getCheckboxClass = function(node) {
       if ($scope.actionOption) {
-        if (node.$selected
-          && node.actions.indexOf($scope.actionOption.name) > -1) {
-          return 'actionable';
+        if (
+          node.$selected &&
+          node.actions.indexOf($scope.actionOption.name) > -1
+        ) {
+          return "actionable";
         }
-        return 'not-actionable';
+        return "not-actionable";
       }
-      return '';
+      return "";
     };
 
     $scope.getAllCheckboxClass = function(nodes) {
       if (nodes && $scope.actionOption) {
         for (var i = 0; i < nodes.length; i++) {
           if (nodes[i].actions.indexOf($scope.actionOption.name) === -1) {
-            return 'not-actionable';
+            return "not-actionable";
           }
         }
-        return 'actionable';
+        return "actionable";
       }
-      return '';
+      return "";
     };
 
     $scope.getBootIp = function(ipArray) {
@@ -634,13 +639,16 @@ function maasMachinesTable(
         extra = {};
       }
 
-      MachinesManager.performAction(machine, action, extra).then(() => {
-        machine.action_failed = false;
-      }, error => {
-        $scope.createErrorNotification(machine, action, error);
-        machine.action_failed = true;
-        machine[`${action}-transition`] = undefined;
-      });
+      MachinesManager.performAction(machine, action, extra).then(
+        () => {
+          machine.action_failed = false;
+        },
+        error => {
+          $scope.createErrorNotification(machine, action, error);
+          machine.action_failed = true;
+          machine[`${action}-transition`] = undefined;
+        }
+      );
     };
 
     $scope.getActionTitle = actionName => {
@@ -649,16 +657,13 @@ function maasMachinesTable(
 
       // Display default OS and release if in-table action is "deploy"
       if (actionName === "deploy" && osinfo) {
-        const {
-          osystems,
-          releases,
-          default_osystem,
-          default_release
-        } = osinfo;
+        const { osystems, releases, default_osystem, default_release } = osinfo;
         const os = osystems && osystems.find(os => os[0] === default_osystem);
-        const release = releases && releases.find(
-          release => release[0] === `${default_osystem}/${default_release}`
-        );
+        const release =
+          releases &&
+          releases.find(
+            release => release[0] === `${default_osystem}/${default_release}`
+          );
         if (os && release) {
           return `Deploy ${os[1]} ${release[1]}...`;
         }
@@ -667,32 +672,30 @@ function maasMachinesTable(
 
       // Otherwise, just display the action's title
       if (machineActions.length) {
-        return machineActions
-          .find(action => action.name === actionName)
-          .title;
+        return machineActions.find(action => action.name === actionName).title;
       }
     };
 
     $scope.getStatusActions = machine => {
-      return $scope.statusMenuActions
-        .filter(action => machine.actions.includes(action));
+      return $scope.statusMenuActions.filter(action =>
+        machine.actions.includes(action)
+      );
     };
 
     $scope.toggleMenu = menu => {
-      $scope.openMenu = $scope.openMenu === menu
-        ? ""
-        : menu;
+      $scope.openMenu = $scope.openMenu === menu ? "" : menu;
     };
 
-    $scope.closeMenu = () => $scope.openMenu = "";
+    $scope.closeMenu = () => ($scope.openMenu = "");
 
     $scope.createErrorNotification = (machine, action, error) => {
       const authUser = UsersManager.getAuthUser();
       if (angular.isObject(authUser)) {
         NotificationsManager.createItem({
-          message: `Unable to ${
-            $scope.getActionSentence(action, machine)
-            }: ${error}`,
+          message: `Unable to ${$scope.getActionSentence(
+            action,
+            machine
+          )}: ${error}`,
           category: "error",
           user: authUser.id
         });

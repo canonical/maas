@@ -24,28 +24,21 @@
       position: relative;
 
       &::before {
-        @include vf-animation(
-          background-color,
-          brisk
-        );
+        @include vf-animation(background-color, brisk);
         background: $color-mid-light;
-        content: '';
+        content: "";
         display: block;
         height: 100%;
         text-align: right;
         width: 100%;
-        padding: 0 .3rem 0 .45rem;
-        box-shadow: inset 0 2px 5px 0 transparentize($color-dark, .8);
+        padding: 0 0.3rem 0 0.45rem;
+        box-shadow: inset 0 2px 5px 0 transparentize($color-dark, 0.8);
         border-radius: 3px;
-        font-size: .875rem;
+        font-size: 0.875rem;
       }
 
       &::after {
-        @include vf-animation(
-          left,
-          brisk,
-          out
-        );
+        @include vf-animation(left, brisk, out);
         width: 50%;
         display: block;
         position: absolute;
@@ -53,8 +46,8 @@
         left: 0;
         height: 100%;
         background: $color-x-light;
-        content: ' ';
-        box-shadow: 0 1px 5px 1px transparentize($color-dark, .8);
+        content: " ";
+        box-shadow: 0 1px 5px 1px transparentize($color-dark, 0.8);
         border-radius: 3px;
       }
     }
@@ -63,7 +56,7 @@
     &--input:checked + &--mask {
       &::before {
         text-align: left;
-        content: '';
+        content: "";
         color: $color-x-light;
         background: $color-information;
       }

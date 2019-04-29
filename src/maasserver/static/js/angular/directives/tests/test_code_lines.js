@@ -5,42 +5,41 @@
  */
 
 describe("maasCodeLines", function() {
+  // Load the MAAS module.
+  beforeEach(module("MAAS"));
 
-// Load the MAAS module.
-beforeEach(module("MAAS"));
+  // Create a new scope before each test.
+  var $scope;
 
-    // Create a new scope before each test.
-    var $scope;
+  beforeEach(inject(function($rootScope) {
+    $scope = $rootScope.$new();
+  }));
 
-    beforeEach(inject(function($rootScope) {
-        $scope = $rootScope.$new();
-    }));
+  // Return the compiled directive with the items from the scope.
+  function compileDirective(maasCodeLines) {
+    var directive;
+    var html = [
+      "<div>",
+      '<pre maas-code-lines="' + maasCodeLines + '"></pre>',
+      "</div>"
+    ].join("");
 
-    // Return the compiled directive with the items from the scope.
-    function compileDirective(maasCodeLines) {
-        var directive;
-        var html = [
-            '<div>',
-                '<pre maas-code-lines="' + maasCodeLines + '"></pre>',
-            '</div>'
-        ].join('');
-
-        // Compile the directive.
-        inject(function($compile) {
-            directive = $compile(html)($scope);
-        });
-
-        // Perform the digest cycle to finish the compile.
-        $scope.$digest();
-        return directive.find('pre');
-    }
-
-    it("code should have the class line", function() {
-        $scope.getText = function() {
-            return "codetext";
-        };
-
-        var directive = compileDirective("getText()");
-        expect(directive.find('code span').hasClass("code-line")).toBe(true);
+    // Compile the directive.
+    inject(function($compile) {
+      directive = $compile(html)($scope);
     });
+
+    // Perform the digest cycle to finish the compile.
+    $scope.$digest();
+    return directive.find("pre");
+  }
+
+  it("code should have the class line", function() {
+    $scope.getText = function() {
+      return "codetext";
+    };
+
+    var directive = compileDirective("getText()");
+    expect(directive.find("code span").hasClass("code-line")).toBe(true);
+  });
 });

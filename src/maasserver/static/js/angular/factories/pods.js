@@ -9,59 +9,60 @@
  */
 
 function PodsManager(RegionConnection, Manager) {
+  function PodsManager() {
+    Manager.call(this);
 
-    function PodsManager() {
-        Manager.call(this);
+    this._pk = "id";
+    this._handler = "pod";
 
-        this._pk = "id";
-        this._handler = "pod";
+    // Listen for notify events for the pod object.
+    var self = this;
+    RegionConnection.registerNotifier("pod", function(action, data) {
+      self.onNotify(action, data);
+    });
+  }
 
-        // Listen for notify events for the pod object.
-        var self = this;
-        RegionConnection.registerNotifier("pod",
-            function(action, data) {
-                self.onNotify(action, data);
-            });
+  PodsManager.prototype = new Manager();
+
+  // Refresh the pod information
+  PodsManager.prototype.refresh = function(pod) {
+    var self = this;
+    return RegionConnection.callMethod("pod.refresh", pod).then(function(pod) {
+      self._replaceItem(pod);
+      return pod;
+    });
+  };
+
+  // Compose a machine in the pod.
+  PodsManager.prototype.compose = function(params) {
+    var self = this;
+    return RegionConnection.callMethod("pod.compose", params).then(function(
+      pod
+    ) {
+      self._replaceItem(pod);
+      return pod;
+    });
+  };
+
+  // Calculate the available cores with overcommit applied
+  PodsManager.prototype.availableWithOvercommit = function(
+    total,
+    used,
+    overcommitRatio,
+    precisionValue
+  ) {
+    if (precisionValue) {
+      return (total * overcommitRatio - used)
+        .toFixed(precisionValue)
+        .replace(/[.,]0$/, "");
+    } else {
+      return total * overcommitRatio - used;
     }
+  };
 
-    PodsManager.prototype = new Manager();
-
-    // Refresh the pod information
-    PodsManager.prototype.refresh = function(pod) {
-        var self = this;
-        return RegionConnection.callMethod("pod.refresh", pod).then(
-            function(pod) {
-                self._replaceItem(pod);
-                return pod;
-            });
-    };
-
-    // Compose a machine in the pod.
-    PodsManager.prototype.compose = function(params) {
-        var self = this;
-        return RegionConnection.callMethod("pod.compose", params).then(
-            function(pod) {
-                self._replaceItem(pod);
-                return pod;
-            });
-    };
-
-    // Calculate the available cores with overcommit applied
-    PodsManager.prototype.availableWithOvercommit = function(
-        total, used, overcommitRatio, precisionValue) {
-        if (precisionValue) {
-
-            return (total * overcommitRatio - used)
-                .toFixed(precisionValue)
-                .replace(/[.,]0$/, '');
-        } else {
-            return ((total * overcommitRatio) - used);
-        }
-    };
-
-    return new PodsManager();
+  return new PodsManager();
 }
 
-PodsManager.$inject = ['RegionConnection', 'Manager'];
+PodsManager.$inject = ["RegionConnection", "Manager"];
 
 export default PodsManager;

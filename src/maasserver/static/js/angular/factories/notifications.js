@@ -9,27 +9,29 @@
  */
 
 function NotificationsManager(RegionConnection, Manager) {
+  function NotificationsManager() {
+    Manager.call(this);
 
-    function NotificationsManager() {
-        Manager.call(this);
+    this._pk = "id";
+    this._handler = "notification";
 
-        this._pk = "id";
-        this._handler = "notification";
+    // Listen for notify events for the notification object.
+    RegionConnection.registerNotifier(
+      "notification",
+      angular.bind(this, this.onNotify)
+    );
+  }
 
-        // Listen for notify events for the notification object.
-        RegionConnection.registerNotifier(
-            "notification", angular.bind(this, this.onNotify));
-    }
+  NotificationsManager.prototype = new Manager();
+  NotificationsManager.prototype.dismiss = function(notification) {
+    return RegionConnection.callMethod("notification.dismiss", {
+      id: notification.id
+    });
+  };
 
-    NotificationsManager.prototype = new Manager();
-    NotificationsManager.prototype.dismiss = function(notification) {
-        return RegionConnection.callMethod(
-            "notification.dismiss", { id: notification.id });
-    };
-
-    return new NotificationsManager();
+  return new NotificationsManager();
 }
 
-NotificationsManager.$inject = ['RegionConnection', 'Manager'];
+NotificationsManager.$inject = ["RegionConnection", "Manager"];
 
 export default NotificationsManager;

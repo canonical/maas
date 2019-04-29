@@ -1,7 +1,6 @@
 $vanilla-2-icon-button-side-padding: $sph-intra--condensed * 1.5;
 @mixin maas-p-buttons {
-
-// disable override in vanilla that make buttons vertically less padded; this causes issues with alignment with other elements
+  // disable override in vanilla that make buttons vertically less padded; this causes issues with alignment with other elements
   table button,
   table [class^="p-button"] {
     padding-bottom: $spv-nudge - $px;
@@ -10,15 +9,15 @@ $vanilla-2-icon-button-side-padding: $sph-intra--condensed * 1.5;
 
   .p-button--narrow {
     padding-left: $vanilla-2-icon-button-side-padding;
-    padding-right:  $vanilla-2-icon-button-side-padding;
+    padding-right: $vanilla-2-icon-button-side-padding;
   }
 
   %p-button--min-margin-bottom {
     margin-bottom: $spv-nudge-compensation;
   }
 
-  .p-button--min-margin-bottom  {
-      @extend %p-button--min-margin-bottom;
+  .p-button--min-margin-bottom {
+    @extend %p-button--min-margin-bottom;
   }
 
   .p-button--base.is-small {
@@ -31,7 +30,7 @@ $vanilla-2-icon-button-side-padding: $sph-intra--condensed * 1.5;
   }
 
   .p-button--lock {
-    margin-left: -.5rem;
+    margin-left: -0.5rem;
   }
 
   .p-button--icon {
@@ -57,12 +56,12 @@ $vanilla-2-icon-button-side-padding: $sph-intra--condensed * 1.5;
     }
   }
 
-  [class*='p-button'] [class^="p-icon"],
+  [class*="p-button"] [class^="p-icon"],
   button [class^="p-icon"] {
-      margin-right: 0;
-    }
+    margin-right: 0;
+  }
 
-  *[class*='p-button'] {
+  *[class*="p-button"] {
     .p-table-expanding__panel & {
       margin-bottom: 2 * $spv-nudge-compensation;
       &:not(.p-button--close) {
@@ -75,16 +74,16 @@ $vanilla-2-icon-button-side-padding: $sph-intra--condensed * 1.5;
   }
 }
 
-@media only screen and (max-width: 460px){
+@media only screen and (max-width: 460px) {
   //XXX width: 100% is breaking many things, for example the check power button in the header causes horizontal scroll. Removing pending further discussion.
   button,
-  [type='submit'],
+  [type="submit"],
   .p-button,
   .p-button--neutral,
   .p-button--brand,
   .p-button--positive,
   .p-button--negative,
   .p-button--base {
-      width: auto;
+    width: auto;
   }
 }

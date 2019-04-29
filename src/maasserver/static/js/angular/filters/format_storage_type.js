@@ -7,16 +7,16 @@
 function formatStorageType() {
   return function(storageType) {
     if (!storageType) {
-      return '';
+      return "";
     }
 
-    switch(storageType) {
-      case 'lvm':
-        return 'LVM';
+    switch (storageType) {
+      case "lvm":
+        return "LVM";
       default:
         return storageType;
     }
-  }
+  };
 }
 
 export default formatStorageType;

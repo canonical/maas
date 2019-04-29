@@ -4,7 +4,7 @@
 
     &::before {
       background-size: map-get($icon-sizes, default);
-      content: '';
+      content: "";
       height: map-get($icon-sizes, default);
       left: $sph-intra;
       position: absolute;

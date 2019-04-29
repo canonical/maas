@@ -3,7 +3,7 @@
     background-position-y: center;
     background-repeat: no-repeat;
     background-size: map-get($icon-sizes, default);
-    content: '';
+    content: "";
     height: map-get($icon-sizes, default);
     position: absolute;
     width: map-get($icon-sizes, default);
@@ -55,7 +55,7 @@
     transition-duration: 0s;
 
     &.is-unavailable {
-      opacity: .5;
+      opacity: 0.5;
       cursor: not-allowed;
     }
   }

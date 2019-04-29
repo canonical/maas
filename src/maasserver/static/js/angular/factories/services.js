@@ -8,26 +8,24 @@
  */
 
 function ServicesManager(RegionConnection, Manager) {
+  function ServicesManager() {
+    Manager.call(this);
 
-    function ServicesManager() {
-        Manager.call(this);
+    this._pk = "id";
+    this._handler = "service";
 
-        this._pk = "id";
-        this._handler = "service";
+    // Listen for notify events for the service object.
+    var self = this;
+    RegionConnection.registerNotifier("service", function(action, data) {
+      self.onNotify(action, data);
+    });
+  }
 
-        // Listen for notify events for the service object.
-        var self = this;
-        RegionConnection.registerNotifier("service",
-            function(action, data) {
-                self.onNotify(action, data);
-            });
-    }
+  ServicesManager.prototype = new Manager();
 
-    ServicesManager.prototype = new Manager();
-
-    return new ServicesManager();
+  return new ServicesManager();
 }
 
-ServicesManager.$inject = ['RegionConnection', 'Manager'];
+ServicesManager.$inject = ["RegionConnection", "Manager"];
 
 export default ServicesManager;

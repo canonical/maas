@@ -5,7 +5,6 @@
  */
 
 describe("formatStorageType", function() {
-
   // Load the MAAS module.
   beforeEach(module("MAAS"));
 
@@ -16,14 +15,14 @@ describe("formatStorageType", function() {
   }));
 
   it("returns empty string if undefined storage type", function() {
-      expect(storageType()).toEqual('');
+    expect(storageType()).toEqual("");
   });
 
   it("returns original value if not recognised", function() {
-      expect(storageType('foo')).toEqual('foo');
+    expect(storageType("foo")).toEqual("foo");
   });
 
   it("returns formatted when recognised", function() {
-      expect(storageType('lvm')).toEqual('LVM');
+    expect(storageType("lvm")).toEqual("LVM");
   });
 });

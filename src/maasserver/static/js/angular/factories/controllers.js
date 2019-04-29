@@ -8,46 +8,47 @@
  * NodesManager.
  */
 
-
 function ControllersManager(RegionConnection, NodesManager, ServicesManager) {
+  function ControllersManager() {
+    NodesManager.call(this);
 
-    function ControllersManager() {
-        NodesManager.call(this);
+    this._pk = "system_id";
+    this._handler = "controller";
 
-        this._pk = "system_id";
-        this._handler = "controller";
+    // Listen for notify events for the controller object.
+    var self = this;
+    RegionConnection.registerNotifier("controller", function(action, data) {
+      self.onNotify(action, data);
+    });
+  }
+  ControllersManager.prototype = new NodesManager();
 
-        // Listen for notify events for the controller object.
-        var self = this;
-        RegionConnection.registerNotifier("controller",
-            function(action, data) {
-                self.onNotify(action, data);
-            });
-    }
-    ControllersManager.prototype = new NodesManager();
+  ControllersManager.prototype.getServices = function(controller) {
+    var services = [];
+    angular.forEach(controller.service_ids, function(service_id) {
+      var service = ServicesManager.getItemFromList(service_id);
+      if (angular.isObject(service)) {
+        services.push(service);
+      }
+    });
+    return services;
+  };
 
-    ControllersManager.prototype.getServices = function(controller) {
-        var services = [];
-        angular.forEach(controller.service_ids, function(service_id) {
-            var service = ServicesManager.getItemFromList(service_id);
-            if (angular.isObject(service)) {
-                services.push(service);
-            }
-        });
-        return services;
-    };
+  // Check the boot image import status.
+  ControllersManager.prototype.checkImageStates = function(controllers) {
+    return RegionConnection.callMethod(
+      this._handler + ".check_images",
+      controllers
+    );
+  };
 
-    // Check the boot image import status.
-    ControllersManager.prototype.checkImageStates = function(controllers) {
-        return RegionConnection.callMethod(
-            this._handler + ".check_images", controllers);
-    };
-
-    return new ControllersManager();
+  return new ControllersManager();
 }
 
 ControllersManager.$inject = [
-    'RegionConnection', 'NodesManager', 'ServicesManager'
+  "RegionConnection",
+  "NodesManager",
+  "ServicesManager"
 ];
 
 export default ControllersManager;

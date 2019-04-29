@@ -6,9 +6,10 @@
 
 /* @ngInject */
 export function cachePowerParameters($templateCache) {
-    // Inject the power-parameters.html into the template cache.
-    $templateCache.put('directive/templates/power-parameters.html',
-        `<div class="p-form__group u-clearfix">
+  // Inject the power-parameters.html into the template cache.
+  $templateCache.put(
+    "directive/templates/power-parameters.html",
+    `<div class="p-form__group u-clearfix">
             <label for="power-type"
                 class="p-form__label col-2 mobile-col-2 tablet-col-2"
                 data-ng-class="{'is-disabled': !ngModel.editing }">
@@ -45,90 +46,104 @@ export function cachePowerParameters($templateCache) {
                     data-ng-model="ngModel.parameters[field.name]">
             </div>
         </div>`
-    );
+  );
 }
 
 /* @ngInject */
 export function maasPowerInput($compile) {
-    return {
-        restrict: "E",
-        require: "ngModel",
-        scope: {
-            field: '=',
-            ngModel: '='
-        },
-        link: function(scope, element, attrs) {
-            var type = scope.field.field_type;
-            var req = scope.field.required ? 'required="required" ' : '';
-            var html = "";
-            if (type === "string" || type === "mac_address" ||
-                type === "password") {
-                // Build an input element with the correct attributes.
-                var input_type = 'type="text"';
-                if (type === "password") {
-                    // If the input field is a password field, display it
-                    // as text or password depending on if we're editing
-                    // the fields.
-                    input_type = "data-ng-type=\"ngModel.editing && " +
-                        "'text' || 'password'\"";
-                }
-                html =
-                    '<input ' + input_type + ' ' +
-                    'name="' + scope.field.name + '" ' +
-                    req + 'data-ng-model="' + attrs.ngModel + '" ' +
-                    'data-ng-disabled="' + attrs.ngDisabled + '" ';
-
-                // Add mac address validation.
-                if (type === "mac_address") {
-                    html +=
-                        'data-ng-pattern="' +
-                        '/^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$/"';
-                }
-                html += '>';
-
-                // Set the default value for the input on the model.
-                if (angular.isUndefined(scope.ngModel)) {
-                    scope.ngModel = scope.field["default"];
-                }
-            } else if (type === "choice") {
-                // Build a select element with the correct attributes.
-                html =
-                    '<select name="' + scope.field.name + '"' +
-                    req + 'data-ng-model="' + attrs.ngModel + '" ' +
-                    'data-ng-disabled="' + attrs.ngDisabled + '" ' +
-                    'data-ng-options="' +
-                    'choice[0] as choice[1] for choice in field.choices' +
-                    '">';
-                html += '</select>';
-
-                // Set the default choice on the model.
-                if (angular.isUndefined(scope.ngModel)) {
-                    if (scope.field["default"]) {
-                        scope.ngModel = scope.field["default"];
-                    }
-                }
-            } else {
-                throw new Error("Unknown power_type: " + type);
-            }
-
-            // Replace the element with the compiled html using the parents
-            // scope. The parent scope is used because we want to build the
-            // element as if it was in the parent scope, not the scope that
-            // is defined in this directive.
-            element.replaceWith($compile(html)(scope.$parent));
+  return {
+    restrict: "E",
+    require: "ngModel",
+    scope: {
+      field: "=",
+      ngModel: "="
+    },
+    link: function(scope, element, attrs) {
+      var type = scope.field.field_type;
+      var req = scope.field.required ? 'required="required" ' : "";
+      var html = "";
+      if (type === "string" || type === "mac_address" || type === "password") {
+        // Build an input element with the correct attributes.
+        var input_type = 'type="text"';
+        if (type === "password") {
+          // If the input field is a password field, display it
+          // as text or password depending on if we're editing
+          // the fields.
+          input_type =
+            'data-ng-type="ngModel.editing && ' + "'text' || 'password'\"";
         }
-    };
+        html =
+          "<input " +
+          input_type +
+          " " +
+          'name="' +
+          scope.field.name +
+          '" ' +
+          req +
+          'data-ng-model="' +
+          attrs.ngModel +
+          '" ' +
+          'data-ng-disabled="' +
+          attrs.ngDisabled +
+          '" ';
+
+        // Add mac address validation.
+        if (type === "mac_address") {
+          html +=
+            'data-ng-pattern="' + '/^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$/"';
+        }
+        html += ">";
+
+        // Set the default value for the input on the model.
+        if (angular.isUndefined(scope.ngModel)) {
+          scope.ngModel = scope.field["default"];
+        }
+      } else if (type === "choice") {
+        // Build a select element with the correct attributes.
+        html =
+          '<select name="' +
+          scope.field.name +
+          '"' +
+          req +
+          'data-ng-model="' +
+          attrs.ngModel +
+          '" ' +
+          'data-ng-disabled="' +
+          attrs.ngDisabled +
+          '" ' +
+          'data-ng-options="' +
+          "choice[0] as choice[1] for choice in field.choices" +
+          '">';
+        html += "</select>";
+
+        // Set the default choice on the model.
+        if (angular.isUndefined(scope.ngModel)) {
+          if (scope.field["default"]) {
+            scope.ngModel = scope.field["default"];
+          }
+        }
+      } else {
+        throw new Error("Unknown power_type: " + type);
+      }
+
+      // Replace the element with the compiled html using the parents
+      // scope. The parent scope is used because we want to build the
+      // element as if it was in the parent scope, not the scope that
+      // is defined in this directive.
+      element.replaceWith($compile(html)(scope.$parent));
+    }
+  };
 }
 
 export function maasPowerParameters() {
-    return {
-        restrict: "A",
-        require: "ngModel",
-        scope: {
-            maasPowerParameters: '=',
-            ngModel: '=',
-            ngDisabled: '='
-        },
-        templateUrl: 'directive/templates/power-parameters.html'
-    };
+  return {
+    restrict: "A",
+    require: "ngModel",
+    scope: {
+      maasPowerParameters: "=",
+      ngModel: "=",
+      ngDisabled: "="
+    },
+    templateUrl: "directive/templates/power-parameters.html"
+  };
 }

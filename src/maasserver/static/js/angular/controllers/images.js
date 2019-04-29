@@ -6,37 +6,45 @@
 
 /* @ngInject */
 function ImagesController(
-    $rootScope, $scope, BootResourcesManager,
-    ConfigsManager, UsersManager, ManagerHelperService) {
-    $rootScope.page = "images";
-    $rootScope.title = "Loading...";
+  $rootScope,
+  $scope,
+  BootResourcesManager,
+  ConfigsManager,
+  UsersManager,
+  ManagerHelperService
+) {
+  $rootScope.page = "images";
+  $rootScope.title = "Loading...";
 
-    $scope.loading = true;
-    $scope.bootResources = BootResourcesManager.getData();
-    $scope.configManager = ConfigsManager;
-    $scope.autoImport = null;
+  $scope.loading = true;
+  $scope.bootResources = BootResourcesManager.getData();
+  $scope.configManager = ConfigsManager;
+  $scope.autoImport = null;
 
-    // Return true if the user is a super user.
-    $scope.isSuperUser = function() {
-        return UsersManager.isSuperUser();
-    };
+  // Return true if the user is a super user.
+  $scope.isSuperUser = function() {
+    return UsersManager.isSuperUser();
+  };
 
-    // Load the required managers.
-    ManagerHelperService.loadManagers(
-        $scope, [ConfigsManager, UsersManager]).then(function() {
-            $scope.autoImport = ConfigsManager.getItemFromList(
-                "boot_images_auto_import");
-        });
+  // Load the required managers.
+  ManagerHelperService.loadManagers($scope, [
+    ConfigsManager,
+    UsersManager
+  ]).then(function() {
+    $scope.autoImport = ConfigsManager.getItemFromList(
+      "boot_images_auto_import"
+    );
+  });
 
-    // The boot-images directive will load the bootResources manager,
-    // we just watch until resources is set. That means the page is
-    // loaded.
-    $scope.$watch("bootResources.resources", function() {
-        if (angular.isArray($scope.bootResources.resources)) {
-            $scope.loading = false;
-            $rootScope.title = "Images";
-        }
-    });
+  // The boot-images directive will load the bootResources manager,
+  // we just watch until resources is set. That means the page is
+  // loaded.
+  $scope.$watch("bootResources.resources", function() {
+    if (angular.isArray($scope.bootResources.resources)) {
+      $scope.loading = false;
+      $rootScope.title = "Images";
+    }
+  });
 }
 
 export default ImagesController;

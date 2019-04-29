@@ -5,36 +5,31 @@
  */
 
 describe("ErrorService", function() {
+  // Load the MAAS module.
+  beforeEach(module("MAAS"));
 
-    // Load the MAAS module.
-    beforeEach(module("MAAS"));
+  // Load the ErrorService.
+  var ErrorService;
+  beforeEach(inject(function($injector) {
+    ErrorService = $injector.get("ErrorService");
+  }));
 
-    // Load the ErrorService.
-    var ErrorService;
-    beforeEach(inject(function($injector) {
-        ErrorService = $injector.get("ErrorService");
-    }));
+  it("initializes _error to null", function() {
+    expect(ErrorService._error).toBeNull();
+  });
 
-    it("initializes _error to null", function() {
-        expect(ErrorService._error).toBeNull();
+  describe("raiseError", function() {
+    it("sets _error", function() {
+      var error = makeName("error");
+      ErrorService.raiseError(error);
+      expect(ErrorService._error).toBe(error);
     });
 
-    describe("raiseError", function() {
-
-        it("sets _error", function() {
-            var error = makeName("error");
-            ErrorService.raiseError(error);
-            expect(ErrorService._error).toBe(error);
-        });
-
-        it("only sets _error once", function() {
-            var errors = [
-                makeName("error"),
-                makeName("error")
-            ];
-            ErrorService.raiseError(errors[0]);
-            ErrorService.raiseError(errors[1]);
-            expect(ErrorService._error).toBe(errors[0]);
-        });
+    it("only sets _error once", function() {
+      var errors = [makeName("error"), makeName("error")];
+      ErrorService.raiseError(errors[0]);
+      ErrorService.raiseError(errors[1]);
+      expect(ErrorService._error).toBe(errors[0]);
     });
+  });
 });

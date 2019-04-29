@@ -6,12 +6,12 @@
 
 function KVMDeployOSBlacklist() {
   return [
-    'ubuntu/precise',
-    'ubuntu/trusty',
-    'ubuntu/xenial',
-    'ubuntu/yakkety',
-    'ubuntu/zesty',
-    'ubuntu/artful'
+    "ubuntu/precise",
+    "ubuntu/trusty",
+    "ubuntu/xenial",
+    "ubuntu/yakkety",
+    "ubuntu/zesty",
+    "ubuntu/artful"
   ];
 }
 

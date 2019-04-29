@@ -9,81 +9,84 @@
  */
 
 function VLANsManager(RegionConnection, Manager) {
+  function VLANsManager() {
+    Manager.call(this);
 
-    function VLANsManager() {
-        Manager.call(this);
+    this._pk = "id";
+    this._handler = "vlan";
 
-        this._pk = "id";
-        this._handler = "vlan";
+    // Listen for notify events for the vlan object.
+    var self = this;
+    RegionConnection.registerNotifier("vlan", function(action, data) {
+      self.onNotify(action, data);
+    });
+  }
 
-        // Listen for notify events for the vlan object.
-        var self = this;
-        RegionConnection.registerNotifier("vlan",
-            function(action, data) {
-                self.onNotify(action, data);
-            });
+  VLANsManager.prototype = new Manager();
+
+  VLANsManager.prototype.getName = function(vlan) {
+    var name = vlan.vid;
+    if (vlan.vid === 0) {
+      name = "untagged";
+    } else if (angular.isString(vlan.name) && vlan.name !== "") {
+      name += " (" + vlan.name + ")";
     }
+    return name;
+  };
 
-    VLANsManager.prototype = new Manager();
+  // Delete the VLAN.
+  VLANsManager.prototype.deleteVLAN = function(vlan) {
+    return RegionConnection.callMethod("vlan.delete", { id: vlan.id }, true);
+  };
 
-    VLANsManager.prototype.getName = function(vlan) {
-        var name = vlan.vid;
-        if (vlan.vid === 0) {
-            name = "untagged";
-        } else if (angular.isString(vlan.name) && vlan.name !== "") {
-            name += " (" + vlan.name + ")";
-        }
-        return name;
+  // This is needed for testing: in the normal course of things,
+  // rack_sids is generated entirely by the websocket handler.
+  VLANsManager.prototype.addRackController = function(vlan, rack) {
+    vlan.rack_sids.push(rack.system_id);
+  };
+
+  // Configure DHCP on the VLAN
+  VLANsManager.prototype.configureDHCP = function(
+    vlan,
+    controllers,
+    extra,
+    relay_vlan
+  ) {
+    var params = {
+      id: vlan.id,
+      controllers: controllers,
+      extra: extra
     };
+    if (relay_vlan === null || angular.isNumber(relay_vlan)) {
+      params.relay_vlan = relay_vlan;
+    }
+    return RegionConnection.callMethod("vlan.configure_dhcp", params, true);
+  };
 
-    // Delete the VLAN.
-    VLANsManager.prototype.deleteVLAN = function(vlan) {
-        return RegionConnection.callMethod(
-            "vlan.delete", { "id": vlan.id }, true);
-    };
+  // Disable DHCP on the VLAN
+  VLANsManager.prototype.disableDHCP = function(vlan) {
+    return RegionConnection.callMethod(
+      "vlan.configure_dhcp",
+      {
+        id: vlan.id,
+        controllers: [],
+        relay_vlan: null
+      },
+      true
+    );
+  };
 
-    // This is needed for testing: in the normal course of things,
-    // rack_sids is generated entirely by the websocket handler.
-    VLANsManager.prototype.addRackController = function(vlan, rack) {
-        vlan.rack_sids.push(rack.system_id);
-    };
+  // Create a VLAN.
+  VLANsManager.prototype.create = function(vlan) {
+    // We don't add the item to the list because a NOTIFY event will
+    // add the domain to the list. Adding it here will cause angular to
+    // complain because the same object exist in the list.
+    return RegionConnection.callMethod("vlan.create", vlan);
+  };
 
-    // Configure DHCP on the VLAN
-    VLANsManager.prototype.configureDHCP = function(
-        vlan, controllers, extra, relay_vlan) {
-        var params = {
-            "id": vlan.id,
-            "controllers": controllers,
-            "extra": extra
-        };
-        if (relay_vlan === null || angular.isNumber(relay_vlan)) {
-            params.relay_vlan = relay_vlan;
-        }
-        return RegionConnection.callMethod(
-            "vlan.configure_dhcp", params, true);
-    };
-
-    // Disable DHCP on the VLAN
-    VLANsManager.prototype.disableDHCP = function(vlan) {
-        return RegionConnection.callMethod(
-            "vlan.configure_dhcp", {
-                "id": vlan.id,
-                "controllers": [],
-                "relay_vlan": null
-            }, true);
-    };
-
-    // Create a VLAN.
-    VLANsManager.prototype.create = function(vlan) {
-        // We don't add the item to the list because a NOTIFY event will
-        // add the domain to the list. Adding it here will cause angular to
-        // complain because the same object exist in the list.
-        return RegionConnection.callMethod("vlan.create", vlan);
-    };
-
-    return new VLANsManager();
+  return new VLANsManager();
 }
 
-VLANsManager.$inject = ['RegionConnection', 'Manager'];
+VLANsManager.$inject = ["RegionConnection", "Manager"];
 
 export default VLANsManager;

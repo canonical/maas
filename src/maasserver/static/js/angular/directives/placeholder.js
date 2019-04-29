@@ -7,17 +7,17 @@
  */
 
 function ngPlaceholder() {
-    return {
-        restrict: "A",
-        scope: {
-            ngPlaceholder: "="
-        },
-        link: function(scope, element, attrs) {
-            scope.$watch('ngPlaceholder', function() {
-                element[0].placeholder = scope.ngPlaceholder;
-            });
-        }
-    };
+  return {
+    restrict: "A",
+    scope: {
+      ngPlaceholder: "="
+    },
+    link: function(scope, element, attrs) {
+      scope.$watch("ngPlaceholder", function() {
+        element[0].placeholder = scope.ngPlaceholder;
+      });
+    }
+  };
 }
 
 export default ngPlaceholder;
