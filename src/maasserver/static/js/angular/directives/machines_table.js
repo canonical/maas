@@ -6,6 +6,8 @@
  * Renders the machines listing.
  */
 
+import NodeStatus from "../enum";
+
 /* @ngInject */
 function maasMachinesTable(
   MachinesManager,
@@ -60,14 +62,14 @@ function maasMachinesTable(
   /* @ngInject */
   function MachinesTableController($scope) {
     // Statuses that should show spinner.
-    var SPINNER_STATUSES = [
-      1, // commissioning
-      9, // deploying
-      12, // releasing
-      14, // disk erasing
-      17, // entering rescue mode
-      19, // exiting rescue mode
-      21 // testing
+    const SPINNER_STATUSES = [
+      NodeStatus.COMMISSIONING,
+      NodeStatus.DEPLOYING,
+      NodeStatus.RELEASING,
+      NodeStatus.DISK_ERASING,
+      NodeStatus.ENTERING_RESCUE_MODE,
+      NodeStatus.EXITING_RESCUE_MODE,
+      NodeStatus.TESTING
     ];
 
     const machines = MachinesManager.getItems();
@@ -263,20 +265,15 @@ function maasMachinesTable(
         return false;
       }
       switch (machine.status_code) {
-        // NEW
-        case 0:
-        // COMMISSIONING
+        case NodeStatus.NEW:
         // fall through
-        case 1:
-        // FAILED_COMMISSIONING
+        case NodeStatus.COMMISSIONING:
         // fall through
-        case 2:
-        // TESTING
+        case NodeStatus.FAILED_COMMISSIONING:
         // fall through
-        case 21:
-        // FAILED_TESTING
+        case NodeStatus.TESTING:
         // fall through
-        case 22:
+        case NodeStatus.FAILED_TESTING:
           return false;
       }
       switch (machine.testing_status) {
@@ -397,72 +394,75 @@ function maasMachinesTable(
       if (field === "status") {
         const machines = $scope.groupBy(
           $scope.table.filteredMachines,
-          machine => machine.status
+          machine => machine.status_code
         );
-
         $scope.groupedMachines = [
           {
+            label: "Failed",
+            machines: [
+              ...(machines.get(NodeStatus.FAILED_COMMISSIONING) || []),
+              ...(machines.get(NodeStatus.FAILED_DEPLOYMENT) || []),
+              ...(machines.get(NodeStatus.FAILED_RELEASING) || []),
+              ...(machines.get(NodeStatus.FAILED_DISK_ERASING) || []),
+              ...(machines.get(NodeStatus.FAILED_ENTERING_RESCUE_MODE) || []),
+              ...(machines.get(NodeStatus.FAILED_EXITING_RESCUE_MODE) || []),
+              ...(machines.get(NodeStatus.FAILED_TESTING) || [])
+            ]
+          },
+          {
             label: "New",
-            machines: [...(machines.get("New") || [])]
+            machines: [...(machines.get(NodeStatus.NEW) || [])]
           },
           {
             label: "Commissioning",
-            machines: [...(machines.get("Commissioning") || [])]
-          },
-          {
-            label: "Ready",
-            machines: [
-              ...(machines.get("Ready") || []),
-              ...(machines.get("Releasing") || [])
-            ]
-          },
-          {
-            label: "Allocated and deployed",
-            machines: [
-              ...(machines.get("Allocated") || []),
-              ...(machines.get("Deployed") || [])
-            ]
-          },
-          {
-            label: "Deploying",
-            machines: [...(machines.get("Deploying") || [])]
+            machines: [...(machines.get(NodeStatus.COMMISSIONING) || [])]
           },
           {
             label: "Testing",
-            machines: [...(machines.get("Testing") || [])]
+            machines: [...(machines.get(NodeStatus.TESTING) || [])]
           },
           {
-            label: "Disk erasing",
-            machines: [...(machines.get("Disk erasing") || [])]
+            label: "Ready",
+            machines: [...(machines.get(NodeStatus.READY) || [])]
+          },
+          {
+            label: "Allocated",
+            machines: [...(machines.get(NodeStatus.ALLOCATED) || [])]
+          },
+          {
+            label: "Deploying",
+            machines: [...(machines.get(NodeStatus.DEPLOYING) || [])]
+          },
+          {
+            label: "Deployed",
+            machines: [...(machines.get(NodeStatus.DEPLOYED) || [])]
           },
           {
             label: "Rescue mode",
             machines: [
-              ...(machines.get("Entering rescue mode") || []),
-              ...(machines.get("Exiting rescue mode") || [])
+              ...(machines.get(NodeStatus.RESCUE_MODE) || []),
+              ...(machines.get(NodeStatus.ENTERING_RESCUE_MODE) || []),
+              ...(machines.get(NodeStatus.EXITING_RESCUE_MODE) || [])
             ]
           },
           {
-            label: "Failures",
+            label: "Releasing",
             machines: [
-              ...(machines.get("Failed commissioning") || []),
-              ...(machines.get("Broken") || []),
-              ...(machines.get("Missing") || []),
-              ...(machines.get("Failed deployment") || []),
-              ...(machines.get("Releasing failed") || []),
-              ...(machines.get("Failed disk erasing") || []),
-              ...(machines.get("Failed to enter rescue mode") || []),
-              ...(machines.get("Failed to exit rescue mode") || []),
-              ...(machines.get("Failed testing") || [])
+              ...(machines.get(NodeStatus.RELEASING) || []),
+              ...(machines.get(NodeStatus.DISK_ERASING) || [])
             ]
           },
           {
-            label: "Retired",
-            machines: [...(machines.get("Retired") || [])]
+            label: "Broken",
+            machines: [...(machines.get(NodeStatus.BROKEN) || [])]
           },
           {
             label: "Other",
-            machines: [...(machines.get("Reserved") || [])]
+            machines: [
+              ...(machines.get(NodeStatus.RETIRED) || []),
+              ...(machines.get(NodeStatus.MISSING) || []),
+              ...(machines.get(NodeStatus.RESERVED) || [])
+            ]
           }
         ];
         return;

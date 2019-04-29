@@ -918,24 +918,45 @@ describe("maasMachinesTable", function() {
       const directive = compileDirective();
       const scope = directive.isolateScope();
 
-      const machines = [makeMachine(), makeMachine()];
-      machines[0].status = "New";
-      machines[1].status = "Broken";
+      // create an array of machines with status_code from 0 -> 22
+      const machines = Array(23)
+        .fill()
+        .map((_, i) => {
+          let m = makeMachine();
+          m.status_code = i;
+          return m;
+        });
+
       scope.filteredMachines = machines;
       scope.updateGroupedMachines("status");
 
       expect(scope.groupedMachines).toEqual([
+        {
+          label: "Failed",
+          machines: [
+            machines[2],
+            machines[11],
+            machines[13],
+            machines[15],
+            machines[18],
+            machines[20],
+            machines[22]
+          ]
+        },
         { label: "New", machines: [machines[0]] },
-        { label: "Commissioning", machines: [] },
-        { label: "Ready", machines: [] },
-        { label: "Allocated and deployed", machines: [] },
-        { label: "Deploying", machines: [] },
-        { label: "Testing", machines: [] },
-        { label: "Disk erasing", machines: [] },
-        { label: "Rescue mode", machines: [] },
-        { label: "Failures", machines: [machines[1]] },
-        { label: "Retired", machines: [] },
-        { label: "Other", machines: [] }
+        { label: "Commissioning", machines: [machines[1]] },
+        { label: "Testing", machines: [machines[21]] },
+        { label: "Ready", machines: [machines[4]] },
+        { label: "Allocated", machines: [machines[10]] },
+        { label: "Deploying", machines: [machines[9]] },
+        { label: "Deployed", machines: [machines[6]] },
+        {
+          label: "Rescue mode",
+          machines: [machines[16], machines[17], machines[19]]
+        },
+        { label: "Releasing", machines: [machines[12], machines[14]] },
+        { label: "Broken", machines: [machines[8]] },
+        { label: "Other", machines: [machines[7], machines[3], machines[5]] }
       ]);
     });
 
