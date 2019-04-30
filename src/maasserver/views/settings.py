@@ -238,6 +238,7 @@ def users(request):
             'user_list': user_list,
             'external_auth_enabled': bool(request.external_auth_info),
             'show_license_keys': show_license_keys(),
+            'page_name': 'settings',
         })
 
 
@@ -311,6 +312,7 @@ def general(request):
             'vcenter_form': vcenter_form,
             'kernelopts_form': kernelopts_form,
             'show_license_keys': show_license_keys(),
+            'page_name': 'settings',
         })
 
 
@@ -330,6 +332,7 @@ def scripts(request):
             'commissioning_scripts': commissioning_scripts,
             'test_scripts': test_scripts,
             'show_license_keys': show_license_keys(),
+            'page_name': 'settings',
         })
 
 
@@ -346,6 +349,7 @@ def storage(request):
         {
             'storage_settings_form': storage_settings_form,
             'show_license_keys': show_license_keys(),
+            'page_name': 'settings',
         })
 
 
@@ -395,6 +399,7 @@ def network(request):
             'syslog_form': syslog_form,
             'network_discovery_form': network_discovery_form,
             'show_license_keys': show_license_keys(),
+            'page_name': 'settings',
         })
 
 
@@ -409,4 +414,5 @@ def license_keys(request):
         'maasserver/settings_license_keys.html',
         {
             'license_keys': license_keys,
+            'page_name': 'settings',
         })
