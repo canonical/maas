@@ -187,7 +187,7 @@
                     </span>
                 </span>
             </td>
-            <td class="p-table__col--status p-double-row" aria-label="Status, Events" title="{$ getStatusText(node) $}">
+            <td class="p-table__col--status p-double-row" aria-label="Status, Events">
                 <span class="p-table-menu">
                     <div class="p-double-row__icon-container" data-ng-click="!hideActions && toggleMenu(node.system_id + '-status')">
                         <i data-ng-if="showSpinner(node)" class="p-icon--spinner u-animation--spin"></i>
@@ -199,11 +199,14 @@
                         <i data-ng-if="!showSpinner(node) && !showNodeStatus(node) && !showFailedTestWarning(node)" class="p-icon--placeholder"></i>
                     </div>
                     <div class="p-double-row__rows-container--icon">
-                        <div class="p-double-row__main-row" aria-label="Status">
+                        <div class="p-double-row__main-row" aria-label="Status" title="{$ getStatusText(node) $}">
                             <span>{$ getStatusText(node) $}</span>
                         </div>
                         <div class="p-double-row__muted-row">
-                            <span>{$ getStatusMessage(node) $}</span>
+                            <span class="p-tooltip p-tooltip--btm" aria-describedby="status-message-tooltip-{$ node.fqdn $}">
+                                {$ getStatusMessage(node) $}
+                                <span class="p-tooltip__message" role="tooltip" id="status-message-tooltip-{$ node.fqdn $}">{$ getStatusMessage(node) $}</span>
+                            </span>
                         </div>
                     </div>
                     <button class="p-table-menu__toggle p-icon--contextual-menu u-hide--br3" data-ng-click="toggleMenu(node.system_id + '-status')" data-ng-if="!hideActions"></button>
