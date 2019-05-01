@@ -71,6 +71,12 @@ function maasSshKeys($sce, SSHKeysManager, ManagerHelperService, JSONService) {
           auth_id: $scope.add.authId
         }).then(
           function() {
+            $scope.open(
+              {
+                id: `${$scope.add.source}/${$scope.add.authId}`
+              },
+              "view"
+            );
             $scope.add.saving = false;
             $scope.add.source = "lp";
             $scope.add.authId = "";
