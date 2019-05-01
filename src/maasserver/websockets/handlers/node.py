@@ -325,9 +325,37 @@ class NodeHandler(TimestampedModelHandler):
                 ]
                 data["grouped_storages"] = self.get_grouped_storages(
                     physical_blockdevices)
-                detected_layout = get_applied_storage_layout_for_node(obj)
+                layout_bd, detected_layout = (
+                    get_applied_storage_layout_for_node(obj))
                 data["detected_storage_layout"] = detected_layout
-
+                # The UI knows that a partition is in use when it has a mounted
+                # partition. VMware ESXi does not directly mount the partitions
+                # used. As MAAS can't model that inject a place holder so the
+                # UI knows that these partitions are in use.
+                if detected_layout == "vmfs6":
+                    for disk in data["disks"]:
+                        if disk.get("parent", {}).get("type") == "vmfs6":
+                            disk["used_for"] = "VMFS Datastore"
+                            disk["filesystem"] = {
+                                "id": -1,
+                                "label": "RESERVED",
+                                "mount_point": "RESERVED",
+                                "mount_options": None,
+                                "fstype": None,
+                                "is_format_fstype": False
+                            }
+                        elif disk["id"] == layout_bd.id:
+                            for partition in disk["partitions"]:
+                                partition["used_for"] = (
+                                    "VMware ESXi OS partition")
+                                partition["filesystem"] = {
+                                    "id": -1,
+                                    "label": "RESERVED",
+                                    "mount_point": "RESERVED",
+                                    "mount_options": None,
+                                    "fstype": None,
+                                    "is_format_fstype": False
+                                }
                 # Events
                 data["events"] = self.dehydrate_events(obj)
 

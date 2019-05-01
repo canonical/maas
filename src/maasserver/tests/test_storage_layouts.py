@@ -111,17 +111,20 @@ class TestGetAppliedStorageLayoutForNode(MAASServerTestCase):
 
     def test__detects_layout(self):
         node = make_Node_with_uefi_boot_method()
-        factory.make_PhysicalBlockDevice(node=node, size=LARGE_BLOCK_DEVICE)
+        bd = factory.make_PhysicalBlockDevice(
+            node=node, size=LARGE_BLOCK_DEVICE)
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE, tags=['ssd'])
         layout = self.layout_class(node)
         layout.configure()
         self.assertEquals(
-            self.layout_name, get_applied_storage_layout_for_node(node))
+            (bd, self.layout_name),
+            get_applied_storage_layout_for_node(node))
 
     def test__returns_unknown(self):
         node = factory.make_Node()
-        self.assertEquals("unknown", get_applied_storage_layout_for_node(node))
+        self.assertEquals(
+            (None, "unknown"), get_applied_storage_layout_for_node(node))
 
 
 class TestStorageLayoutForm(MAASServerTestCase):

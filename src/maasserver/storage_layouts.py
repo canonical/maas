@@ -866,9 +866,10 @@ def get_applied_storage_layout_for_node(node):
     """Returns the detected storage layout on the node."""
     for name, (_, layout_class) in STORAGE_LAYOUTS.items():
         layout = layout_class(node)
-        if layout.is_layout() is not None:
-            return name
-    return "unknown"
+        bd = layout.is_layout()
+        if bd is not None:
+            return bd, name
+    return None, "unknown"
 
 
 class StorageLayoutForm(Form):

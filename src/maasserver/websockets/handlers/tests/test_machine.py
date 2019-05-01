@@ -370,12 +370,12 @@ class TestMachineHandler(MAASServerTestCase):
                 if key not in allowed_fields:
                     del data[key]
         else:
+            _, applied_layout = get_applied_storage_layout_for_node(node)
             data.update({
                 "dhcp_on": node.interface_set.filter(
                     vlan__dhcp_on=True).exists(),
                 "grouped_storages": handler.get_grouped_storages(blockdevices),
-                "detected_storage_layout": get_applied_storage_layout_for_node(
-                    node),
+                "detected_storage_layout": applied_layout,
                 "metadata": {},
             })
 
@@ -722,6 +722,38 @@ class TestMachineHandler(MAASServerTestCase):
         data = {}
         handler.dehydrate(node, data)
         self.assertEqual(data['pod'], {'id': pod.id, 'name': pod.name})
+
+    def test_dehydrate_with_vmfs_layout_sets_reserved(self):
+        owner = factory.make_User()
+        node = factory.make_Node(with_boot_disk=False)
+        node.boot_disk = factory.make_PhysicalBlockDevice(
+            node=node, size=LARGE_BLOCK_DEVICE)
+        layout = VMFS6StorageLayout(node)
+        layout.configure()
+        handler = MachineHandler(owner, {}, None)
+        for disk in handler.dehydrate(node, {})["disks"]:
+            if disk["id"] == node.boot_disk.id:
+                for partition in disk["partitions"]:
+                    self.assertEquals(
+                        "VMware ESXi OS partition", partition["used_for"])
+                    self.assertDictEqual({
+                        "id": -1,
+                        "label": "RESERVED",
+                        "mount_point": "RESERVED",
+                        "mount_options": None,
+                        "fstype": None,
+                        "is_format_fstype": False,
+                        }, partition["filesystem"])
+            else:
+                self.assertEquals("VMFS Datastore", disk["used_for"])
+                self.assertDictEqual({
+                    "id": -1,
+                    "label": "RESERVED",
+                    "mount_point": "RESERVED",
+                    "mount_options": None,
+                    "fstype": None,
+                    "is_format_fstype": False,
+                    }, disk["filesystem"])
 
     def test_dehydrate_power_parameters_returns_None_when_empty(self):
         owner = factory.make_User()
