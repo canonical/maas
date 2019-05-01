@@ -699,8 +699,7 @@ function NodesListController(
       angular.isObject($scope.tabs[tab].actionOption) &&
       $scope.tabs[tab].actionOption.name === "deploy" &&
       $scope.tabs[tab].actionErrorCount === 0 &&
-      ($scope.osinfo.osystems.length === 0 ||
-        UsersManager.getSSHKeyCount() === 0)
+      $scope.osinfo.osystems.length === 0
     ) {
       return true;
     }
@@ -722,8 +721,8 @@ function NodesListController(
     return false;
   };
 
-  // Return True if unable to deploy because of missing ssh keys.
-  $scope.isSSHKeyError = function(tab) {
+  // Return True if deploy warning should be shown because of missing ssh keys.
+  $scope.isSSHKeyWarning = function(tab) {
     if ($scope.tabs[tab].actionErrorCount !== 0) {
       return false;
     }

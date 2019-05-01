@@ -1101,21 +1101,6 @@ describe("NodesListController", function() {
           expect($scope.isActionError(tab)).toBe(true);
         });
 
-        it("returns true if action missing ssh keys", function() {
-          makeController();
-          $scope.tabs[tab].actionOption = {
-            name: "deploy"
-          };
-          $scope.tabs[tab].actionErrorCount = 0;
-          $scope.osinfo = {
-            osystems: [makeName("os")]
-          };
-          var firstUser = makeUser();
-          UsersManager._authUser = firstUser;
-          firstUser.sshkeys_count = 0;
-          expect($scope.isActionError(tab)).toBe(true);
-        });
-
         it(`returns false if deploy action not missing
             osinfo or keys`, function() {
           makeController();
@@ -1133,11 +1118,11 @@ describe("NodesListController", function() {
         });
       });
 
-      describe("isSSHKeyError", function() {
+      describe("isSSHKeyWarning", function() {
         it("returns false if actionErrorCount > 0", function() {
           makeController();
           $scope.tabs[tab].actionErrorCount = 2;
-          expect($scope.isSSHKeyError(tab)).toBe(false);
+          expect($scope.isSSHKeyWarning(tab)).toBe(false);
         });
 
         it("returns true if deploy action missing ssh keys", function() {
@@ -1146,7 +1131,7 @@ describe("NodesListController", function() {
             name: "deploy"
           };
           $scope.tabs[tab].actionErrorCount = 0;
-          expect($scope.isSSHKeyError(tab)).toBe(true);
+          expect($scope.isSSHKeyWarning(tab)).toBe(true);
         });
 
         it("returns false if deploy action not missing ssh keys", function() {
@@ -1158,7 +1143,7 @@ describe("NodesListController", function() {
           var firstUser = makeUser();
           firstUser.sshkeys_count = 1;
           UsersManager._authUser = firstUser;
-          expect($scope.isSSHKeyError(tab)).toBe(false);
+          expect($scope.isSSHKeyWarning(tab)).toBe(false);
         });
       });
 

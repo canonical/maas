@@ -224,6 +224,11 @@
                                                 </div>
                                             </div>
                                         </div>
+                                        <div data-ng-if="isSSHKeyWarning(tab)" class="p-strip is-shallow u-no-padding--top">
+                                            <p class="u-remove-max-width">
+                                                <i class="p-icon--warning">Warning:</i> Login will not be possible because no SSH keys have been added to your account. To add an SSH key, visit <a href="account/prefs/">your account page</a>.
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
                                 <div data-ng-if="tabs[tab].actionOption.name === 'release'">
@@ -375,7 +380,7 @@
             <section class="page-header__section row u-no-margin--top" data-ng-hide="!isActionError(tab) || hasActionsInProgress(tab)">
                 <div class="col-12">
                     <div class="row">
-                        <p data-ng-hide="isDeployError(tab) || isSSHKeyError(tab)"
+                        <p data-ng-hide="isDeployError(tab)"
                             class="page-header__message page-header__message--error ng-hide">
                             <i class="p-icon--warning">Warning</i>
                             {$ tabs[tab].actionErrorCount $}
@@ -387,12 +392,6 @@
                             {$ tabs[tab].selectedItems.length $}
                             <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'node', 'other': 'nodes'}"></span>
                             cannot be {$ tabs[tab].actionOption.sentence $}, because the required boot images have not been imported. To import boot images, visit the <a href="#/images">images page</a>.
-                        </p>
-                        <p class="page-header__message page-header__message--error ng-hide" data-ng-show="isSSHKeyError(tab)">
-                            <i class="p-icon--warning">Warning</i>
-                            {$ tabs[tab].selectedItems.length $}
-                            <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'node', 'other': 'nodes'}"></span>
-                            cannot be {$ tabs[tab].actionOption.sentence $}, because an SSH key has not been added to your account. To add an SSH key, visit <a href="account/prefs/">your account page</a>.
                         </p>
                     </div>
                 </div>

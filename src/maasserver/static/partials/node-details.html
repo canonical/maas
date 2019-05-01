@@ -69,7 +69,7 @@
                     <p class="page-header__message"><i class="p-icon--warning">Warning:</i> MAAS is not providing DHCP.</p>
                 </div>
             </div>
-            <div class="row ng-hide u-no-margin--top" data-ng-hide="isActionError() || isDeployError() || isSSHKeyError() || hasActionPowerError(action.option.name)">
+            <div class="row ng-hide u-no-margin--top" data-ng-hide="isActionError() || isDeployError() || hasActionPowerError(action.option.name)">
                 <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
                 <div class="page-header__section">
                     <form class="p-form">
@@ -122,6 +122,11 @@
                                                 </div>
                                             </div>
                                         </div>
+                                        <div data-ng-if="isSSHKeyWarning()" class="p-strip is-shallow u-no-padding--top">
+                                            <p class="u-remove-max-width">
+                                                <i class="p-icon--warning">Warning:</i> Login will not be possible because no SSH keys have been added to your account. To add an SSH key, visit <a href="account/prefs/">your account page</a>.
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -167,7 +172,7 @@
                     </form>
                 </div>
             </div>
-            <div class="row ng-hide" data-ng-hide="isActionError() || isDeployError() || isSSHKeyError() || hasActionPowerError(action.option.name) || action.option.name !== 'commission'" data-ng-if="hasCustomCommissioningScripts()">
+            <div class="row ng-hide" data-ng-hide="isActionError() || isDeployError() || hasActionPowerError(action.option.name) || action.option.name !== 'commission'" data-ng-if="hasCustomCommissioningScripts()">
                 <div class="page-header__section">
                     <form class="p-form">
                         <div class="col-8">
@@ -179,7 +184,7 @@
                     </form>
                 </div>
             </div>
-            <div class="row u-no-margin--top ng-hide" data-ng-hide="isActionError() || isDeployError() || isSSHKeyError() || hasActionPowerError(action.option.name) || (action.option.name !== 'commission' && action.option.name !== 'test')">
+            <div class="row u-no-margin--top ng-hide" data-ng-hide="isActionError() || isDeployError() || hasActionPowerError(action.option.name) || (action.option.name !== 'commission' && action.option.name !== 'test')">
                 <hr />
                 <div class="page-header__section">
                     <form class="p-form">
@@ -192,7 +197,7 @@
                     </form>
                 </div>
             </div>
-            <div class="u-no-margin--top row ng-hide"  data-ng-hide="isActionError() || isDeployError() || isSSHKeyError() || hasActionPowerError(action.option.name)" data-ng-if="action.option.name === 'commission' || action.option.name === 'test' && !action.showing_confirmation">
+            <div class="u-no-margin--top row ng-hide"  data-ng-hide="isActionError() || isDeployError() || hasActionPowerError(action.option.name)" data-ng-if="action.option.name === 'commission' || action.option.name === 'test' && !action.showing_confirmation">
                 <hr />
                 <div class="page-header__section col-12">
                     <form class="p-form">
@@ -260,18 +265,6 @@
                 <div class="col-9 u-vertically-center">
                     <p class="u-remove-max-width">
                         <i class="p-icon--error">Error:</i> Node cannot be {$ action.option.sentence $}, because power control software for the node is missing from its rack controller. To proceed, install the {$ getPowerErrors() $} on the rack controller.
-                    </p>
-                </div>
-                <div class="col-3">
-                    <div class="u-align--right">
-                        <button class="p-button--base" data-ng-click="actionCancel()">Cancel</button>
-                    </div>
-                </div>
-            </div>
-            <div class="row u-equal-height ng-hide" data-ng-show="!isDeployError() && isSSHKeyError()">
-                <div class="col-9 u-vertically-center">
-                    <p class="u-remove-max-width">
-                        <i class="p-icon--error">Error:</i> Node cannot be {$ action.option.sentence $}, because an SSH key has not been added to your account. To add an SSH key, visit <a href="account/prefs/">your account page</a>.
                     </p>
                 </div>
                 <div class="col-3">

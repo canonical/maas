@@ -974,7 +974,7 @@ describe("NodeDetailsController", function() {
     });
   });
 
-  describe("isSSHKeyError", function() {
+  describe("isSSHKeyWarning", function() {
     it("returns true if deploy action and missing ssh keys", function() {
       makeController();
       $scope.action.option = {
@@ -983,7 +983,7 @@ describe("NodeDetailsController", function() {
       var firstUser = makeUser();
       firstUser.sshkeys_count = 0;
       UsersManager._authUser = firstUser;
-      expect($scope.isSSHKeyError()).toBe(true);
+      expect($scope.isSSHKeyWarning()).toBe(true);
     });
 
     it("returns false if actionOption null", function() {
@@ -991,7 +991,7 @@ describe("NodeDetailsController", function() {
       var firstUser = makeUser();
       firstUser.sshkeys_count = 1;
       UsersManager._authUser = firstUser;
-      expect($scope.isSSHKeyError()).toBe(false);
+      expect($scope.isSSHKeyWarning()).toBe(false);
     });
 
     it("returns false if not deploy action", function() {
@@ -1002,7 +1002,7 @@ describe("NodeDetailsController", function() {
       var firstUser = makeUser();
       firstUser.sshkeys_count = 1;
       UsersManager._authUser = firstUser;
-      expect($scope.isSSHKeyError()).toBe(false);
+      expect($scope.isSSHKeyWarning()).toBe(false);
     });
 
     it("returns false if ssh keys present", function() {
@@ -1013,7 +1013,7 @@ describe("NodeDetailsController", function() {
       var firstUser = makeUser();
       firstUser.sshkeys_count = 1;
       UsersManager._authUser = firstUser;
-      expect($scope.isSSHKeyError()).toBe(false);
+      expect($scope.isSSHKeyWarning()).toBe(false);
     });
   });
 

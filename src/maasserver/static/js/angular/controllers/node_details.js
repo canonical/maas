@@ -565,8 +565,8 @@ function NodeDetailsController(
     return false;
   };
 
-  // Return True if unable to deploy because of missing ssh keys.
-  $scope.isSSHKeyError = function() {
+  // Return True if deploy warning should be shown because of missing ssh keys.
+  $scope.isSSHKeyWarning = function() {
     // Never a deploy error when there is an action error.
     if ($scope.isActionError()) {
       return false;
