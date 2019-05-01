@@ -4286,7 +4286,7 @@ class TestMachineHandlerUpdateFilesystem(MAASServerTestCase):
         self.assertEqual(blockdevice.tags, [])
 
     def test__set_script_result_suppressed(self):
-        owner = factory.make_User()
+        owner = factory.make_admin()
         node = factory.make_Node(owner=owner)
         handler = MachineHandler(owner, {}, None)
         hardware_type = factory.pick_choice(HARDWARE_TYPE_CHOICES)
@@ -4309,6 +4309,72 @@ class TestMachineHandlerUpdateFilesystem(MAASServerTestCase):
         for script_result in script_results:
             script_result = reload_object(script_result)
             self.assertTrue(script_result.suppressed)
+
+    def test__set_script_result_suppressed_raises_permission_error(self):
+        owner = factory.make_User()
+        node = factory.make_Node(owner=owner)
+        handler = MachineHandler(owner, {}, None)
+        script_set = factory.make_ScriptSet(node=node)
+        script_results = []
+        for _ in range(3):
+            script_results.append(
+                factory.make_ScriptResult(script_set=script_set))
+        params = {
+            'system_id': node.system_id,
+            'script_result_ids': [
+                script_result.id for script_result in script_results]
+        }
+
+        self.assertRaises(
+            HandlerPermissionError,
+            handler.set_script_result_suppressed,
+            params)
+
+    def test__set_script_result_unsuppressed(self):
+        owner = factory.make_admin()
+        node = factory.make_Node(owner=owner)
+        handler = MachineHandler(owner, {}, None)
+        hardware_type = factory.pick_choice(HARDWARE_TYPE_CHOICES)
+        script_set = factory.make_ScriptSet(node=node)
+        script = factory.make_Script(hardware_type=hardware_type)
+        script_result = factory.make_ScriptResult(
+            script_set, script=script, suppressed=True)
+
+        script_results = []
+        for _ in range(3):
+            script_results.append(
+                factory.make_ScriptResult(script_set=script_set))
+
+        handler.set_script_result_unsuppressed({
+            'system_id': node.system_id,
+            'script_result_ids': [
+                script_result.id for script_result in script_results]
+        })
+        script_result = reload_object(script_result)
+        self.assertTrue(script_result.suppressed)
+        for script_result in script_results:
+            script_result = reload_object(script_result)
+            self.assertFalse(script_result.suppressed)
+
+    def test__set_script_result_unsuppressed_raises_permission_error(self):
+        owner = factory.make_User()
+        node = factory.make_Node(owner=owner)
+        handler = MachineHandler(owner, {}, None)
+        script_set = factory.make_ScriptSet(node=node)
+        script_results = []
+        for _ in range(3):
+            script_results.append(
+                factory.make_ScriptResult(script_set=script_set))
+        params = {
+            'system_id': node.system_id,
+            'script_result_ids': [
+                script_result.id for script_result in script_results]
+        }
+
+        self.assertRaises(
+            HandlerPermissionError,
+            handler.set_script_result_unsuppressed,
+            params)
 
     def test__get_unsuppressed_script_results(self):
         owner = factory.make_User()

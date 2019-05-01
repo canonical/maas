@@ -34,6 +34,7 @@ from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.tag import Tag
 from maasserver.models.virtualblockdevice import VirtualBlockDevice
 from maasserver.node_action import compile_node_actions
+from maasserver.permissions import NodePermission
 from maasserver.storage_layouts import get_applied_storage_layout_for_node
 from maasserver.third_party_drivers import get_third_party_driver
 from maasserver.utils.converters import (
@@ -44,6 +45,7 @@ from maasserver.utils.osystems import make_hwe_kernel_ui_text
 from maasserver.websockets.base import (
     dehydrate_datetime,
     HandlerError,
+    HandlerPermissionError,
 )
 from maasserver.websockets.handlers.event import dehydrate_event_type_level
 from maasserver.websockets.handlers.node_result import NodeResultHandler
@@ -897,9 +899,21 @@ class NodeHandler(TimestampedModelHandler):
 
     def set_script_result_suppressed(self, params):
         """Set suppressed for the ScriptResult ids."""
+        node = self.get_object(params)
+        if not self.user.has_perm(NodePermission.admin, node):
+            raise HandlerPermissionError()
         script_result_ids = params.get('script_result_ids')
         ScriptResult.objects.filter(id__in=script_result_ids).update(
             suppressed=True)
+
+    def set_script_result_unsuppressed(self, params):
+        """Set unsuppressed for the ScriptResult ids."""
+        node = self.get_object(params)
+        if not self.user.has_perm(NodePermission.admin, node):
+            raise HandlerPermissionError()
+        script_result_ids = params.get('script_result_ids')
+        ScriptResult.objects.filter(id__in=script_result_ids).update(
+            suppressed=False)
 
     def get_suppressible_script_results(self, params):
         """Return a dictionary with Nodes system_ids mapped to lists of

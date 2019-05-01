@@ -382,6 +382,26 @@ function NodesManager(RegionConnection, Manager, KVMDeployOSBlacklist) {
     return true;
   };
 
+  NodesManager.prototype.suppressTests = function(node, scripts) {
+    return RegionConnection.callMethod(
+      this._handler + ".set_script_result_suppressed",
+      {
+        system_id: node.system_id,
+        script_result_ids: scripts.map(script => script.id)
+      }
+    );
+  };
+
+  NodesManager.prototype.unsuppressTests = function(node, scripts) {
+    return RegionConnection.callMethod(
+      this._handler + ".set_script_result_unsuppressed",
+      {
+        system_id: node.system_id,
+        script_result_ids: scripts.map(script => script.id)
+      }
+    );
+  };
+
   return NodesManager;
 }
 

@@ -797,4 +797,46 @@ describe("NodesManager", function() {
       });
     });
   });
+
+  describe("suppressTests", () => {
+    it("calls machine.set_script_result_suppressed for script list", done => {
+      const machine = makemachine();
+      const scripts = [{ id: makeName("id") }, { id: makeName("id") }];
+
+      webSocket.returnData.push(makeFakeResponse("updated"));
+
+      MachinesManager.suppressTests(machine, scripts).then(() => {
+        const sentObject = angular.fromJson(webSocket.sentData[0]);
+        expect(sentObject.method).toBe("machine.set_script_result_suppressed");
+        expect(sentObject.params.system_id).toBe(machine.system_id);
+        expect(sentObject.params.script_result_ids).toEqual([
+          scripts[0].id,
+          scripts[1].id
+        ]);
+        done();
+      });
+    });
+  });
+
+  describe("unsuppressTests", () => {
+    it("calls machine.set_script_result_unsuppressed for script list", done => {
+      const machine = makemachine();
+      const scripts = [{ id: makeName("id") }, { id: makeName("id") }];
+
+      webSocket.returnData.push(makeFakeResponse("updated"));
+
+      MachinesManager.unsuppressTests(machine, scripts).then(() => {
+        const sentObject = angular.fromJson(webSocket.sentData[0]);
+        expect(sentObject.method).toBe(
+          "machine.set_script_result_unsuppressed"
+        );
+        expect(sentObject.params.system_id).toBe(machine.system_id);
+        expect(sentObject.params.script_result_ids).toEqual([
+          scripts[0].id,
+          scripts[1].id
+        ]);
+        done();
+      });
+    });
+  });
 });

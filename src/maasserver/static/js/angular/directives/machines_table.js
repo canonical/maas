@@ -6,7 +6,7 @@
  * Renders the machines listing.
  */
 
-import NodeStatus from "../enum";
+import { NodeStatus } from "../enum";
 
 /* @ngInject */
 function maasMachinesTable(

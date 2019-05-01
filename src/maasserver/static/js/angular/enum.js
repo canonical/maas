@@ -1,4 +1,4 @@
-const NodeStatus = {
+export const NodeStatus = {
   // The node has been created and has a system ID assigned to it.
   NEW: 0,
   // Testing and other commissioning steps are taking place.
@@ -50,4 +50,15 @@ const NodeStatus = {
   FAILED_TESTING: 22
 };
 
-export default NodeStatus;
+export const ScriptStatus = {
+  PENDING: 0,
+  RUNNING: 1,
+  PASSED: 2,
+  FAILED: 3,
+  TIMEDOUT: 4,
+  ABORTED: 5,
+  DEGRADED: 6,
+  INSTALLING: 7,
+  FAILED_INSTALLING: 8,
+  SKIPPED: 9
+};

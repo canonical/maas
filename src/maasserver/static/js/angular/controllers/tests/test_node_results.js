@@ -4,6 +4,21 @@
  * Unit tests for NodeResultsController
  */
 
+// 2019-04-30 Caleb - Syntax error `import { ScriptStatus }from "../../enum"`;
+// TODO - Fix es module imports in test files
+const ScriptStatus = {
+  PENDING: 0,
+  RUNNING: 1,
+  PASSED: 2,
+  FAILED: 3,
+  TIMEDOUT: 4,
+  ABORTED: 5,
+  DEGRADED: 6,
+  INSTALLING: 7,
+  FAILED_INSTALLING: 8,
+  SKIPPED: 9
+};
+
 describe("NodeResultsController", function() {
   // Load the MAAS module.
   beforeEach(module("MAAS"));
@@ -509,6 +524,139 @@ describe("NodeResultsController", function() {
 
       expect(result.showing_history).toBe(true);
       expect($scope.nodeResultsManager.get_history).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("hasSuppressedTests", () => {
+    it("returns whether there are suppressed tests in results", () => {
+      makeController();
+      const suppressedResult = makeResult(1);
+      $scope.results = [
+        {
+          hardware_type: 1,
+          results: {
+            subtype: [
+              ...Array.from(Array(3)).map(() => makeResult(1)),
+              suppressedResult
+            ]
+          }
+        },
+        {
+          hardware_type: 2,
+          results: {
+            subtype: Array.from(Array(3)).map(() => makeResult(2))
+          }
+        }
+      ];
+
+      expect($scope.hasSuppressedTests()).toEqual(false);
+
+      suppressedResult.suppressed = true;
+      expect($scope.hasSuppressedTests()).toEqual(true);
+    });
+  });
+
+  describe("isSuppressible", () => {
+    it(`returns true if a result's status is
+      FAILED, FAILED_INSTALLING or TIMEDOUT`, () => {
+      makeController();
+      const results = [
+        makeResult(0, ScriptStatus.FAILED),
+        makeResult(0, ScriptStatus.FAILED_INSTALLING),
+        makeResult(0, ScriptStatus.TIMEDOUT),
+        makeResult(0, ScriptStatus.PASSED)
+      ];
+
+      expect($scope.isSuppressible(results[0])).toBe(true);
+      expect($scope.isSuppressible(results[1])).toBe(true);
+      expect($scope.isSuppressible(results[2])).toBe(true);
+      expect($scope.isSuppressible(results[3])).toBe(false);
+    });
+  });
+
+  describe("getSuppressedCount", () => {
+    it("returns number of suppressed tests in node test results", () => {
+      makeController();
+      const results1 = Array.from(Array(5)).map((e, i) => {
+        const result = makeResult(1, ScriptStatus.FAILED);
+        if (i % 2 === 0) {
+          result.suppressed = true;
+        }
+        return result;
+      });
+      const results2 = Array.from(Array(5)).map((e, i) => {
+        const result = makeResult(2, ScriptStatus.FAILED);
+        if (i % 2 === 0) {
+          result.suppressed = true;
+        }
+        return result;
+      });
+      $scope.results = [
+        {
+          hardware_type: 1,
+          results: {
+            subtype: results1
+          }
+        },
+        {
+          hardware_type: 2,
+          results: {
+            subtype: results2
+          }
+        }
+      ];
+
+      expect($scope.getSuppressedCount()).toEqual(6);
+    });
+
+    it("returns 'All' if all suppressible tests are suppressed", () => {
+      makeController();
+      const results = Array.from(Array(5)).map((e, i) => {
+        const result = makeResult(2, ScriptStatus.FAILED);
+        result.suppressed = true;
+        return result;
+      });
+      $scope.results = [
+        {
+          hardware_type: 1,
+          results: {
+            subtype: results
+          }
+        }
+      ];
+
+      expect($scope.getSuppressedCount()).toEqual("All");
+    });
+  });
+
+  describe("toggleSuppressed", () => {
+    it("calls suppressTests manager method if test not suppressed", () => {
+      makeController();
+      const result = makeResult();
+      $scope.node = node;
+      spyOn($scope.nodesManager, "suppressTests");
+
+      $scope.toggleSuppressed(result);
+
+      expect($scope.nodesManager.suppressTests).toHaveBeenCalledWith(
+        $scope.node,
+        [result]
+      );
+    });
+
+    it("calls unsuppressTests manager method if test suppressed", () => {
+      makeController();
+      const result = makeResult();
+      result.suppressed = true;
+      $scope.node = node;
+      spyOn($scope.nodesManager, "unsuppressTests");
+
+      $scope.toggleSuppressed(result);
+
+      expect($scope.nodesManager.unsuppressTests).toHaveBeenCalledWith(
+        $scope.node,
+        [result]
+      );
     });
   });
 });

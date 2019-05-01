@@ -196,6 +196,7 @@ class MachineHandler(NodeHandler):
             'get_summary_xml',
             'get_summary_yaml',
             'set_script_result_suppressed',
+            'set_script_result_unsuppressed',
             'get_suppressible_script_results',
         ]
         form = AdminMachineWithMACAddressesForm

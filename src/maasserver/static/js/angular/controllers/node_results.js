@@ -1,4 +1,4 @@
-import NodeResultController from "./node_result";
+import { ScriptStatus } from "../enum";
 
 /* Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
@@ -220,6 +220,46 @@ function NodeResultsController(
       result.loading_history = false;
       result.showing_history = true;
     });
+  };
+
+  $scope.hasSuppressedTests = () => {
+    return $scope.results.some(type => {
+      const entries = Object.entries(type.results);
+      return entries.some(entry => entry[1].some(result => result.suppressed));
+    });
+  };
+
+  $scope.isSuppressible = result =>
+    result.status === ScriptStatus.FAILED ||
+    result.status === ScriptStatus.FAILED_INSTALLING ||
+    result.status === ScriptStatus.TIMEDOUT;
+
+  $scope.getSuppressedCount = () => {
+    const suppressibleTests = $scope.results.reduce((acc, type) => {
+      const entries = Object.entries(type.results);
+      entries.forEach(entry => {
+        entry[1].forEach(result => {
+          if ($scope.isSuppressible(result)) {
+            acc.push(result);
+          }
+        });
+      });
+      return acc;
+    }, []);
+    const suppressedTests = suppressibleTests.filter(test => test.suppressed);
+
+    if (suppressibleTests.length === suppressedTests.length) {
+      return "All";
+    }
+    return suppressedTests.length;
+  };
+
+  $scope.toggleSuppressed = result => {
+    if (result.suppressed) {
+      $scope.nodesManager.unsuppressTests($scope.node, [result]);
+    } else {
+      $scope.nodesManager.suppressTests($scope.node, [result]);
+    }
   };
 
   // Destroy the NodeResultsManager when the scope is destroyed. This is

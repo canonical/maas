@@ -4,6 +4,16 @@
             <p class="u-text--loading"><i class="p-icon--spinner u-animation--spin"></i>&nbsp;&nbsp;Loading...</p>
         </div>
     </div>
+    <div class="row" data-ng-if="resultsLoaded && hasSuppressedTests()">
+        <div class="p-notification--caution">
+            <p class="p-notification__response">
+                <span class="p-notification__status">
+                    {$ getSuppressedCount() $} test failure{$ getSuppressedCount() === 1 ? "" : "s" $} suppressed:
+                </span>
+                <span>suppressed results are not shown on the <em>Machine list</em>, but are always shown here.</span>
+            </p>
+        </div>
+    </div>
     <div class="row">
         <div data-ng-repeat="hardware_type in results">
             <div data-ng-if="resultsLoaded && (hardware_type.results | json) != '{}'">
@@ -13,6 +23,7 @@
                     <table class="p-table-expanding p-table--controllers-commissioning">
                         <thead>
                             <tr>
+                                <th style="width: 80px">Suppress</th>
                                 <th class="col-3">Name</th>
                                 <th class="col-2">Tags</th>
                                 <th class="col-1">Runtime</th>
@@ -22,7 +33,27 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr data-ng-repeat="result in results" data-ng-class="{'is-active': result.showing_results || result.showing_history}">
+                            <tr
+                                data-ng-repeat="result in results"
+                                data-ng-class="{
+                                    'is-active': result.showing_results || result.showing_history,
+                                    'is-suppressed': result.suppressed
+                                }"
+                            >
+                                <td style="width: 80px; overflow: visible" aria-label="Suppress"">
+                                    <div class="p-tooltip">
+                                        <input
+                                            id="{$ result.id $}"
+                                            type="checkbox"
+                                            data-ng-if="isSuppressible(result)"
+                                            data-ng-checked="result.suppressed"
+                                            data-ng-click="toggleSuppressed(result)"
+                                            data-ng-disabled="!isSuperUser()"
+                                        >
+                                        <label style="height: 2rem" for="{$ result.id $}" data-ng-if="result.exit_status !== 0"></label>
+                                        <span style="left: -1rem" data-ng-if="!isSuperUser()" class="p-tooltip__message">Only admins can suppress failed tests.</span>
+                                    </div>
+                                </td>
                                 <td class="col-3" data-ng-click="result.showing_results = !result.showing_results" aria-label="Name" title="{$ result.name $}">
                                     <span data-maas-script-status="script-status" data-script-status="result.status"></span>
                                     {$ result.name $}
@@ -42,11 +73,12 @@
                                             <button class="p-button--base is-small p-contextual-menu__toggle" data-ng-click="toggleMenu()">
                                                 <i class="p-icon--contextual-menu u-no-margin--right">Actions</i>
                                             </button>
-                                            <div class="p-contextual-menu__dropdown" role="menu" data-ng-show="isToggled">
+                                            <div class="p-contextual-menu__dropdown" role="menu" data-ng-show="isToggled" style="width: auto">
                                                 <button class="p-contextual-menu__link" aria-label="View metrics" data-ng-if="!result.showing_results && result.results.length !== 0" data-ng-click="toggleMenu(); result.showing_history = false; result.showing_results = true">View metrics</button>
                                                 <button class="p-contextual-menu__link" aria-label="Hide metrics" data-ng-if="result.showing_results" data-ng-click="toggleMenu(); result.showing_history = false; result.showing_results = false">Hide metrics</button>
                                                 <button class="p-contextual-menu__link" aria-label="View previous {$ result.result_section $}" data-ng-if="!result.showing_history" data-ng-click="toggleMenu(); loadHistory(result)">View previous {$ result.result_section $}</button>
                                                 <button class="p-contextual-menu__link" aria-label="Hide previous {$ result.result_section $}" data-ng-if="result.showing_history" data-ng-click="toggleMenu(); result.showing_results = false; result.showing_history = false">Hide previous {$ result.result_section $}</button>
+                                                <button class="p-contextual-menu__link" aria-label="Toggle this test in machine list" data-ng-if="isSuperUser() && isSuppressible(result)" data-ng-click="toggleSuppressed(result)">{$ result.suppressed ? "Show" : "Suppress" $} test in machine list</button>
                                             </div>
                                         </div>
                                     </div>
