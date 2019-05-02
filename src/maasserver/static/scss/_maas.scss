@@ -279,3 +279,8 @@
 .hide-create-tag-label .create-tag-label {
   display: none;
 }
+
+// Flip chevron in hardware tests table
+.p-table--controllers-commissioning .is-active .p-icon--chevron {
+  transform: rotate(180deg);
+}
