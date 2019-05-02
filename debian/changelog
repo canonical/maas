@@ -1,8 +1,14 @@
-maas (2.5.2-0ubuntu1) UNRELEASED; urgency=medium
+maas (2.5.3-0ubuntu1) UNRELEASED; urgency=medium
 
   * UNRELEASED
 
  -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 05 Dec 2018 14:10:00 -0500
+
+aas (2.5.2-7523-ge4ecbd54d-0ubuntu1~18.04.1) bionic; urgency=medium
+
+  * New upstream release, MAAS 2.5.2.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Tue, 05 Mar 2019 09:51:38 -0500
 
 maas (2.5.1-7508-gb70537f3d-0ubuntu1~18.10.1) cosmic; urgency=medium
 
