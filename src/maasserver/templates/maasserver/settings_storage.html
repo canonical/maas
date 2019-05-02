@@ -1,66 +1,110 @@
 {% extends "maasserver/base.html" %}
-
 {% block nav-active-settings %}active{% endblock %}
-
 {% block title %}Settings{% endblock %}
 {% block page-title %}Settings{% endblock %}
-
 {% block ng-app %}data-ng-app="MAAS"{% endblock %}
-
-{% block head %}
-{% endblock %}
-
+{% block head %}{% endblock %}
 {% block page-header-classes %}u-no-padding--bottom{% endblock %}
 {% block page-navigation %}
 <nav class="p-tabs u-hr--fixed-width">
-    <div class="row">
-        <ul class="p-tabs__list" role="tablist">
-            <li class="p-tabs__item" role="presentation">
-                <a href="{% url 'settings_users' %}" class="p-tabs__link" role="tab">Users</a>
-            </li>
-            <li class="p-tabs__item" role="presentation">
-                <a href="{% url 'settings_general' %}" class="p-tabs__link" role="tab">General</a>
-            </li>
-            <li class="p-tabs__item" role="presentation">
-                <a href="{% url 'settings_scripts' %}" class="p-tabs__link" role="tab">User scripts</a>
-            </li>
-            <li class="p-tabs__item" role="presentation">
-                <a href="{% url 'settings_storage' %}" class="p-tabs__link" role="tab" aria-selected="true">Storage</a>
-            </li>
-            <li class="p-tabs__item" role="presentation">
-                <a href="{% url 'settings_network' %}" class="p-tabs__link" role="tab">Network services</a>
-            </li>
-            <li class="p-tabs__item" role="presentation">
-                <a href="{% url 'index' %}#/settings/dhcp" class="p-tabs__link" role="tab">DHCP snippets</a>
-            </li>
-            <li class="p-tabs__item" role="presentation">
-                <a href="{% url 'index' %}#/settings/repositories" class="p-tabs__link" role="tab">Package repositories</a>
-            </li>
-            {% if show_license_keys %}
-            <li class="p-tabs__item" role="presentation">
-                <a href="{% url 'settings_license_keys' %}" class="p-tabs__link" role="tab">License keys</a>
-            </li>
-            {% endif %}
-        </ul>
-    </div>
+  <div class="row">
+    <ul class="p-tabs__list" role="tablist">
+      <li class="p-tabs__item" role="presentation">
+        <a href="{% url 'settings_users' %}" class="p-tabs__link" role="tab">Users</a
+        >
+      </li>
+      <li class="p-tabs__item" role="presentation">
+        <a href="{% url 'settings_general' %}" class="p-tabs__link" role="tab">General</a>
+      </li>
+      <li class="p-tabs__item" role="presentation">
+        <a href="{% url 'settings_scripts' %}" class="p-tabs__link" role="tab">User scripts</a>
+      </li>
+      <li class="p-tabs__item" role="presentation">
+        <a
+          href="{% url 'settings_storage' %}"
+          class="p-tabs__link"
+          role="tab"
+          aria-selected="true">Storage</a>
+      </li>
+      <li class="p-tabs__item" role="presentation">
+        <a href="{% url 'settings_network' %}" class="p-tabs__link" role="tab">Network services</a>
+      </li>
+      <li class="p-tabs__item" role="presentation">
+        <a
+          href="{% url 'index' %}#/settings/dhcp"
+          class="p-tabs__link"
+          role="tab">DHCP snippets</a>
+      </li>
+      <li class="p-tabs__item" role="presentation">
+        <a
+          href="{% url 'index' %}#/settings/repositories"
+          class="p-tabs__link"
+          role="tab">Package repositories</a>
+      </li>
+      {% if show_license_keys %}
+      <li class="p-tabs__item" role="presentation">
+        <a
+          href="{% url 'settings_license_keys' %}"
+          class="p-tabs__link"
+          role="tab">License keys</a>
+      </li>
+      {% endif %}
+    </ul>
+  </div>
 </nav>
 {% endblock %}
 
 {% block content %}
 <div id="settings">
-    <div class="p-strip">
-        <div class="row">
-            <div id="storage_settings" class="col-8">
-                <form action="{% url 'settings_storage' %}" method="post">
-                    {% csrf_token %}
-                    <ul class="p-list">
-                        {% for field in storage_settings_form %} {% include "maasserver/form_field.html" %} {% endfor %}
-                    </ul>
-                    <input type="hidden" name="storage_settings_submit" value="1" />
-                    <button type="submit" class="p-button--positive u-float--right">Save</button>
-                </form>
-            </div>
-        </div>
+  <div class="p-strip">
+    <div class="row">
+      <div id="storage_settings" class="col-8">
+        <form action="{% url 'settings_storage' %}" method="post">
+          {% csrf_token %}
+          <ul class="p-list">
+            {% for field in storage_settings_form %}
+              {% include "maasserver/form_field.html" %}
+            {% endfor %}
+          </ul>
+          <input type="hidden" name="storage_settings_submit" value="1" />
+          <button type="submit" class="p-button--positive u-float--right">
+            Save
+          </button>
+        </form>
+      </div>
     </div>
+  </div>
 </div>
+
+<script>
+  var layoutOptionsField = document.getElementById(
+    "id_storage_settings-default_storage_layout"
+  );
+  var layoutOptionsFieldContainer = document.querySelector(
+    ".storage_settings-default_storage_layout"
+  );
+  var warningContainer = document.createElement("div");
+  var VMFS6warningContent =
+    '<p class="u-remove-max-width"><i class="p-icon--warning"></i> <strong>Warning:</strong> The VMFS6 storage layout only allows for the deployment of <strong>VMware (ESXi)</strong></p>';
+  var blankWarningContent =
+    '<p class="u-remove-max-width"><i class="p-icon--warning"></i> <strong>Warning:</strong> You will not be able to deploy machines with this storage layout. Manual configuration is required.';
+
+  layoutOptionsFieldContainer.appendChild(warningContainer);
+
+  function handleLayoutWarnings(value) {
+    if (value === "vmfs6") {
+      warningContainer.innerHTML = VMFS6warningContent;
+    } else if (value === "blank") {
+      warningContainer.innerHTML = blankWarningContent;
+    } else {
+      warningContainer.innerHTML = "";
+    }
+  }
+
+  handleLayoutWarnings(layoutOptionsField.value);
+
+  layoutOptionsField.addEventListener("change", function(e) {
+    handleLayoutWarnings(e.target.value);
+  });
+</script>
 {% endblock %}
