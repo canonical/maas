@@ -15,9 +15,7 @@ case "$1" in
     ;;
     experimental)
         echo "experimental"
-        dput -f ppa:maas-maintainers/experimental $BUILDDIR/maas*trusty*source.changes
-        dput -f ppa:maas-maintainers/experimental $BUILDDIR/maas*vivid*source.changes
-        dput -f ppa:maas-maintainers/experimental $BUILDDIR/maas*wily*source.changes
+        dput -f ppa:maas-maintainers/experimental $BUILDDIR/maas*source.changes
     ;;
     proposed)
         dput -f ppa:maas/proposed $BUILDDIR/maas*source.changes
