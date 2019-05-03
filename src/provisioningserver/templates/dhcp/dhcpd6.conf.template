@@ -4,6 +4,7 @@
 
 option dhcp6.user-class code 15 = string;
 option dhcp6.client-arch-type code 61 = array of unsigned integer 16; # RFC5970
+option dhcp6.vendor-class code 16 = {integer 32, integer 16, string};
 option path-prefix code 210 = text; #RFC5071
 
 #

@@ -160,6 +160,10 @@ class BootMethod(metaclass=ABCMeta):
     # with an absolute path.
     absolute_url_as_filename = False
 
+    # When providing a URL in the bootloader make it HTTP instead of TFTP.
+    # Includes "HTTPClient" as the vendor-class-identifier.
+    http_url = False
+
     # Arches for which this boot method needs to install boot loaders.
     bootloader_arches = []
 
@@ -427,7 +431,10 @@ class BootMethodRegistry(Registry):
 # Import the supported boot methods after defining BootMethod.
 from provisioningserver.boot.ipxe import IPXEBootMethod
 from provisioningserver.boot.pxe import PXEBootMethod
-from provisioningserver.boot.uefi_amd64 import UEFIAMD64BootMethod
+from provisioningserver.boot.uefi_amd64 import (
+    UEFIAMD64BootMethod,
+    UEFIAMD64HTTPBootMethod
+)
 from provisioningserver.boot.uefi_arm64 import UEFIARM64BootMethod
 from provisioningserver.boot.open_firmware_ppc64el import (
     OpenFirmwarePPC64ELBootMethod
@@ -441,6 +448,7 @@ builtin_boot_methods = [
     IPXEBootMethod(),
     PXEBootMethod(),
     UEFIAMD64BootMethod(),
+    UEFIAMD64HTTPBootMethod(),
     UEFIARM64BootMethod(),
     OpenFirmwarePPC64ELBootMethod(),
     PowerNVBootMethod(),

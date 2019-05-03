@@ -177,3 +177,30 @@ class UEFIAMD64BootMethod(BootMethod):
             os.makedirs(config_path)
         with open(config_dst, 'wb') as stream:
             stream.write(CONFIG_FILE.encode("utf-8"))
+
+
+class UEFIAMD64HTTPBootMethod(UEFIAMD64BootMethod):
+
+    name = 'uefi_amd64_http'
+    bios_boot_method = 'uefi'
+    template_subdir = 'uefi'
+    bootloader_path = 'bootx64.efi'
+    bootloader_arches = []  # `UEFIAMD64BootMethod` provides this.
+    bootloader_files = []  # `UEFIAMD64BootMethod` provides this.
+    arch_octet = ['00:0f', '00:10']
+    user_class = None
+    absolute_url_as_filename = True
+    http_url = True
+
+    def match_path(self, backend, path):
+        # Does nothing as `UEFIAMD64BootMethod` provides this.
+        return None
+
+    def get_reader(self, backend, kernel_params, **extra):
+        # Does nothing as `UEFIAMD64BootMethod` provides this.
+        return None
+
+    @typed
+    def link_bootloader(self, destination: str):
+        # Does nothing as `UEFIAMD64BootMethod` provides this.
+        return None

@@ -533,13 +533,16 @@ class TestComposeConditionalBootloader(MAASTestCase):
                 # No DHCP configuration is rendered for boot methods that have
                 # no `arch_octet`, with the solitary exception of PXE.
                 pass
-            if method.path_prefix_http:
+            if method.path_prefix_http or method.http_url:
                 self.assertThat(output, Contains("http://%s:5248/" % ip))
             if method.path_prefix_force:
                 self.assertThat(output, Contains(
                     "option dhcp-parameter-request-list = concat("))
                 self.assertThat(output, Contains(
                     "option dhcp-parameter-request-list,d2);"))
+            if method.http_url:
+                self.assertThat(output, Contains(
+                    'option vendor-class-identifier "HTTPClient";'))
 
     def test__composes_bootloader_section_v6(self):
         ip = factory.make_ipv6_address()
@@ -558,11 +561,14 @@ class TestComposeConditionalBootloader(MAASTestCase):
                 # No DHCP configuration is rendered for boot methods that have
                 # no `arch_octet`, with the solitary exception of PXE.
                 pass
-            if method.path_prefix_http:
+            if method.path_prefix_http or method.http_url:
                 self.assertThat(output, Contains("http://[%s]:5248/" % ip))
             if method.path_prefix_force:
                 self.assertThat(output, Contains(
                     "option dhcp6.oro = concat(option dhcp6.oro,00d2);"))
+            if method.http_url:
+                self.assertThat(output, Contains(
+                    'option dhcp6.vendor-class 0 10 "HTTPClient";'))
 
 
 class TestGetAddresses(MAASTestCase):

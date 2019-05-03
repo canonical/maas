@@ -61,6 +61,9 @@ CONDITIONAL_BOOTLOADER = tempita.Template("""
         option dhcp6.oro = concat(option dhcp6.oro,00d2);
     }
     {{endif}}
+    {{if http_client}}
+    option dhcp6.vendor-class 0 10 "HTTPClient";
+    {{endif}}
 }
 {{else}}
 {{behaviour}} exists dhcp6.client-arch-type and
@@ -72,6 +75,9 @@ CONDITIONAL_BOOTLOADER = tempita.Template("""
         # Always send the PXELINUX option (path-prefix)
         option dhcp6.oro = concat(option dhcp6.oro,00d2);
     }
+    {{endif}}
+    {{if http_client}}
+    option dhcp6.vendor-class 0 10 "HTTPClient";
     {{endif}}
 }
 {{endif}}
@@ -91,6 +97,9 @@ CONDITIONAL_BOOTLOADER = tempita.Template("""
             option dhcp-parameter-request-list,d2);
     }
     {{endif}}
+    {{if http_client}}
+    option vendor-class-identifier "HTTPClient";
+    {{endif}}
 }
 {{else}}
 {{behaviour}} option arch = {{arch_octet}} {
@@ -105,6 +114,9 @@ CONDITIONAL_BOOTLOADER = tempita.Template("""
         option dhcp-parameter-request-list = concat(
             option dhcp-parameter-request-list,d2);
     }
+    {{endif}}
+    {{if http_client}}
+    option vendor-class-identifier "HTTPClient";
     {{endif}}
 }
 {{endif}}
@@ -152,8 +164,9 @@ def compose_conditional_bootloader(ipv6, rack_ip=None):
     behaviour = chain(["if"], repeat("elsif"))
     for name, method in BootMethodRegistry:
         if method.arch_octet is not None:
-            schema = 'http' if method.path_prefix_http else 'tftp'
-            port = ':5248' if method.path_prefix_http else ''
+            use_http = method.path_prefix_http or method.http_url
+            schema = 'http' if use_http else 'tftp'
+            port = ':5248' if use_http else ''
             url = ('%s://[%s]%s/' if ipv6 else '%s://%s%s/') % (
                 schema, rack_ip, port)
             path_prefix = method.path_prefix
@@ -180,6 +193,7 @@ def compose_conditional_bootloader(ipv6, rack_ip=None):
                     bootloader=bootloader,
                     path_prefix=path_prefix,
                     path_prefix_force=method.path_prefix_force,
+                    http_client=method.http_url,
                     name=method.name,
                     ).strip() + ' '
 
@@ -189,8 +203,9 @@ def compose_conditional_bootloader(ipv6, rack_ip=None):
     # uefi_amd64 or pxelinux can still boot.
     method = BootMethodRegistry.get_item('uefi_amd64' if ipv6 else 'pxe')
     if method is not None:
-        schema = 'http' if method.path_prefix_http else 'tftp'
-        port = ':5248' if method.path_prefix_http else ''
+        use_http = method.path_prefix_http or method.http_url
+        schema = 'http' if use_http else 'tftp'
+        port = ':5248' if use_http else ''
         url = ('%s://[%s]%s/' if ipv6 else '%s://%s%s/') % (
             schema, rack_ip, port)
         path_prefix = method.path_prefix

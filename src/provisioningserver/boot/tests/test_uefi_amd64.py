@@ -7,6 +7,7 @@ __all__ = []
 
 import os
 import re
+from unittest.mock import sentinel
 
 from maastesting.factory import factory
 from maastesting.matchers import (
@@ -28,6 +29,7 @@ from provisioningserver.boot.uefi_amd64 import (
     CONFIG_FILE,
     re_config_file,
     UEFIAMD64BootMethod,
+    UEFIAMD64HTTPBootMethod,
 )
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 from provisioningserver.utils import typed
@@ -353,3 +355,32 @@ class TestUEFIAMD64BootMethod(MAASTestCase):
             '/var/lib/maas/boot-resources/%s' % factory.make_name('snapshot'))
         method._find_and_copy_bootloaders(bootloader_dir)
         self.assertThat(mock_maaslog, MockCalledOnce())
+
+
+class TestUEFIAMD64HTTPBootMethod(MAASTestCase):
+    """Tests `provisioningserver.boot.uefi_amd64.UEFIAMD64HTTPBootMethod`."""
+
+    def test_attributes(self):
+        method = UEFIAMD64HTTPBootMethod()
+        self.assertEqual('uefi_amd64_http', method.name)
+        self.assertEqual('uefi', method.bios_boot_method)
+        self.assertEqual('uefi', method.template_subdir)
+        self.assertEqual('bootx64.efi', method.bootloader_path)
+        self.assertEqual([], method.bootloader_arches)
+        self.assertEqual([], method.bootloader_files)
+        self.assertEqual(['00:0f', '00:10'], method.arch_octet)
+        self.assertIsNone(method.user_class)
+        self.assertTrue(method.absolute_url_as_filename)
+        self.assertTrue(method.http_url)
+
+    def test_match_path_returns_None(self):
+        method = UEFIAMD64HTTPBootMethod()
+        self.assertIsNone(method.match_path(sentinel.backend, sentinel.path))
+
+    def test_get_reader_returns_None(self):
+        method = UEFIAMD64HTTPBootMethod()
+        self.assertIsNone(method.get_reader(sentinel.backend, sentinel.params))
+
+    def test_link_bootloader_returns_None(self):
+        method = UEFIAMD64HTTPBootMethod()
+        self.assertIsNone(method.link_bootloader(sentinel.destination))
