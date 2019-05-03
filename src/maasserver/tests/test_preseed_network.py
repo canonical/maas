@@ -628,7 +628,8 @@ class TestNetplan(MAASServerTestCase):
                         'parameters': {
                             "mode": "active-backup",
                             "transmit-hash-policy": "layer2",
-                            "gratuitous-arp": 3,
+                            # XXX Workaround LP: #1827238
+                            "gratuitious-arp": 3,
                         },
                         'macaddress': '03:01:02:03:04:05'
                     },
@@ -723,7 +724,8 @@ class TestNetplan(MAASServerTestCase):
                         'parameters': {
                             "mode": "active-backup",
                             "transmit-hash-policy": "layer2",
-                            "gratuitous-arp": 3
+                            # XXX Workaround LP: #1827238
+                            "gratuitious-arp": 3
                         },
                     },
                 }),

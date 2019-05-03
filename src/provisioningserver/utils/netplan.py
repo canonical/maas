@@ -37,7 +37,11 @@ ifenslave_to_netplan_bond_params = {
     "bond-lacp-rate": "lacp-rate",
     "bond-miimon": "mii-monitor-interval",
     "bond-mode": "mode",
-    "bond-num-grat-arp": "gratuitous-arp",
+    # XXX Introduce a mispelling to workaround LP: #1827238
+    "bond-num-grat-arp": "gratuitious-arp",
+    # This is just an internal alias for bond-num-grat-arp.
+    "bond-num-unsol-na": "gratuitious-arp",
+    #
     "bond-primary-reselect": "primary-reselect-policy",
     "bond-updelay": "up-delay",
     "bond-xmit-hash-policy": "transmit-hash-policy",
@@ -59,8 +63,6 @@ ifenslave_to_netplan_bond_params = {
     "bond-queue-id": None,
     "bond-slaves": None,
     "bond-use-carrier": None,
-    # This is just an internal alias for bond-num-grat-arp.
-    "bond-num-unsol-na": "gratuitous-arp",
 }
 
 
