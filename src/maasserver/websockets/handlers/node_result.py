@@ -201,7 +201,7 @@ class NodeResultHandler(TimestampedModelHandler):
         if data_type == 'combined':
             data_type = 'output'
         script_result = ScriptResult.objects.filter(
-            id=id).only(data_type).first()
+            id=id).only('status', data_type).first()
         if script_result is None:
             return "Unknown ScriptResult id %s" % id
         data = getattr(script_result, data_type)
@@ -211,7 +211,7 @@ class NodeResultHandler(TimestampedModelHandler):
         """Return a list of historic results."""
         id = params.get('id')
         script_result = ScriptResult.objects.filter(id=id).only(
-            'script_id', 'script_set_id', 'physical_blockdevice_id',
+            'status', 'script_id', 'script_set_id', 'physical_blockdevice_id',
             'script_name').first()
         history_qs = script_result.history.only(
             'id', 'updated', 'status', 'started', 'ended', 'script_id',

@@ -907,16 +907,18 @@ class TestMetadataCommon(MAASServerTestCase):
 class TestMetadataUserData(MAASServerTestCase):
     """Tests for the metadata user-data API endpoint."""
 
-    def test_user_data_view_returns_binary_data(self):
+    def test_user_data_view_returns_binary_data_and_creates_sts_msg(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         NodeUserData.objects.set_user_data(node, sample_binary_data)
         client = make_node_client(node)
         response = client.get(reverse('metadata-user-data', args=['latest']))
+        event = Event.objects.last()
         self.assertEqual('application/octet-stream', response['Content-Type'])
         self.assertIsInstance(response.content, bytes)
         self.assertEqual(
             (http.client.OK, sample_binary_data),
             (response.status_code, response.content))
+        self.assertEqual(event.type.name, EVENT_TYPES.GATHERING_INFO)
 
     def test_poweroff_user_data_returned_if_unexpected_status(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
@@ -1059,7 +1061,7 @@ class TestInstallingAPI(MAASServerTestCase):
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.READY, reload_object(node).status)
-        expected_event = Event.objects.last()
+        expected_event = Event.objects.first()
         self.assertThat(
             expected_event.description,
             DocTestMatches("Failed to update tags."))
@@ -1634,7 +1636,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(
             NODE_STATUS.COMMISSIONING, reload_object(other_node).status)
 
-    def test_signaling_commissioning_OK_repopulates_tags(self):
+    def test_signaling_commissioning_OK_repopulates_tags_and_status_msg(self):
         populate_tags_for_single_node = self.patch(
             api, "populate_tags_for_single_node")
         node = factory.make_Node(
@@ -1785,13 +1787,15 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(user, reload_object(node).owner)
 
-    def test_signaling_commissioning_success_makes_node_ready(self):
+    def test_signaling_commissioning_success_node_ready_and_status_msg(self):
         node = factory.make_Node(
             status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
         client = make_node_client(node=node)
         response = call_signal(client, status=SIGNAL_STATUS.OK)
+        event = Event.objects.get(node=node)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
+        self.assertEqual(event.type.name, EVENT_TYPES.READY)
 
     def test_signaling_commissioning_success_is_idempotent(self):
         node = factory.make_Node(
@@ -2163,10 +2167,11 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertThat(
             Node.set_default_storage_layout,
             MockCalledOnceWith(node))
-        expected_event = Event.objects.last()
+        events = Event.objects.filter(node=node)
         self.assertThat(
-            expected_event.description,
+            events[0].description,
             DocTestMatches("Failed to set default storage layout."))
+        self.assertEqual(events[1].type.name, EVENT_TYPES.FAILED_COMMISSIONING)
 
     def test_signal_fails_commissioning_and_logs_event_if_network_config_fails(
             self):
@@ -2184,10 +2189,11 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertThat(
             Node.set_initial_networking_configuration,
             MockCalledOnceWith(node))
-        expected_event = Event.objects.last()
+        events = Event.objects.filter(node=node)
         self.assertThat(
-            expected_event.description,
+            events[0].description,
             DocTestMatches("Failed to set default networking configuration."))
+        self.assertEqual(events[1].type.name, EVENT_TYPES.FAILED_COMMISSIONING)
 
     def test_signal_sets_default_storage_layout_if_TESTING(self):
         self.patch_autospec(Node, "set_default_storage_layout")
@@ -2419,8 +2425,10 @@ class TestTestingAPI(MAASServerTestCase):
             status=NODE_STATUS.TESTING, with_empty_script_sets=True)
         client = make_node_client(node=node)
         response = call_signal(client, status=SIGNAL_STATUS.OK)
+        event = Event.objects.last()
         self.assertThat(response, HasStatusCode(http.client.OK))
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
+        self.assertEqual(event.type.name, EVENT_TYPES.READY)
 
     def test_signaling_testing_success_moves_node_to_new_when_enlisting(self):
         node = factory.make_Node(
@@ -2439,8 +2447,10 @@ class TestTestingAPI(MAASServerTestCase):
             status=NODE_STATUS.TESTING, with_empty_script_sets=True)
         client = make_node_client(node=node)
         response = call_signal(client, status=SIGNAL_STATUS.OK)
+        event = Event.objects.last()
         self.assertThat(response, HasStatusCode(http.client.OK))
         self.assertEqual(NODE_STATUS.NEW, reload_object(node).status)
+        self.assertEqual(event.type.name, EVENT_TYPES.NEW)
 
     def test_signaling_testing_success_does_not_clear_owner(self):
         node = factory.make_Node(
@@ -2457,9 +2467,11 @@ class TestTestingAPI(MAASServerTestCase):
             with_empty_script_sets=True)
         client = make_node_client(node=node)
         response = call_signal(client, status=SIGNAL_STATUS.FAILED)
+        event = Event.objects.last()
         self.assertThat(response, HasStatusCode(http.client.OK))
         self.assertEqual(
             NODE_STATUS.FAILED_TESTING, reload_object(node).status)
+        self.assertEqual(event.type.name, EVENT_TYPES.FAILED_TESTING)
 
     def test_signaling_testing_testing_transitions_to_testing(self):
         node = factory.make_Node(
@@ -2483,6 +2495,35 @@ class TestTestingAPI(MAASServerTestCase):
         self.assertGreaterEqual(
             ceil(script_set.last_ping.timestamp()), start_time)
         self.assertLessEqual(floor(script_set.last_ping.timestamp()), end_time)
+
+    def test_signaling_testing_creates_status_message_package_install(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.TESTING, owner=factory.make_User(),
+            with_empty_script_sets=True)
+        script_result = (
+            node.current_testing_script_set.scriptresult_set.first())
+        client = make_node_client(node=node)
+        response = call_signal(
+            client, status=SIGNAL_STATUS.INSTALLING,
+            script_result_id=script_result.id)
+        event = Event.objects.get(node=node)
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(event.type.name, EVENT_TYPES.RUNNING_TEST)
+
+    def test_signaling_testing_creates_status_message_no_package_install(self):
+        error = 'Starting smartctl-validate (id: 421, script_version_id: 1)'
+        node = factory.make_Node(
+            status=NODE_STATUS.TESTING, owner=factory.make_User(),
+            with_empty_script_sets=True)
+        script_result = (
+            node.current_testing_script_set.scriptresult_set.first())
+        client = make_node_client(node=node)
+        response = call_signal(
+            client, status=SIGNAL_STATUS.WORKING,
+            error=error, script_result_id=script_result.id)
+        event = Event.objects.get(node=node)
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(event.type.name, EVENT_TYPES.RUNNING_TEST)
 
     def test_signaling_testing_with_install_sets_script_to_install(self):
         node = factory.make_Node(
@@ -2678,16 +2719,18 @@ class TestRescueModeAPI(MAASServerTestCase):
             NODE_STATUS.FAILED_ENTERING_RESCUE_MODE,
             reload_object(node).status)
 
-    def test_signaling_entering_rescue_mode_ok_changes_status(self):
+    def test_signaling_entering_rescue_mode_ok_changes_status_and_msg(self):
         node = factory.make_Node(
             status=NODE_STATUS.ENTERING_RESCUE_MODE, owner=factory.make_User(),
             power_state=POWER_STATE.ON, power_type="virsh",
             with_empty_script_sets=True)
         client = make_node_client(node=node)
         response = call_signal(client, status=SIGNAL_STATUS.OK)
+        event = Event.objects.get(node=node)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.RESCUE_MODE, reload_object(node).status)
+        self.assertEqual(event.type.name, EVENT_TYPES.RESCUE_MODE)
 
     def test_signaling_entering_rescue_mode_does_not_set_owner_to_None(self):
         node = factory.make_Node(

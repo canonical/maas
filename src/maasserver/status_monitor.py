@@ -85,14 +85,16 @@ def mark_nodes_failed_after_missing_script_timeout(now, node_timeout):
                 Prefetch('scriptresult_set', ScriptResult.objects.defer(
                     'output', 'stdout', 'stderr', 'result').prefetch_related(
                         Prefetch('script', Script.objects.only(
-                            'name', 'may_reboot', 'timeout')))))),
+                            'script_type', 'name',
+                            'may_reboot', 'timeout')))))),
         Prefetch(
             'current_testing_script_set',
             ScriptSet.objects.prefetch_related(
                 Prefetch('scriptresult_set', ScriptResult.objects.defer(
                     'output', 'stdout', 'stderr', 'result').prefetch_related(
                         Prefetch('script', Script.objects.only(
-                            'name', 'may_reboot', 'timeout')))))))
+                            'script_type', 'name',
+                            'may_reboot', 'timeout')))))))
     for node in qs:
         if node.status == NODE_STATUS.COMMISSIONING:
             script_set = node.current_commissioning_script_set

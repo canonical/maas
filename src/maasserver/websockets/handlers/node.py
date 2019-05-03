@@ -373,7 +373,7 @@ class NodeHandler(TimestampedModelHandler):
                                 # STDOUT is deferred in the cache so load it.
                                 script_result = ScriptResult.objects.filter(
                                     id=script_result.id).only(
-                                        'id', 'stdout').first()
+                                        'id', 'status', 'stdout').first()
                                 modaliases = script_result.stdout.decode(
                                     'utf-8').splitlines()
                     driver = get_third_party_driver(obj, modaliases)
@@ -883,7 +883,7 @@ class NodeHandler(TimestampedModelHandler):
         for script_result in node.get_latest_script_results.filter(
                 script_name__in=script_output_nsmap.keys(),
                 status=SCRIPT_STATUS.PASSED, script_set__node=node).only(
-                    'script_name', 'updated', 'stdout', 'script__id',
+                    'status', 'script_name', 'updated', 'stdout', 'script__id',
                     'script_set__node').order_by(
                         'script_name', '-updated').distinct('script_name'):
             namespace = script_output_nsmap[script_result.name]
@@ -907,7 +907,7 @@ class NodeHandler(TimestampedModelHandler):
         for script_result in ScriptResult.objects.filter(
                 script_name__in=script_output_nsmap.keys(),
                 status=SCRIPT_STATUS.PASSED, script_set__node=node).only(
-                    'script_name', 'updated', 'stdout', 'script__id',
+                    'status', 'script_name', 'updated', 'stdout', 'script__id',
                     'script_set__node').order_by(
                         'script_name', '-updated').distinct('script_name'):
             namespace = script_output_nsmap[script_result.name]

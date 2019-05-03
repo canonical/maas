@@ -292,7 +292,7 @@ class TestScriptResult(MAASServerTestCase):
         self.addCleanup(
             scriptresult_module.NODE_INFO_SCRIPTS.pop, script_result.name)
         script_result.store_result(exit_status, stdout=b'')
-        expected_event = Event.objects.last()
+        expected_event = Event.objects.first()
         self.assertThat(
             expected_event.description,
             DocTestMatches("...failed during post-processing."))

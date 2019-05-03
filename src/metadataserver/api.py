@@ -226,8 +226,7 @@ def add_event_to_node_event_log(
                 EVENT_STATUS_MESSAGES[action]].level,
             type_description=EVENT_DETAILS[
                 EVENT_STATUS_MESSAGES[action]].description,
-            event_action=action, event_description='',
-            system_id=node.system_id, created=created)
+            event_action=action, system_id=node.system_id, created=created)
 
     return Event.objects.register_event_and_event_type(
         type_name, type_level=EVENT_DETAILS[type_name].level,
@@ -746,6 +745,19 @@ class VersionIndexHandler(MetadataViewHandler):
 
         target_status = process(node, request, status)
 
+        # Create appropriate status messages.
+        if target_status == NODE_STATUS.READY:
+            Event.objects.create_node_event(node, EVENT_TYPES.READY)
+        elif target_status == NODE_STATUS.FAILED_COMMISSIONING:
+            Event.objects.create_node_event(
+                node, EVENT_TYPES.FAILED_COMMISSIONING)
+        elif target_status == NODE_STATUS.RESCUE_MODE:
+            Event.objects.create_node_event(node, EVENT_TYPES.RESCUE_MODE)
+        elif target_status == NODE_STATUS.NEW:
+            Event.objects.create_node_event(node, EVENT_TYPES.NEW)
+        elif target_status == NODE_STATUS.FAILED_TESTING:
+            Event.objects.create_node_event(node, EVENT_TYPES.FAILED_TESTING)
+
         if target_status in (None, node.status):
             # No status change.  Nothing to be done.
             return rc.ALL_OK
@@ -900,6 +912,10 @@ class UserDataHandler(MetadataViewHandler):
                     node=node, request=request)
             else:
                 user_data = NodeUserData.objects.get_user_data(node)
+            if node.status == NODE_STATUS.COMMISSIONING:
+                # Create a status message for GATHERING_INFO.
+                Event.objects.create_node_event(
+                    node, EVENT_TYPES.GATHERING_INFO)
             return HttpResponse(
                 user_data, content_type='application/octet-stream')
         except NodeUserData.DoesNotExist:
@@ -1219,23 +1235,9 @@ class AnonMetaDataHandler(VersionIndexHandler):
         # This is a best-guess. At the moment, netboot_off() only gets
         # called when the node has finished installing, so it's an
         # accurate predictor of the end of the install process.
-        netboot_off_type_name = EVENT_TYPES.NODE_INSTALLATION_FINISHED
-        netboot_off_event_details = EVENT_DETAILS[netboot_off_type_name]
-        netboot_off_description = "Node disabled netboot"
-        Event.objects.register_event_and_event_type(
-            netboot_off_type_name,
-            type_level=netboot_off_event_details.level,
-            type_description=netboot_off_event_details.description,
-            event_description=netboot_off_description,
-            system_id=node.system_id)
-
+        Event.objects.create_node_event(
+            node, EVENT_TYPES.NODE_INSTALLATION_FINISHED,
+            event_description="Node disabled netboot")
         # Create status message event for rebooting the machine.
-        reboot_type_name = EVENT_TYPES.REBOOTING
-        reboot_event_details = EVENT_DETAILS[reboot_type_name]
-        Event.objects.register_event_and_event_type(
-            reboot_type_name,
-            type_level=reboot_event_details.level,
-            type_description=reboot_event_details.description,
-            event_description='',
-            system_id=node.system_id)
+        Event.objects.create_node_event(node, EVENT_TYPES.REBOOTING)
         return rc.ALL_OK

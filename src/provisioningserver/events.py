@@ -149,6 +149,28 @@ class EVENT_TYPES:
     REBOOTING = "REBOOTING"
     PERFORMING_PXE_BOOT = "PERFORMING_PXE_BOOT"
     LOADING_EPHEMERAL = "LOADING_EPHEMERAL"
+    NEW = "NEW"
+    COMMISSIONING = "COMMISSIONING"
+    FAILED_COMMISSIONING = "FAILED_COMMISSIONING"
+    TESTING = "TESTING"
+    FAILED_TESTING = "FAILED_TESTING"
+    READY = "READY"
+    DEPLOYING = "DEPLOYING"
+    DEPLOYED = "DEPLOYED"
+    RELEASING = "RELEASING"
+    RELEASED = "RELEASED"
+    ENTERING_RESCUE_MODE = "ENTERING_RESCUE_MODE"
+    RESCUE_MODE = "RESCUE_MODE"
+    FAILED_EXITING_RESCUE_MODE = "FAILED_EXITING_RESCUE_MODE"
+    EXITED_RESCUE_MODE = "EXITED_RESCUE_MODE"
+    GATHERING_INFO = "GATHERING_INFO"
+    RUNNING_TEST = "RUNNING_TEST"
+    SCRIPT_DID_NOT_COMPLETE = "SCRIPT_DID_NOT_COMPLETE"
+    SCRIPT_RESULT_CHANGED_STATUS = "SCRIPT_RESULT_CHANGED_STATUS"
+    ABORTED_DISK_ERASING = "ABORTED_DISK_ERASING"
+    ABORTED_COMMISSIONING = "ABORTED_COMMISSIONING"
+    ABORTED_DEPLOYMENT = "ABORTED_DEPLOYMENT"
+    ABORTED_TESTING = "ABORTED_TESTING"
 
 
 # Used to create new events used for the machine's status.
@@ -443,7 +465,94 @@ EVENT_DETAILS = {
         description="Loading ephemeral",
         level=INFO,
     ),
-
+    EVENT_TYPES.NEW: EventDetail(
+        description="New",
+        level=INFO,
+    ),
+    EVENT_TYPES.COMMISSIONING: EventDetail(
+        description="Commissioning",
+        level=INFO,
+    ),
+    EVENT_TYPES.FAILED_COMMISSIONING: EventDetail(
+        description="Failed commissioning",
+        level=INFO,
+    ),
+    EVENT_TYPES.TESTING: EventDetail(
+        description="Testing",
+        level=INFO,
+    ),
+    EVENT_TYPES.FAILED_TESTING: EventDetail(
+        description="Failed testing",
+        level=INFO,
+    ),
+    EVENT_TYPES.READY: EventDetail(
+        description="Ready",
+        level=INFO,
+    ),
+    EVENT_TYPES.DEPLOYING: EventDetail(
+        description="Deploying",
+        level=INFO,
+    ),
+    EVENT_TYPES.DEPLOYED: EventDetail(
+        description="Deployed",
+        level=INFO,
+    ),
+    EVENT_TYPES.RELEASING: EventDetail(
+        description="Releasing",
+        level=INFO,
+    ),
+    EVENT_TYPES.RELEASED: EventDetail(
+        description="Released",
+        level=INFO,
+    ),
+    EVENT_TYPES.ENTERING_RESCUE_MODE: EventDetail(
+        description="Entering rescue mode",
+        level=INFO,
+    ),
+    EVENT_TYPES.RESCUE_MODE: EventDetail(
+        description="Rescue mode",
+        level=INFO,
+    ),
+    EVENT_TYPES.FAILED_EXITING_RESCUE_MODE: EventDetail(
+        description="Failed exiting rescue mode",
+        level=INFO,
+    ),
+    EVENT_TYPES.EXITED_RESCUE_MODE: EventDetail(
+        description="Exited rescue mode",
+        level=INFO,
+    ),
+    EVENT_TYPES.GATHERING_INFO: EventDetail(
+        description="Gathering information",
+        level=INFO,
+    ),
+    EVENT_TYPES.RUNNING_TEST: EventDetail(
+        description="Running test",
+        level=INFO,
+    ),
+    EVENT_TYPES.SCRIPT_DID_NOT_COMPLETE: EventDetail(
+        description="Script",
+        level=INFO,
+    ),
+    EVENT_TYPES.SCRIPT_RESULT_CHANGED_STATUS: EventDetail(
+        description="Script result",
+        level=DEBUG,
+    ),
+    EVENT_TYPES.ABORTED_DISK_ERASING: EventDetail(
+        description="Aborted disk erasing",
+        level=INFO,
+    ),
+    EVENT_TYPES.ABORTED_COMMISSIONING: EventDetail(
+        description="Aborted commissioning",
+        level=INFO,
+    ),
+    EVENT_TYPES.ABORTED_DEPLOYMENT: EventDetail(
+        description="Aborted deployment",
+        level=INFO,
+    ),
+    EVENT_TYPES.ABORTED_TESTING: EventDetail(
+        description="Aborted testing",
+        level=INFO,
+    ),
 }
 
 

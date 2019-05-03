@@ -1,4 +1,4 @@
-# Copyright 2013-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Facilities to obtain probed details for nodes.
@@ -49,7 +49,8 @@ def get_single_probed_details(node):
         for script_result in script_set.scriptresult_set.filter(
                 status=SCRIPT_STATUS.PASSED,
                 script_name__in=script_output_nsmap).only(
-                    'script_name', 'stdout', 'script_id', 'script_set_id'):
+                    'status', 'script_name', 'stdout',
+                    'script_id', 'script_set_id'):
             namespace = script_output_nsmap[script_result.name]
             details_template[namespace] = script_result.stdout
     return details_template

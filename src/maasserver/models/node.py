@@ -1505,6 +1505,8 @@ class Node(CleanSave, TimestampedModel):
         """Mark a node as being deployed."""
         # Avoid circular dependencies
         from metadataserver.models import ScriptSet
+        from maasserver.models.event import Event
+
         if not self.on_network():
             raise ValidationError(
                 {"network":
@@ -1520,10 +1522,19 @@ class Node(CleanSave, TimestampedModel):
         self.current_installation_script_set = script_set
         self.save()
 
+        # Create a status message for DEPLOYING.
+        Event.objects.create_node_event(self, EVENT_TYPES.DEPLOYING)
+
     def end_deployment(self):
         """Mark a node as successfully deployed."""
+        # Avoid circular imports.
+        from maasserver.models.event import Event
+
         self.status = NODE_STATUS.DEPLOYED
         self.save()
+
+        # Create a status message for DEPLOYED.
+        Event.objects.create_node_event(self, EVENT_TYPES.DEPLOYED)
 
     def ip_addresses(self):
         """IP addresses allocated to this node.
@@ -1979,6 +1990,7 @@ class Node(CleanSave, TimestampedModel):
         """
         # Avoid circular imports.
         from metadataserver.models import ScriptSet
+        from maasserver.models.event import Event
 
         # Only commission if power type is configured.
         if self.power_type == '':
@@ -1989,6 +2001,9 @@ class Node(CleanSave, TimestampedModel):
         self._register_request_event(
             user, EVENT_TYPES.REQUEST_NODE_START_COMMISSIONING,
             action='start commissioning')
+
+        # Create a status message for COMMISSIONING.
+        Event.objects.create_node_event(self, EVENT_TYPES.COMMISSIONING)
 
         # Set the commissioning options on the node.
         self.enable_ssh = enable_ssh
@@ -2112,6 +2127,7 @@ class Node(CleanSave, TimestampedModel):
             NodeUserData,
             ScriptSet,
         )
+        from maasserver.models.event import Event
 
         if not user.has_perm(NodePermission.edit, self):
             # You can't enter test mode on a node you don't own,
@@ -2147,6 +2163,9 @@ class Node(CleanSave, TimestampedModel):
         self._register_request_event(
             user, EVENT_TYPES.REQUEST_NODE_START_TESTING,
             action='start testing')
+
+        # Create a status message for COMMISSIONING.
+        Event.objects.create_node_event(self, EVENT_TYPES.TESTING)
 
         # Set the test options on the node.
         self.enable_ssh = enable_ssh
@@ -2244,10 +2263,6 @@ class Node(CleanSave, TimestampedModel):
                 "node %s is in state %s."
                 % (self.system_id, NODE_STATUS_CHOICES_DICT[self.status]))
 
-        self._register_request_event(
-            user, EVENT_TYPES.REQUEST_NODE_ABORT_COMMISSIONING,
-            action='abort commissioning', comment=comment)
-
         try:
             # Node.stop() has synchronous and asynchronous parts, so catch
             # exceptions arising synchronously, and chain callbacks to the
@@ -2262,6 +2277,17 @@ class Node(CleanSave, TimestampedModel):
                 self.hostname, error)
             raise
         else:
+            # Avoid circular imports.
+            from maasserver.models.event import Event
+
+            self._register_request_event(
+                user, EVENT_TYPES.REQUEST_NODE_ABORT_COMMISSIONING,
+                action='abort commissioning', comment=comment)
+
+            # Create a status message for ABORTED_COMMISSIONING.
+            Event.objects.create_node_event(
+                self, EVENT_TYPES.ABORTED_COMMISSIONING)
+
             # Don't permit naive mocking of stop(); it causes too much
             # confusion when testing. Return a Deferred from side_effect.
             assert isinstance(stopping, Deferred) or stopping is None
@@ -2309,10 +2335,6 @@ class Node(CleanSave, TimestampedModel):
                 "node %s is in state %s."
                 % (self.system_id, NODE_STATUS_CHOICES_DICT[self.status]))
 
-        self._register_request_event(
-            user, EVENT_TYPES.REQUEST_NODE_ABORT_TESTING,
-            action='abort testing', comment=comment)
-
         try:
             # Node.stop() has synchronous and asynchronous parts, so catch
             # exceptions arising synchronously, and chain callbacks to the
@@ -2324,6 +2346,17 @@ class Node(CleanSave, TimestampedModel):
                 self.hostname, error)
             raise
         else:
+            # Avoid circular imports.
+            from maasserver.models.event import Event
+
+            self._register_request_event(
+                user, EVENT_TYPES.REQUEST_NODE_ABORT_TESTING,
+                action='abort testing', comment=comment)
+
+            # Create a status message for ABORTED_TESTING.
+            Event.objects.create_node_event(
+                self, EVENT_TYPES.ABORTED_TESTING)
+
             # Don't permit naive mocking of stop(); it causes too much
             # confusion when testing. Return a Deferred from side_effect.
             assert isinstance(stopping, Deferred) or stopping is None
@@ -2376,10 +2409,6 @@ class Node(CleanSave, TimestampedModel):
                 "node %s is in state %s."
                 % (self.system_id, NODE_STATUS_CHOICES_DICT[self.status]))
 
-        self._register_request_event(
-            user, EVENT_TYPES.REQUEST_NODE_ABORT_DEPLOYMENT,
-            action='abort deploying', comment=comment)
-
         try:
             # Node.stop() has synchronous and asynchronous parts, so catch
             # exceptions arising synchronously, and chain callbacks to the
@@ -2391,6 +2420,17 @@ class Node(CleanSave, TimestampedModel):
                 self.hostname, error)
             raise
         else:
+            # Avoid circular imports.
+            from maasserver.models.event import Event
+
+            self._register_request_event(
+                user, EVENT_TYPES.REQUEST_NODE_ABORT_DEPLOYMENT,
+                action='abort deploying', comment=comment)
+
+            # Create a status message for ABORTED_DEPLOYMENT.
+            Event.objects.create_node_event(
+                self, EVENT_TYPES.ABORTED_DEPLOYMENT)
+
             # Don't permit naive mocking of stop(); it causes too much
             # confusion when testing. Return a Deferred from side_effect.
             assert isinstance(stopping, Deferred) or stopping is None
@@ -2912,10 +2952,6 @@ class Node(CleanSave, TimestampedModel):
                 "node %s is in state %s."
                 % (self.system_id, NODE_STATUS_CHOICES_DICT[self.status]))
 
-        self._register_request_event(
-            user, EVENT_TYPES.REQUEST_NODE_ABORT_ERASE_DISK,
-            action='abort disk erasing', comment=comment)
-
         try:
             # Node.stop() has synchronous and asynchronous parts, so catch
             # exceptions arising synchronously, and chain callbacks to the
@@ -2927,6 +2963,17 @@ class Node(CleanSave, TimestampedModel):
                 self.hostname, error)
             raise
         else:
+            # Avoid circular imports.
+            from maasserver.models.event import Event
+
+            self._register_request_event(
+                user, EVENT_TYPES.REQUEST_NODE_ABORT_ERASE_DISK,
+                action='abort disk erasing', comment=comment)
+
+            # Create a status message for ABORTED_DISK_ERASING.
+            Event.objects.create_node_event(
+                self, EVENT_TYPES.ABORTED_DISK_ERASING)
+
             # Don't permit naive mocking of stop(); it causes too much
             # confusion when testing. Return a Deferred from side_effect.
             assert isinstance(stopping, Deferred) or stopping is None
@@ -2997,6 +3044,9 @@ class Node(CleanSave, TimestampedModel):
     def _release(self, user=None):
         """Mark allocated or reserved node as available again and power off.
         """
+        # Avoid circular imports.
+        from maasserver.models.event import Event
+
         maaslog.info("%s: Releasing node", self.hostname)
 
         # Don't perform stop the node if its already off. Doing so will
@@ -3055,6 +3105,9 @@ class Node(CleanSave, TimestampedModel):
         self.install_kvm = False
         self.save()
 
+        # Create a status message for RELEASING.
+        Event.objects.create_node_event(self, EVENT_TYPES.RELEASING)
+
         # Clear the nodes acquired filesystems.
         self._clear_acquired_filesystems()
 
@@ -3075,6 +3128,9 @@ class Node(CleanSave, TimestampedModel):
         final power-down. This method should be the absolute last method
         called.
         """
+        # Avoid circular imports.
+        from maasserver.models.event import Event
+
         if self.creation_type == NODE_CREATION_TYPE.DYNAMIC:
             self.delete()
         else:
@@ -3083,6 +3139,8 @@ class Node(CleanSave, TimestampedModel):
             self.owner = None
             self.save()
 
+            # Create a status message for RELEASED.
+            Event.objects.create_node_event(self, EVENT_TYPES.RELEASED)
             # Remove all set owner data.
             OwnerData.objects.filter(node=self).delete()
 
@@ -3263,6 +3321,9 @@ class Node(CleanSave, TimestampedModel):
     @transactional
     def update_power_state(self, power_state):
         """Update a node's power state """
+        # Avoid circular imports.
+        from maasserver.models.event import Event
+
         self.power_state = power_state
         self.power_state_updated = now()
         mark_ready = (
@@ -3275,14 +3336,26 @@ class Node(CleanSave, TimestampedModel):
         if self.status == NODE_STATUS.EXITING_RESCUE_MODE:
             if self.previous_status == NODE_STATUS.DEPLOYED:
                 if power_state == POWER_STATE.ON:
+                    # Create a status message for EXITED_RESCUE_MODE.
+                    Event.objects.create_node_event(
+                        self, EVENT_TYPES.EXITED_RESCUE_MODE)
                     self.status = self.previous_status
                 else:
+                    # Create a status message for FAILED_EXITING_RESCUE_MODE.
+                    Event.objects.create_node_event(
+                        self, EVENT_TYPES.FAILED_EXITING_RESCUE_MODE)
                     self.status = NODE_STATUS.FAILED_EXITING_RESCUE_MODE
             else:
                 if power_state == POWER_STATE.OFF:
                     self.status = self.previous_status
                     self.owner = None
+                    # Create a status message for EXITED_RESCUE_MODE.
+                    Event.objects.create_node_event(
+                        self, EVENT_TYPES.EXITED_RESCUE_MODE)
                 else:
+                    # Create a status message for FAILED_EXITING_RESCUE_MODE.
+                    Event.objects.create_node_event(
+                        self, EVENT_TYPES.FAILED_EXITING_RESCUE_MODE)
                     self.status = NODE_STATUS.FAILED_EXITING_RESCUE_MODE
         self.save()
 
@@ -4637,13 +4710,11 @@ class Node(CleanSave, TimestampedModel):
             if power_error is None:
                 message = "Power state queried: %s" % power_state
                 Event.objects.create_node_event(
-                    system_id=self.system_id,
-                    event_type=EVENT_TYPES.NODE_POWER_QUERIED,
+                    self, EVENT_TYPES.NODE_POWER_QUERIED,
                     event_description=message)
             else:
                 Event.objects.create_node_event(
-                    system_id=self.system_id,
-                    event_type=EVENT_TYPES.NODE_POWER_QUERY_FAILED,
+                    self, EVENT_TYPES.NODE_POWER_QUERY_FAILED,
                     event_description=power_error)
             return result
 
@@ -4773,6 +4844,7 @@ class Node(CleanSave, TimestampedModel):
         """Start rescue mode."""
         # Avoid circular imports.
         from metadataserver.models import NodeUserData
+        from maasserver.models.event import Event
 
         if not user.has_perm(NodePermission.edit, self):
             # You can't enter rescue mode on a node you don't own,
@@ -4803,6 +4875,9 @@ class Node(CleanSave, TimestampedModel):
         self.status = NODE_STATUS.ENTERING_RESCUE_MODE
         self.owner = user
         self.save()
+
+        # Create a status message for ENTERING_RESCUE_MODE.
+        Event.objects.create_node_event(self, EVENT_TYPES.ENTERING_RESCUE_MODE)
 
         try:
             cycling = self._power_cycle()

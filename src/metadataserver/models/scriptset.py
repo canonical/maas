@@ -358,7 +358,8 @@ class ScriptSet(CleanSave, Model):
     def started(self):
         try:
             return self.scriptresult_set.all().only(
-                'started', 'script_set_id').earliest('started').started
+                'status', 'started', 'script_set_id').earliest(
+                    'started').started
         except ObjectDoesNotExist:
             return None
 
@@ -371,7 +372,7 @@ class ScriptSet(CleanSave, Model):
                 return None
             else:
                 return self.scriptresult_set.only(
-                    'ended', 'script_set_id').latest('ended').ended
+                    'status', 'ended', 'script_set_id').latest('ended').ended
         except ObjectDoesNotExist:
             return None
 
@@ -449,7 +450,7 @@ class ScriptSet(CleanSave, Model):
         script_results = script_results.exclude(script__for_hardware=[])
         script_results = script_results.prefetch_related('script')
         script_results = script_results.only(
-            'script__for_hardware', 'script_set_id')
+            'status', 'script__for_hardware', 'script_set_id')
         for script_result in script_results:
             matches = filter_modaliases(
                 modaliases, *script_result.script.ForHardware)

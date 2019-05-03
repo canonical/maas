@@ -90,8 +90,7 @@ def event_log_pxe_request(machine, purpose):
         event_description=options[purpose])
     # Create a status message for performing a PXE boot.
     Event.objects.create_node_event(
-        machine, event_type=EVENT_TYPES.PERFORMING_PXE_BOOT,
-        event_description='')
+        machine, event_type=EVENT_TYPES.PERFORMING_PXE_BOOT)
 
 
 def get_boot_filenames(
