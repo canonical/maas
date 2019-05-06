@@ -22,6 +22,7 @@ function maasMachinesTable(
   return {
     restrict: "E",
     scope: {
+      loading: "=",
       search: "=",
       groupByLabel: "=",
       actionOption: "=",
@@ -72,6 +73,11 @@ function maasMachinesTable(
       NodeStatus.TESTING
     ];
 
+    // This is an performance optimisation to unblock initial rendering,
+    // otherwise when there are many machines, due to numerous nested
+    // ng-repeats the initial digest cycle is slow and the UI is
+    // blocked on first navigation.
+    MachinesManager.clear();
     const machines = MachinesManager.getItems();
 
     // Scope variables.
@@ -537,9 +543,11 @@ function maasMachinesTable(
           }
 
           // Check if status has changed, then run function to regroup machines
+          // if machines have been loaded
           if (
             newMachine.status !== oldMachine.status &&
-            $scope.groupByLabel !== "none"
+            $scope.groupByLabel !== "none" &&
+            !$scope.loading
           ) {
             $scope.updateGroupedMachines($scope.groupByLabel);
           }

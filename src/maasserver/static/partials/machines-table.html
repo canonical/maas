@@ -53,7 +53,7 @@
         </tr>
     </thead>
 </table>
-<table data-ng-repeat="group in groupedMachines" data-ng-if="group.machines.length" class="p-table--machines" role="grid">
+<table data-ng-repeat="group in groupedMachines track by group.label" data-ng-if="group.machines.length" class="p-table--machines" role="grid">
     <thead>
         <tr
             class="p-table__group p-table__row"
