@@ -101,3 +101,9 @@ if echo "$PACKAGE_DISTROS" | grep -q "disco"; then
     sed -i "s/) UNRELEASED;/~19.04.1) disco;/i" debian/changelog
     debuild -S -sa
 fi
+
+if echo "$PACKAGE_DISTROS" | grep -q "eoan"; then
+    cp $ROOTDIR/debian/changelog debian/changelog
+    sed -i "s/) UNRELEASED;/~19.10.1) eoan;/i" debian/changelog
+    debuild -S -sa
+fi
