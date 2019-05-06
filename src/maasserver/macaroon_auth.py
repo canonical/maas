@@ -7,9 +7,11 @@ __all__ = [
     'MacaroonAPIAuthentication',
     'MacaroonAuthorizationBackend',
     'MacaroonDischargeRequest',
+    'UserDetails',
     'validate_user_external_auth',
 ]
 
+from collections import namedtuple
 from datetime import (
     datetime,
     timedelta,
@@ -256,6 +258,10 @@ class APIError(Exception):
         self.status_code = status_code
 
 
+# Details about a user from the extenral authentication source
+UserDetails = namedtuple('UserDetails', ['username', 'fullname', 'email'])
+
+
 class MacaroonClient:
     """A base client for talking JSON with a macaroon based client."""
 
@@ -263,6 +269,10 @@ class MacaroonClient:
         self._url = url.rstrip('/')
         self._auth_info = auth_info
         self._client = _get_bakery_client(auth_info=auth_info)
+
+    def get_user_details(self, username: str) -> UserDetails:
+        """Return details about a user."""
+        return UserDetails(username=username, fullname='', email='')
 
     def _request(self, method, url, json=None, status_code=200):
         cookiejar = self._client.cookies
@@ -287,6 +297,15 @@ class CandidClient(MacaroonClient):
             auth_info = get_auth_info()
         url = auth_info.agents[0].url
         super(CandidClient, self).__init__(url, auth_info)
+
+    def get_user_details(self, username: str) -> UserDetails:
+        """Return details about a user."""
+        url = self._url + quote('/v1/u/{}'.format(username))
+        details = self._request('GET', url)
+        return UserDetails(
+            username=details['username'],
+            fullname=details.get('fullname', ''),
+            email=details.get('email', ''))
 
     def get_groups(self, username):
         """Return a list of names fro groups a user belongs to."""
@@ -326,10 +345,10 @@ def validate_user_external_auth(user, auth_info, now=datetime.utcnow,
     active, superuser = False, False
     try:
         if auth_info.type == 'candid':
-            active, superuser = _validate_user_candid(
+            active, superuser, details = _validate_user_candid(
                 auth_info, user.username, client=candid_client)
         elif auth_info.type == 'rbac':
-            active, superuser = _validate_user_rbac(
+            active, superuser, details = _validate_user_rbac(
                 auth_info, user.username, client=rbac_client)
     except UserValidationFailed:
         return False
@@ -337,6 +356,9 @@ def validate_user_external_auth(user, auth_info, now=datetime.utcnow,
     if active ^ user.is_active:
         user.is_active = active
     user.is_superuser = superuser
+    # update user details
+    user.last_name = details.fullname
+    user.email = details.email
     user.save()
     return active
 
@@ -356,7 +378,7 @@ def _validate_user_candid(auth_info, username, client=None):
     else:
         # if no admin group is specified, all users are admins
         superuser = True
-    return True, superuser
+    return True, superuser, client.get_user_details(username)
 
 
 def _validate_user_rbac(auth_info, username, client=None):
@@ -376,7 +398,10 @@ def _validate_user_rbac(auth_info, username, client=None):
     except APIError:
         raise UserValidationFailed()
 
-    return is_admin or access_to_pools, is_admin
+    return (
+        is_admin or access_to_pools,
+        is_admin,
+        client.get_user_details(username))
 
 
 class _IDClient(bakery.IdentityClient):

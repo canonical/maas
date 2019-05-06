@@ -68,6 +68,22 @@ class TestRBACClient(MAASServerTestCase):
         self.assertEqual(agent.url, 'https://auth.example.com')
         self.assertEqual(agent.username, 'user@candid')
 
+    def test_get_user(self):
+        response = mock.MagicMock(status_code=200)
+        response.json.return_value = {
+            'username': 'user',
+            'name': 'A user',
+            'email': 'user@example.com'
+        }
+        self.mock_request.return_value = response
+        details = self.client.get_user_details('user')
+        self.assertEqual(details.username, 'user')
+        self.assertEqual(details.fullname, 'A user')
+        self.assertEqual(details.email, 'user@example.com')
+        self.mock_request.assert_called_once_with(
+            'GET', 'https://rbac.example.com/api/service/v1/user/user',
+            auth=mock.ANY, cookies=mock.ANY, json=None)
+
     def test_get_resources(self):
         resources = [
             {
