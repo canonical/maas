@@ -27,6 +27,7 @@ from maasserver.macaroon_auth import (
     KeyStore,
     MacaroonAPIAuthentication,
     MacaroonAuthorizationBackend,
+    UserDetails,
     validate_user_external_auth,
 )
 from maasserver.middleware import (
@@ -122,8 +123,12 @@ class TestValidateUserExternalAuthWithCandid(MAASServerTestCase):
 
     def setUp(self):
         super().setUp()
-        self.client = mock.Mock()
         self.user = factory.make_User()
+        self.client = mock.Mock()
+        self.client.get_user_details.return_value = UserDetails(
+            username=self.user.username,
+            email='{}@example.com'.format(self.user.username),
+            fullname='User {}'.format(self.user.username))
         self.now = datetime.utcnow()
         # by default, the user has to be checked again
         self.default_last_check = (
@@ -159,6 +164,10 @@ class TestValidateUserExternalAuthWithCandid(MAASServerTestCase):
         # user is still enabled
         self.assertTrue(self.user.is_active)
         self.assertFalse(self.user.is_superuser)
+        # user details are updated.
+        username = self.user.username
+        self.assertEqual(self.user.last_name, 'User {}'.format(username))
+        self.assertEqual(self.user.email, '{}@example.com'.format(username))
 
     def test_valid_user_check_admin(self):
         # user exists, so group info is returned
@@ -226,8 +235,12 @@ class TestValidateUserExternalAuthWithRBAC(MAASServerTestCase):
 
     def setUp(self):
         super().setUp()
-        self.client = mock.Mock()
         self.user = factory.make_User()
+        self.client = mock.Mock()
+        self.client.get_user_details.return_value = UserDetails(
+            username=self.user.username,
+            email='{}@example.com'.format(self.user.username),
+            fullname='User {}'.format(self.user.username))
         self.now = datetime.utcnow()
         # by default, the user has to be checked again
         self.default_last_check = (
@@ -268,6 +281,10 @@ class TestValidateUserExternalAuthWithRBAC(MAASServerTestCase):
         self.assertTrue(valid)
         self.assertTrue(self.user.is_active)
         self.assertFalse(self.user.is_superuser)
+        # user details are updated.
+        username = self.user.username
+        self.assertEqual(self.user.last_name, 'User {}'.format(username))
+        self.assertEqual(self.user.email, '{}@example.com'.format(username))
 
     def test_valid_user_check_has_admin_access(self):
         # admin, but no permissions on pools
@@ -288,6 +305,10 @@ class TestValidateUserExternalAuthWithRBAC(MAASServerTestCase):
         self.assertTrue(valid)
         self.assertTrue(self.user.is_active)
         self.assertTrue(self.user.is_superuser)
+        # user details are updated.
+        username = self.user.username
+        self.assertEqual(self.user.last_name, 'User {}'.format(username))
+        self.assertEqual(self.user.email, '{}@example.com'.format(username))
 
     def test_valid_user_no_permission(self):
         # user has no permission on resources

@@ -19,6 +19,7 @@ from maasserver.macaroon_auth import (
     AuthInfo,
     get_auth_info,
     MacaroonClient,
+    UserDetails,
 )
 from maasserver.models import (
     Config,
@@ -53,7 +54,7 @@ ResourcesResultType = Union[AllResourcesType, Sequence[int]]
 class RBACClient(MacaroonClient):
     """A client for RBAC API."""
 
-    API_BASE_URL = '/api/service/v1/resources'
+    API_BASE_URL = '/api/service/v1'
 
     def __init__(self, url: str=None, auth_info: AuthInfo=None):
         if url is None:
@@ -65,7 +66,17 @@ class RBACClient(MacaroonClient):
     def _get_resource_type_url(self, resource_type: str):
         """Return the URL for `resource_type`."""
         return self._url + quote(
-            '{}/{}'.format(self.API_BASE_URL, resource_type))
+            '{}/resources/{}'.format(self.API_BASE_URL, resource_type))
+
+    def get_user_details(self, username: str) -> UserDetails:
+        """Return details about a user."""
+        url = self._url + quote(
+            '{}/user/{}'.format(self.API_BASE_URL, username))
+        details = self._request('GET', url)
+        return UserDetails(
+            username=details['username'],
+            fullname=details.get('name', ''),
+            email=details.get('email', ''))
 
     def get_resources(self, resource_type: str) -> Sequence[Resource]:
         """Return list of resources with `resource_type`."""
@@ -200,6 +211,12 @@ class FakeRBACClient(RBACClient):
                 result[permission] = (
                     [''] if '' in pool_identifiers else pool_identifiers)
             return result
+
+    def get_user_details(self, username):
+        return UserDetails(
+            username=username,
+            fullname='User username',
+            email=username + '@example.com')
 
 
 # Set when their is no client for the current request.
