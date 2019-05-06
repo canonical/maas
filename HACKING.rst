@@ -173,7 +173,7 @@ The JavaScript tests are run using Karma_. Chromium and PhantomJS are the
 default browser but any browser supported by Karma can be used to run the
 tests.::
 
-    $ ./bin/test.js
+    $ make test-js
 
 If you want to run the JavaScript tests in debug mode so you can inspect the
 code inside of a running browser you can launch Karma_ manually.::
@@ -183,14 +183,41 @@ code inside of a running browser you can launch Karma_ manually.::
 .. _Karma: http://karma-runner.github.io/
 
 
+Frontend development
+====================
+
+For faster development, Webpack watch mode can be run with::
+
+    $ make watch-javascript
+
 JavaScript debugging
 ^^^^^^^^^^^^^^^^^^^^
 
-Angularjs debugInfo, which provides hooks for browser debugging tools like Batarang,
-is disabled by default. To re-enable debugInfo, run ``angular.reloadWithDebugInfo();``
-in the browser console.
+Angularjs debugInfo, which provides hooks for browser debugging tools
+like Batarang, is disabled by default. To re-enable debugInfo,
+run ``angular.reloadWithDebugInfo();`` in the browser console.
 
 See https://docs.angularjs.org/guide/production#disabling-debug-data for details.
+
+
+JavaScript linting and formatting
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+JSLint can be run with::
+
+    $ make lint-js
+
+This will also run `prettier-check` which will notify you
+if there are formatting issues.
+
+Prettier can be run in write mode to correct formatting with::
+
+    $ make format
+
+ESLint is also available (the intention is to eventually replace JSLint),
+and can be run with::
+
+    $ ./bin/yarn lint
 
 
 Production MAAS server debugging

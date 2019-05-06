@@ -395,11 +395,12 @@ lint-js:
 		| xargs -r0 -n20 -P4 $(pocketlint)
 		bin/yarn prettier-check
 
-# Apply automated formatting to all Python files.
+# Apply automated formatting to all Python, Sass and Javascript files.
 format: sources = $(wildcard *.py contrib/*.py) src utilities etc
-format:
+format: bin/yarn
 	@find $(sources) -name '*.py' -print0 | xargs -r0 utilities/format-imports
 	@find src/ -type f -exec file "{}" ";" | grep CRLF | cut -d ':' -f1 | xargs dos2unix
+	bin/yarn prettier
 
 check: clean test
 
