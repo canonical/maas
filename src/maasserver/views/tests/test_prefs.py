@@ -10,6 +10,7 @@ import http.client
 from apiclient.creds import convert_tuple_to_string
 from lxml.html import fromstring
 from maasserver.models import (
+    Config,
     Event,
     SSLKey,
 )
@@ -105,6 +106,22 @@ class UserPrefsViewTest(MAASServerTestCase):
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
         self.assertEqual(event.description, "Updated password.")
+
+    def test_no_password_section_present_with_local_info(self):
+        user = factory.make_User()
+        self.client.login(user=user)
+        response = self.client.get('/account/prefs/')
+        doc = fromstring(response.content)
+        self.assertEqual(len(doc.cssselect('#password')), 1)
+
+    def test_no_password_section_with_external_auth(self):
+        user = factory.make_User()
+        self.client.login(user=user)
+        # log in the user locally so it doesn't need macaroons
+        Config.objects.set_config('external_auth_url', 'http://example.com')
+        response = self.client.get('/account/prefs/')
+        doc = fromstring(response.content)
+        self.assertEqual(len(doc.cssselect('#password')), 0)
 
     def test_create_ssl_key_POST(self):
         user = factory.make_admin()

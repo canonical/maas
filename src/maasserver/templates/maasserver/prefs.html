@@ -90,6 +90,7 @@
         </div>
     </section>
 
+    {% if not request.external_auth_info %}
     <section id="password" class="p-strip">
         <div class="row">
             <div class="col-8">
@@ -104,5 +105,6 @@
             </div>
         </div>
     </section>
+    {% endif %}
 </div>
 {% endblock %}
