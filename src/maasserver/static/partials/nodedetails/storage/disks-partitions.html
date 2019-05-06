@@ -110,7 +110,7 @@
                                     <button class="p-contextual-menu__link"
                                         aria-label="Edit"
                                         data-ng-show="canEdit(item)"
-                                        data-ng-click="toggleMenu(); availableQuickEdit(item)">Edit disk</button>
+                                        data-ng-click="toggleMenu(); availableQuickEdit(item)">Edit {$ getDeviceTypeLower(item) $}</button>
                                     <button class="p-contextual-menu__link"
                                         aria-label="Remove"
                                         data-ng-show="canDelete(item)"

@@ -833,6 +833,12 @@ export function NodeStorageController(
     }
   };
 
+  // Return the device type for the disk in lower case.
+  $scope.getDeviceTypeLower = function(disk) {
+    const type = $scope.getDeviceType(disk);
+    return type.toLowerCase();
+  };
+
   // Return array of selected available disks.
   $scope.getSelectedAvailable = function() {
     var available = [];
@@ -1024,6 +1030,14 @@ export function NodeStorageController(
     }
   };
 
+  // Return true if the filesystem can be deleted.
+  $scope.canDeleteFilesystem = function(filesystem) {
+    if (filesystem.original_type === "special") {
+      return true;
+    }
+    return $scope.canEdit();
+  };
+
   // Enter delete mode.
   $scope.availableDelete = function() {
     $scope.availableMode = SELECTION_MODE.DELETE;
@@ -1038,12 +1052,17 @@ export function NodeStorageController(
   };
 
   // Return true if it can be edited.
-  $scope.canEdit = function(disk) {
-    if (!$scope.$parent.canEdit() || $scope.isAllStorageDisabled()) {
+  $scope.canEdit = function(item) {
+    if ($scope.isAllStorageDisabled()) {
       return false;
-    } else {
+    }
+    if (item && item.type === "partition") {
       return true;
     }
+    if (!$scope.$parent.canEdit()) {
+      return false;
+    }
+    return true;
   };
 
   // Enter Edit mode, disable certain fields based on disk type

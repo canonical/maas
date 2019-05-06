@@ -1189,6 +1189,56 @@ describe("NodeStorageController", function() {
     });
   });
 
+  describe("getDeviceTypeLower", function() {
+    it("returns logical volume", function() {
+      makeController();
+      var disk = {
+        type: "virtual",
+        parent_type: "lvm-vg"
+      };
+
+      expect($scope.getDeviceTypeLower(disk)).toBe("logical volume");
+    });
+
+    it("returns raid", function() {
+      makeController();
+      var disk = {
+        type: "virtual",
+        parent_type: "raid-5"
+      };
+
+      expect($scope.getDeviceTypeLower(disk)).toBe("raid 5");
+    });
+
+    it("returns parent_type", function() {
+      makeController();
+      var disk = {
+        type: "virtual",
+        parent_type: "other"
+      };
+
+      expect($scope.getDeviceTypeLower(disk)).toBe("other");
+    });
+
+    it("returns volume group", function() {
+      makeController();
+      var disk = {
+        type: "lvm-vg"
+      };
+
+      expect($scope.getDeviceTypeLower(disk)).toBe("volume group");
+    });
+
+    it("returns type", function() {
+      makeController();
+      var disk = {
+        type: "physical"
+      };
+
+      expect($scope.getDeviceTypeLower(disk)).toBe("physical");
+    });
+  });
+
   describe("getSelectedAvailable", function() {
     it("returns selected available", function() {
       makeController();
@@ -1882,6 +1932,32 @@ describe("NodeStorageController", function() {
       spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
 
       expect($scope.canDelete(disk)).toBe(false);
+    });
+  });
+
+  describe("canDeleteFilesystem", function() {
+    it("returns true if special", function() {
+      makeController();
+      var filesystem = {
+        original_type: "special"
+      };
+      $scope.canEdit = function() {
+        return true;
+      };
+
+      expect($scope.canDeleteFilesystem(filesystem)).toBe(true);
+    });
+
+    it("returns canEdit otherwise", function() {
+      makeController();
+      var filesystem = {
+        original_type: "other"
+      };
+      $scope.canEdit = function() {
+        return false;
+      };
+
+      expect($scope.canDeleteFilesystem(filesystem)).toBe(false);
     });
   });
 
@@ -3078,6 +3154,16 @@ describe("NodeStorageController", function() {
       };
 
       expect($scope.canEdit()).toBe(false);
+    });
+
+    it("returns true when partition", function() {
+      makeController();
+      spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
+      var disk = {
+        type: "partition"
+      };
+
+      expect($scope.canEdit(disk)).toBe(true);
     });
   });
 

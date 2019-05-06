@@ -84,7 +84,8 @@ class MountNonStorageFilesystemForm(Form):
         filesystem = Filesystem(
             node=self.node, fstype=self.cleaned_data["fstype"],
             mount_options=self.cleaned_data["mount_options"],
-            mount_point=self.cleaned_data["mount_point"])
+            mount_point=self.cleaned_data["mount_point"],
+            acquired=self.node.owner is not None)
         filesystem.save()
         return filesystem
 

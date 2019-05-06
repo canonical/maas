@@ -183,13 +183,17 @@ class TestMountNonStorageFilesystemForm(MAASServerTestCase):
 class TestMountNonStorageFilesystemFormScenarios(MAASServerTestCase):
 
     scenarios = [
-        (displayname, {"fstype": name})
+        (displayname, {"fstype": name, "acquired": acquired})
         for name, displayname in FILESYSTEM_FORMAT_TYPE_CHOICES
+        for acquired in [False, True]
         if name not in Filesystem.TYPES_REQUIRING_STORAGE
     ]
 
     def test_creates_filesystem_with_mount_point_and_options(self):
-        node = factory.make_Node()
+        owner = None
+        if self.acquired:
+            owner = factory.make_User()
+        node = factory.make_Node(owner=owner)
         mount_point = factory.make_absolute_path()
         mount_options = factory.make_name("options")
         form = MountNonStorageFilesystemForm(node, data={
@@ -201,7 +205,8 @@ class TestMountNonStorageFilesystemFormScenarios(MAASServerTestCase):
         filesystem = form.save()
         self.assertThat(filesystem, MatchesStructure.byEquality(
             node=node, fstype=self.fstype, mount_point=mount_point,
-            mount_options=mount_options, is_mounted=True))
+            mount_options=mount_options, is_mounted=True,
+            acquired=self.acquired))
 
 
 class TestUnmountNonStorageFilesystemForm(MAASServerTestCase):

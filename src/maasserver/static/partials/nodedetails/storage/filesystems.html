@@ -39,7 +39,7 @@
                             <button class="p-contextual-menu__link" aria-label="Unmount" data-ng-click="toggleMenu(); quickFilesystemUnmount(filesystem)"
                                 data-ng-show="!isAllStorageDisabled() && usesStorage(filesystem.fstype) && filesystemMode !== 'unmount'">Unmount</button>
                             <button class="p-contextual-menu__link" aria-label="Remove" data-ng-click="toggleMenu(); quickFilesystemDelete(filesystem)"
-                                data-ng-show="!isAllStorageDisabled() && filesystemMode !== 'delete'">Remove&hellip;</button>
+                                data-ng-show="!isAllStorageDisabled() && canDeleteFilesystem(filesystem) && filesystemMode !== 'delete'">Remove&hellip;</button>
                         </div>
                     </div>
                 </td>
