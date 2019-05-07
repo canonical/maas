@@ -2409,4 +2409,13 @@ describe("NodeDetailsController", function() {
       );
     });
   });
+
+  describe("openSection", function() {
+    it("sets section.area to passed argument", function() {
+      makeController();
+      $scope.node = node;
+      $scope.openSection("controllers");
+      expect($scope.section.area).toBe("controllers");
+    });
+  });
 });

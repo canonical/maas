@@ -281,62 +281,62 @@
                     <li class="p-tabs__item" role="presentation">
                         <a role="tab" class="p-tabs__link" data-ng-if="!isController && !isDevice"
                             data-ng-class="{ 'is-active': section.area === 'summary'}"
-                            data-ng-click="section.area = 'summary'">Machine summary</a>
+                            data-ng-click="openSection('summary')">Machine summary</a>
                     </li>
                     <li class="p-tabs__item" role="presentation">
                         <a role="tab" class="p-tabs__link" data-ng-if="isController"
                             data-ng-class="{ 'is-active': section.area === 'summary'}"
-                            data-ng-click="section.area = 'summary'">Controller summary</a>
+                            data-ng-click="openSection('summary')">Controller summary</a>
                     </li>
                     <li class="p-tabs__item" role="presentation">
                         <a role="tab" class="p-tabs__link" data-ng-if="isDevice"
                             data-ng-class="{ 'is-active': section.area === 'summary'}"
-                            data-ng-click="section.area = 'summary'">Device summary</a>
+                            data-ng-click="openSection('summary')">Device summary</a>
                     </li>
                     <li class="p-tabs__item" role="presentation">
                         <a role="tab" class="p-tabs__link" data-ng-if="!isController && devices.length"
                             data-ng-class="{ 'is-active': section.area === 'containers'}"
-                            data-ng-click="section.area = 'containers'">Containers</a>
+                            data-ng-click="openSection('containers')">Containers</a>
                     </li>
                     <li class="p-tabs__item" role="presentation">
                         <a role="tab" class="p-tabs__link" data-ng-if="isController"
                             data-ng-class="{ 'is-active': section.area === 'vlans'}"
-                            data-ng-click="section.area = 'vlans'">VLANs</a>
+                            data-ng-click="openSection('vlans')">VLANs</a>
                     </li>
                     <li class="p-tabs__item" role="presentation">
                         <a role="tab" class="p-tabs__link"
                             data-ng-class="{ 'is-active': section.area === 'interfaces'}"
-                            data-ng-click="section.area = 'interfaces'">Interfaces</a>
+                            data-ng-click="openSection('interfaces')">Interfaces</a>
                     </li>
                     <li class="p-tabs__item" role="presentation">
                         <a role="tab" class="p-tabs__link" data-ng-if="!isDevice && !(isController && node.status === 'New')"
                             data-ng-class="{ 'is-active': section.area === 'storage'}"
-                            data-ng-click="section.area = 'storage'">Storage</a>
+                            data-ng-click="openSection('storage')">Storage</a>
                     </li>
                     <li class="p-tabs__item" role="presentation">
                         <a role="tab" class="p-tabs__link" data-ng-if="node.commissioning_script_count > 0"
                             data-ng-class="{ 'is-active': section.area === 'commissioning'}"
-                            data-ng-click="section.area = 'commissioning'"><span data-maas-script-status="script-status" data-script-status="node.commissioning_status"></span> Commissioning</a>
+                            data-ng-click="openSection('commissioning')"><span data-maas-script-status="script-status" data-script-status="node.commissioning_status"></span> Commissioning</a>
                     </li>
                     <li class="p-tabs__item" role="presentation">
                         <a role="tab" class="p-tabs__link" data-ng-if="node.testing_script_count > 0"
                             data-ng-class="{ 'is-active': section.area === 'testing'}"
-                            data-ng-click="section.area = 'testing'"><span data-maas-script-status="script-status" data-script-status="node.testing_status"></span> Hardware tests</a>
+                            data-ng-click="openSection('testing')"><span data-maas-script-status="script-status" data-script-status="node.testing_status"></span> Hardware tests</a>
                     </li>
                     <li class="p-tabs__item" role="presentation">
                         <a role="tab" class="p-tabs__link" data-ng-if="node.has_logs"
                             data-ng-class="{ 'is-active': section.area === 'logs'}"
-                            data-ng-click="section.area = 'logs'"><span data-maas-script-status="script-status" data-script-status="node.installation_status" data-ng-if="node.installation_status !== -1"></span> Logs</a>
+                            data-ng-click="openSection('logs')"><span data-maas-script-status="script-status" data-script-status="node.installation_status" data-ng-if="node.installation_status !== -1"></span> Logs</a>
                     </li>
                     <li class="p-tabs__item" role="presentation">
                         <a role="tab" class="p-tabs__link" data-ng-if="!isDevice"
                             data-ng-class="{ 'is-active': section.area === 'events'}"
-                            data-ng-click="section.area = 'events'">Events</a>
+                            data-ng-click="openSection('events')">Events</a>
                     </li>
                     <li class="p-tabs__item" role="presentation">
                         <a role="tab" class="p-tabs__link" data-ng-if="canEdit()"
                             data-ng-class="{ 'is-active': section.area === 'configuration'}"
-                            data-ng-click="section.area = 'configuration'">Configuration</a>
+                            data-ng-click="openSection('configuration')">Configuration</a>
                     </li>
                 </ul>
             </div>

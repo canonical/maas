@@ -135,6 +135,12 @@ function NodeDetailsController(
     limit: 10
   };
 
+  // Add parameters to URL so tab state persists
+  $scope.openSection = function(sectionName) {
+    $scope.section.area = sectionName;
+    $location.search("area", sectionName);
+  };
+
   // Updates the page title.
   function updateTitle() {
     if ($scope.node && $scope.node.fqdn) {
