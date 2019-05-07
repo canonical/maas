@@ -77,6 +77,19 @@ class UserPrefsViewTest(MAASServerTestCase):
         user = reload_object(user)
         self.assertAttributes(user, params)
 
+    def test_prefs_post_profile_external_auth(self):
+        user = factory.make_User()
+        self.client.login(user=user)
+        # log in the user locally so it doesn't need macaroons
+        Config.objects.set_config('external_auth_url', 'http://example.com')
+        params = {
+            'last_name': 'John Doe',
+            'email': 'jon@example.com',
+        }
+        response = self.client.post(
+            '/account/prefs/', get_prefixed_form_data('profile', params))
+        self.assertEqual(http.client.METHOD_NOT_ALLOWED, response.status_code)
+
     def test_prefs_GET_profile_does_not_have_autofocus_attributes(self):
         user = factory.make_User()
         self.client.login(user=user)
@@ -107,6 +120,23 @@ class UserPrefsViewTest(MAASServerTestCase):
         self.assertIsNotNone(event)
         self.assertEqual(event.description, "Updated password.")
 
+    def test_prefs_POST_password_external_auth(self):
+        user = factory.make_User()
+        self.client.login(username=user.username, password='test')
+        user.set_password('password')
+        # log in the user locally so it doesn't need macaroons
+        Config.objects.set_config('external_auth_url', 'http://example.com')
+        response = self.client.post(
+            '/account/prefs/',
+            get_prefixed_form_data(
+                'password',
+                {
+                    'old_password': 'test',
+                    'new_password1': 'new',
+                    'new_password2': 'new',
+                }))
+        self.assertEqual(http.client.METHOD_NOT_ALLOWED, response.status_code)
+
     def test_no_password_section_present_with_local_info(self):
         user = factory.make_User()
         self.client.login(user=user)
@@ -122,6 +152,22 @@ class UserPrefsViewTest(MAASServerTestCase):
         response = self.client.get('/account/prefs/')
         doc = fromstring(response.content)
         self.assertEqual(len(doc.cssselect('#password')), 0)
+
+    def test_profile_readonly_with_external_auth(self):
+        user = factory.make_User()
+        self.client.login(user=user)
+        # log in the user locally so it doesn't need macaroons
+        Config.objects.set_config('external_auth_url', 'http://example.com')
+        response = self.client.get('/account/prefs/')
+        doc = fromstring(response.content)
+        self.assertEqual(
+            doc.cssselect('#profile input[name="profile-last_name"]')[0].get(
+                'disabled'),
+            'disabled')
+        self.assertEqual(
+            doc.cssselect('#profile input[name="profile-email"]')[0].get(
+                'disabled'),
+            'disabled')
 
     def test_create_ssl_key_POST(self):
         user = factory.make_admin()

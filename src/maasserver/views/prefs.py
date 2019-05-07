@@ -11,6 +11,7 @@ from django.contrib import messages
 from django.contrib.auth.forms import PasswordChangeForm
 from django.core.exceptions import PermissionDenied
 from django.http import (
+    HttpResponseNotAllowed,
     HttpResponseNotFound,
     HttpResponseRedirect,
 )
@@ -76,6 +77,10 @@ class SSLKeyDeleteView(HelpfulDeleteView):
 
 
 def userprefsview(request):
+    have_external_auth = bool(request.external_auth_info)
+    if have_external_auth and request.method == 'POST':
+        return HttpResponseNotAllowed(['GET'])
+
     user = request.user
     # Process the profile update form.
     profile_form, response = process_form(
@@ -83,6 +88,9 @@ def userprefsview(request):
         {'instance': user})
     if response is not None:
         return response
+    if have_external_auth:
+        for field in profile_form:
+            field.field.disabled = True
 
     # Process the password change form.
     password_form, response = process_form(

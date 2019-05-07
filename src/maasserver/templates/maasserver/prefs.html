@@ -83,8 +83,10 @@
                     <ul class="p-list">
                         {% for field in profile_form %} {% include "maasserver/form_field.html" %} {% endfor %}
                     </ul>
+                    {% if not request.external_auth_info %}
                     <input type="hidden" name="profile_submit" value="1" />
                     <button type="submit" class="p-button--positive u-float--right">Save details</button>
+                    {% endif %}
                 </form>
             </div>
         </div>
