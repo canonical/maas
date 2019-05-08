@@ -1,4 +1,4 @@
-/* Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
+/* Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * Unit tests for PodDetailsController.
@@ -557,6 +557,20 @@ describe("PodDetailsController", function() {
       defer.resolve();
       $rootScope.$digest();
       expect($location.path).toHaveBeenCalledWith("/pods");
+    });
+  });
+
+  describe("validateMachineCompose", function() {
+    it("returns true for valid hostname", function() {
+      makeController();
+      $scope.compose.obj.hostname = "testing-hostname";
+      expect($scope.validateMachineCompose()).toBe(true);
+    });
+
+    it("returns false for invalid hostname", function() {
+      makeController();
+      $scope.compose.obj.hostname = "testing_hostname";
+      expect($scope.validateMachineCompose()).toBe(false);
     });
   });
 

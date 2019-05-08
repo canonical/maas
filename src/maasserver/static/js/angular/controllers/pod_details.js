@@ -1,4 +1,4 @@
-/* Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
+/* Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * MAAS Pod Details Controller
@@ -256,9 +256,7 @@ function PodDetailsController(
 
     var hostname = $scope.compose.obj.hostname;
 
-    if (hostname && hostname.includes("_")) {
-      return false;
-    }
+    valid = ValidationService.validateHostname(hostname);
 
     requests.forEach(function(request) {
       if (request.size > request.available || request.size === "") {
