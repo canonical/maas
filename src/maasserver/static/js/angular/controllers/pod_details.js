@@ -24,7 +24,9 @@ function PodDetailsController(
   VLANsManager,
   FabricsManager,
   SpacesManager,
-  ValidationService
+  ValidationService,
+  $log,
+  $document
 ) {
   // Set title and page.
   $rootScope.title = "Loading...";
@@ -190,11 +192,11 @@ function PodDetailsController(
   // Update the pod with new data on the region.
   $scope.updatePod = function(pod) {
     return $scope.podManager.updateItem(pod).then(
-      function(pod) {
+      function() {
         updateName();
       },
       function(error) {
-        console.log(error);
+        $log.error(error);
         updateName();
       }
     );
@@ -251,6 +253,12 @@ function PodDetailsController(
 
     var requests = $scope.compose.obj.requests;
     var valid = true;
+
+    var hostname = $scope.compose.obj.hostname;
+
+    if (hostname && hostname.includes("_")) {
+      return false;
+    }
 
     requests.forEach(function(request) {
       if (request.size > request.available || request.size === "") {
@@ -458,12 +466,12 @@ function PodDetailsController(
   $scope.copyToClipboard = function($event) {
     var clipboardParent = $event.currentTarget.previousSibling;
     var clipboardValue = clipboardParent.previousSibling.value;
-    var el = document.createElement("textarea");
+    var el = $document.createElement("textarea");
     el.value = clipboardValue;
-    document.body.appendChild(el);
+    $document.body.appendChild(el);
     el.select();
-    document.execCommand("copy");
-    document.body.removeChild(el);
+    $document.execCommand("copy");
+    $document.body.removeChild(el);
   };
 
   // Called to cancel composition.
@@ -594,7 +602,7 @@ function PodDetailsController(
 
   $scope.selectSubnetByIP = function(iface) {
     if (iface.ipaddress) {
-      angular.forEach($scope.availableSubnets, function(subnet, idx) {
+      angular.forEach($scope.availableSubnets, function(subnet) {
         let inNetwork = ValidationService.validateIPInNetwork(
           iface.ipaddress,
           subnet.cidr
@@ -654,7 +662,7 @@ function PodDetailsController(
   // Start watching key fields.
   $scope.startWatching = function() {
     $scope.$watch("subnets", function() {
-      angular.forEach($scope.subnets, function(subnet, idx) {
+      angular.forEach($scope.subnets, function(subnet) {
         // filter subnets from vlans not attached to host
         if ($scope.pod.attached_vlans.includes(subnet.vlan)) {
           $scope.availableSubnets.push(_getSubnetDetails(subnet));

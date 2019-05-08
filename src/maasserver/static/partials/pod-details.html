@@ -47,7 +47,12 @@
                 </div>
                 <div class="row">
                     <div class="col-6">
-                        <maas-obj-field type="text" key="hostname" label="Hostname" subtle="false" placeholder="Hostname (optional)" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
+                        <div class="p-form__group">
+                            <label for="hostname" class="p-form__label col-2 tablet-col-2">Hostname</label>
+                            <div class="p-form__control col-3 tablet-col-4">
+                                <input type="text" name="hostname" id="hostname" data-ng-model="compose.obj.hostname" placeholder="Hostname (optional)">
+                            </div>
+                        </div>
                         <maas-obj-field type="options" key="domain" label="Domain" subtle="false" placeholder="Choose a domain"
                             options="domain.id as domain.name for domain in domains" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
                         <maas-obj-field type="options" key="zone"
