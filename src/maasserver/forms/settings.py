@@ -793,7 +793,7 @@ CONFIG_ITEMS = {
         'default': '',
         'form': forms.CharField,
         'form_kwargs': {
-            'label': 'VMware vCenter server FQDN or IP address.',
+            'label': 'VMware vCenter server FQDN or IP address',
             'required': False,
             'help_text': (
                 'VMware vCenter server FQDN or IP address which is passed '
@@ -804,7 +804,7 @@ CONFIG_ITEMS = {
         'default': '',
         'form': forms.CharField,
         'form_kwargs': {
-            'label': 'VMware vCenter username.',
+            'label': 'VMware vCenter username',
             'required': False,
             'help_text': (
                 'VMware vCenter server username which is passed to a deployed '
@@ -815,7 +815,7 @@ CONFIG_ITEMS = {
         'default': '',
         'form': forms.CharField,
         'form_kwargs': {
-            'label': 'VMware vCenter password.',
+            'label': 'VMware vCenter password',
             'required': False,
             'help_text': (
                 'VMware vCenter server password which is passed to a deployed '
@@ -826,7 +826,7 @@ CONFIG_ITEMS = {
         'default': '',
         'form': forms.CharField,
         'form_kwargs': {
-            'label': 'VMware vCenter datacenter.',
+            'label': 'VMware vCenter datacenter',
             'required': False,
             'help_text': (
                 'VMware vCenter datacenter which is passed to a deployed '
