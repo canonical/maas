@@ -2483,7 +2483,7 @@ class TestMachineHandler(MAASServerTestCase):
         vmfs = factory.make_VMFS(node=node)
         params = {
             'system_id': node.system_id,
-            'vmfs_datastore_id': vmfs.id,
+            'vmfs_datastore_id': vmfs.virtual_device.id,
         }
         handler.delete_vmfs_datastore(params)
         self.assertIsNone(reload_object(vmfs))
@@ -2516,7 +2516,7 @@ class TestMachineHandler(MAASServerTestCase):
             filesystem_group=vmfs)
         params = {
             'system_id': node.system_id,
-            'vmfs_datastore_id': vmfs.id,
+            'vmfs_datastore_id': vmfs.virtual_device.id,
             'remove_partitions': [partition.id],
         }
         handler.update_vmfs_datastore(params)

@@ -689,8 +689,7 @@ class MachineHandler(NodeHandler):
             params, permission=self._meta.edit_permission)
         vmfs_datastore_id = params.get('vmfs_datastore_id')
         try:
-            vbd = node.virtualblockdevice_set.get(
-                filesystem_group_id=vmfs_datastore_id)
+            vbd = node.virtualblockdevice_set.get(id=vmfs_datastore_id)
         except ObjectDoesNotExist:
             raise HandlerDoesNotExistError(vmfs_datastore_id)
         if not vbd.filesystem_group:
