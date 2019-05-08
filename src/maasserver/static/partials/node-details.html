@@ -345,6 +345,11 @@
 
     <section class="p-strip is-shallow" data-ng-if="section.area === 'summary'">
       <div class="row">
+        <div class="p-notification--negative" data-ng-if="node.power_state === 'error'">
+            <p class="p-notification__response">
+                <span class="p-notification__status">Error:</span> {$ getEventText(node.events[0]) $}. <a href="/#/machine/{$ node.system_id $}?area=events">See all events</a>.
+            </p>
+        </div>
         <div data-ng-if="canEdit()">
             <div class="p-notification--negative"
                 data-ng-if="!isController && !isDevice && !isRackControllerConnected()">
