@@ -4,6 +4,8 @@
  * MAAS Node Details Controller
  */
 
+import { NodeTypes } from "../enum";
+
 /* @ngInject */
 function NodeDetailsController(
   $scope,
@@ -24,7 +26,9 @@ function NodeDetailsController(
   ValidationService,
   ScriptsManager,
   ResourcePoolsManager,
-  VLANsManager
+  VLANsManager,
+  $log,
+  $window
 ) {
   // Mapping of device.ip_assignment to viewable text.
   var DEVICE_IP_ASSIGNMENT = {
@@ -37,7 +41,7 @@ function NodeDetailsController(
   $rootScope.title = "Loading...";
 
   // Initial values.
-  $scope.MAAS_config = MAAS_config;
+  $scope.MAAS_config = $window.MAAS_config;
   $scope.loaded = false;
   $scope.node = null;
   $scope.action = {
@@ -77,6 +81,7 @@ function NodeDetailsController(
   $scope.devices = [];
   $scope.scripts = ScriptsManager.getItems();
   $scope.vlans = VLANsManager.getItems();
+  $scope.hideHighAvailabilityNotification = false;
 
   // Node header section.
   $scope.header = {
@@ -123,6 +128,44 @@ function NodeDetailsController(
     bmc_node_count: 0,
     parameters: {},
     in_pod: false
+  };
+
+  // Dismiss high availability notification
+  $scope.dismissHighAvailabilityNotification = function() {
+    $scope.hideHighAvailabilityNotification = true;
+    localStorage.setItem(
+      `hideHighAvailabilityNotification-${$scope.vlan.id}`,
+      true
+    );
+  };
+
+  $scope.getNotificationVLANText = function() {
+    if ($scope.node.vlan.name) {
+      return $scope.node.vlan.name;
+    } else {
+      return $scope.node.vlan.id;
+    }
+  };
+
+  $scope.showHighAvailabilityNotification = function() {
+    if (
+      !$scope.hideHighAvailabilityNotification &&
+      $scope.node.dhcp_on &&
+      $scope.vlan.rack_sids.length > 1 &&
+      !$scope.vlan.secondary_rack &&
+      $scope.node.node_type !== NodeTypes.REGION_CONTROLLER
+    ) {
+      if (
+        $scope.section.area === "summary" ||
+        $scope.section.area === "vlans"
+      ) {
+        return true;
+      } else {
+        return false;
+      }
+    } else {
+      return false;
+    }
   };
 
   // Get the display text for device ip assignment type.
@@ -347,48 +390,53 @@ function NodeDetailsController(
 
   // Starts the watchers on the scope.
   function startWatching() {
-    // Update the title and name when the node fqdn changes.
-    $scope.$watch("node.fqdn", function() {
-      updateTitle();
-      updateHeader();
-    });
+    if (angular.isObject($scope.node)) {
+      // Update the title and name when the node fqdn changes.
+      $scope.$watch("node.fqdn", function() {
+        updateTitle();
+        updateHeader();
+      });
 
-    // Update the devices on the node.
-    $scope.$watch("node.devices", updateDevices);
+      // Update the devices on the node.
+      $scope.$watch("node.devices", updateDevices);
 
-    // Update the availableActionOptions when the node actions change.
-    $scope.$watch("node.actions", updateAvailableActionOptions);
+      // Update the availableActionOptions when the node actions change.
+      $scope.$watch("node.actions", updateAvailableActionOptions);
 
-    // Update the summary when the node or architectures list is
-    // updated.
-    $scope.$watch("node.architecture", updateSummary);
-    $scope.$watchCollection($scope.summary.architecture.options, updateSummary);
+      // Update the summary when the node or architectures list is
+      // updated.
+      $scope.$watch("node.architecture", updateSummary);
+      $scope.$watchCollection(
+        $scope.summary.architecture.options,
+        updateSummary
+      );
 
-    // Uppdate the summary when min_hwe_kernel is updated.
-    $scope.$watch("node.min_hwe_kernel", updateSummary);
-    $scope.$watchCollection(
-      $scope.summary.min_hwe_kernel.options,
-      updateSummary
-    );
+      // Uppdate the summary when min_hwe_kernel is updated.
+      $scope.$watch("node.min_hwe_kernel", updateSummary);
+      $scope.$watchCollection(
+        $scope.summary.min_hwe_kernel.options,
+        updateSummary
+      );
 
-    // Update the summary when the node or zone list is
-    // updated.
-    $scope.$watch("node.zone.id", updateSummary);
-    $scope.$watchCollection($scope.summary.zone.options, updateSummary);
+      // Update the summary when the node or zone list is
+      // updated.
+      $scope.$watch("node.zone.id", updateSummary);
+      $scope.$watchCollection($scope.summary.zone.options, updateSummary);
 
-    // Update the summary when the node or the resouce pool list is
-    // updated.
-    $scope.$watch("node.pool.id", updateSummary);
-    $scope.$watchCollection($scope.summary.pool.options, updateSummary);
+      // Update the summary when the node or the resouce pool list is
+      // updated.
+      $scope.$watch("node.pool.id", updateSummary);
+      $scope.$watchCollection($scope.summary.pool.options, updateSummary);
 
-    // Update the power when the node power_type or power_parameters
-    // are updated.
-    $scope.$watch("node.power_type", updatePower);
-    $scope.$watch("node.power_parameters", updatePower);
-    $scope.$watchCollection("power_types", updatePower);
+      // Update the power when the node power_type or power_parameters
+      // are updated.
+      $scope.$watch("node.power_type", updatePower);
+      $scope.$watch("node.power_parameters", updatePower);
+      $scope.$watchCollection("power_types", updatePower);
 
-    // Update the services when the services list is updated.
-    $scope.$watch("node.service_ids", updateServices);
+      // Update the services when the services list is updated.
+      $scope.$watch("node.service_ids", updateServices);
+    }
   }
 
   // Called when the node has been loaded.
@@ -409,6 +457,10 @@ function NodeDetailsController(
     if (angular.isObject($scope.networkingController)) {
       $scope.networkingController.nodeLoaded();
     }
+
+    if (angular.isObject($scope.node.vlan)) {
+      $scope.vlan = VLANsManager.getItemFromList($scope.node.vlan.id);
+    }
   }
 
   // Update the node with new data on the region.
@@ -417,7 +469,7 @@ function NodeDetailsController(
       queryPower = false;
     }
     return $scope.nodesManager.updateItem(node).then(
-      function(node) {
+      function() {
         updateHeader();
         updateSummary();
         if (queryPower) {
@@ -425,7 +477,7 @@ function NodeDetailsController(
         }
       },
       function(error) {
-        console.log(error);
+        $log.error(error);
         updateHeader();
         updateSummary();
       }
@@ -1253,6 +1305,15 @@ function NodeDetailsController(
       $scope.nodesManager.setActiveItem($routeParams.system_id).then(
         function(node) {
           nodeLoaded(node);
+          if (angular.isObject($scope.node.vlan)) {
+            if (
+              localStorage.getItem(
+                `hideHighAvailabilityNotification-${$scope.node.vlan.id}`
+              )
+            ) {
+              $scope.hideHighAvailabilityNotification = true;
+            }
+          }
         },
         function(error) {
           ErrorService.raiseError(error);

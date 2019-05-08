@@ -54,6 +54,11 @@
         </div>
     </header>
     <section class="p-strip is-bordered" data-ng-if="!vlanDetails.showDHCPPanel">
+        <div class="row" data-ng-if="vlanDetails.showHighAvailabilityNotification()">
+            <div class="p-notification--information">
+                <p class="p-notification__response">You can now enable <strong>high availability DHCP</strong> on this VLAN. <a data-ng-click="vlanDetails.openDHCPPanel()">Reconfigure</a> the DHCP configuration. <a class="p-notification__action" data-ng-click="vlanDetails.dismissHighAvailabilityNotification()">Dismiss</a></p>
+            </div>
+        </div>
         <div class="row">
             <div class="col-6">
                 <h2 class="p-heading--four">VLAN Summary</h2>
@@ -124,10 +129,14 @@
                         </span></p>
                     </div>
                     <div class="p-form__control col-3 mobile-col-2 tablet-col-3">
-                        <span data-ng-repeat="rack in vlanDetails.relatedControllers">
-                            <a href="#/controller/{$ rack.system_id $}">{$ rack.hostname $}</a><span ng-show="!$last">,</span>
+                        <span data-ng-if="vlanDetails.primaryRack">
+                            <a href="#/controller/{$ vlanDetails.primaryRack.system_id $}">{$ vlanDetails.primaryRack.hostname $}</a><span
+                                data-ng-if="vlanDetails.secondaryRack">,</span>
                         </span>
-                        <span data-ng-if="!vlanDetails.relatedControllers.length">-</span>
+                        <span data-ng-if="vlanDetails.secondaryRack">
+                            <a href="#/controller/{$ vlanDetails.secondaryRack.system_id $}">{$ vlanDetails.secondaryRack.hostname $}</a>
+                        </span>
+                        <span data-ng-if="!vlanDetails.primaryRack && !vlanDetails.secondaryRack">-</span>
                     </div>
                 </div>
             </div>
@@ -297,6 +306,7 @@
                                                 selected="selected"
                                                 data-ng-if="vlanDetails.relatedControllers.length >= 2"
                                             >
+                                                No secondary rack controller
                                             </option>
                                         </select>
                                     </div>

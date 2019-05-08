@@ -343,6 +343,17 @@
         </nav>
     </header>
 
+    <section class="p-strip is-shallow u-no-padding--bottom" data-ng-if="showHighAvailabilityNotification()">
+        <div class="row">
+            <div class="p-notification--information u-no-margin--bottom">
+                <p class="p-notification__response">
+                    You can now enable <strong>high availability DHCP</strong> on {$ node.vlan.fabric_name $} {$ getNotificationVLANText() $}. <a href="/#/vlan/{$ node.vlan.id $}?provide_dhcp=true">Reconfigure</a> the DHCP configuration. <a
+                        class="p-notification__action" data-ng-click="dismissHighAvailabilityNotification()">Dismiss</a>
+                </p>
+            </div>
+        </div>
+    </section>
+
     <section class="p-strip is-shallow" data-ng-if="section.area === 'summary'">
       <div class="row">
         <div class="p-notification--negative" data-ng-if="node.power_state === 'error'">

@@ -422,9 +422,13 @@ export function NodeNetworkingController(
                 true
               ),
               primary_rack: null,
-              secondary_rack: null,
-              sort_key: nic.fabric.name + "|" + $scope.getVLANText(nic.vlan)
+              secondary_rack: null
             };
+
+            if (angular.isObject(nic.fabric)) {
+              vlanRecord.sort_key =
+                nic.fabric.name + "|" + $scope.getVLANText(nic.vlan);
+            }
             if (nic.vlan.primary_rack) {
               vlanRecord.primary_rack = ControllersManager.getItemFromList(
                 nic.vlan.primary_rack

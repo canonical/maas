@@ -62,3 +62,7 @@ export const ScriptStatus = {
   FAILED_INSTALLING: 8,
   SKIPPED: 9
 };
+
+export const NodeTypes = {
+  REGION_CONTROLLER: 3
+};

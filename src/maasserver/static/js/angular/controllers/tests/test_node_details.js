@@ -23,13 +23,14 @@ describe("NodeDetailsController", function() {
   beforeEach(module("MAAS"));
 
   // Grab the needed angular pieces.
-  var $controller, $rootScope, $location, $scope, $q;
+  var $controller, $rootScope, $location, $scope, $q, $log;
   beforeEach(inject(function($injector) {
     $controller = $injector.get("$controller");
     $rootScope = $injector.get("$rootScope");
     $location = $injector.get("$location");
     $scope = $rootScope.$new();
     $q = $injector.get("$q");
+    $log = $injector.get("$log");
   }));
 
   // Load the required dependencies for the NodeDetails controller and
@@ -1970,12 +1971,12 @@ describe("NodeDetailsController", function() {
       configureSummary();
       $scope.saveEditSummary();
 
-      spyOn(console, "log");
+      spyOn($log, "error");
       var error = makeName("error");
       defer.reject(error);
       $rootScope.$digest();
 
-      expect(console.log).toHaveBeenCalledWith(error);
+      expect($log.error).toHaveBeenCalledWith(error);
     });
   });
 
@@ -2132,14 +2133,14 @@ describe("NodeDetailsController", function() {
       };
       $scope.saveEditPower();
 
-      spyOn(console, "log");
+      spyOn($log, "error");
       var error = makeName("error");
       defer.reject(error);
       $rootScope.$digest();
 
       // If the error message was logged to the console then
       // handleSaveError was called.
-      expect(console.log).toHaveBeenCalledWith(error);
+      expect($log.error).toHaveBeenCalledWith(error);
     });
   });
 
@@ -2416,6 +2417,83 @@ describe("NodeDetailsController", function() {
       $scope.node = node;
       $scope.openSection("controllers");
       expect($scope.section.area).toBe("controllers");
+    });
+  });
+
+  describe("dismissHighAvailabilityNotification", function() {
+    it("sets hideHighAvailabilityNotification to true", function() {
+      makeController();
+      $scope.vlan = { id: 5001 };
+      $scope.hideHighAvailabilityNotification = false;
+      $scope.dismissHighAvailabilityNotification();
+      expect($scope.hideHighAvailabilityNotification).toBe(true);
+    });
+  });
+
+  describe("showHighAvailabilityNotification", function() {
+    it("returns true if hide notification flag not set", function() {
+      makeController();
+      $scope.hideHighAvailabilityNotification = false;
+      $scope.node = {
+        dhcp_on: true
+      };
+      $scope.vlan = {
+        rack_sids: ["asd3d", "sd3sd"],
+        secondary_rack: ""
+      };
+      expect($scope.showHighAvailabilityNotification()).toBe(true);
+    });
+
+    it("returns false if hide notification flag is set", function() {
+      makeController();
+      $scope.hideHighAvailabilityNotification = true;
+      $scope.node = {
+        dhcp_on: true
+      };
+      $scope.vlan = {
+        rack_sids: ["asd3d", "sd3sd"],
+        secondary_rack: ""
+      };
+      expect($scope.showHighAvailabilityNotification()).toBe(false);
+    });
+
+    it("returns false if dhcp not enabled", function() {
+      makeController();
+      $scope.hideHighAvailabilityNotification = false;
+      $scope.node = {
+        dhcp_on: false
+      };
+      $scope.vlan = {
+        rack_sids: ["asd3d", "sd3sd"],
+        secondary_rack: ""
+      };
+      expect($scope.showHighAvailabilityNotification()).toBe(false);
+    });
+
+    it("returns false if one or less rack_sid", function() {
+      makeController();
+      $scope.hideHighAvailabilityNotification = false;
+      $scope.node = {
+        dhcp_on: true
+      };
+      $scope.vlan = {
+        rack_sids: ["asd3d"],
+        secondary_rack: ""
+      };
+      expect($scope.showHighAvailabilityNotification()).toBe(false);
+    });
+
+    it("returns false if has secondary rack", function() {
+      makeController();
+      $scope.hideHighAvailabilityNotification = false;
+      $scope.node = {
+        dhcp_on: false
+      };
+      $scope.vlan = {
+        rack_sids: ["asd3d", "sd3sd"],
+        secondary_rack: "sdf3"
+      };
+      expect($scope.showHighAvailabilityNotification()).toBe(false);
     });
   });
 });

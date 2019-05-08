@@ -395,7 +395,9 @@ describe("VLANDetailsController", function() {
     // This should automatically select p1 by default; the user has to
     // clear it out manually if desired. (this is done via an extra option
     // in the view.)
-    expect(controller.provideDHCPAction.secondaryRack).toBe("p1");
+    expect(controller.provideDHCPAction.secondaryRack).toBe(
+      controller.secondaryRack
+    );
     controller.provideDHCPAction.secondaryRack = "p2";
     controller.updateSecondaryRack();
     expect(controller.provideDHCPAction.primaryRack).toBe(null);
@@ -908,6 +910,56 @@ describe("VLANDetailsController", function() {
       $scope.$digest();
       expect(VLANsManager.disableDHCP).toHaveBeenCalledWith(controller.vlan);
       expect(controller.DHCPError).toBe(null);
+    });
+  });
+
+  describe("dismissHighAvailabilityNotification", function() {
+    it("sets hideHighAvailabilityNotification to true", function() {
+      var controller = makeController();
+      controller.vlan = { id: 5001 };
+      controller.hideHighAvailabilityNotification = false;
+      controller.dismissHighAvailabilityNotification();
+      expect(controller.hideHighAvailabilityNotification).toBe(true);
+    });
+  });
+
+  describe("showHighAvailabilityNotification", function() {
+    it("returns true if has DHCP, no secondary rack but could", function() {
+      var controller = makeController();
+      controller.vlan = { dhcp_on: true };
+      controller.provideDHCPAction.secondaryRack = null;
+      controller.relatedControllers = [{ id: 1 }, { id: 2 }];
+      controller.hideHighAvailabilityNotification = false;
+      expect(controller.showHighAvailabilityNotification()).toBe(true);
+    });
+
+    it("returns false if no DHCP", function() {
+      var controller = makeController();
+      controller.vlan = { dhcp_on: false };
+      controller.relatedControllers = [{ id: 1 }, { id: 2 }];
+      controller.hideHighAvailabilityNotification = false;
+      expect(controller.showHighAvailabilityNotification()).toBe(false);
+    });
+
+    it("returns false if has secondary rack", function() {
+      var controller = makeController();
+      controller.vlan = { dhcp_on: true };
+      controller.hideHighAvailabilityNotification = false;
+      expect(controller.showHighAvailabilityNotification()).toBe(false);
+    });
+
+    it("returns false if has no available racks", function() {
+      var controller = makeController();
+      controller.vlan = { dhcp_on: true };
+      controller.hideHighAvailabilityNotification = false;
+      expect(controller.showHighAvailabilityNotification()).toBe(false);
+    });
+
+    it("returns false if hideHighAvailabilityNotification if true", function() {
+      var controller = makeController();
+      controller.vlan = { dhcp_on: true };
+      controller.hideHighAvailabilityNotification = true;
+      expect(controller.showHighAvailabilityNotification()).toBe(false);
     });
   });
 

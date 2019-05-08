@@ -35,6 +35,7 @@ export function VLANDetailsController(
   $routeParams,
   $filter,
   $location,
+  $timeout,
   VLANsManager,
   SubnetsManager,
   SpacesManager,
@@ -92,6 +93,7 @@ export function VLANDetailsController(
   vm.suggestedRange = null;
   vm.isProvidingDHCP = false;
   vm.DHCPError = null;
+  vm.hideHighAvailabilityNotification = false;
 
   // Return true if the authenticated user is super user.
   vm.isSuperUser = function() {
@@ -181,9 +183,8 @@ export function VLANDetailsController(
     }
     if (angular.isObject(vm.secondaryRack)) {
       dhcp.secondaryRack = vm.secondaryRack.system_id;
-    } else if (vm.relatedControllers.length > 1) {
-      // Select the secondary controller arbitrarily by default.
-      dhcp.secondaryRack = vm.relatedControllers[1].system_id;
+    } else {
+      dhcp.secondaryRack = vm.secondaryRack;
     }
     dhcp.maxIPs = 0;
     dhcp.startIP = null;
@@ -270,8 +271,11 @@ export function VLANDetailsController(
     }
     var i;
     for (i = 0; i < vm.relatedControllers.length; i++) {
-      if (vm.relatedControllers[i].system_id !== dhcp.primaryRack) {
-        dhcp.secondaryRack = vm.relatedControllers[i].system_id;
+      if (
+        vm.relatedControllers[i].system_id !== dhcp.primaryRack &&
+        !dhcp.secondaryRack
+      ) {
+        dhcp.secondaryRack = vm.secondaryRack;
         break;
       }
     }
@@ -603,6 +607,28 @@ export function VLANDetailsController(
     return subnetsWithNoGateway.length ? true : false;
   };
 
+  // Dismiss high availability notification
+  vm.dismissHighAvailabilityNotification = function() {
+    vm.hideHighAvailabilityNotification = true;
+    localStorage.setItem(
+      `hideHighAvailabilityNotification-${vm.vlan.id}`,
+      true
+    );
+  };
+
+  vm.showHighAvailabilityNotification = function() {
+    if (
+      vm.vlan.dhcp_on &&
+      !vm.provideDHCPAction.secondaryRack &&
+      vm.relatedControllers.length > 1 &&
+      !vm.hideHighAvailabilityNotification
+    ) {
+      return true;
+    } else {
+      return false;
+    }
+  };
+
   // Updates the page title.
   function updateTitle() {
     var vlan = vm.vlan;
@@ -700,6 +726,16 @@ export function VLANDetailsController(
     vm.vlan = vlan;
     updateVLAN();
     vm.loaded = true;
+    if ($routeParams.provide_dhcp) {
+      // Put this at the end of event loop otherwise
+      // it doesn't have the data it needs
+      $timeout(function() {
+        vm.openDHCPPanel();
+      }, 0);
+    }
+    if (localStorage.getItem(`hideHighAvailabilityNotification-${vlan.id}`)) {
+      vm.hideHighAvailabilityNotification = true;
+    }
   }
 
   function updateVLAN() {
