@@ -57,6 +57,7 @@ from maasserver.node_constraint_filter_forms import (
     storage_validator,
 )
 from maasserver.rpc import getClientFromIdentifiers
+from maasserver.utils.dns import validate_hostname
 from maasserver.utils.forms import set_form_error
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
@@ -429,7 +430,8 @@ class ComposeMachineForm(forms.Form):
                     'Node with hostname "%s" already exists' % hostname)
 
         self.fields['hostname'] = CharField(
-            required=False, validators=[duplicated_hostname])
+            required=False, validators=[
+                duplicated_hostname, validate_hostname])
         self.initial['hostname'] = make_unique_hostname()
         self.fields['domain'] = ModelChoiceField(
             required=False, queryset=Domain.objects.all())

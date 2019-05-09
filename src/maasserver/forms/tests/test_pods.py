@@ -1457,6 +1457,21 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
             {'hostname': ['Node with hostname "test" already exists']},
             form.errors)
 
+    def test__compose_hostname_with_underscore(self):
+        request = MagicMock()
+        pod = make_pod_with_hints()
+
+        form = ComposeMachineForm(
+            data={'hostname': 'testing_hostname'}, request=request, pod=pod)
+        self.assertFalse(form.is_valid())
+        self.assertEqual(
+            {
+                'hostname': [
+                    "Host label cannot contain underscore: 'testing_hostname'."
+                ]
+            },
+            form.errors)
+
     def test__compose_without_commissioning(self):
         request = MagicMock()
         pod = make_pod_with_hints()
