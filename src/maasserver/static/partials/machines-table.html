@@ -1,4 +1,4 @@
-<table data-ng-if="!loading" class="p-table--sortable p-table--machines" role="grid">
+<table class="p-table--sortable p-table--machines" role="grid">
     <thead>
         <tr class="p-table__header p-table__row">
             <th class="p-table__col--name p-double-row u-align--left">
@@ -56,7 +56,7 @@
         </tr>
     </thead>
 </table>
-<table data-ng-repeat="group in groupedMachines track by group.label" data-ng-if="!loading && group.machines.length" class="p-table--machines" role="grid">
+<table data-ng-repeat="group in groupedMachines track by group.label" data-ng-if="group.machines.length" class="p-table--machines" role="grid">
     <thead>
         <tr
             class="p-table__group p-table__row"

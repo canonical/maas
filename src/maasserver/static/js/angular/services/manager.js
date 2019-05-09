@@ -200,6 +200,12 @@ function Manager($q, $rootScope, $timeout, RegionConnection) {
     this._metadataAttributes.length = 0;
   };
 
+  // Clears the current state of the manager.
+  Manager.prototype.clearItems = function() {
+    this._loaded = false;
+    this._items.length = 0;
+  };
+
   // Load all the items.
   Manager.prototype.loadItems = function() {
     // If the items have already been loaded then, we need to

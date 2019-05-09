@@ -73,6 +73,13 @@ function maasMachinesTable(
       NodeStatus.TESTING
     ];
 
+    // This is an performance optimisation to unblock initial rendering,
+    // otherwise when there are many machines, due to numerous nested
+    // ng-repeats the initial digest cycle is slow and the UI is
+    // blocked on first navigation.
+    if (angular.isDefined($scope.loading)) {
+      MachinesManager.clearItems();
+    }
     const machines = MachinesManager.getItems();
 
     // Scope variables.
