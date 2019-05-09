@@ -251,12 +251,12 @@ function PodDetailsController(
       $scope.updateRequests();
     }
 
-    var requests = $scope.compose.obj.requests;
-    var valid = true;
-
-    var hostname = $scope.compose.obj.hostname;
-
-    valid = ValidationService.validateHostname(hostname);
+    const requests = $scope.compose.obj.requests;
+    const hostname = $scope.compose.obj.hostname;
+    let valid = true;
+    if (angular.isDefined(hostname) && hostname !== "") {
+      valid = ValidationService.validateHostname(hostname);
+    }
 
     requests.forEach(function(request) {
       if (request.size > request.available || request.size === "") {

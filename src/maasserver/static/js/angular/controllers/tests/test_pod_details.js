@@ -561,6 +561,18 @@ describe("PodDetailsController", function() {
   });
 
   describe("validateMachineCompose", function() {
+    it("returns true for empty string", function() {
+      makeController();
+      $scope.compose.obj.hostname = "";
+      expect($scope.validateMachineCompose()).toBe(true);
+    });
+
+    it("returns true for undefined", function() {
+      makeController();
+      $scope.compose.obj.hostname = undefined;
+      expect($scope.validateMachineCompose()).toBe(true);
+    });
+
     it("returns true for valid hostname", function() {
       makeController();
       $scope.compose.obj.hostname = "testing-hostname";
