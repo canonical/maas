@@ -383,8 +383,11 @@
                             <span class="p-tooltip__message" role="tooltip" id="node-cpu-tooltip-{$ node.fqdn $}" data-ng-if="node.cpu_test_status !== -1 && node.cpu_test_status !== 2">{$ node.cpu_test_status_tooltip $}</span>
                         </span>
                     </div>
-                    <div class="p-double-row__muted-row" aria-label="Architecture" title="{$ ::node.architecture $}">
-                        {$ ::node.architecture $}
+                    <div class="p-double-row__muted-row" aria-label="Architecture" style="overflow: visible"> <!-- overflow override so tooltip is visible -->
+                        <span class="p-tooltip p-tooltip--left" aria-describedby="node-architecture-tooltip-{$ node.fqdn $}">
+                            {$ ::getArchitectureText(node.architecture) $}
+                            <span class="p-tooltip__message" role="tooltip" id="node-architecture-tooltip-{$ node.fqdn $}">{$ ::node.architecture $}</span>
+                        </span>
                     </div>
             </td>
             <td class="p-table__col--ram p-table--action-cell u-align--right" aria-label="Memory">

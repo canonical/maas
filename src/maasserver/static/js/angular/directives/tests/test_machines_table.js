@@ -1068,4 +1068,18 @@ barbaz`); // Has to be formatted this way for tooltip
       expect(scope.table.filteredMachines).toEqual([machines[0], machines[2]]);
     });
   });
+
+  describe("getArchitectureText", () => {
+    it("returns the architecture string as is if no '/generic' string", () => {
+      const directive = compileDirective();
+      const scope = directive.isolateScope();
+      expect(scope.getArchitectureText("i386")).toBe("i386");
+    });
+
+    it("removes '/generic' from the architecture string", () => {
+      const directive = compileDirective();
+      const scope = directive.isolateScope();
+      expect(scope.getArchitectureText("i386/generic")).toBe("i386");
+    });
+  });
 });

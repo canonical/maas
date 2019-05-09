@@ -719,6 +719,14 @@ function maasMachinesTable(
 
     $scope.closeMenu = () => ($scope.openMenu = "");
 
+    $scope.getArchitectureText = architectureString => {
+      if (architectureString.includes("/generic")) {
+        return architectureString.split("/")[0];
+      } else {
+        return architectureString;
+      }
+    };
+
     $scope.createErrorNotification = (machine, action, error) => {
       const authUser = UsersManager.getAuthUser();
       if (angular.isObject(authUser)) {
