@@ -208,6 +208,7 @@ function maasMachinesTable(
           MachinesManager.selectItem(machine.system_id);
         });
       }
+      $scope.updateFilteredMachines();
       $scope.updateAllChecked();
       $scope.onCheckAll();
     };
@@ -219,6 +220,7 @@ function maasMachinesTable(
       } else {
         MachinesManager.selectItem(machine.system_id);
       }
+      $scope.updateFilteredMachines();
       $scope.updateAllChecked();
     };
 
@@ -235,6 +237,7 @@ function maasMachinesTable(
           MachinesManager.selectItem(machine.system_id);
         });
       }
+      $scope.updateFilteredMachines();
       $scope.updateAllChecked();
     };
 
@@ -505,6 +508,13 @@ function maasMachinesTable(
       return;
     };
 
+    $scope.updateFilteredMachines = () => {
+      $scope.table.filteredMachines = $filter("nodesFilter")(
+        $scope.table.machines,
+        $scope.search
+      );
+    };
+
     // When the list of filtered machines change update the all checkbox.
     $scope.$watchCollection("table.filteredMachines", function() {
       $scope.updateAllChecked();
@@ -516,12 +526,7 @@ function maasMachinesTable(
       $scope.updateGroupedMachines($scope.groupByLabel);
     });
 
-    $scope.$watch("search", function() {
-      $scope.table.filteredMachines = $filter("nodesFilter")(
-        $scope.table.machines,
-        $scope.search
-      );
-    });
+    $scope.$watch("search", $scope.updateFilteredMachines);
 
     // Watch simplified list of machines for changes to power state and status,
     // then make changes accordingly.

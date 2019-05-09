@@ -2044,4 +2044,21 @@ describe("NodesListController", function() {
       expect(tab.selectedItems).toEqual([machinePossible]);
     });
   });
+
+  describe("updateFailedActionSentence", () => {
+    it("correctly sets $scope.failedActionSentence", () => {
+      makeController();
+      const tab = $scope.tabs.machines;
+      tab.actionOption = { name: "override-failed-testing" };
+      tab.actionErrorCount = 2;
+
+      expect($scope.failedActionSentence).toEqual(
+        "Action cannot be performed."
+      );
+      $scope.updateFailedActionSentence("machines");
+      expect($scope.failedActionSentence).toEqual(
+        "Cannot override failed tests on 2 machines."
+      );
+    });
+  });
 });

@@ -204,6 +204,8 @@ function Manager($q, $rootScope, $timeout, RegionConnection) {
   Manager.prototype.clearItems = function() {
     this._loaded = false;
     this._items.length = 0;
+    this._selectedItems.length = 0;
+    this._activeItem = null;
   };
 
   // Load all the items.

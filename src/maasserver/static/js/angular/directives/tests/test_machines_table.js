@@ -1050,4 +1050,22 @@ describe("maasMachinesTable", function() {
 barbaz`); // Has to be formatted this way for tooltip
     });
   });
+
+  describe("updateFilteredMachines", () => {
+    it("sets table filtered machines according to search filter", () => {
+      const directive = compileDirective();
+      const scope = directive.isolateScope();
+      const machines = Array.from(Array(4)).map(makeMachine);
+      machines[0].$selected = true;
+      machines[2].$selected = true;
+      scope.table = {
+        machines: machines,
+        filteredMachines: machines
+      };
+      scope.search = "in:(Selected)";
+      scope.updateFilteredMachines();
+
+      expect(scope.table.filteredMachines).toEqual([machines[0], machines[2]]);
+    });
+  });
 });

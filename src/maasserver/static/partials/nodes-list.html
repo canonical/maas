@@ -383,9 +383,8 @@
                         <p data-ng-hide="isDeployError(tab)"
                             class="page-header__message page-header__message--error ng-hide">
                             <i class="p-icon--warning">Warning</i>
-                            {$ tabs[tab].actionErrorCount $}
-                            <span data-ng-pluralize count="tabs[tab].actionErrorCount" when="{'1': 'node', 'other': 'nodes'}"></span>
-                            cannot be {$ tabs[tab].actionOption.sentence $}. To proceed, <a data-ng-click="unselectImpossibleNodes(tab)">update your selection</a>.
+                            <span>{$ failedActionSentence $}</span>
+                            <span>To proceed, <a data-ng-click="unselectImpossibleNodes(tab)">update your selection</a>.</span>
                         </p>
                         <p class="page-header__message page-header__message--error ng-hide" data-ng-show="isDeployError(tab)">
                             <i class="p-icon--warning">Warning</i>
@@ -671,9 +670,8 @@
                 <div class="p-form p-form--inline">
                     <p class="page-header__message page-header__message--error">
                         <i class="p-icon--error">Error: </i>
-                        {$ tabs.controllers.actionErrorCount $}
-                        <span data-ng-pluralize count="tabs.controllers.selectedItems.length" when="{'one': 'controller', 'other': 'controllers'}"></span>
-                        cannot be {$ tabs.controllers.actionOption.sentence $}. To proceed, update your selection.
+                        <span>{$ failedActionSentence $}</span>
+                        <span>To proceed, <a data-ng-click="unselectImpossibleNodes(tab)">update your selection</a>.</span>
                     </p>
                 </div>
             </div>

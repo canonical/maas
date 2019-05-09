@@ -54,6 +54,7 @@ function NodesListController(
   $scope.vlans = VLANsManager.getItems();
   $scope.loading = true;
   $scope.tags = [];
+  $scope.failedActionSentence = "Action cannot be performed.";
 
   // Called for autocomplete when the user is typing a tag name.
   $scope.tagsAutocomplete = function(query) {
@@ -438,6 +439,7 @@ function NodesListController(
       }
       $scope.tabs[tab].selectedItems[i].action_failed = false;
     }
+    $scope.updateFailedActionSentence(tab);
   }
 
   // Reset actionProgress on tab to zero.
@@ -567,21 +569,23 @@ function NodesListController(
     });
   };
 
-  $scope.unselectImpossibleNodes = function(tab) {
-    var selectedNodes = $scope.tabs[tab].selectedItems;
-    var actionOption = $scope.tabs[tab].actionOption;
-    var nodesToUnselect = [];
+  $scope.unselectImpossibleNodes = tab => {
+    const { actionOption, manager, selectedItems } = $scope.tabs[tab];
 
-    selectedNodes.forEach(function(node) {
-      if (node.actions.indexOf(actionOption.name) === -1) {
-        nodesToUnselect.push(node.system_id);
+    const nodesToUnselect = selectedItems.reduce((acc, node) => {
+      if (!node.actions.includes(actionOption.name)) {
+        acc.push(node);
       }
+      return acc;
+    }, []);
+
+    nodesToUnselect.forEach(node => {
+      manager.unselectItem(node.system_id);
     });
 
-    // Extra forEach loop to prevent iterating over a mutating array
-    nodesToUnselect.forEach(function(nodeId) {
-      $scope.tabs[tab].manager.unselectItem(nodeId);
-    });
+    // 07/05/2019 Caleb: Force refresh of filtered machines.
+    // Remove when machines table rewritten with one-way binding.
+    $scope.tabs[tab].search = "in:(selected)";
   };
 
   $scope.onNodeListingChanged = function(nodes, tab) {
@@ -1024,6 +1028,47 @@ function NodesListController(
       }
     }
     return false;
+  };
+
+  $scope.updateFailedActionSentence = tab => {
+    const { actionOption, actionErrorCount } = $scope.tabs[tab];
+
+    // e.g. "5 machines" or "1 controller"
+    const nodeString =
+      actionErrorCount > 1
+        ? `${actionErrorCount} ${tab}`
+        : `${actionErrorCount} ${tab.slice(0, -1)}`;
+    let sentence = `Action cannot be performed on ${nodeString}.`;
+
+    if (actionOption && actionOption.name) {
+      switch (actionOption.name) {
+        case "exit-rescue-mode":
+          sentence = `${nodeString} cannot exit rescue mode.`;
+          break;
+        case "lock":
+          sentence = `${nodeString} cannot be locked.`;
+          break;
+        case "override-failed-testing":
+          sentence = `Cannot override failed tests on ${nodeString}.`;
+          break;
+        case "rescue-mode":
+          sentence = `${nodeString} cannot be put in rescue mode.`;
+          break;
+        case "set-pool":
+          sentence = `Cannot set pool of ${nodeString}.`;
+          break;
+        case "set-zone":
+          sentence = `Cannot set zone of ${nodeString}.`;
+          break;
+        case "unlock":
+          sentence = `${nodeString} cannot be unlocked.`;
+          break;
+        default:
+          sentence = `${nodeString} cannot be ${actionOption.sentence}.`;
+      }
+    }
+
+    $scope.failedActionSentence = sentence;
   };
 
   // Reload osinfo when the page reloads
