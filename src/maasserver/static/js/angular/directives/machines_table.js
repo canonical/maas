@@ -398,10 +398,6 @@ function maasMachinesTable(
     };
 
     $scope.updateGroupedMachines = function(field) {
-      if ($scope.table.filteredMachines.length === 0) {
-        return;
-      }
-
       if (field === "status") {
         const machines = $scope.groupBy(
           $scope.table.filteredMachines,
