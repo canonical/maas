@@ -197,7 +197,7 @@ def generate_kvm_pod_configuration(node):
             }
         ]
         packages = ["qemu-kvm", "libvirt-bin"]
-        if architecture == 'amd64':
+        if architecture in ['amd64', 'arm64']:
             packages.append('qemu-efi')
         yield "packages", packages
 
