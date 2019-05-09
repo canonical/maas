@@ -44,7 +44,10 @@
                 <span role="columnheader" data-ng-click="sortTable('vlan.fabric_name')" data-ng-class="{'is-sorted': table.predicate === 'vlan.fabric_name', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Fabric,</span>
                 <div>VLAN</div>
             </th>
-            <th class="p-table__col--cores u-align--right" role="columnheader" data-ng-click="sortTable('cpu_count')" data-ng-class="{'is-sorted': table.predicate=== 'cpu_count', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="Cores">Cores</th>
+            <th class="p-table__col--cores u-align--right" title="Cores">
+                <span role="columnheader" data-ng-click="sortTable('cpu_count')" data-ng-class="{'is-sorted': table.predicate=== 'cpu_count', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Cores,</span>
+                <div>Arch</div>
+            </th>
             <th class="p-table__col--ram u-align--right" role="columnheader" data-ng-click="sortTable('memory')" data-ng-class="{'is-sorted': table.predicate === 'memory', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="RAM">
                 <span>RAM</span>
             </th>
@@ -371,12 +374,18 @@
                     </div>
                 </div>
             </td>
-            <td class="p-table__col--cores p-table--action-cell u-align--right" aria-label="CPU">
-                <span class="p-tooltip p-tooltip--left">
-                    <span data-maas-script-status="script-status" data-script-status="node.cpu_test_status" data-ng-if="node.cpu_test_status !== -1 && node.cpu_test_status !== 2" aria-describedby="node-cpu-tooltip-{$ node.fqdn $}"></span>
-                    {$ node.cpu_count $}
-                    <span class="p-tooltip__message" role="tooltip" id="node-cpu-tooltip-{$ node.fqdn $}" data-ng-if="node.cpu_test_status !== -1 && node.cpu_test_status !== 2">{$ node.cpu_test_status_tooltip $}</span>
-                </span>
+            <td class="p-table__col--cores p-table--action-cell u-align--right p-double-row" aria-label="CPU, Architecture">
+                <div class="p-double-row__rows-container">
+                    <div class="p-double-row__main-row" aria-label="CPU" style="overflow: visible"> <!-- overflow override so tooltip is visible -->
+                        <span class="p-tooltip p-tooltip--left">
+                            <span data-maas-script-status="script-status" data-script-status="node.cpu_test_status" data-ng-if="node.cpu_test_status !== -1 && node.cpu_test_status !== 2" aria-describedby="node-cpu-tooltip-{$ node.fqdn $}"></span>
+                            {$ node.cpu_count $}
+                            <span class="p-tooltip__message" role="tooltip" id="node-cpu-tooltip-{$ node.fqdn $}" data-ng-if="node.cpu_test_status !== -1 && node.cpu_test_status !== 2">{$ node.cpu_test_status_tooltip $}</span>
+                        </span>
+                    </div>
+                    <div class="p-double-row__muted-row" aria-label="Architecture" title="{$ ::node.architecture $}">
+                        {$ ::node.architecture $}
+                    </div>
             </td>
             <td class="p-table__col--ram p-table--action-cell u-align--right" aria-label="Memory">
                 <span class="p-tooltip p-tooltip--left">

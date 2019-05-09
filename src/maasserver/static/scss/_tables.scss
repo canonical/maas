@@ -438,7 +438,7 @@
       }
 
       .p-table__col--status {
-        @include breakpoint-widths(46%, 44%, 22%, 22%, 18%);
+        @include breakpoint-widths(46%, 44%, 20%, 21%, 17%);
         position: relative;
 
         .p-tooltip {
@@ -447,7 +447,7 @@
       }
 
       .p-table__col--owner {
-        @include breakpoint-widths(0, 18%, 8%, 10%, 9%);
+        @include breakpoint-widths(0, 18%, 13%, 9%, 8%);
       }
 
       .p-table__col--pool {
@@ -456,7 +456,7 @@
       }
 
       .p-table__col--zone {
-        @include breakpoint-widths(0, 0, 0, 10%, 9%);
+        @include breakpoint-widths(0, 0, 0, 9%, 8%);
       }
 
       .p-table__col--fabric {
@@ -464,7 +464,7 @@
       }
 
       .p-table__col--cores {
-        @include breakpoint-widths(0, 0, 10%, 6%, 5%);
+        @include breakpoint-widths(0, 0, 15%, 9%, 8%);
       }
 
       .p-table__col--ram {
