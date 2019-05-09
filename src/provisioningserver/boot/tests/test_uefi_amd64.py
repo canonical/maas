@@ -79,7 +79,7 @@ class TestUEFIAMD64BootMethodRender(MAASTestCase):
         # Given the right configuration options, the UEFI configuration is
         # correctly rendered.
         method = UEFIAMD64BootMethod()
-        params = make_kernel_parameters(purpose="xinstall")
+        params = make_kernel_parameters(arch="amd64", purpose="xinstall")
         fs_host = '(http,%s:5248)/images' % (
             convert_host_to_uri_str(params.fs_host))
         output = method.get_reader(backend=None, kernel_params=params)
