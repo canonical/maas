@@ -724,7 +724,7 @@ class cmd_config(SnappyCommand):
         'none': [],
     }
 
-    # Requried flags that are in .conf.
+    # Required flags that are in .conf.
     setting_flags = (
         'maas_url',
         'database_host', 'database_name',
@@ -737,22 +737,22 @@ class cmd_config(SnappyCommand):
             'config': 'num_workers',
         },
         'enable_debug': {
-            'type': 'bool',
+            'type': 'store_true',
             'set_value': True,
             'config': 'debug',
         },
         'disable_debug': {
-            'type': 'bool',
+            'type': 'store_true',
             'set_value': False,
             'config': 'debug',
         },
         'enable_debug_queries': {
-            'type': 'bool',
+            'type': 'store_true',
             'set_value': True,
             'config': 'debug_queries',
         },
         'disable_debug_queries': {
-            'type': 'bool',
+            'type': 'store_true',
             'set_value': False,
             'config': 'debug_queries',
         },
@@ -935,7 +935,7 @@ class cmd_config(SnappyCommand):
                         flag_value is not None and
                         current_config.get(flag_key) != flag_value)
                     if should_update:
-                        config_manager.update({flag_key, flag_value})
+                        config_manager.update({flag_key: flag_value})
                         restart_required = True
                 elif flag_value:
                     flag_key = flag_info['config']
