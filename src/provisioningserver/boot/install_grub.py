@@ -18,11 +18,11 @@ CONFIG_FILE = """
 # MAAS GRUB2 pre-loader configuration file
 
 # Load based on MAC address first.
-configfile (pxe)/grub/grub.cfg-${net_default_mac}
+configfile /grub/grub.cfg-${net_default_mac}
 
 # Failed to load based on MAC address.
 # Load amd64 by default, UEFI only supported by 64-bit
-configfile (pxe)/grub/grub.cfg-default-amd64
+configfile /grub/grub.cfg-default-amd64
 """
 
 
