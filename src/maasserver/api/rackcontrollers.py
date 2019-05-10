@@ -157,6 +157,9 @@ class RackControllerHandler(NodeHandler, PowerMixin):
         @param (string) "zone" [required=false] The name of a valid zone in
         which to place the given rack controller.
 
+        @param (string) "domain" [required=false] The domain for this
+        controller. If not given the default domain is used.
+
         @success (http-status-code) "200" 200
         @success (content) "success-json" A JSON object containing the updated
         rack-controller object.
