@@ -23,7 +23,7 @@
                     <table class="p-table-expanding p-table--controllers-commissioning">
                         <thead>
                             <tr>
-                                <th style="width: 80px">Suppress</th>
+                                <th data-ng-if="nodeResultsManager._area === 'testing'" style="width: 80px">Suppress</th>
                                 <th class="col-3">Name</th>
                                 <th class="col-2">Tags</th>
                                 <th class="col-1">Runtime</th>
@@ -40,7 +40,11 @@
                                     'is-suppressed': result.suppressed
                                 }"
                             >
-                                <td style="width: 80px; overflow: visible" aria-label="Suppress"">
+                                <td
+                                    data-ng-if="nodeResultsManager._area === 'testing'"
+                                    style="width: 80px; overflow: visible"
+                                    aria-label="Suppress"
+                                >
                                     <div class="p-tooltip">
                                         <input
                                             id="{$ result.id $}"
@@ -81,7 +85,7 @@
                                                 <button class="p-contextual-menu__link" aria-label="Hide metrics" data-ng-if="result.showing_results" data-ng-click="toggleMenu(); result.showing_history = false; result.showing_results = false">Hide metrics</button>
                                                 <button class="p-contextual-menu__link" aria-label="View previous {$ result.result_section $}" data-ng-if="!result.showing_history" data-ng-click="toggleMenu(); loadHistory(result)">View previous {$ result.result_section $}</button>
                                                 <button class="p-contextual-menu__link" aria-label="Hide previous {$ result.result_section $}" data-ng-if="result.showing_history" data-ng-click="toggleMenu(); result.showing_results = false; result.showing_history = false">Hide previous {$ result.result_section $}</button>
-                                                <button class="p-contextual-menu__link" aria-label="Toggle this test in machine list" data-ng-if="isSuperUser() && isSuppressible(result)" data-ng-click="toggleSuppressed(result)">{$ result.suppressed ? "Show" : "Suppress" $} test in machine list</button>
+                                                <button class="p-contextual-menu__link" aria-label="Toggle this test in machine list" data-ng-if="isSuperUser() && isSuppressible(result) && nodeResultsManager._area === 'testing'" data-ng-click="toggleSuppressed(result)">{$ result.suppressed ? "Show" : "Suppress" $} test in machine list</button>
                                             </div>
                                         </div>
                                     </div>
