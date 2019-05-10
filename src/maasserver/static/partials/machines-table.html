@@ -385,8 +385,8 @@
                     </div>
                     <div class="p-double-row__muted-row" aria-label="Architecture" style="overflow: visible"> <!-- overflow override so tooltip is visible -->
                         <span class="p-tooltip p-tooltip--left" aria-describedby="node-architecture-tooltip-{$ node.fqdn $}">
-                            {$ ::getArchitectureText(node.architecture) $}
-                            <span class="p-tooltip__message" role="tooltip" id="node-architecture-tooltip-{$ node.fqdn $}">{$ ::node.architecture $}</span>
+                            <div class="u-text-overflow">{$ ::getArchitectureText(node.architecture) $}</div>
+                            <span class="p-tooltip__message" role="tooltip" id="node-architecture-tooltip-{$ node.fqdn $}" style="left: -60px; transform: translateX(-100%) translateY(-75%);">{$ ::node.architecture $}</span>
                         </span>
                     </div>
             </td>

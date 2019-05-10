@@ -284,3 +284,10 @@
 .p-table--controllers-commissioning .is-active .p-icon--chevron {
   transform: rotate(180deg);
 }
+
+// Apply text overflow ellipsis to any element
+.u-text-overflow {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
