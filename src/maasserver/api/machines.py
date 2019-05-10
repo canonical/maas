@@ -2568,6 +2568,12 @@ class MachinesHandler(NodesHandler, PowersMixin):
         @param (string) "destination" [required=true] A list of system_ids to
         clone the configuration to.
 
+        @param (boolean) "interfaces" [required=True] Whether to clone
+        interface configuration. Defaults to False.
+
+        @param (boolean) "storage" [required=True] Whether to clone storage
+        configuration. Defaults to False.
+
         @success (http-status-code) "204" 204
 
         @error (http-status-code) "400" 400
