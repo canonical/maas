@@ -13,6 +13,9 @@ apps:
   supervisor:
     daemon: simple
     command: bin/run-supervisord
+    plugs:
+        - network
+        - network-bind
   maas:
     command: bin/maas
 

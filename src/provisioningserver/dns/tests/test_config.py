@@ -159,6 +159,11 @@ class TestHelpers(MAASTestCase):
         self.useFixture(EnvironmentVariable("MAAS_DNS_DEFAULT_CONTROLS"))
         self.assertTrue(config.get_dns_default_controls())
 
+    def test_get_dns_default_controls_defaults_always_false_in_snap(self):
+        self.useFixture(EnvironmentVariable('MAAS_DNS_DEFAULT_CONTROLS', '1'))
+        self.patch(config, 'running_in_snap').return_value = True
+        self.assertFalse(config.get_dns_default_controls())
+
     def test_get_dns_default_controls_checks_environ_first(self):
         self.useFixture(
             EnvironmentVariable("MAAS_DNS_DEFAULT_CONTROLS", "0"))

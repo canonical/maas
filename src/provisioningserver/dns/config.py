@@ -28,6 +28,7 @@ from provisioningserver.utils import (
 from provisioningserver.utils.fs import atomic_write
 from provisioningserver.utils.isc import read_isc_file
 from provisioningserver.utils.shell import call_and_check
+from provisioningserver.utils.snappy import running_in_snap
 
 
 maaslog = get_maas_logger("dns")
@@ -70,6 +71,10 @@ def get_dns_rndc_port():
 
 def get_dns_default_controls():
     """Include the default RNDC controls (default RNDC key on port 953)?"""
+    if running_in_snap():
+        # The default controls don't work in a confined snap, since it
+        # implicitly requires access to /etc/bind
+        return False
     setting = os.getenv("MAAS_DNS_DEFAULT_CONTROLS", "1")
     return (setting == "1")
 
