@@ -16,6 +16,10 @@ import bson
 from django.db.models import Prefetch
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
+from formencode.validators import (
+    Int,
+    StringBool,
+)
 from maasserver.api.support import (
     admin_method,
     AnonymousOperationsHandler,
@@ -905,7 +909,21 @@ class PowerMixin:
         if user_data is not None:
             user_data = b64decode(user_data)
         try:
-            node.start(request.user, user_data=user_data, comment=comment)
+            # These parameters are passed in the request from
+            # maasserver.api.machines.deploy when powering on
+            # the node for deployment.
+            install_kvm = get_optional_param(
+                request.POST, 'install_kvm',
+                default=False, validator=StringBool)
+            bridge_stp = get_optional_param(
+                request.POST, 'bridge_stp', default=None,
+                validator=StringBool)
+            bridge_fd = get_optional_param(
+                request.POST, 'bridge_fd', default=None, validator=Int)
+            node.start(
+                request.user, user_data=user_data, comment=comment,
+                install_kvm=install_kvm, bridge_stp=bridge_stp,
+                bridge_fd=bridge_fd)
         except StaticIPAddressExhaustion:
             # The API response should contain error text with the
             # system_id in it, as that is the primary API key to a node.

@@ -678,7 +678,8 @@ class TestMachineAPI(APITestCase.ForUser):
                 'comment': comment,
             })
         self.assertThat(machine_start, MockCalledOnceWith(
-            self.user, user_data=ANY, comment=comment))
+            self.user, user_data=ANY, comment=comment,
+            install_kvm=ANY, bridge_stp=ANY, bridge_fd=ANY))
 
     def test_POST_deploy_handles_missing_comment(self):
         machine = factory.make_Node(
@@ -698,7 +699,8 @@ class TestMachineAPI(APITestCase.ForUser):
                 'distro_series': distro_series,
             })
         self.assertThat(machine_start, MockCalledOnceWith(
-            self.user, user_data=ANY, comment=None))
+            self.user, user_data=ANY, comment=None,
+            install_kvm=ANY, bridge_stp=ANY, bridge_fd=ANY))
 
     def test_POST_deploy_doesnt_reset_power_options_bug_1569102(self):
         self.become_admin()

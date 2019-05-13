@@ -7108,6 +7108,23 @@ class TestNode_Start(MAASTransactionServerTestCase):
         node.start(user)
         self.assertEquals(NODE_STATUS.DEPLOYING, node.status)
 
+    def test__creates_acquired_bridges_for_install_kvm(self):
+        user = factory.make_User()
+        node = self.make_acquired_node_with_interface(
+            user, power_type="manual")
+        bridge_stp = factory.pick_bool()
+        bridge_fd = random.randint(0, 500)
+        node.start(
+            user, install_kvm=True, bridge_stp=bridge_stp, bridge_fd=bridge_fd)
+        node = reload_object(node)
+        bridge = BridgeInterface.objects.get(node=node)
+        interface = node.interface_set.first()
+        self.assertEquals(NODE_STATUS.DEPLOYING, node.status)
+        self.assertEquals(bridge.mac_address, interface.mac_address)
+        self.assertEquals(bridge.params['bridge_stp'], bridge_stp)
+        self.assertEquals(bridge.params['bridge_fd'], bridge_fd)
+        self.assertTrue(node.install_kvm)
+
     def test__doesnt_change_broken(self):
         user = factory.make_User()
         node = self.make_acquired_node_with_interface(

@@ -724,8 +724,8 @@ class TestDeployAction(MAASServerTestCase):
         Deploy(node, user, request).execute(**extra)
         self.expectThat(mock_get_curtin_config, MockCalledOnceWith(ANY, node))
         # Make sure we set bridge_all when we acquire the Node.
-        self.expectThat(mock_node_acquire, MockCalledOnceWith(
-            user, token=None, bridge_all=True))
+        self.expectThat(
+            mock_node_acquire, MockCalledOnceWith(user, token=None))
         self.expectThat(mock_node_start, MockCalledOnceWith(user))
         # Make sure ubuntu/bionic is selected if KVM pod deployment has been
         # selected.

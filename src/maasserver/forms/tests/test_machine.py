@@ -50,7 +50,6 @@ class TestMachineForm(MAASServerTestCase):
                 'min_hwe_kernel',
                 'hwe_kernel',
                 'install_rackd',
-                'install_kvm',
                 'ephemeral_deploy',
                 'commission',
             ], list(form.fields))
@@ -370,7 +369,6 @@ class TestAdminMachineForm(MAASServerTestCase):
                 'min_hwe_kernel',
                 'hwe_kernel',
                 'install_rackd',
-                'install_kvm',
                 'ephemeral_deploy',
                 'cpu_count',
                 'memory',

@@ -684,6 +684,21 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
             system_id=system_id, user=request.user,
             perm=NodePermission.edit)
         options = get_allocation_options(request)
+        # Deploying a node requires re-checking for EDIT permissions.
+        if not request.user.has_perm(NodePermission.edit, machine):
+            raise PermissionDenied()
+        # Deploying with 'install_rackd' requires ADMIN permissions.
+        if (options.install_rackd and not
+                request.user.has_perm(NodePermission.admin, machine)):
+            raise PermissionDenied()
+        # Deploying with 'install_kvm' requires ADMIN permissions.
+        if (options.install_kvm and not
+                request.user.has_perm(NodePermission.admin, machine)):
+            raise PermissionDenied()
+        if options.install_kvm and (
+                machine.ephemeral_deployment or options.ephemeral_deploy):
+            raise MAASAPIBadRequest(
+                "Cannot install KVM host for ephemeral deployments.")
         if machine.status == NODE_STATUS.READY:
             with locks.node_acquire:
                 if machine.owner is not None and machine.owner != request.user:
@@ -701,21 +716,6 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
             raise NodeStateViolation(
                 "Can't deploy a machine that is in the '{}' state".format(
                     NODE_STATUS_CHOICES_DICT[machine.status]))
-        # Deploying a node requires re-checking for EDIT permissions.
-        if not request.user.has_perm(NodePermission.edit, machine):
-            raise PermissionDenied()
-        # Deploying with 'install_rackd' requires ADMIN permissions.
-        if (options.install_rackd and not
-                request.user.has_perm(NodePermission.admin, machine)):
-            raise PermissionDenied()
-        # Deploying with 'install_kvm' requires ADMIN permissions.
-        if (options.install_kvm and not
-                request.user.has_perm(NodePermission.admin, machine)):
-            raise PermissionDenied()
-        if options.install_kvm and (
-                machine.ephemeral_deployment or options.ephemeral_deploy):
-            raise MAASAPIBadRequest(
-                "Cannot install KVM host for ephemeral deployments.")
         if not machine.distro_series and not series:
             series = Config.objects.get_config('default_distro_series')
         Form = get_machine_edit_form(request.user)
@@ -728,8 +728,6 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
             form.set_hwe_kernel(hwe_kernel=hwe_kernel)
         if options.install_rackd:
             form.set_install_rackd(install_rackd=options.install_rackd)
-        if options.install_kvm:
-            form.set_install_kvm(install_kvm=options.install_kvm)
         if options.ephemeral_deploy:
             form.set_ephemeral_deploy(
                 ephemeral_deploy=options.ephemeral_deploy)

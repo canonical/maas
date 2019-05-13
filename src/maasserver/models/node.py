@@ -4388,10 +4388,16 @@ class Node(CleanSave, TimestampedModel):
         return NODE_STATUS_CHOICES_DICT[self.status]
 
     @transactional
-    def start(self, user, user_data=None, comment=None):
+    def start(
+            self, user, user_data=None, comment=None, install_kvm=None,
+            bridge_stp=None, bridge_fd=None):
         if not user.has_perm(NodePermission.edit, self):
             # You can't start a node you don't own unless you're an admin.
             raise PermissionDenied()
+        # Set install_kvm if not already set.
+        if not self.install_kvm and install_kvm:
+            self.install_kvm = True
+            self.save()
         event = EVENT_TYPES.REQUEST_NODE_START
         allow_power_cycle = False
         # If status is ALLOCATED, this start is actually for a deployment.
@@ -4401,6 +4407,9 @@ class Node(CleanSave, TimestampedModel):
         if self.status == NODE_STATUS.ALLOCATED:
             event = EVENT_TYPES.REQUEST_NODE_START_DEPLOYMENT
             allow_power_cycle = True
+            if self.install_kvm:
+                self._create_acquired_bridges(
+                    bridge_stp=bridge_stp, bridge_fd=bridge_fd)
         # Bug #1630361: Make sure that there is a maas_facing_server_address in
         # the same address family as our configured interfaces.
         # Every node in a real system has a rack controller, but many tests do
