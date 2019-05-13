@@ -157,7 +157,7 @@ function NodesListController(
   $scope.tabs.pools.isPoolAction = function(pool, action) {
     let tab = $scope.tabs.pools;
     return (
-      (action === undefined || tab.activeTargetAction === action) &&
+      (angular.isUndefined(action) || tab.activeTargetAction === action) &&
       tab.activeTarget !== null &&
       tab.activeTarget.id === pool.id
     );
@@ -252,8 +252,8 @@ function NodesListController(
   $scope.tabs.controllers.newPool = {};
   $scope.tabs.controllers.syncStatuses = {};
   $scope.tabs.controllers.addController = false;
-  $scope.tabs.controllers.registerUrl = MAAS_config.register_url;
-  $scope.tabs.controllers.registerSecret = MAAS_config.register_secret;
+  $scope.tabs.controllers.registerUrl = $window.MAAS_config.register_url;
+  $scope.tabs.controllers.registerSecret = $window.MAAS_config.register_secret;
 
   // Switch tab.
   $scope.tabs.switches = {};
@@ -796,7 +796,10 @@ function NodesListController(
       // Set the zone parameter.
       extra.zone_id = tab.zoneSelection.id;
     } else if (tab.actionOption.name === "set-pool") {
-      if (tab.poolAction === "create-pool" && tab.newPool.name !== undefined) {
+      if (
+        tab.poolAction === "create-pool" &&
+        angular.isDefined(tab.newPool.name)
+      ) {
         // Create the pool and set the action options with
         // the new pool id.
         preAction = ResourcePoolsManager.createItem({
@@ -929,15 +932,14 @@ function NodesListController(
             function() {
               tab.actionProgress.completed += 1;
               node.action_failed = false;
-              updateSelectedItems(tabName);
             },
             function(error) {
               addErrorToActionProgress(tabName, error, node);
               node.action_failed = true;
-              updateSelectedItems(tabName);
             }
           );
         });
+        updateSelectedItems(tabName);
       },
       function(error) {
         addErrorToActionProgress(tabName, error);
