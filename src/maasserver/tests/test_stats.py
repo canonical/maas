@@ -6,7 +6,6 @@
 __all__ = []
 
 import base64
-from collections import Counter
 import json
 
 from django.db import transaction
@@ -15,7 +14,6 @@ from maasserver.enum import NODE_STATUS
 from maasserver.models import (
     Config,
     Fabric,
-    Node,
     Space,
     Subnet,
     VLAN,
@@ -136,8 +134,16 @@ class TestMAASStats(MAASServerTestCase):
         factory.make_RegionRackController()
         factory.make_RegionController()
         factory.make_RackController()
-        factory.make_Machine(cpu_count=2, memory=200, status=4)
-        factory.make_Machine(cpu_count=3, memory=100, status=11)
+        factory.make_Machine(
+            cpu_count=2, memory=200, status=NODE_STATUS.READY)
+        factory.make_Machine(status=NODE_STATUS.READY)
+        for _ in range(4):
+            factory.make_Machine(status=NODE_STATUS.ALLOCATED)
+        factory.make_Machine(
+            cpu_count=3, memory=100, status=NODE_STATUS.FAILED_DEPLOYMENT)
+        for _ in range(2):
+            factory.make_Machine(status=NODE_STATUS.DEPLOYED)
+        factory.make_Device()
         factory.make_Device()
 
         subnets = Subnet.objects.all()
@@ -152,18 +158,15 @@ class TestMAASStats(MAASServerTestCase):
         # calculates, so just get it directly from the database for the test.
         total_storage = machine_stats['total_storage']
 
-        node_status = Node.objects.values_list('status', flat=True)
-        node_status = Counter(node_status)
-
-        compare = {
+        expected = {
             "controllers": {
                 "regionracks": 1,
                 "regions": 1,
                 "racks": 1,
             },
             "nodes": {
-                "machines": 2,
-                "devices": 1,
+                "machines": 9,
+                "devices": 2,
             },
             "machine_stats": {
                 "total_cpu": 5,
@@ -171,23 +174,17 @@ class TestMAASStats(MAASServerTestCase):
                 "total_storage": total_storage,
             },
             "machine_status": {
-                "new": node_status.get(NODE_STATUS.NEW, 0),
-                "ready": node_status.get(NODE_STATUS.READY, 0),
-                "allocated": node_status.get(NODE_STATUS.ALLOCATED, 0),
-                "deployed": node_status.get(NODE_STATUS.DEPLOYED, 0),
-                "commissioning": node_status.get(
-                    NODE_STATUS.COMMISSIONING, 0),
-                "testing": node_status.get(
-                    NODE_STATUS.TESTING, 0),
-                "deploying": node_status.get(
-                    NODE_STATUS.DEPLOYING, 0),
-                "failed_deployment": node_status.get(
-                    NODE_STATUS.FAILED_DEPLOYMENT, 0),
-                "failed_commissioning": node_status.get(
-                    NODE_STATUS.COMMISSIONING, 0),
-                "failed_testing": node_status.get(
-                    NODE_STATUS.FAILED_TESTING, 0),
-                "broken": node_status.get(NODE_STATUS.BROKEN, 0),
+                "new": 3,
+                "ready": 2,
+                "allocated": 4,
+                "deployed": 2,
+                "commissioning": 0,
+                "testing": 0,
+                "deploying": 0,
+                "failed_deployment": 1,
+                "failed_commissioning": 0,
+                "failed_testing": 0,
+                "broken": 0,
             },
             "network_stats": {
                 "spaces": Space.objects.count(),
@@ -197,7 +194,7 @@ class TestMAASStats(MAASServerTestCase):
                 "subnets_v6": len(v6),
             },
         }
-        self.assertEquals(stats, json.dumps(compare))
+        self.assertEquals(json.loads(stats), expected)
 
     def test_get_maas_stats_no_machines(self):
         expected = {

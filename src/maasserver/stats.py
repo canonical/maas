@@ -34,6 +34,7 @@ from maasserver.enum import (
     BMC_TYPE,
 )
 from maasserver.models import (
+    Machine,
     Node,
     Fabric,
     VLAN,
@@ -52,18 +53,16 @@ def NotNullSum(column):
 
 
 def get_machine_stats():
-    nodes = Node.objects.all()
-    machines = nodes.filter(node_type=NODE_TYPE.MACHINE)
     # Rather overall amount of stats for machines.
-    return machines.aggregate(
+    return Machine.objects.aggregate(
         total_cpu=NotNullSum('cpu_count'),
         total_mem=NotNullSum('memory'),
         total_storage=NotNullSum('blockdevice__size'))
 
 
 def get_machine_state_stats():
-    node_status = Node.objects.values_list('status', flat=True)
-    node_status = Counter(node_status)
+    node_status = Node.objects.exclude(node_type=NODE_TYPE.DEVICE)
+    node_status = Counter(node_status.values_list('status', flat=True))
 
     return {
         # base status
@@ -87,11 +86,10 @@ def get_machine_state_stats():
 
 
 def get_machines_by_architecture():
-    node_arches = Node.objects.filter(
-        node_type=NODE_TYPE.MACHINE).extra(
-            dict(
-                short_arch="SUBSTRING(architecture FROM '(.*)/')")
-            ).values_list('short_arch', flat=True)
+    node_arches = Machine.objects.extra(
+        dict(
+            short_arch="SUBSTRING(architecture FROM '(.*)/')")
+    ).values_list('short_arch', flat=True)
     return Counter(node_arches)
 
 
