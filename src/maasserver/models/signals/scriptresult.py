@@ -29,9 +29,14 @@ def emit_script_result_status_transition_event(instance, old_values, **kwargs):
     if (script_result.script_set.result_type == RESULT_TYPE.TESTING and
             old_status == SCRIPT_STATUS.PENDING and script_result.status in (
                 SCRIPT_STATUS.INSTALLING, SCRIPT_STATUS.RUNNING)):
+            storage_name = script_result.parameters.get(
+                'storage', {}).get('value', {}).get('name')
             Event.objects.create_node_event(
                 script_result.script_set.node, EVENT_TYPES.RUNNING_TEST,
-                event_description=script_result.name)
+                event_description="%s on %s" % (
+                    script_result.name, storage_name) if storage_name else
+                script_result.name)
+
     elif script_result.status in (
             SCRIPT_STATUS.FAILED, SCRIPT_STATUS.TIMEDOUT,
             SCRIPT_STATUS.ABORTED):

@@ -6,6 +6,7 @@
 __all__ = []
 
 
+import json
 import random
 
 from maasserver.models import Event
@@ -24,13 +25,14 @@ from provisioningserver.events import (
 
 class TestStatusTransitionEvent(MAASServerTestCase):
 
-    def test_script_result_running_test_or_installing_emits_event(self):
+    def test__running_or_installing_emits_event_empty_storage_parameters(self):
 
         script_result = factory.make_ScriptResult(
             status=SCRIPT_STATUS.PENDING, script_set=factory.make_ScriptSet(
                 result_type=RESULT_TYPE.TESTING), script=factory.make_Script())
         script_result.status = random.choice([
             SCRIPT_STATUS.INSTALLING, SCRIPT_STATUS.RUNNING])
+        script_result.parameters = json.dumps({})
         script_result.save()
 
         latest_event = Event.objects.last()
@@ -47,7 +49,38 @@ class TestStatusTransitionEvent(MAASServerTestCase):
                 latest_event.description,
             ))
 
-    def test_script_did_not_complete_emits_event(self):
+    def test__running_or_installing_emits_event_with_storage_parameters(self):
+
+        script_result = factory.make_ScriptResult(
+            status=SCRIPT_STATUS.PENDING, script_set=factory.make_ScriptSet(
+                result_type=RESULT_TYPE.TESTING), script=factory.make_Script())
+        script_result.status = random.choice([
+            SCRIPT_STATUS.INSTALLING, SCRIPT_STATUS.RUNNING])
+        script_result.parameters = json.dumps({
+            'storage': {
+                'value': {
+                    'name': factory.make_name('name')
+                    }
+                }
+            })
+        script_result.save()
+
+        latest_event = Event.objects.last()
+        self.assertEqual(
+            (
+                EVENT_TYPES.RUNNING_TEST,
+                EVENT_DETAILS[
+                    EVENT_TYPES.RUNNING_TEST].description,
+                "%s on %s" % (script_result.name, script_result.parameters.get(
+                    'storage').get('value').get('name')),
+            ),
+            (
+                latest_event.type.name,
+                latest_event.type.description,
+                latest_event.description,
+            ))
+
+    def test__script_did_not_complete_emits_event(self):
 
         script_result = factory.make_ScriptResult(
             status=SCRIPT_STATUS.RUNNING, script_set=factory.make_ScriptSet(
@@ -72,7 +105,7 @@ class TestStatusTransitionEvent(MAASServerTestCase):
                 latest_event.description,
             ))
 
-    def test_script_changed_status_emits_event(self):
+    def test__script_changed_status_emits_event(self):
 
         old_status = SCRIPT_STATUS.RUNNING
         script_result = factory.make_ScriptResult(
