@@ -992,7 +992,8 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                         on-check-all="toggleCheckAll('machines')"
                         on-check="toggleChecked($machine, 'machines')"
                         pools="pools"
-                        zones="zones">
+                        zones="zones"
+                        metadata=tabs.machines.metadata>
                     </maas-machines-table>
                 </div>
             </form>

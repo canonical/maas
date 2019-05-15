@@ -33,7 +33,8 @@ function maasMachinesTable(
       onCheckAll: "&",
       onCheck: "=",
       pools: "=",
-      zones: "="
+      zones: "=",
+      metadata: "="
     },
     templateUrl:
       "static/partials/machines-table.html?v=" +
@@ -78,7 +79,8 @@ function maasMachinesTable(
     // ng-repeats the initial digest cycle is slow and the UI is
     // blocked on first navigation.
     if (angular.isDefined($scope.loading)) {
-      MachinesManager.clearItems();
+      MachinesManager.clear();
+      $scope.metadata = MachinesManager.getMetadata();
     }
     const machines = MachinesManager.getItems();
 
