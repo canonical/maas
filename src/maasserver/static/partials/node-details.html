@@ -238,7 +238,7 @@
                 <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
                 <div class="col-9 u-vertically-center">
                     <p class="u-remove-max-width">
-                        <i class="p-icon--error">Error:</i> Node failed to be {$ action.option.sentence $}, because of the following error: {$ action.error $}
+                        <i class="p-icon--error">Error:</i> {$ getHardwareTestErrorText(action.error) $}
                     </p>
                 </div>
                 <div class="col-3">

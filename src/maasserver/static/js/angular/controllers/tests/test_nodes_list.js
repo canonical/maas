@@ -2061,4 +2061,56 @@ describe("NodesListController", function() {
       );
     });
   });
+
+  describe("getHardwareTestErrorText", function() {
+    it(
+      "returns correct string if 'Unable to run destructive" +
+        " test while deployed!'",
+      function() {
+        makeController();
+        var tab = "machines";
+        $scope.tabs[tab].selectedItems = ["foo", "bar", "baz"];
+        expect(
+          $scope.getHardwareTestErrorText(
+            "Unable to run destructive test while deployed!",
+            tab
+          )
+        ).toBe(
+          "3 machines cannot run hardware testing. The selected hardware" +
+            " tests contain one or more destructive tests." +
+            " Destructive tests cannot run on deployed machines."
+        );
+      }
+    );
+
+    it("returns singular error string if only one selectedItem", function() {
+      makeController();
+      var tab = "machines";
+      $scope.tabs[tab].selectedItems = ["foo"];
+      expect(
+        $scope.getHardwareTestErrorText(
+          "Unable to run destructive test while deployed!",
+          tab
+        )
+      ).toBe(
+        "1 machine cannot run hardware testing. The selected hardware tests" +
+          " contain one or more destructive tests. Destructive tests cannot" +
+          " run on deployed machines."
+      );
+    });
+
+    it(
+      "returns error string if not 'Unable to run destructive " +
+        "test while deployed!'",
+      function() {
+        makeController();
+        var tab = "machines";
+        $scope.tabs[tab].selectedItems = [];
+        var errorString = "There was an error";
+        expect($scope.getHardwareTestErrorText(errorString, tab)).toBe(
+          errorString
+        );
+      }
+    );
+  });
 });

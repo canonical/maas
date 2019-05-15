@@ -424,9 +424,7 @@
                     </p>
                     <div class="p-notification--negative" data-ng-repeat="(error, machines) in tabs[tab].actionProgress.errors">
                         <p class="p-notification__response">
-                            <span class="p-notification__status">Error: </span> The {$ tabs[tab].actionOption.title.toLowerCase() $} action for {$
-                            nodes.length $} <span data-ng-pluralize count="nodes.length" when="{'one': 'node', 'other': 'nodes'}"></span> failed
-                            with error: {$ error $}
+                            {$ getHardwareTestErrorText(error, tab) $}
                         </p>
                     </div>
                 </div>

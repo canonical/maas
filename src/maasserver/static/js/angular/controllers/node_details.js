@@ -1247,6 +1247,17 @@ function NodeDetailsController(
     }
   };
 
+  $scope.getHardwareTestErrorText = function(error) {
+    if (error === "Unable to run destructive test while deployed!") {
+      return (
+        "The selected hardware tests contain one or more destructive" +
+        " tests. Destructive tests cannot run on deployed machines."
+      );
+    } else {
+      return error;
+    }
+  };
+
   // Reload osinfo when the page reloads
   $scope.$on("$routeUpdate", function() {
     GeneralManager.loadItems(["osinfo", "architectures", "min_hwe_kernels"]);

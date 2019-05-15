@@ -2496,4 +2496,34 @@ describe("NodeDetailsController", function() {
       expect($scope.showHighAvailabilityNotification()).toBe(false);
     });
   });
+
+  describe(
+    "getHardwareTestErrorText if 'Unable to run destructive" +
+      " test while deployed!'",
+    function() {
+      it("returns correct string", function() {
+        makeController();
+        expect(
+          $scope.getHardwareTestErrorText(
+            "Unable to run destructive test while deployed!"
+          )
+        ).toBe(
+          "The selected hardware tests contain one or more destructive tests." +
+            " Destructive tests cannot run on deployed machines."
+        );
+      });
+
+      it(
+        "return passed error string if not 'Unable to run destructive test" +
+          " while deployed!'",
+        function() {
+          makeController();
+          var errorString = "There was an error";
+          expect($scope.getHardwareTestErrorText(errorString)).toBe(
+            errorString
+          );
+        }
+      );
+    }
+  );
 });

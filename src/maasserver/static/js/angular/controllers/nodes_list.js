@@ -1073,6 +1073,34 @@ function NodesListController(
     $scope.failedActionSentence = sentence;
   };
 
+  $scope.getHardwareTestErrorText = function(error, tab) {
+    var selectedItemsCount = $scope.tabs[tab].selectedItems.length;
+
+    if (error === "Unable to run destructive test while deployed!") {
+      var singular = false;
+      var machinesText = "";
+
+      if (selectedItemsCount === 1) {
+        var singular = true;
+      }
+
+      if (singular) {
+        machinesText += "1 machine";
+      } else {
+        machinesText += selectedItemsCount + " machines";
+      }
+
+      return (
+        machinesText +
+        " cannot run hardware testing. The selected hardware tests contain" +
+        " one or more destructive tests. Destructive tests cannot run on" +
+        " deployed machines."
+      );
+    } else {
+      return error;
+    }
+  };
+
   // Reload osinfo when the page reloads
   $scope.$on("$routeUpdate", function() {
     GeneralManager.loadItems(["osinfo"]);
