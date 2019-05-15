@@ -98,3 +98,27 @@ class TestStatusTransitionEvent(MAASServerTestCase):
                 latest_event.type.description,
                 latest_event.description,
             ))
+
+    def test__install_log_emits_event(self):
+
+        old_status = SCRIPT_STATUS.RUNNING
+        script_result = factory.make_ScriptResult(
+            status=old_status, script_set=factory.make_ScriptSet(
+                result_type=RESULT_TYPE.COMMISSIONING),
+            script=factory.make_Script(name="/tmp/install.log"))
+        script_result.status = SCRIPT_STATUS.PASSED
+        script_result.script_set.node.netboot = False
+        script_result.save()
+
+        latest_event = Event.objects.last()
+        self.assertEqual(
+            (
+                EVENT_TYPES.REBOOTING,
+                EVENT_DETAILS[EVENT_TYPES.REBOOTING].description,
+                "",
+            ),
+            (
+                latest_event.type.name,
+                latest_event.type.description,
+                latest_event.description,
+            ))

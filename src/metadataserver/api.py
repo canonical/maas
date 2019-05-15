@@ -1238,6 +1238,4 @@ class AnonMetaDataHandler(VersionIndexHandler):
         Event.objects.create_node_event(
             node, EVENT_TYPES.NODE_INSTALLATION_FINISHED,
             event_description="Node disabled netboot")
-        # Create status message event for rebooting the machine.
-        Event.objects.create_node_event(node, EVENT_TYPES.REBOOTING)
         return rc.ALL_OK

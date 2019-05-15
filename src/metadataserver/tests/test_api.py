@@ -2904,37 +2904,6 @@ class TestAnonymousAPI(MAASServerTestCase):
         response = self.client.get(anon_node_url, {'op': 'get_preseed'})
         self.assertThat(response, HasStatusCode(http.client.OK))
 
-    def test_anonymous_netboot_off_adds_install_and_reboot_events(self):
-        node = factory.make_Node(netboot=True)
-        anon_netboot_off_url = reverse(
-            'metadata-node-by-id', args=['latest', node.system_id])
-        self.client.post(
-            anon_netboot_off_url, {'op': 'netboot_off'})
-        events = Event.objects.filter(node=node)
-        self.assertEqual(
-            (
-                EVENT_TYPES.NODE_INSTALLATION_FINISHED,
-                EVENT_DETAILS[
-                    EVENT_TYPES.NODE_INSTALLATION_FINISHED].description,
-                "Node disabled netboot",
-            ),
-            (
-                events[0].type.name,
-                events[0].type.description,
-                events[0].description,
-            ))
-        self.assertEqual(
-            (
-                EVENT_TYPES.REBOOTING,
-                EVENT_DETAILS[EVENT_TYPES.REBOOTING].description,
-                "",
-            ),
-            (
-                events[1].type.name,
-                events[1].type.description,
-                events[1].description,
-            ))
-
 
 class TestEnlistViews(MAASServerTestCase):
     """Tests for the enlistment metadata views."""
