@@ -137,6 +137,7 @@ class TestMAASStats(MAASServerTestCase):
         factory.make_Machine(
             cpu_count=2, memory=200, status=NODE_STATUS.READY)
         factory.make_Machine(status=NODE_STATUS.READY)
+        factory.make_Machine(status=NODE_STATUS.NEW)
         for _ in range(4):
             factory.make_Machine(status=NODE_STATUS.ALLOCATED)
         factory.make_Machine(
@@ -165,7 +166,7 @@ class TestMAASStats(MAASServerTestCase):
                 "racks": 1,
             },
             "nodes": {
-                "machines": 9,
+                "machines": 10,
                 "devices": 2,
             },
             "machine_stats": {
@@ -174,7 +175,7 @@ class TestMAASStats(MAASServerTestCase):
                 "total_storage": total_storage,
             },
             "machine_status": {
-                "new": 3,
+                "new": 1,
                 "ready": 2,
                 "allocated": 4,
                 "deployed": 2,

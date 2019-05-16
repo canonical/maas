@@ -61,7 +61,7 @@ def get_machine_stats():
 
 
 def get_machine_state_stats():
-    node_status = Node.objects.exclude(node_type=NODE_TYPE.DEVICE)
+    node_status = Node.objects.filter(node_type=NODE_TYPE.MACHINE)
     node_status = Counter(node_status.values_list('status', flat=True))
 
     return {
