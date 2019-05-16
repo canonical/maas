@@ -63,3 +63,7 @@ $table-h-indent: $sph-intra--condensed;
   pointer-events: none !important;
   user-select: none;
 }
+
+.u-mirror--y {
+  transform: rotate(180deg);
+}

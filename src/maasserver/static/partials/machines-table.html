@@ -104,7 +104,7 @@
                 </div>
                 <div class="p-double-row__rows-container--checkbox">
                     <div class="p-double-row__main-row">
-                        <a class="p-domain-name" href="#/{$ node.link_type $}/{$ node.system_id $}" title="{$ node.fqdn $}">
+                        <a class="p-domain-name u-text-overflow" href="#/{$ node.link_type $}/{$ node.system_id $}" title="{$ node.fqdn $}">
                             <span data-ng-if="node.locked" title="This machine is locked. You have to unlock it to perform any actions." aria-describedby="{$ node.fqdn $}-locked-state">
                                 <i class="p-icon--locked">Locked: </i>
                             </span>
@@ -113,9 +113,11 @@
                     </div>
                     <span class="p-tooltip p-tooltip--bottom-left" aria-describedby="ip-addresses-{$ node.fqdn $}">
                         <div data-ng-if="removeDuplicates(node.ip_addresses, 'ip').length" class="p-double-row__muted-row">
-                            <span>{$ getBootIp(node.ip_addresses) || node.ip_addresses[0].ip $}</span><span data-ng-if="getBootIp(node.ip_addresses)"> (PXE)</span>
-                            <span data-ng-if="removeDuplicates(node.ip_addresses, 'ip').length > 1">(+{$ removeDuplicates(node.ip_addresses, 'ip').length - 1 $})</span>
-                            <span class="p-tooltip__message" style="white-space:initial" role="tooltip" data-ng-if="removeDuplicates(node.ip_addresses, 'ip').length > 1" id="ip-addresses-{$ node.fqdn $}">
+                            <span class="u-text-overflow">
+                                <span>{$ getBootIp(node.ip_addresses) || node.ip_addresses[0].ip $}</span><span data-ng-if="getBootIp(node.ip_addresses)"> (PXE)</span>
+                                <span data-ng-if="removeDuplicates(node.ip_addresses, 'ip').length > 1">(+{$ removeDuplicates(node.ip_addresses, 'ip').length - 1 $})</span>
+                            </span>
+                            <span class="p-tooltip__message" style="white-space:initial;left:3.5rem" role="tooltip" data-ng-if="removeDuplicates(node.ip_addresses, 'ip').length > 1" id="ip-addresses-{$ node.fqdn $}">
                                 <div><strong>{$ removeDuplicates(node.ip_addresses, 'ip').length $} interfaces:</strong></div>
                                 <div data-ng-repeat="ip_address in removeDuplicates(node.ip_addresses, 'ip')">
                                     <span>{$ ip_address.ip $}</span><span data-ng-if="ip_address.is_boot"> (PXE)</span>
@@ -130,11 +132,13 @@
                     <input class="checkbox" type="checkbox" data-ng-click="toggleChecked(node)" data-ng-checked="node.$selected" id="{$ node.fqdn $}" data-ng-disabled="ngDisable()" />
                     <label class="p-checkbox--action checkbox-label" for="{$ node.fqdn $}" ng-class="getCheckboxClass(node)"></label>
                 </div>
-                <a href="#/{$ node.link_type $}/{$ node.system_id $}" title="{$ node.pxe_mac_vendor $}">{$ node.pxe_mac $}</a>
-                <a href="#/{$ node.link_type $}/{$ node.system_id $}" class="extra-macs" data-ng-show="node.extra_macs.length">(+{$ node.extra_macs.length $})</a>
+                <span class="u-text-overflow">
+                    <a href="#/{$ node.link_type $}/{$ node.system_id $}" title="{$ node.pxe_mac_vendor $}">{$ node.pxe_mac $}</a>
+                    <a href="#/{$ node.link_type $}/{$ node.system_id $}" class="extra-macs" data-ng-show="node.extra_macs.length">(+{$ node.extra_macs.length $})</a>
+                </span>
             </td>
             <td class="p-table__col--power p-double-row" aria-label="Power state">
-                <span class="p-table-menu">
+                <span class="p-table-menu" data-ng-class="{'is-hidden': hideActions}">
                     <div data-ng-click="!hideActions && toggleMenu(node.system_id + '-power')" class="p-double-row__icon-container">
                         <i
                             title="{$ node.power_state $}"
@@ -150,14 +154,19 @@
                     </div>
                     <div class="p-double-row__rows-container--icon u-hide--br3">
                         <div class="p-double-row__main-row u-upper-case--first">
-                            <div title="{$ node.power_state $}">{$ node.power_state $}</div>
+                            <span class="u-text-overflow" title="{$ node.power_state $}">{$ node.power_state $}</span>
+                            <button
+                                class="p-table-menu__toggle p-icon--chevron u-hide--br3"
+                                data-ng-if="!hideActions"
+                                data-ng-class="{'u-mirror--y' : openMenu === node.system_id + '-power'}"
+                                data-ng-click="toggleMenu(node.system_id + '-power')"
+                            ></button>
                         </div>
                         <div class="p-double-row__muted-row u-upper-case--first">
-                            <span title="{$ node.power_type $}">{$ node.power_type $}</span>
+                            <span class="u-text-overflow" title="{$ node.power_type $}">{$ node.power_type $}</span>
                         </div>
                     </div>
-                    <button class="p-table-menu__toggle p-icon--contextual-menu u-hide--br3" data-ng-click="toggleMenu(node.system_id + '-power')" data-ng-if="!hideActions"></button>
-                    <span class="p-table-menu__dropdown" data-ng-show="openMenu === node.system_id + '-power'" data-ng-if="!node.powerTransition">
+                    <span class="p-table-menu__dropdown" data-ng-if="!node.powerTransition && openMenu === node.system_id + '-power'">
                         <div class="p-table-menu__title--icon">Take action:</div>
                         <button
                             class="p-table-menu__power-on"
@@ -191,7 +200,7 @@
                 </span>
             </td>
             <td class="p-table__col--status p-double-row" aria-label="Status, Events">
-                <span class="p-table-menu">
+                <span class="p-table-menu" data-ng-class="{'is-hidden': hideActions}">
                     <div class="p-double-row__icon-container" data-ng-click="!hideActions && toggleMenu(node.system_id + '-status')">
                         <i data-ng-if="showSpinner(node)" class="p-icon--spinner u-animation--spin"></i>
                         <i data-ng-if="showNodeStatus(node)" data-maas-script-status="script-status" data-script-status="node.other_test_status" aria-label="{$ node.other_test_status_tooltip $}"></i>
@@ -203,17 +212,26 @@
                     </div>
                     <div class="p-double-row__rows-container--icon">
                         <div class="p-double-row__main-row" aria-label="Status" title="{$ getStatusText(node) $}">
-                            <span>{$ getStatusText(node) $}</span>
+                            <span class="u-text-overflow">{$ getStatusText(node) $}</span>
+                            <button
+                                class="p-table-menu__toggle p-icon--chevron"
+                                data-ng-if="!hideActions"
+                                data-ng-class="{'u-mirror--y' : openMenu === node.system_id + '-status'}"
+                                data-ng-click="toggleMenu(node.system_id + '-status')"
+                            ></button>
                         </div>
                         <div class="p-double-row__muted-row">
                             <span class="p-tooltip p-tooltip--btm" aria-describedby="status-message-tooltip-{$ node.fqdn $}">
-                                {$ getStatusMessage(node) $}
+                                <span class="u-text-overflow">{$ getStatusMessage(node) $}</span>
                                 <span class="p-tooltip__message" role="tooltip" id="status-message-tooltip-{$ node.fqdn $}">{$ getStatusMessage(node) $}</span>
                             </span>
                         </div>
                     </div>
-                    <button class="p-table-menu__toggle p-icon--contextual-menu u-hide--br3" data-ng-click="toggleMenu(node.system_id + '-status')" data-ng-if="!hideActions"></button>
-                    <span class="p-table-menu__dropdown" data-ng-show="openMenu === node.system_id + '-status'">
+                    <span
+                        class="p-table-menu__dropdown"
+                        data-ng-if="openMenu === node.system_id + '-status'"
+                        style="left: .5rem"
+                    >
                         <div class="p-table-menu__title">Take action:</div>
                         <div class="p-contextual-menu__group" data-ng-if="getStatusActions(node).length">
                             <button
@@ -242,18 +260,22 @@
                 </span>
             </td>
             <td class="p-table__col--owner p-double-row" aria-label="Owner, Tags" title="{$ node.owner $}">
-                <div class="p-table-menu">
+                <div class="p-table-menu" data-ng-class="{'is-hidden': hideActions}">
                     <div class="p-double-row__rows-container">
                         <div class="p-double-row__main-row" aria-label="Owner">
                             <i class="p-icon--spinner u-animation--spin" data-ng-if="node['acquire-transition'] || node['release-transition']">Changing owner</i>
-                            <span data-ng-if="node.owner">{$ node.owner $}</span>
-                            <span data-ng-if="!node.owner">-</span>
-                        </div>
+                            <span class="u-text-overflow" data-ng-if="node.owner">{$ node.owner $}</span>
+                            <span class="u-text-overflow" data-ng-if="!node.owner">-</span>
+                            <button
+                                class="p-table-menu__toggle p-icon--chevron"
+                                data-ng-if="!hideActions"
+                                data-ng-class="{'u-mirror--y' : openMenu === node.system_id + '-owner'}"
+                                data-ng-click="toggleMenu(node.system_id + '-owner')"
+                            ></button>                        </div>
                         <div data-ng-if="node.tags.length !== 0" class="p-double-row__muted-row" aria-label="Tags" title="{$ node.tags.join(', ') $}">
-                            <span>{$ node.tags.join(', ') $}</span>
+                            <span class="u-text-overflow">{$ node.tags.join(', ') $}</span>
                         </div>
                     </div>
-                    <button class="p-table-menu__toggle p-icon--contextual-menu u-hide--br2" data-ng-click="toggleMenu(node.system_id + '-owner')" data-ng-if="!hideActions"></button>
                     <span class="p-table-menu__dropdown" data-ng-if="openMenu === node.system_id + '-owner'">
                         <div class="p-table-menu__title">Take action:</div>
                         <button
@@ -281,24 +303,23 @@
                 </div>
             </td>
             <td class="p-table__col--pool p-double-row" aria-label="Pool, Note">
-                <div class="p-table-menu">
+                <div class="p-table-menu" data-ng-class="{'is-hidden': hideActions}">
                     <div class="p-double-row__rows-container">
                         <div class="p-double-row__main-row" aria-label="Pool">
                             <i class="p-icon--spinner u-animation--spin" data-ng-if="node['set-pool-transition']">Setting pool</i>
-                            <span data-ng-if="node.pool.name"><a class="p-link--soft" href="#/pools" title="{$ node.pool.name $}"> {$ node.pool.name $}</a></span>
-                            <span data-ng-if="!node.pool.name">-</span>
+                            <span class="u-text-overflow" data-ng-if="node.pool.name"><a class="p-link--soft" href="#/pools" title="{$ node.pool.name $}"> {$ node.pool.name $}</a></span>
+                            <span class="u-text-overflow" data-ng-if="!node.pool.name">-</span>
+                            <button
+                                class="p-table-menu__toggle p-icon--chevron u-hide--br3"
+                                data-ng-if="node.actions.indexOf('set-pool') !== -1 && !hideActions"
+                                data-ng-class="{'u-mirror--y' : openMenu === node.system_id + '-pool'}"
+                                data-ng-click="toggleMenu(node.system_id + '-pool')"
+                            ></button>
                         </div>
                         <div class="p-double-row__muted-row" aria-label="Note" title="{$ node.description $}">
-                            <span data-ng-if="node.description">{$ node.description $}</span>
-                            <span data-ng-if="!node.description">&nbsp;</span>
+                            <span class="u-text-overflow" data-ng-if="node.description">{$ node.description $}</span>
                         </div>
                     </div>
-                    <button
-                        data-ng-if="node.actions.indexOf('set-pool') !== -1 && !hideActions"
-                        data-ng-click="toggleMenu(node.system_id + '-pool')"
-                        class="p-table-menu__toggle p-icon--contextual-menu"
-                    >
-                    </button>
                     <span class="p-table-menu__dropdown" data-ng-if="openMenu === node.system_id + '-pool'">
                         <div class="p-table-menu__title">Change pool:</div>
                         <button
@@ -320,29 +341,31 @@
                 </div>
             </td>
             <td class="p-table__col--zone p-double-row" aria-label="Zone">
-                <div class="p-table-menu">
+                <div class="p-table-menu" data-ng-class="{'is-hidden': hideActions}">
                     <div class="p-double-row__rows-container">
                         <div class="p-double-row__main-row" aria-label="Zone" title="{$ node.zone.name $}">
                             <i class="p-icon--spinner u-animation--spin" data-ng-if="node['set-zone-transition']">Setting zone</i>
-                            <span data-ng-if="node.zone.name"><a class="p-link--soft" href="#/zone/{$ node.zone.id $}" title="{$ node.zone.name $}">{$ node.zone.name $}</a></span>
-                            <span data-ng-if="!node.zone.name">-</span>
+                            <span class="u-text-overflow" data-ng-if="node.zone.name"><a class="p-link--soft" href="#/zone/{$ node.zone.id $}" title="{$ node.zone.name $}">{$ node.zone.name $}</a></span>
+                            <span class="u-text-overflow" data-ng-if="!node.zone.name">-</span>
+                            <button
+                                class="p-table-menu__toggle p-icon--chevron u-hide--br3"
+                                data-ng-if="node.actions.indexOf('set-zone') !== -1 && !hideActions"
+                                data-ng-class="{'u-mirror--y' : openMenu === node.system_id + '-zone'}"
+                                data-ng-click="toggleMenu(node.system_id + '-zone')"
+                            ></button>
                         </div>
                         <div class="p-double-row__muted-row" style="overflow: visible">
-                            <span data-ng-if="node.spaces.length === 1">
+                            <span class="u-text-overflow" data-ng-if="node.spaces.length === 1">
                                 {$ node.spaces[0] $}
                             </span>
                             <span data-ng-if="node.spaces.length > 1" class="p-tooltip p-tooltip--btm-left" aria-described-by="{$ node.hostname $}-spaces" style="overflow: visible">
-                                {$ node.spaces.length $} spaces
+                                <span class="u-text-overflow">
+                                    {$ node.spaces.length $} spaces
+                                </span>
                                 <span class="p-tooltip__message" role="tooltip" id="{$ node.hostname $}-spaces">{$ getSpacesTooltipMessage(node.spaces) $}</span>
                             </span>
                         </div>
                     </div>
-                    <button
-                        data-ng-if="node.actions.indexOf('set-zone') !== -1 && !hideActions"
-                        data-ng-click="toggleMenu(node.system_id + '-zone')"
-                        class="p-table-menu__toggle p-icon--contextual-menu"
-                    >
-                    </button>
                     <span class="p-table-menu__dropdown" data-ng-if="openMenu === node.system_id + '-zone'">
                         <div class="p-table-menu__title">Change AZ:</div>
                         <button
@@ -366,49 +389,54 @@
             <td class="p-table__col--fabric p-double-row" aria-label="Fabric, VLAN" title="{$ node.fabric.name $}">
                 <div class="p-double-row__rows-container">
                     <div class="p-double-row__main-row" aria-label="Fabric">
-                        <span data-ng-if="node.vlan.fabric_name"><a class="p-link--soft" href="#/fabric/{$ node.vlan.fabric_id $}" title="{$ node.vlan.fabric_name $}">{$ node.vlan.fabric_name $}</a></span>
-                        <span data-ng-if="!node.vlan.fabric_name">-</span>
+                        <span class="u-text-overflow" data-ng-if="node.vlan.fabric_name"><a class="p-link--soft" href="#/fabric/{$ node.vlan.fabric_id $}" title="{$ node.vlan.fabric_name $}">{$ node.vlan.fabric_name $}</a></span>
+                        <span class="u-text-overflow" data-ng-if="!node.vlan.fabric_name">-</span>
                     </div>
                     <div data-ng-if="node.vlan.name" class="p-double-row__muted-row" aria-label="VLAN">
-                        <span data-ng-if="node.vlan.name"><a class="p-muted-text p-link--muted" href="#/vlan/{$ node.vlan.id $}" title="{$ node.vlan.name $}">{$ node.vlan.name $}</a></span>
+                        <span class="u-text-overflow" data-ng-if="node.vlan.name"><a class="p-muted-text p-link--muted" href="#/vlan/{$ node.vlan.id $}" title="{$ node.vlan.name $}">{$ node.vlan.name $}</a></span>
                     </div>
                 </div>
             </td>
             <td class="p-table__col--cores p-table--action-cell u-align--right p-double-row" aria-label="CPU, Architecture">
                 <div class="p-double-row__rows-container">
-                    <div class="p-double-row__main-row" aria-label="CPU" style="overflow: visible"> <!-- overflow override so tooltip is visible -->
+                    <div class="p-double-row__main-row u-align--right" aria-label="CPU" style="overflow: visible"> <!-- overflow override so tooltip is visible -->
                         <span class="p-tooltip p-tooltip--left">
                             <span data-maas-script-status="script-status" data-script-status="node.cpu_test_status" data-ng-if="node.cpu_test_status !== -1 && node.cpu_test_status !== 2 && !hideFailedTests" aria-describedby="node-cpu-tooltip-{$ node.fqdn $}"></span>
-                            {$ node.cpu_count $}
+                            <span class="u-text-overflow">{$ node.cpu_count $}</span>
                             <span class="p-tooltip__message" role="tooltip" id="node-cpu-tooltip-{$ node.fqdn $}" data-ng-if="node.cpu_test_status !== -1 && node.cpu_test_status !== 2 && !hideFailedTests">{$ node.cpu_test_status_tooltip $}</span>
                         </span>
                     </div>
-                    <div class="p-double-row__muted-row" aria-label="Architecture" style="overflow: visible"> <!-- overflow override so tooltip is visible -->
+                    <div class="p-double-row__muted-row u-align--right" aria-label="Architecture" style="overflow: visible"> <!-- overflow override so tooltip is visible -->
                         <span class="p-tooltip p-tooltip--left" aria-describedby="node-architecture-tooltip-{$ node.fqdn $}">
-                            <div class="u-text-overflow">{$ ::getArchitectureText(node.architecture) $}</div>
+                            <span class="u-text-overflow">{$ ::getArchitectureText(node.architecture) $}</span>
                             <span class="p-tooltip__message" role="tooltip" id="node-architecture-tooltip-{$ node.fqdn $}" style="left: -60px; transform: translateX(-100%) translateY(-75%);">{$ ::node.architecture $}</span>
                         </span>
                     </div>
+                </div>
             </td>
             <td class="p-table__col--ram p-table--action-cell u-align--right" aria-label="Memory">
                 <span class="p-tooltip p-tooltip--left">
                     <span data-maas-script-status="script-status" data-script-status="node.memory_test_status" data-ng-if="node.memory_test_status !== -1 && node.memory_test_status !== 2 && !hideFailedTests" aria-describedby="node-memory-tooltip-{$ node.fqdn $}"></span>
-                    <span>{$ formatMemoryUnit(node.memory).value $}</span>
-                    <span class="p-muted-text">{$ formatMemoryUnit(node.memory).unit $}</span>
-                    <span class="p-tooltip__message" role="tooltip" id="node-memory-tooltip-{$ node.fqdn $}" data-ng-if="node.memory_test_status !== -1 && node.memory_test_status !== 2">{$ node.memory_test_status_tooltip $}</span>
+                    <span class="u-text-overflow">
+                        <span>{$ formatMemoryUnit(node.memory).value $}</span>
+                        <span class="p-muted-text">{$ formatMemoryUnit(node.memory).unit $}</span>
+                    </span>
+                    <span class="p-tooltip__message" role="tooltip" id="node-memory-tooltip-{$ node.fqdn $}" data-ng-if="node.memory_test_status !== -1 && node.memory_test_status !== 2 && !hideFailedTests">{$ node.memory_test_status_tooltip $}</span>
                 </span>
             </td>
             <td class="p-table__col--disks p-table--action-cell u-align--right" aria-label="Disks">
                 <span class="p-tooltip p-tooltip--left">
                     <span data-maas-script-status="script-status" data-script-status="node.storage_test_status" data-ng-if="node.storage_test_status !== -1 && node.storage_test_status !== 2 && !hideFailedTests" aria-describedby="disk-count-tooltip-{$ node.fqdn $}">
                     </span>
-                    {$ node.physical_disk_count $}
+                    <span class="u-text-overflow">{$ node.physical_disk_count $}</span>
                     <span class="p-tooltip__message" role="tooltip" id="disk-count-tooltip-{$ node.fqdn $}" data-ng-if="node.storage_test_status !== -1 && node.storage_test_status !== 2 && !hideFailedTests">{$ node.storage_test_status_tooltip $}</span>
                 </span>
             </td>
             <td class="p-table__col--storage u-align--right" aria-label="Storage">
-                <span>{$ formatStorageUnit(node.storage).value $}</span>
-                <span class="p-muted-text">{$ formatStorageUnit(node.storage).unit $}</span>
+                <span class="u-text-overflow">
+                    <span>{$ formatStorageUnit(node.storage).value $}</span>
+                    <span class="p-muted-text">{$ formatStorageUnit(node.storage).unit $}</span>
+                </span>
             </td>
         </tr>
     </tbody>

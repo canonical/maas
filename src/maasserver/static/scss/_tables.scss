@@ -60,6 +60,10 @@
       .p-table-menu__toggle {
         display: inline-block;
       }
+
+      .p-table-menu:not(.is-hidden) .p-double-row__main-row .u-text-overflow {
+        max-width: calc(100% - 1.5rem);
+      }
     }
 
     &--muted {
@@ -681,8 +685,8 @@
     }
 
     %p-double-row__row {
-      overflow: hidden;
-      text-overflow: ellipsis;
+      align-items: center;
+      display: flex;
       white-space: nowrap;
       width: 100%;
     }
@@ -824,10 +828,9 @@
       border: 0;
       cursor: pointer;
       display: none;
+      left: $sp-x-small;
       opacity: 0.25;
-      position: absolute;
-      right: 0;
-      top: 2px;
+      top: 1px;
 
       td:hover & {
         opacity: 1;
