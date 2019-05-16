@@ -402,6 +402,15 @@ function NodesManager(RegionConnection, Manager, KVMDeployOSBlacklist) {
     );
   };
 
+  NodesManager.prototype.getLatestFailedTests = function(nodes) {
+    return RegionConnection.callMethod(
+      this._handler + ".get_latest_failed_testing_script_results",
+      {
+        system_ids: nodes.map(node => node.system_id)
+      }
+    ).then(results => results, error => error);
+  };
+
   return NodesManager;
 }
 

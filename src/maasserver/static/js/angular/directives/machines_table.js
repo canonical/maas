@@ -34,6 +34,7 @@ function maasMachinesTable(
       onCheck: "=",
       pools: "=",
       zones: "=",
+      hideFailedTests: "<",
       metadata: "="
     },
     templateUrl:

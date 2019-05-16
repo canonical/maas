@@ -2113,4 +2113,41 @@ describe("NodesListController", function() {
       }
     );
   });
+
+  describe("getFailedTests", () => {
+    it("calls MachinesManager.getLatestFailedTests", () => {
+      makeController();
+      const nodes = [makeObject("machines"), makeObject("machines")];
+      const tab = $scope.tabs.machines;
+      tab.selectedItems = nodes;
+      const defer = $q.defer();
+      spyOn(MachinesManager, "getLatestFailedTests").and.returnValue(
+        defer.promise
+      );
+      $scope.getFailedTests("machines");
+
+      expect(MachinesManager.getLatestFailedTests).toHaveBeenCalledWith(nodes);
+    });
+  });
+
+  describe("getFailedTestCount", () => {
+    it("correctly sums failed tests for each node", () => {
+      makeController();
+      const nodes = [makeObject("machines"), makeObject("machines")];
+      const tab = $scope.tabs.machines;
+      tab.selectedItems = nodes;
+      tab.failedTests = {
+        [nodes[0].system_id]: [
+          { name: makeName("script") },
+          { name: makeName("script") }
+        ],
+        [nodes[1].system_id]: [
+          { name: makeName("script") },
+          { name: makeName("script") }
+        ]
+      };
+
+      expect($scope.getFailedTestCount("machines")).toEqual(4);
+    });
+  });
 });

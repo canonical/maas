@@ -378,9 +378,9 @@
                 <div class="p-double-row__rows-container">
                     <div class="p-double-row__main-row" aria-label="CPU" style="overflow: visible"> <!-- overflow override so tooltip is visible -->
                         <span class="p-tooltip p-tooltip--left">
-                            <span data-maas-script-status="script-status" data-script-status="node.cpu_test_status" data-ng-if="node.cpu_test_status !== -1 && node.cpu_test_status !== 2" aria-describedby="node-cpu-tooltip-{$ node.fqdn $}"></span>
+                            <span data-maas-script-status="script-status" data-script-status="node.cpu_test_status" data-ng-if="node.cpu_test_status !== -1 && node.cpu_test_status !== 2 && !hideFailedTests" aria-describedby="node-cpu-tooltip-{$ node.fqdn $}"></span>
                             {$ node.cpu_count $}
-                            <span class="p-tooltip__message" role="tooltip" id="node-cpu-tooltip-{$ node.fqdn $}" data-ng-if="node.cpu_test_status !== -1 && node.cpu_test_status !== 2">{$ node.cpu_test_status_tooltip $}</span>
+                            <span class="p-tooltip__message" role="tooltip" id="node-cpu-tooltip-{$ node.fqdn $}" data-ng-if="node.cpu_test_status !== -1 && node.cpu_test_status !== 2 && !hideFailedTests">{$ node.cpu_test_status_tooltip $}</span>
                         </span>
                     </div>
                     <div class="p-double-row__muted-row" aria-label="Architecture" style="overflow: visible"> <!-- overflow override so tooltip is visible -->
@@ -392,7 +392,7 @@
             </td>
             <td class="p-table__col--ram p-table--action-cell u-align--right" aria-label="Memory">
                 <span class="p-tooltip p-tooltip--left">
-                    <span data-maas-script-status="script-status" data-script-status="node.memory_test_status" data-ng-if="node.memory_test_status !== -1 && node.memory_test_status !== 2" aria-describedby="node-memory-tooltip-{$ node.fqdn $}"></span>
+                    <span data-maas-script-status="script-status" data-script-status="node.memory_test_status" data-ng-if="node.memory_test_status !== -1 && node.memory_test_status !== 2 && !hideFailedTests" aria-describedby="node-memory-tooltip-{$ node.fqdn $}"></span>
                     <span>{$ formatMemoryUnit(node.memory).value $}</span>
                     <span class="p-muted-text">{$ formatMemoryUnit(node.memory).unit $}</span>
                     <span class="p-tooltip__message" role="tooltip" id="node-memory-tooltip-{$ node.fqdn $}" data-ng-if="node.memory_test_status !== -1 && node.memory_test_status !== 2">{$ node.memory_test_status_tooltip $}</span>
@@ -400,10 +400,10 @@
             </td>
             <td class="p-table__col--disks p-table--action-cell u-align--right" aria-label="Disks">
                 <span class="p-tooltip p-tooltip--left">
-                    <span data-maas-script-status="script-status" data-script-status="node.storage_test_status" data-ng-if="node.storage_test_status !== -1 && node.storage_test_status !== 2" aria-describedby="disk-count-tooltip-{$ node.fqdn $}">
+                    <span data-maas-script-status="script-status" data-script-status="node.storage_test_status" data-ng-if="node.storage_test_status !== -1 && node.storage_test_status !== 2 && !hideFailedTests" aria-describedby="disk-count-tooltip-{$ node.fqdn $}">
                     </span>
                     {$ node.physical_disk_count $}
-                    <span class="p-tooltip__message" role="tooltip" id="disk-count-tooltip-{$ node.fqdn $}" data-ng-if="node.storage_test_status !== -1 && node.storage_test_status !== 2">{$ node.storage_test_status_tooltip $}</span>
+                    <span class="p-tooltip__message" role="tooltip" id="disk-count-tooltip-{$ node.fqdn $}" data-ng-if="node.storage_test_status !== -1 && node.storage_test_status !== 2 && !hideFailedTests">{$ node.storage_test_status_tooltip $}</span>
                 </span>
             </td>
             <td class="p-table__col--storage u-align--right" aria-label="Storage">

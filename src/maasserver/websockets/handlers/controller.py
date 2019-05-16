@@ -75,6 +75,7 @@ class ControllerHandler(MachineHandler):
             'set_script_result_suppressed',
             'set_script_result_unsuppressed',
             'get_suppressible_script_results',
+            'get_latest_failed_testing_script_results',
         ]
         form = ControllerForm
         exclude = [

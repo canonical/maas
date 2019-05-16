@@ -290,6 +290,36 @@
                             </div>
                         </div>
                     </div>
+                    <div data-ng-if="tabs[tab].actionOption.name === 'override-failed-testing'">
+                        <div class="row">
+                            <p data-ng-if="tabs[tab].loadingFailedTests">
+                                <i class="p-icon--spinner u-animation--spin"></i>
+                                <span>Loading tests...</span>
+                            </p>
+                            <p data-ng-if="!tabs[tab].loadingFailedTests">
+                                <i class="p-icon--warning"></i>
+                                <span data-ng-if="tabs[tab].selectedItems.length === 1">
+                                    Machine <strong>{$ tabs[tab].selectedItems[0].fqdn $}</strong> has
+                                    <a href="#/{$ tabs[tab].selectedItems[0].link_type $}/{$ tabs[tab].selectedItems[0].system_id $}?area=testing">
+                                        failed {$ getFailedTestCount(tab) $} tests</a>.
+                                </span>
+                                <span data-ng-if="tabs[tab].selectedItems.length > 1">
+                                    <strong>{$ tabs[tab].selectedItems.length $} machines</strong>
+                                    have failed {$ getFailedTestCount(tab) $} tests.
+                                </span>
+                            </p>
+                            <p style="margin-top: -.5rem">Overriding will allow the machine<span data-ng-if="tabs[tab].selectedItems.length > 1">s</span> to be deployed, marked with a warning.</p>
+                            <form>
+                                <input type="checkbox" id="suppress-tests" data-ng-model="tabs[tab].suppressFailedTestsChecked" data-ng-change="toggleHideFailIcons(tab)">
+                                <label for="suppress-tests">Suppress test-failure icons in the machines list. Results remain visible in
+                                    <span data-ng-if="tabs[tab].selectedItems.length === 1">
+                                        <a href="#/{$ tabs[tab].selectedItems[0].link_type $}/{$ tabs[tab].selectedItems[0].system_id $}?area=testing">Machine &gt; Hardware tests</a>.
+                                    </span>
+                                    <span data-ng-if="tabs[tab].selectedItems.length > 1">Machine &gt; Hardware tests.</span>
+                                </label>
+                            </form>
+                        </div>
+                    </div>
                 </div>
                 <div class="row u-align--right" data-ng-if="tabs[tab].actionOption.name !== 'commission' && tabs[tab].actionOption.name !== 'test' && !tabs[tab].actionProgress.showing_confirmation">
                     <div class="col-12">
@@ -993,6 +1023,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                         on-check="toggleChecked($machine, 'machines')"
                         pools="pools"
                         zones="zones"
+                        hide-failed-tests="tabs.machines.suppressFailedTestsChecked"
                         metadata=tabs.machines.metadata>
                     </maas-machines-table>
                 </div>

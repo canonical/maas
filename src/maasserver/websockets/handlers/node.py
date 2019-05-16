@@ -972,3 +972,41 @@ class NodeHandler(TimestampedModelHandler):
                     node_result_handler.dehydrate(
                         script_result, {}, for_list=True))
         return script_result_mappings
+
+    def get_latest_failed_testing_script_results(self, params):
+        """Return a dictionary with Nodes system_ids mapped to a list of
+        the latest failed ScriptResults."""
+        node_result_handler = NodeResultHandler(self.user, {}, None)
+        system_ids = params.get('system_ids')
+
+        # Create the node to script result mappings.
+        script_result_mappings = {}
+        script_results = ScriptResult.objects.filter(
+            script_set__node__system_id__in=system_ids,
+            script_set__result_type=RESULT_TYPE.TESTING).defer(
+                'output', 'stdout', 'stderr').prefetch_related(
+                    'script', 'script_set', 'script_set__node').defer(
+                        'script__parameters', 'script__packages').defer(
+                            'script_set__requested_scripts').order_by(
+                                'script_set__node_id', 'script_name',
+                                'physical_blockdevice_id', '-id').distinct(
+                                    'script_set__node_id', 'script_name',
+                                    'physical_blockdevice_id')
+
+        for system_id in system_ids:
+            # Need to evaluate QuerySet first to get latest script results,
+            # then filter by results that have failed
+            node_script_results = [s for s in script_results if s.status in [
+                SCRIPT_STATUS.FAILED, SCRIPT_STATUS.TIMEDOUT,
+                SCRIPT_STATUS.FAILED_INSTALLING] and (
+                    s.script_set.node.system_id == system_id)]
+
+            for script_result in node_script_results:
+                if system_id not in (script_result_mappings):
+                    script_result_mappings[system_id] = []
+
+                mapping = node_result_handler.dehydrate(
+                    script_result, {}, for_list=True)
+                mapping["id"] = script_result.id
+                script_result_mappings[system_id].append(mapping)
+        return script_result_mappings

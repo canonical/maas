@@ -839,4 +839,24 @@ describe("NodesManager", function() {
       });
     });
   });
+
+  describe("getLatestFailedTests", () => {
+    it(`calls machine.get_latest_failed_testing_script_results
+      for nodes list`, done => {
+      const machines = [makemachine(), makemachine()];
+
+      webSocket.returnData.push(makeFakeResponse("updated"));
+
+      MachinesManager.getLatestFailedTests(machines).then(() => {
+        const sentObject = angular.fromJson(webSocket.sentData[0]);
+        expect(sentObject.method).toBe(
+          "machine.get_latest_failed_testing_script_results"
+        );
+        expect(sentObject.params.system_ids).toEqual(
+          machines.map(machine => machine.system_id)
+        );
+        done();
+      });
+    });
+  });
 });

@@ -8,6 +8,8 @@
  * notification events about NodeResults.
  */
 
+import { HardwareType } from "../enum";
+
 function NodeResultsManagerFactory(RegionConnection, Manager) {
   function NodeResultsManager(node, factory) {
     Manager.call(this);
@@ -21,44 +23,44 @@ function NodeResultsManagerFactory(RegionConnection, Manager) {
     this.commissioning_results = [
       {
         title: null,
-        hardware_type: 0,
+        hardware_type: HardwareType.NODE,
         results: {}
       },
       {
         title: "CPU",
-        hardware_type: 1,
+        hardware_type: HardwareType.CPU,
         results: {}
       },
       {
         title: "Memory",
-        hardware_type: 2,
+        hardware_type: HardwareType.MEMORY,
         results: {}
       },
       {
         title: "Storage",
-        hardware_type: 3,
+        hardware_type: HardwareType.STORAGE,
         results: {}
       }
     ];
     this.testing_results = [
       {
         title: "CPU",
-        hardware_type: 1,
+        hardware_type: HardwareType.CPU,
         results: {}
       },
       {
         title: "Memory",
-        hardware_type: 2,
+        hardware_type: HardwareType.MEMORY,
         results: {}
       },
       {
         title: "Storage",
-        hardware_type: 3,
+        hardware_type: HardwareType.STORAGE,
         results: {}
       },
       {
         title: "Other Results",
-        hardware_type: 0,
+        hardware_type: HardwareType.NODE,
         results: {}
       }
     ];
@@ -161,7 +163,11 @@ function NodeResultsManagerFactory(RegionConnection, Manager) {
       }
     }
 
-    if (result.hardware_type === 3 && result.physical_blockdevice !== null) {
+    if (
+      result.hardware_type === HardwareType.STORAGE &&
+      result.physical_blockdevice !== null &&
+      this._node.disks
+    ) {
       // Storage results are split into individual components.
       var disk, subtext;
       // If the storage result is associated with a specific

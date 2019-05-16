@@ -121,6 +121,7 @@ from metadataserver.enum import (
     HARDWARE_TYPE_CHOICES,
     RESULT_TYPE,
     SCRIPT_STATUS,
+    SCRIPT_TYPE,
 )
 from metadataserver.models.scriptset import get_status_from_qs
 from provisioningserver.refresh.node_info_scripts import (
@@ -4472,6 +4473,81 @@ class TestMachineHandlerUpdateFilesystem(MAASServerTestCase):
             {'system_ids': [nodes[0].system_id]})
         queries_total, _ = count_queries(
             handler.get_suppressible_script_results,
+            {'system_ids': [node.system_id for node in nodes]})
+        # This check is to notify the developer that a change was made that
+        # affects the number of queries performed when doing a node listing.
+        # It is important to keep this number as low as possible. A larger
+        # number means regiond has to do more work slowing down its process
+        # and slowing down the client waiting for the response.
+        self.assertEqual(
+            queries_one, 4,
+            "Number of queries has changed; make sure this is expected.")
+        self.assertEqual(
+            queries_total, 4,
+            "Number of queries has changed; make sure this is expected.")
+
+    def test_get_latest_failed_testing_script_results(self):
+        owner = factory.make_User()
+        handler = MachineHandler(owner, {}, None)
+        node_result_handler = NodeResultHandler(owner, {}, None)
+        nodes = [factory.make_Node(owner=owner) for _ in range(10)]
+
+        script_results = []
+        for node in nodes:
+            script = factory.make_Script()
+            for run in range(10):
+                script_set = factory.make_ScriptSet(
+                    result_type=script.script_type, node=node)
+                factory.make_ScriptResult(
+                    script=script, script_set=script_set)
+
+            script_set = factory.make_ScriptSet(
+                result_type=script.script_type, node=node)
+            script_result = factory.make_ScriptResult(
+                script=script, script_set=script_set, status=random.choice([
+                    SCRIPT_STATUS.TIMEDOUT, SCRIPT_STATUS.FAILED,
+                    SCRIPT_STATUS.FAILED_INSTALLING,
+                    SCRIPT_STATUS.PASSED]))
+            if script.script_type == SCRIPT_TYPE.TESTING and (
+                    script_result.status in [
+                    SCRIPT_STATUS.TIMEDOUT, SCRIPT_STATUS.FAILED,
+                    SCRIPT_STATUS.FAILED_INSTALLING]):
+                script_results.append(script_result)
+
+        actual = handler.get_latest_failed_testing_script_results(
+            {'system_ids': [node.system_id for node in nodes]})
+        expected = {}
+        for script_result in script_results:
+            if script_result.script_set.node.system_id not in expected:
+                expected[script_result.script_set.node.system_id] = []
+            mapping = node_result_handler.dehydrate(
+                script_result, {}, for_list=True)
+            mapping["id"] = script_result.id
+            expected[script_result.script_set.node.system_id].append(mapping)
+        self.assertDictEqual(actual, expected)
+
+    def test_get_latest_failed_testing_script_results_num_queries(self):
+        # Prevent RBAC from making a query.
+        self.useFixture(RBACForceOffFixture())
+        owner = factory.make_User()
+        handler = MachineHandler(owner, {}, None)
+        nodes = []
+        for idx in range(10):
+            node = factory.make_Node(owner=owner)
+            nodes.append(node)
+            factory.make_ScriptResult(
+                status=random.choice([
+                    SCRIPT_STATUS.TIMEDOUT, SCRIPT_STATUS.FAILED,
+                    SCRIPT_STATUS.FAILED_INSTALLING]),
+                script_set=factory.make_ScriptSet(
+                    node=node,
+                    result_type=RESULT_TYPE.TESTING))
+
+        queries_one, _ = count_queries(
+            handler.get_latest_failed_testing_script_results,
+            {'system_ids': [nodes[0].system_id]})
+        queries_total, _ = count_queries(
+            handler.get_latest_failed_testing_script_results,
             {'system_ids': [node.system_id for node in nodes]})
         # This check is to notify the developer that a change was made that
         # affects the number of queries performed when doing a node listing.

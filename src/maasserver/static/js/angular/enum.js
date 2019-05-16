@@ -66,3 +66,10 @@ export const ScriptStatus = {
 export const NodeTypes = {
   REGION_CONTROLLER: 3
 };
+
+export const HardwareType = {
+  NODE: 0,
+  CPU: 1,
+  MEMORY: 2,
+  STORAGE: 3
+};

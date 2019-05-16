@@ -13,6 +13,7 @@ function NodesListController(
   $routeParams,
   $location,
   $window,
+  $log,
   MachinesManager,
   DevicesManager,
   ControllersManager,
@@ -26,7 +27,8 @@ function NodesListController(
   SwitchesManager,
   ResourcePoolsManager,
   VLANsManager,
-  TagsManager
+  TagsManager,
+  NotificationsManager
 ) {
   // Mapping of device.ip_assignment to viewable text.
   var DEVICE_IP_ASSIGNMENT = {
@@ -121,6 +123,9 @@ function NodesListController(
   $scope.tabs.machines.releaseOptions = {};
   $scope.tabs.machines.commissioningSelection = [];
   $scope.tabs.machines.testSelection = [];
+  $scope.tabs.machines.failedTests = [];
+  $scope.tabs.machines.loadingFailedTests = false;
+  $scope.tabs.machines.suppressFailedTestsChecked = false;
 
   // Pools tab.
   $scope.tabs.pools = {};
@@ -347,6 +352,7 @@ function NodesListController(
 
   // Clear search bar from viewing selected.
   function leaveViewSelected(tab) {
+    $scope.tabs.machines.suppressFailedTestsChecked = false;
     if (isViewingSelected(tab)) {
       $scope.tabs[tab].search = $scope.tabs[tab].previous_search;
       $scope.updateFilters(tab);
@@ -680,6 +686,43 @@ function NodesListController(
     return node.actions.indexOf($scope.tabs[tab].actionOption.name) >= 0;
   };
 
+  $scope.getFailedTests = tabName => {
+    const tab = $scope.tabs[tabName];
+    const nodes = tab.selectedItems;
+    tab.failedTests = [];
+    tab.loadingFailedTests = true;
+    MachinesManager.getLatestFailedTests(nodes).then(
+      tests => {
+        tab.failedTests = tests;
+        tab.loadingFailedTests = false;
+      },
+      error => {
+        const authUser = UsersManager.getAuthUser();
+        if (angular.isObject(authUser)) {
+          NotificationsManager.createItem({
+            message: `Unable to load tests: ${error}`,
+            category: "error",
+            user: authUser.id
+          });
+        } else {
+          $log.error(error);
+        }
+      }
+    );
+  };
+
+  $scope.getFailedTestCount = tabName => {
+    const tab = $scope.tabs[tabName];
+    const nodes = tab.selectedItems;
+    const tests = tab.failedTests;
+    return nodes.reduce((acc, node) => {
+      if (tests[node.system_id]) {
+        acc += tests[node.system_id].length;
+      }
+      return acc;
+    }, 0);
+  };
+
   // Called when the action option gets changed.
   $scope.actionOptionSelected = function(tab) {
     updateActionErrorCount(tab);
@@ -694,6 +737,13 @@ function NodesListController(
       if (angular.isObject($scope.addDeviceScope)) {
         $scope.addDeviceScope.hide();
       }
+    }
+
+    if (
+      $scope.tabs[tab].actionOption &&
+      $scope.tabs[tab].actionOption.name === "override-failed-testing"
+    ) {
+      $scope.getFailedTests(tab);
     }
   };
 
@@ -745,6 +795,7 @@ function NodesListController(
     resetActionProgress(tab);
     leaveViewSelected(tab);
     $scope.tabs[tab].actionOption = null;
+    $scope.tabs[tab].suppressFailedTestsChecked = false;
   };
 
   // Perform the action on all nodes.
@@ -919,6 +970,18 @@ function NodesListController(
       });
 
       $scope.tags = [];
+    } else if (
+      tab.actionOption.name === "override-failed-testing" &&
+      tab.suppressFailedTestsChecked
+    ) {
+      const nodes = tab.selectedItems;
+      const tests = tab.failedTests;
+      nodes.forEach(node => {
+        if (tests[node.system_id]) {
+          tab.manager.suppressTests(node, tests[node.system_id]);
+        }
+      });
+      $scope.tabs.machines.suppressFailedTestsChecked = false;
     }
 
     preAction.then(
