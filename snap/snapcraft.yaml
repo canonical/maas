@@ -154,8 +154,14 @@ parts:
       nginx: usr/share/maas/nginx
   postgres-95:
     plugin: autotools
-    source: http://archive.ubuntu.com/ubuntu/ubuntu/pool/main/p/postgresql-9.5/postgresql-9.5_9.5.16.orig.tar.gz
+    source: .  # Ignored because of override-pull.
+    override-pull: |
+      set -e
+      pull-lp-source postgresql-9.5 xenial
+      mv postgresql-9.5*/* .
+      echo "all:\ninstall:" > doc/Makefile  # Skips doc building.
     build-packages:
+      - ubuntu-dev-tools
       - bison
       - flex
       - libreadline-dev
