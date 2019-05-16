@@ -14,7 +14,8 @@ $shelves-mobile-suffixes: true !default;
 $shelves-mobile-pushes: true !default;
 $shelves-mobile-pulls: true !default;
 
-$color-navigation-background: #000;
+$color-navigation-background: #333;
+$color-navigation-background--hover: darken($color-navigation-background, 3%);
 
 $color-brand: #e95420;
 $color-light-new: #e5e5e5;
