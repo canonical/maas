@@ -10,6 +10,10 @@ import json
 from unittest import mock
 
 from django.db import transaction
+from maasserver.enum import (
+    IPADDRESS_TYPE,
+    IPRANGE_TYPE,
+)
 from maasserver.models import Config
 from maasserver.prometheus import stats
 from maasserver.prometheus.stats import (
@@ -152,6 +156,22 @@ class TestPrometheus(MAASServerTestCase):
         }
         mock_pods = self.patch(stats, "get_kvm_pods_stats")
         mock_pods.return_value = pods
+        subnet_stats = {
+            '1.2.0.0/16': {
+                'available': 2 ** 16 - 3,
+                'dynamic': 0,
+                'reserved': 0,
+                'static': 0,
+                'unavailable': 1},
+            '::1/128': {
+                'available': 1,
+                'dynamic': 0,
+                'reserved': 0,
+                'static': 0,
+                'unavailable': 0}}
+        mock_subnet_stats = self.patch(
+            stats, "get_subnets_utilisation_stats")
+        mock_subnet_stats.return_value = subnet_stats
         metrics = create_metrics(
             STATS_DEFINITIONS, registry=prometheus_client.CollectorRegistry())
         update_prometheus_stats(metrics)
@@ -161,6 +181,8 @@ class TestPrometheus(MAASServerTestCase):
             mock_arches, MockCalledOnce())
         self.assertThat(
             mock_pods, MockCalledOnce())
+        self.assertThat(
+            mock_subnet_stats, MockCalledOnce())
 
     def test_push_stats_to_prometheus(self):
         factory.make_RegionRackController()
@@ -172,6 +194,42 @@ class TestPrometheus(MAASServerTestCase):
             mock_prom_cli.push_to_gateway, MockCalledOnceWith(
                 push_gateway, job="stats_for_%s" % maas_name,
                 registry=mock.ANY))
+
+    def test_subnet_stats(self):
+        subnet = factory.make_Subnet(
+            cidr='1.2.0.0/16', gateway_ip='1.2.0.254')
+        factory.make_IPRange(
+            subnet=subnet, start_ip='1.2.0.11', end_ip='1.2.0.20',
+            alloc_type=IPRANGE_TYPE.DYNAMIC)
+        factory.make_IPRange(
+            subnet=subnet, start_ip='1.2.0.51', end_ip='1.2.0.70',
+            alloc_type=IPRANGE_TYPE.RESERVED)
+        for n in (80, 90, 100):
+            factory.make_StaticIPAddress(
+                ip='1.2.0.{}'.format(n),
+                alloc_type=IPADDRESS_TYPE.USER_RESERVED, subnet=subnet)
+
+        metrics = create_metrics(
+            STATS_DEFINITIONS, registry=prometheus_client.CollectorRegistry())
+        update_prometheus_stats(metrics)
+        output = metrics.generate_latest().decode('ascii')
+        self.assertIn(
+            'maas_net_subnet_ip_count'
+            '{cidr="1.2.0.0/16",status="available"} 65500.0',
+            output)
+        self.assertIn(
+            'maas_net_subnet_ip_count'
+            '{cidr="1.2.0.0/16",status="unavailable"} 34.0',
+            output)
+        self.assertIn(
+            'maas_net_subnet_ip_used{cidr="1.2.0.0/16",type="dynamic"} 10.0',
+            output)
+        self.assertIn(
+            'maas_net_subnet_ip_used{cidr="1.2.0.0/16",type="reserved"} 20.0',
+            output)
+        self.assertIn(
+            'maas_net_subnet_ip_used{cidr="1.2.0.0/16",type="static"} 3.0',
+            output)
 
 
 class TestPrometheusService(MAASTestCase):

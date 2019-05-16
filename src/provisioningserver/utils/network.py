@@ -142,8 +142,7 @@ class MAASIPRange(IPRange):
         range_str = str(IPAddress(self.first))
         if not self.first == self.last:
             range_str += '-' + str(IPAddress(self.last))
-            range_str += (" num_addresses=" +
-                          str((self.last - self.first + 1)))
+            range_str += " num_addresses={}".format(self.num_addresses)
         if self.purpose:
             range_str += " purpose=" + repr(self.purpose)
         return range_str

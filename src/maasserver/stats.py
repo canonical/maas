@@ -4,6 +4,7 @@
 """Boot Resources."""
 
 __all__ = [
+    "get_subnets_utilisation_stats",
     "StatsService",
     "STATS_SERVICE_PERIOD",
 ]
@@ -15,10 +16,12 @@ from django.db.models import (
     Value,
 )
 from django.db.models.functions import Coalesce
+from maasserver.enum import IPRANGE_TYPE
 from maasserver.models import Config
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.logger import LegacyLogger
+from provisioningserver.utils.network import IPRangeStatistics
 from twisted.application.internet import TimerService
 
 
@@ -143,6 +146,32 @@ def get_subnets_stats():
         "subnets_v4": len(v4),
         "subnets_v6": len(v6),
         }
+
+
+def get_subnets_utilisation_stats():
+    """Return a dict mapping subnet CIDRs to their utilisation details."""
+    stats = {}
+    for subnet in Subnet.objects.all():
+        full_range = subnet.get_iprange_usage()
+        range_stats = IPRangeStatistics(subnet.get_iprange_usage())
+        static = 0
+        reserved = 0
+        dynamic = 0
+        for rng in full_range.ranges:
+            if IPRANGE_TYPE.DYNAMIC in rng.purpose:
+                dynamic += rng.num_addresses
+            elif IPRANGE_TYPE.RESERVED in rng.purpose:
+                reserved += rng.num_addresses
+            elif 'assigned-ip' in rng.purpose:
+                static += rng.num_addresses
+        stats[subnet.cidr] = {
+            'available': range_stats.num_available,
+            'unavailable': range_stats.num_unavailable,
+            'dynamic': dynamic,
+            'static': static,
+            'reserved': reserved,
+        }
+    return stats
 
 
 def get_maas_stats():

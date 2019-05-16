@@ -20,6 +20,7 @@ from maasserver.stats import (
     get_kvm_pods_stats,
     get_maas_stats,
     get_machines_by_architecture,
+    get_subnets_utilisation_stats,
 )
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
@@ -57,6 +58,12 @@ STATS_DEFINITIONS = [
         'Gauge', 'maas_net_subnets_v4', 'Number of IPv4 subnets'),
     MetricDefinition(
         'Gauge', 'maas_net_subnets_v6', 'Number of IPv6 subnets'),
+    MetricDefinition(
+        'Gauge', 'maas_net_subnet_ip_count',
+        'Number of IPs in a subnet by status', ['cidr', 'status']),
+    MetricDefinition(
+        'Gauge', 'maas_net_subnet_ip_used',
+        'Number of used IPs in a subnet', ['cidr', 'type']),
     MetricDefinition(
         'Gauge', 'maas_machines_total_mem',
         'Amount of combined memory for all machines'),
@@ -157,6 +164,19 @@ def update_prometheus_stats(metrics: PrometheusMetrics):
             metrics.update(
                 'maas_machine_arches', 'set', value=machines,
                 labels={'arches': arch})
+
+    # Update metrics for subnets
+    for cidr, stats in get_subnets_utilisation_stats().items():
+        for status in ('available', 'unavailable'):
+            metrics.update(
+                'maas_net_subnet_ip_count', 'set',
+                value=stats[status],
+                labels={'cidr': cidr, 'status': status})
+        for addr_type in ('dynamic', 'reserved', 'static'):
+            metrics.update(
+                'maas_net_subnet_ip_used', 'set',
+                value=stats[addr_type],
+                labels={'cidr': cidr, 'type': addr_type})
 
     return metrics
 

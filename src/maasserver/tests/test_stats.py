@@ -10,7 +10,11 @@ import json
 
 from django.db import transaction
 from maasserver import stats
-from maasserver.enum import NODE_STATUS
+from maasserver.enum import (
+    IPADDRESS_TYPE,
+    IPRANGE_TYPE,
+    NODE_STATUS,
+)
 from maasserver.models import (
     Config,
     Fabric,
@@ -249,6 +253,102 @@ class TestMAASStats(MAASServerTestCase):
         mock = self.patch(requests_module, "get")
         make_maas_user_agent_request()
         self.assertThat(mock, MockCalledOnce())
+
+
+class TestGetSubnetsUtilisationStats(MAASServerTestCase):
+
+    def test_stats_totals(self):
+        factory.make_Subnet(
+            cidr='1.2.0.0/16', gateway_ip='1.2.0.254')
+        factory.make_Subnet(cidr='::1/128', gateway_ip='')
+        self.assertEqual(
+            stats.get_subnets_utilisation_stats(),
+            {'1.2.0.0/16': {
+                'available': 2 ** 16 - 3,
+                'dynamic': 0,
+                'reserved': 0,
+                'static': 0,
+                'unavailable': 1},
+             '::1/128': {
+                 'available': 1,
+                 'dynamic': 0,
+                 'reserved': 0,
+                 'static': 0,
+                 'unavailable': 0}})
+
+    def test_stats_dynamic(self):
+        subnet = factory.make_Subnet(
+            cidr='1.2.0.0/16', gateway_ip='1.2.0.254')
+        factory.make_IPRange(
+            subnet=subnet, start_ip='1.2.0.11', end_ip='1.2.0.20',
+            alloc_type=IPRANGE_TYPE.DYNAMIC)
+        factory.make_IPRange(
+            subnet=subnet, start_ip='1.2.0.51', end_ip='1.2.0.60',
+            alloc_type=IPRANGE_TYPE.DYNAMIC)
+        self.assertEqual(
+            stats.get_subnets_utilisation_stats(),
+            {'1.2.0.0/16': {
+                'available': 2 ** 16 - 23,
+                'dynamic': 20,
+                'reserved': 0,
+                'static': 0,
+                'unavailable': 21}})
+
+    def test_stats_reserved(self):
+        subnet = factory.make_Subnet(
+            cidr='1.2.0.0/16', gateway_ip='1.2.0.254')
+        factory.make_IPRange(
+            subnet=subnet, start_ip='1.2.0.11', end_ip='1.2.0.20',
+            alloc_type=IPRANGE_TYPE.RESERVED)
+        factory.make_IPRange(
+            subnet=subnet, start_ip='1.2.0.51', end_ip='1.2.0.60',
+            alloc_type=IPRANGE_TYPE.RESERVED)
+        self.assertEqual(
+            stats.get_subnets_utilisation_stats(),
+            {'1.2.0.0/16': {
+                'available': 2 ** 16 - 23,
+                'dynamic': 0,
+                'reserved': 20,
+                'static': 0,
+                'unavailable': 21}})
+
+    def test_stats_static(self):
+        subnet = factory.make_Subnet(
+            cidr='1.2.0.0/16', gateway_ip='1.2.0.254')
+        for n in (10, 20, 30):
+            factory.make_StaticIPAddress(
+                ip='1.2.0.{}'.format(n),
+                alloc_type=IPADDRESS_TYPE.USER_RESERVED, subnet=subnet)
+        self.assertEqual(
+            stats.get_subnets_utilisation_stats(),
+            {'1.2.0.0/16': {
+                'available': 2 ** 16 - 6,
+                'dynamic': 0,
+                'reserved': 0,
+                'static': 3,
+                'unavailable': 4}})
+
+    def test_stats_all(self):
+        subnet = factory.make_Subnet(
+            cidr='1.2.0.0/16', gateway_ip='1.2.0.254')
+        factory.make_IPRange(
+            subnet=subnet, start_ip='1.2.0.11', end_ip='1.2.0.20',
+            alloc_type=IPRANGE_TYPE.DYNAMIC)
+        factory.make_IPRange(
+            subnet=subnet, start_ip='1.2.0.51', end_ip='1.2.0.70',
+            alloc_type=IPRANGE_TYPE.RESERVED)
+        for n in (80, 90, 100):
+            factory.make_StaticIPAddress(
+                ip='1.2.0.{}'.format(n),
+                alloc_type=IPADDRESS_TYPE.USER_RESERVED, subnet=subnet)
+        self.assertEqual(
+            stats.get_subnets_utilisation_stats(),
+            {'1.2.0.0/16': {
+                'available': 2 ** 16 - 36,
+                'dynamic': 10,
+                'reserved': 20,
+                'static': 3,
+                'unavailable': 34}})
 
 
 class TestStatsService(MAASTestCase):
