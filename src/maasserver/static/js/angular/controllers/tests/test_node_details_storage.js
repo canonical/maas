@@ -431,6 +431,7 @@ describe("NodeStorageController", function() {
         type: disks[2].type,
         model: disks[2].model,
         serial: disks[2].serial,
+        size_human: disks[2].size_human,
         tags: disks[2].tags,
         used_for: disks[2].used_for,
         has_partitions: false,
@@ -443,6 +444,7 @@ describe("NodeStorageController", function() {
         type: disks[3].type,
         model: disks[3].model,
         serial: disks[3].serial,
+        size_human: disks[3].size_human,
         tags: disks[3].tags,
         used_for: disks[3].used_for,
         has_partitions: true,
@@ -455,6 +457,7 @@ describe("NodeStorageController", function() {
         type: "partition",
         model: "",
         serial: "",
+        size_human: disks[3].partitions[1].size_human,
         tags: [],
         used_for: disks[3].partitions[1].used_for
       }
@@ -3597,9 +3600,8 @@ describe("NodeStorageController", function() {
     it("returns true if blank name", function() {
       makeController();
       $scope.node.disks = [];
-      $scope.availableNew.name = "";
 
-      expect($scope.isNewDiskNameInvalid()).toBe(true);
+      expect($scope.isNewDiskNameInvalid("")).toBe(true);
     });
 
     it("returns true if name used by disk", function() {
@@ -3610,9 +3612,8 @@ describe("NodeStorageController", function() {
           name: name
         }
       ];
-      $scope.availableNew.name = name;
 
-      expect($scope.isNewDiskNameInvalid()).toBe(true);
+      expect($scope.isNewDiskNameInvalid(name)).toBe(true);
     });
 
     it("returns true if name used by partition", function() {
@@ -3628,9 +3629,8 @@ describe("NodeStorageController", function() {
           ]
         }
       ];
-      $scope.availableNew.name = name;
 
-      expect($scope.isNewDiskNameInvalid()).toBe(true);
+      expect($scope.isNewDiskNameInvalid(name)).toBe(true);
     });
 
     it("returns false if the name is not already used", function() {
@@ -3646,9 +3646,8 @@ describe("NodeStorageController", function() {
           ]
         }
       ];
-      $scope.availableNew.name = name;
 
-      expect($scope.isNewDiskNameInvalid()).toBe(false);
+      expect($scope.isNewDiskNameInvalid(name)).toBe(false);
     });
   });
 
@@ -5071,6 +5070,309 @@ describe("NodeStorageController", function() {
       makeController();
       $scope.node.storage_layout_issues = [];
       expect($scope.hasStorageLayoutIssues()).toBe(false);
+    });
+  });
+
+  describe("openStorageLayoutConfirm", function() {
+    it("sets 'confirmStorageLayout' to true", function() {
+      makeController();
+      $scope.confirmStorageLayout = false;
+      $scope.osFamilies = [
+        {
+          id: "linux",
+          name: "Linux",
+          layouts: [
+            {
+              id: "flat",
+              name: "Flat"
+            },
+            {
+              id: "lvm",
+              name: "LVM"
+            },
+            {
+              id: "bcache",
+              name: "bcache"
+            },
+            {
+              id: "vmfs6",
+              name: "VMFS6 (VMware ESXI)"
+            },
+            {
+              id: "blank",
+              name: "No storage (blank) layout"
+            }
+          ]
+        }
+      ];
+      $scope.openStorageLayoutConfirm("flat");
+      expect($scope.confirmStorageLayout).toBe(true);
+    });
+
+    it("sets 'newLayout' to layout argument", function() {
+      makeController();
+      $scope.osFamilies = [
+        {
+          id: "linux",
+          name: "Linux",
+          layouts: [
+            {
+              id: "flat",
+              name: "Flat"
+            },
+            {
+              id: "lvm",
+              name: "LVM"
+            },
+            {
+              id: "bcache",
+              name: "bcache"
+            },
+            {
+              id: "vmfs6",
+              name: "VMFS6 (VMware ESXI)"
+            },
+            {
+              id: "blank",
+              name: "No storage (blank) layout"
+            }
+          ]
+        }
+      ];
+      $scope.openStorageLayoutConfirm("flat");
+      expect($scope.newLayout).toEqual($scope.osFamilies[0].layouts[0]);
+    });
+  });
+
+  describe("closeStorageLayoutConfirm", function() {
+    it("sets 'confirmStorageLayout' to false", function() {
+      makeController();
+      $scope.confirmStorageLayout = true;
+      $scope.closeStorageLayoutConfirm();
+      expect($scope.confirmStorageLayout).toBe(false);
+    });
+  });
+
+  describe("updateStorageLayout", function() {
+    it("calls 'applyStorageLayout'", function() {
+      makeController();
+      spyOn(MachinesManager, "applyStorageLayout").and.callFake(function() {
+        var deferred = $q.defer();
+        return deferred.promise;
+      });
+      $scope.newLayout = {
+        id: "flat",
+        name: "Flat"
+      };
+      $scope.updateStorageLayout($scope.newLayout);
+      expect(MachinesManager.applyStorageLayout).toHaveBeenCalled();
+    });
+
+    it("calls 'closeStorageLayoutConfirm'", function() {
+      makeController();
+      spyOn(MachinesManager, "applyStorageLayout").and.callFake(function() {
+        var deferred = $q.defer();
+        return deferred.promise;
+      });
+      spyOn($scope, "closeStorageLayoutConfirm");
+      $scope.updateStorageLayout({
+        id: "flat",
+        name: "Flat"
+      });
+      expect($scope.closeStorageLayoutConfirm).toHaveBeenCalled();
+    });
+  });
+
+  describe("openNewDatastorePanel", function() {
+    it("sets 'createNewDatastore' to true", function() {
+      makeController();
+      $scope.createNewDatastore = false;
+      $scope.available = [
+        {
+          $selected: true,
+          id: 1
+        }
+      ];
+      $scope.openNewDatastorePanel();
+      expect($scope.createNewDatastore).toBe(true);
+    });
+
+    it("sets newDatastore", function() {
+      makeController();
+      $scope.available = [
+        {
+          $selected: true,
+          id: 1,
+          mount_point: "dev/null",
+          size_human: "35 GB"
+        }
+      ];
+      $scope.openNewDatastorePanel();
+      expect($scope.datastores.new).toEqual({
+        id: $scope.available[0].id,
+        name: "",
+        mountpoint: $scope.available[0].mount_point,
+        filesystem: "VMFS6",
+        size: $scope.available[0].size_human
+      });
+    });
+  });
+
+  describe("closeNewDatastorePanel", function() {
+    it("sets 'createNewDatastore' to false", function() {
+      makeController();
+      $scope.createNewDatastore = true;
+      $scope.closeNewDatastorePanel();
+      expect($scope.createNewDatastore).toBe(false);
+    });
+
+    it("sets 'newDatastore' to '{}'", function() {
+      makeController();
+      $scope.datastores.new = { id: 1, name: "" };
+      $scope.closeNewDatastorePanel();
+      expect($scope.datastores.new).toEqual({});
+    });
+  });
+
+  describe("canPerformActionOnDatastoreSet", function() {
+    it("return false if not on vmsf6 storage layout", function() {
+      makeController();
+      $scope.addToExistingDatastore = false;
+      $scope.createNewDatastore = false;
+      $scope.selectedAvailableDatastores = [1];
+      $scope.storageLayout = { id: "flat" };
+      expect($scope.canPerformActionOnDatastoreSet()).toBe(false);
+    });
+
+    it("return false if already editing datastores", function() {
+      makeController();
+      $scope.addToExistingDatastore = false;
+      $scope.createNewDatastore = true;
+      $scope.selectedAvailableDatastores = [1];
+      $scope.storageLayout = { id: "vmfs6" };
+      expect($scope.canPerformActionOnDatastoreSet()).toBe(false);
+    });
+
+    it("return false if no device is selected", function() {
+      makeController();
+      $scope.addToExistingDatastore = false;
+      $scope.createNewDatastore = false;
+      $scope.selectedAvailableDatastores = [];
+      $scope.storageLayout = { id: "vmfs6" };
+      expect($scope.canPerformActionOnDatastoreSet()).toBe(false);
+    });
+
+    it("return true when conditions are matched", function() {
+      makeController();
+      $scope.addToExistingDatastore = false;
+      $scope.createNewDatastore = false;
+      $scope.selectedAvailableDatastores = [1];
+      $scope.storageLayout = { id: "vmfs6" };
+      expect($scope.canPerformActionOnDatastoreSet()).toBe(true);
+    });
+  });
+
+  describe("checkAddToDatastoreValid", function() {
+    it("selected disks are valid when that condition is true", function() {
+      makeController();
+      var selected = {
+        has_partitions: false
+      };
+      spyOn($scope, "getSelectedAvailable").and.returnValue([selected]);
+      expect($scope.addToDatastoreValid).toBe(false);
+      $scope.checkAddToDatastoreValid();
+      expect($scope.addToDatastoreValid).toBe(true);
+    });
+
+    it("selected disks are not valid disk has a partition", function() {
+      makeController();
+      var selected = {
+        has_partitions: true
+      };
+      spyOn($scope, "getSelectedAvailable").and.returnValue([selected]);
+      expect($scope.addToDatastoreValid).toBe(false);
+      $scope.checkAddToDatastoreValid();
+      expect($scope.addToDatastoreValid).toBe(false);
+    });
+
+    it("selected disks are not valid when no selected disks", function() {
+      makeController();
+      spyOn($scope, "getSelectedAvailable").and.returnValue([]);
+      expect($scope.addToDatastoreValid).toBe(false);
+      $scope.checkAddToDatastoreValid();
+      expect($scope.addToDatastoreValid).toBe(false);
+    });
+  });
+
+  describe("openAddToExistingDatastorePanel", function() {
+    it("sets 'addToExistingDatastore' to true", function() {
+      makeController();
+      $scope.addToExistingDatastore = false;
+      $scope.available = [
+        {
+          $selected: true,
+          id: 1
+        }
+      ];
+      $scope.openAddToExistingDatastorePanel();
+      expect($scope.addToExistingDatastore).toBe(true);
+    });
+
+    it("sets 'selectedAvailableDatastores' to selected", function() {
+      makeController();
+      $scope.datastores.old = [
+        {
+          $selected: true,
+          id: 1
+        }
+      ];
+      $scope.openAddToExistingDatastorePanel();
+      expect($scope.selectedAvailableDatastores).toEqual($scope.available);
+    });
+
+    it("sets 'datastores.old' to first disk", function() {
+      makeController();
+      $scope.openAddToExistingDatastorePanel();
+      expect($scope.datastores.old).toBe($scope.node.disks[0]);
+    });
+  });
+
+  describe("closeAddToExistingDatastorePanel", function() {
+    it("sets 'addToExistingDatastore' to false", function() {
+      makeController();
+      $scope.addToExistingDatastore = true;
+      $scope.closeAddToExistingDatastorePanel();
+      expect($scope.addToExistingDatastore).toBe(false);
+    });
+
+    it("sets, 'newDatasore' to '{}'", function() {
+      makeController();
+      $scope.datastores.new = { id: 1, name: "" };
+      $scope.closeAddToExistingDatastorePanel();
+      expect($scope.datastores.new).toEqual({});
+    });
+  });
+
+  describe("createDatastore", function() {
+    it("sets 'createNewDatastore' to true", function() {
+      makeController();
+      spyOn(MachinesManager, "createDatastore").and.callFake(function() {
+        var deferred = $q.defer();
+        return deferred.promise;
+      });
+      $scope.createNewDatastore = false;
+      $scope.createDatastore();
+      expect($scope.createNewDatastore).toBe(true);
+    });
+
+    it("calls 'MachinesManager.createDatastore'", function() {
+      makeController();
+      spyOn(MachinesManager, "createDatastore").and.callFake(function() {
+        var deferred = $q.defer();
+        return deferred.promise;
+      });
+      $scope.createDatastore();
+      expect(MachinesManager.createDatastore).toHaveBeenCalled();
     });
   });
 });

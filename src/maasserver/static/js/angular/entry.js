@@ -36,7 +36,8 @@ import {
 } from "./controllers/node_details_networking"; // TODO: fix export/namespace
 // prettier-ignore
 import {
-  removeAvailableByNew
+  removeAvailableByNew,
+  datastoresOnly
 } from "./controllers/node_details_storage"; // TODO: fix export/namespace
 // prettier-ignore
 import {
@@ -152,6 +153,7 @@ import ZonesListController from "./controllers/zones_list";
 import storageDisksPartitions
   from "./directives/nodedetails/storage_disks_partitions";
 import storageFilesystems from "./directives/nodedetails/storage_filesystems";
+import storageDatastores from "./directives/nodedetails/storage_datastores";
 import maasMachinesTable from "./directives/machines_table";
 import addMachine from "./directives/nodelist/add_machine";
 import maasAccordion from "./directives/accordion";
@@ -493,6 +495,7 @@ angular
   .filter("removeDefaultVLANIfVLAN", removeDefaultVLANIfVLAN)
   .filter("filterLinkModes", filterLinkModes)
   .filter("removeAvailableByNew", removeAvailableByNew)
+  .filter("datastoresOnly", datastoresOnly)
   .filter("filterSource", filterSource)
   .filter("ignoreSelf", ignoreSelf)
   .filter("removeNoDHCP", removeNoDHCP)
@@ -594,6 +597,7 @@ angular
   // directives
   .directive("storageDisksPartitions", storageDisksPartitions)
   .directive("storageFilesystems", storageFilesystems)
+  .directive("storageDatastores", storageDatastores)
   .directive("addMachine", addMachine)
   .directive("maasAccordion", maasAccordion)
   .directive("maasActionButton", maasActionButton)

@@ -1,0 +1,112 @@
+<div class="p-strip is-shallow">
+  <h3 class="p-heading--four">Datastores</h3>
+
+  <table class="p-table-expanding p-table--datastores col-12" role="grid">
+    <thead>
+      <tr class="p-table__row">
+        <th scope="col" aria-sort="none" class="p-table__cell">Name</th>
+        <th scope="col" aria-sort="none" class="p-table__cell">Filesystem</th>
+        <th scope="col" aria-sort="none" class="p-table__cell">Size</th>
+        <th scope="col" aria-sort="none" class="p-table__cell">Mount point</th>
+        <th scope="col" aria-sort="none" class="p-table__cell u-align--right">Actions</th>
+        <th class="u-hide">
+          <!-- empty cell for validation -->
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr data-ng-hide="node.disks.length" class="col-12">
+        <td>
+          No datastores defined.
+        </td>
+      </tr>
+      <tr class="p-table__row" data-ng-repeat="filesystem in node.disks" data-ng-class="{ 'is-active': filesystem.$selected }" data-ng-if="filesystem.used_for == 'VMFS Datastore'">
+        <td role="gridcell" class="p-table__cell" aria-label="Name" title="{$ filesystem.name $}">{$ filesystem.name $}</td>
+        <td role="gridcell" class="p-table__cell" aria-label="Filesystem" title="VMFS6">VMFS6</td>
+        <td role="gridcell" class="p-table__cell" aria-label="Size" title="{$ filesystem.size_human $}">{$ filesystem.size_human $}</td>
+        <td role="gridcell" class="p-table__cell" aria-label="Mount point" title="{$ filesystem.path $}">{$ filesystem.path $}</td>
+        <td role="gridcell" class="p-table__cell p-table--action-cell u-align--right">
+          <div class="p-contextual-menu" toggle-ctrl data-ng-if="!isAllStorageDisabled()">
+            <button class="p-button--base p-contextual-menu__toggle" aria-controls="#{$ item.name $}-menu"
+              data-ng-click="toggleMenu()" aria-haspopup="true">
+              <i class="p-icon--contextual-menu">Actions</i>
+            </button>
+            <div class="p-contextual-menu__dropdown" role="menu" data-ng-show="isToggled" id="{$ item.name $}-menu">
+              <button class="p-contextual-menu__link" aria-label="Remove"
+                data-ng-click="toggleMenu(); quickFilesystemDelete(filesystem)"
+                data-ng-show="!isAllStorageDisabled() && filesystemMode !== 'delete'">Remove&hellip;</button>
+            </div>
+          </div>
+        </td>
+        <td class="p-table-expanding__panel--bordered"
+          data-ng-if="filesystem.$selected && filesystemMode === 'delete'"
+          aria-hidden="!filesystem.$selected && filesystemMode !== 'delete'">
+          <div class="row u-flex--no-wrap" data-ng-if="windowWidth <= 768">
+            <h2 data-ng-click="filesystemCancel()" class="p-heading--four">
+              <span data-ng-if="filesystemMode === 'delete'">Removing {$ filesystem.name $}</span>
+            </h2>
+            <button class="p-button--close" data-ng-click="filesystemCancel()"><span
+                class="p-icon--close">Cancel</span></button>
+          </div>
+          <div data-ng-if="filesystemMode !== null && filesystemMode !== 'multi'"
+            data-ng-class="{ 'is-active': filesystemMode !== null && filesystemMode !== 'multi' }">
+            <div data-ng-if="filesystemMode === 'delete'" class="p-space-between">
+              <p><span class="p-icon--warning">Warning:</span> Are you sure you want to remove this {$
+                getRemoveTypeText(filesystem) $}?</p>
+              <div class="p-space-between__align-right">
+                <button class="p-button--base u-width--auto" type="button"
+                  data-ng-click="filesystemCancel(filesystem)">Cancel</button>
+                <button class="p-button--negative u-width--auto"
+                  data-ng-click="filesystemConfirmDelete(filesystem)">Remove</button>
+              </div>
+            </div>
+          </div>
+        </td>
+      </tr>
+
+      <tr class="is-active p-table__row" data-ng-if="dropdown" data-ng-switch="dropdown">
+        <!-- Adding a new TMPFS or RAMFPS filesystem -->
+        <td class="p-table-expanding__panel" data-ng-controller="NodeAddSpecialFilesystemController"
+          data-ng-switch-when="special">
+          <maas-obj-form obj="newFilesystem" manager="machineManager" manager-method="mountSpecialFilesystem"
+            inline="false" save-on-blur="false" after-save="cancel">
+            <div class="row" data-ng-if="windowWidth <= 768">
+              <div class="u-flex--no-wrap">
+                <h2 data-ng-click="cancel()" class="u-align--left p-heading--four">Adding filesystem</h2>
+                <button class="p-button--close" data-ng-click="cancel()" type="button">
+                  <i class="p-icon--close">Cancel</i></button>
+              </div>
+            </div>
+            <div class="row p-form p-form--stacked">
+              <div class="col-6">
+                <div class="p-form__group">
+                  <label class="p-form__label mobile-col-2">Description</label>
+                  <div class="p-form__control p-form__control--placeholder mobile-col-2">
+                    <span data-ng-bind="description"></span>
+                  </div>
+                </div>
+                <maas-obj-field type="options" key="fstype" label="Filesystem" subtle="false"
+                  options="type for type in specialFilesystemTypes"></maas-obj-field>
+              </div>
+              <div class="col-6">
+                <maas-obj-field type="text" key="mount_point" label="Mount point" subtle="false"
+                  placeholder="Absolute path"></maas-obj-field>
+                <maas-obj-field type="text" key="mount_options" label="Mount options" subtle="false"
+                  placeholder="Separated by commas, no spaces"></maas-obj-field>
+              </div>
+            </div>
+            <hr>
+            <div class="p-space-between">
+              <maas-obj-errors></maas-obj-errors>
+              <div class="p-space-between__align-right">
+                <button class="p-button--base u-width--auto" type="button" data-ng-click="cancel()">Cancel</button>
+                <button class="p-button--neutral  u-width--auto ng-binding" data-ng-disabled="!canMount()"
+                  maas-obj-save>Mount</button>
+              </div>
+            </div>
+          </maas-obj-form>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>

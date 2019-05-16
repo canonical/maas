@@ -87,4 +87,56 @@ describe("MachinesManager", function() {
       );
     });
   });
+
+  describe("applyStorageLayout", function() {
+    it("calls apply_storage_layout", function() {
+      spyOn(RegionConnection, "callMethod");
+      var params = {
+        system_id: makeName("system-id"),
+        mount_point: makeName("/dir")
+      };
+      MachinesManager.applyStorageLayout(params);
+      expect(RegionConnection.callMethod).toHaveBeenCalledWith(
+        "machine.apply_storage_layout",
+        params
+      );
+    });
+  });
+
+  describe("createDatastore", function() {
+    it("calls create_vmfs_datastore", function() {
+      spyOn(RegionConnection, "callMethod");
+      var params = {
+        system_id: makeName("system-id"),
+        block_devices: [1, 2, 3, 5],
+        partitions: [5, 6, 7, 8],
+        name: "New datastore"
+      };
+      MachinesManager.createDatastore(params);
+      expect(RegionConnection.callMethod).toHaveBeenCalledWith(
+        "machine.create_vmfs_datastore",
+        params
+      );
+    });
+  });
+
+  describe("updateDatastore", function() {
+    it("calls update_vmfs_datastore", function() {
+      spyOn(RegionConnection, "callMethod");
+      var params = {
+        system_id: makeName("system-id"),
+        add_block_devices: [1, 2, 3, 4],
+        add_partitions: [5, 6, 7, 8],
+        remove_partitions: [],
+        remove_block_devices: [],
+        name: "New datastore",
+        vmfs_datastore_id: 1
+      };
+      MachinesManager.updateDatastore(params);
+      expect(RegionConnection.callMethod).toHaveBeenCalledWith(
+        "machine.update_vmfs_datastore",
+        params
+      );
+    });
+  });
 });

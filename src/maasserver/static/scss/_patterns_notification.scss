@@ -1,6 +1,7 @@
 @mixin maas-p-notifications {
   @include maas-notification;
   @include maas-notification-group;
+  @include maas-notification-subtle;
 }
 
 @mixin maas-notification-group {
@@ -20,6 +21,17 @@
   .p-notification {
     &__response {
       max-width: none;
+    }
+  }
+}
+
+@mixin maas-notification-subtle {
+  [class*="p-notification"].is-subtle {
+    background: transparent;
+    box-shadow: none;
+
+    &::before {
+      height: 0;
     }
   }
 }

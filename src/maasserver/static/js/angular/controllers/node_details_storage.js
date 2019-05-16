@@ -45,12 +45,23 @@ export function removeAvailableByNew() {
   };
 }
 
+export function datastoresOnly() {
+  return function(filesystems) {
+    return filesystems.filter(filesystem => {
+      return filesystem.used_for === "VMFS Datastore";
+    });
+  };
+}
+
 /* @ngInject */
 export function NodeStorageController(
   $scope,
   MachinesManager,
   ConverterService,
-  UsersManager
+  UsersManager,
+  $log,
+  $timeout,
+  $filter
 ) {
   // From models/partitiontable.py - must be kept in sync.
   var INITIAL_PARTITION_OFFSET = 4 * 1024 * 1024;
@@ -129,6 +140,8 @@ export function NodeStorageController(
     }
   ];
 
+  var datastoreOnly = $filter("datastoresOnly");
+
   $scope.tableInfo = { column: "name" };
   $scope.has_disks = false;
   $scope.filesystems = [];
@@ -148,6 +161,235 @@ export function NodeStorageController(
   $scope.nodeManager = MachinesManager;
   $scope.used = [];
   $scope.showMembers = [];
+  $scope.createNewDatastore = false;
+  $scope.addToExistingDatastore = false;
+  $scope.datastores = {
+    new: {},
+    old: {}
+  };
+  $scope.selectedAvailableDatastores = [];
+  $scope.creatingDatastore = false;
+  $scope.updatingDatastore = false;
+  $scope.updatingOSFamily = false;
+  $scope.updatingStorageLayout = false;
+  $scope.confirmStorageLayout = false;
+  $scope.newLayout = "";
+  $scope.addToDatastoreValid = false;
+
+  // XXX: Steve Rydz 09/08/2019
+  // Hardcoded for now in current cycle as no mapping exists
+  $scope.osFamilies = [
+    {
+      id: "linux",
+      name: "Linux",
+      layouts: [
+        {
+          id: "flat",
+          name: "Flat"
+        },
+        {
+          id: "lvm",
+          name: "LVM"
+        },
+        {
+          id: "bcache",
+          name: "bcache"
+        },
+        {
+          id: "vmfs6",
+          name: "VMFS6 (VMware ESXI)"
+        },
+        {
+          id: "blank",
+          name: "No storage (blank) layout"
+        }
+      ]
+    }
+  ];
+
+  $scope.osFamily = $scope.osFamilies[0];
+  $scope.storageLayout = $scope.osFamily.layouts.find(layout => {
+    return layout.id === $scope.node.detected_storage_layout;
+  });
+
+  $scope.openStorageLayoutConfirm = function(selectedLayout) {
+    $scope.osFamily.layouts.forEach(layout => {
+      if (layout.id === selectedLayout) {
+        $scope.newLayout = layout;
+      }
+    });
+    $scope.confirmStorageLayout = true;
+  };
+
+  $scope.closeStorageLayoutConfirm = function() {
+    $scope.confirmStorageLayout = false;
+  };
+
+  $scope.updateStorageLayout = function(storageLayout) {
+    storageLayout = $scope.storageLayout = $scope.newLayout;
+
+    var params = {
+      system_id: $scope.node.system_id,
+      storage_layout: storageLayout.id
+    };
+
+    $scope.updatingStorageLayout = true;
+
+    MachinesManager.applyStorageLayout(params)
+      .then(function() {
+        $timeout(function() {
+          $scope.updatingStorageLayout = false;
+        }, 0);
+      })
+      .catch(function(error) {
+        $log.error(error);
+        $timeout(function() {
+          $scope.updatingStorageLayout = false;
+        }, 0);
+      });
+
+    $scope.closeStorageLayoutConfirm();
+  };
+
+  $scope.openNewDatastorePanel = function() {
+    $scope.createNewDatastore = true;
+    var selectedDisks = $scope.getSelectedAvailable();
+    $scope.datastores.new = {
+      id: selectedDisks[0].id,
+      name: "",
+      mountpoint: selectedDisks[0].mount_point,
+      filesystem: "VMFS6",
+      size: selectedDisks[0].size_human
+    };
+  };
+
+  $scope.closeNewDatastorePanel = function() {
+    $scope.createNewDatastore = false;
+    $scope.datastores.new = {};
+  };
+
+  $scope.openAddToExistingDatastorePanel = function() {
+    $scope.addToExistingDatastore = true;
+    $scope.selectedAvailableDatastores = $scope.getSelectedAvailable();
+    $scope.datastores.old = datastoreOnly($scope.node.disks)[0];
+  };
+
+  $scope.closeAddToExistingDatastorePanel = function() {
+    $scope.addToExistingDatastore = false;
+    $scope.datastores.new = {};
+  };
+
+  $scope.canPerformActionOnDatastoreSet = function() {
+    var editing = $scope.addToExistingDatastore || $scope.createNewDatastore;
+    var selected = $scope.selectedAvailableDatastores.length > 0;
+    var vmfs6 = $scope.storageLayout.id === "vmfs6";
+    return !editing && selected && vmfs6;
+  };
+
+  $scope.createDatastore = function() {
+    $scope.createNewDatastore = true;
+
+    var selectedAvailable = $scope.getSelectedAvailable();
+    var blockDeviceIDs = [];
+    var partitionIDs = [];
+
+    selectedAvailable.forEach(function(item) {
+      if (item.type === "partition") {
+        partitionIDs.push(item.partition_id);
+      } else {
+        blockDeviceIDs.push(item.block_id);
+      }
+    });
+
+    var params = {
+      system_id: $scope.node.system_id,
+      block_devices: blockDeviceIDs,
+      partitions: partitionIDs,
+      name: $scope.datastores.new.name
+    };
+
+    $scope.creatingDatastore = true;
+
+    MachinesManager.createDatastore(params)
+      .then(function() {
+        $timeout(function() {
+          $scope.creatingDatastore = false;
+        }, 0);
+        $scope.closeNewDatastorePanel();
+        $scope.selectedAvailableDatastores = [];
+      })
+      .catch(function(error) {
+        $log.error(error);
+        $timeout(function() {
+          $scope.creatingDatastore = false;
+        }, 0);
+      });
+  };
+
+  $scope.checkAddToDatastoreValid = function() {
+    var selectedAvailable = $scope.getSelectedAvailable();
+    var valid = true;
+    if (selectedAvailable.length < 1) {
+      valid = false;
+    }
+    selectedAvailable.forEach(function(item) {
+      if (item.has_partitions) {
+        valid = false;
+      }
+    });
+    $scope.addToDatastoreValid = valid;
+  };
+
+  $scope.addToDatastore = function() {
+    var selectedAvailable = $scope.getSelectedAvailable();
+    var blockDeviceIDs = [];
+    var partitionIDs = [];
+
+    selectedAvailable.forEach(function(item) {
+      if (item.type === "partition") {
+        partitionIDs.push(item.partition_id);
+      } else {
+        blockDeviceIDs.push(item.block_id);
+      }
+    });
+
+    var params = {
+      system_id: $scope.node.system_id,
+      add_block_devices: blockDeviceIDs,
+      add_partitions: partitionIDs,
+      name: $scope.datastores.old.name,
+      vmfs_datastore_id: $scope.datastores.old.id
+    };
+
+    $scope.updatingDatastore = true;
+
+    MachinesManager.updateDatastore(params)
+      .then(function() {
+        $timeout(function() {
+          $scope.updatingDatastore = false;
+        }, 0);
+        $scope.closeAddToExistingDatastorePanel();
+        $scope.selectedAvailableDatastores = [];
+      })
+      .catch(function(error) {
+        $log.error(error);
+        $timeout(function() {
+          $scope.updatingDatastore = false;
+        }, 0);
+      });
+  };
+
+  $scope.storageLayoutIsReadOnly = function(layouts) {
+    return layouts.length <= 1;
+  };
+
+  $scope.storageLayoutIsDisabled = function(layouts) {
+    return !layouts.length;
+  };
+
+  $scope.hasStorageLayout = function(storageLayout) {
+    return storageLayout ? true : false;
+  };
 
   // Return True if the filesystem is mounted.
   function isMountedFilesystem(filesystem) {
@@ -461,6 +703,7 @@ export function NodeStorageController(
           type: disk.type,
           model: disk.model,
           serial: disk.serial,
+          size_human: disk.size_human,
           tags: getTags(disk),
           used_for: disk.used_for,
           is_boot: disk.is_boot,
@@ -480,6 +723,7 @@ export function NodeStorageController(
             type: "partition",
             model: "",
             serial: "",
+            size_human: partition.size_human,
             tags: [],
             used_for: partition.used_for,
             is_boot: false
@@ -776,6 +1020,9 @@ export function NodeStorageController(
     } else if (filesystem.original_type === "partition") {
       // Delete the partition.
       MachinesManager.deletePartition($scope.node, filesystem.original.id);
+    } else if (filesystem.parent_type === "vmfs6") {
+      // Delete the datastore.
+      MachinesManager.deleteDisk($scope.node, filesystem.id);
     } else {
       // Delete the disk.
       MachinesManager.deleteFilesystem(
@@ -878,6 +1125,8 @@ export function NodeStorageController(
   $scope.toggleAvailableSelect = function(disk) {
     disk.$selected = !disk.$selected;
     $scope.updateAvailableSelection(true);
+    $scope.selectedAvailableDatastores = $scope.getSelectedAvailable();
+    $scope.checkAddToDatastoreValid();
   };
 
   // Toggle the selection of all available disks.
@@ -1592,24 +1841,24 @@ export function NodeStorageController(
   };
 
   // Return true when the name of the new disk is invalid.
-  $scope.isNewDiskNameInvalid = function() {
+  $scope.isNewDiskNameInvalid = function(newDiskName) {
     if (!angular.isObject($scope.node) || !angular.isArray($scope.node.disks)) {
       return true;
     }
 
-    if ($scope.availableNew.name === "") {
+    if (newDiskName === "") {
       return true;
     } else {
       var i, j;
       for (i = 0; i < $scope.node.disks.length; i++) {
         var disk = $scope.node.disks[i];
-        if ($scope.availableNew.name === disk.name) {
+        if (newDiskName === disk.name) {
           return true;
         }
         if (angular.isArray(disk.partitions)) {
           for (j = 0; j < disk.partitions.length; j++) {
             var partition = disk.partitions[j];
-            if ($scope.availableNew.name === partition.name) {
+            if (newDiskName === partition.name) {
               return true;
             }
           }
@@ -1622,7 +1871,7 @@ export function NodeStorageController(
   // Return true if bcache can be saved.
   $scope.createBcacheCanSave = function() {
     return (
-      !$scope.isNewDiskNameInvalid() &&
+      !$scope.isNewDiskNameInvalid($scope.availableNew.name) &&
       !$scope.isMountPointInvalid($scope.availableNew.mountPoint)
     );
   };
@@ -1831,7 +2080,7 @@ export function NodeStorageController(
   // Return true if RAID can be saved.
   $scope.createRAIDCanSave = function() {
     return (
-      !$scope.isNewDiskNameInvalid() &&
+      !$scope.isNewDiskNameInvalid($scope.availableNew.name) &&
       !$scope.isMountPointInvalid($scope.availableNew.mountPoint)
     );
   };
@@ -1944,7 +2193,7 @@ export function NodeStorageController(
 
   // Return true if volume group can be saved.
   $scope.createVolumeGroupCanSave = function() {
-    return !$scope.isNewDiskNameInvalid();
+    return !$scope.isNewDiskNameInvalid($scope.availableNew.name);
   };
 
   // Confirm and create the volume group device.

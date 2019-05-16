@@ -4,27 +4,25 @@
         <table class="p-table-expanding p-table--disks-partitions col-12">
             <thead>
                 <tr class="p-table__row">
-                    <th class="col-3">
-                        <div class="u-float--left">
-                            <input type="checkbox" class="checkbox u-float--left" id="available-check-all" data-ng-hide="isAvailableDisabled()" data-ng-checked="availableAllSelected"
-                            data-ng-click="toggleAvailableAllSelect()" data-ng-disabled="isAvailableDisabled()" />
-                            <label for="available-check-all"></label>
+                    <th class="p-double-row p-table__cell">
+                        <div class="p-double-row__checkbox">&nbsp;</div>
+                        <div class="p-double-row__rows-container--checkbox">
+                            <div>Name</div>
+                            <div>Serial</div>
                         </div>
-                        <a data-ng-click="tableInfo.column = 'name'" data-ng-class="{'p-link--soft': tableInfo.column === 'name'}">Name</a>
-                        <span class="divide"> | </span>
-                        <a data-ng-click="tableInfo.column = 'model'" data-ng-class="{'p-link--soft': tableInfo.column === 'model'}">Model</a>
-                        <span class="divide"> | </span>
-                        <a data-ng-click="tableInfo.column = 'serial'" data-ng-class="{'p-link--soft': tableInfo.column === 'serial'}">Serial</a>
-                        <span class="divide"> | </span>
-                        <a data-ng-click="tableInfo.column = 'firmware_version'" data-ng-class="{'p-link--soft': tableInfo.column === 'firmware_version'}">Firmware</a>
                     </th>
-                    <th class="col-1"><div class="u-align--center">Boot</div></th>
-                    <th class="col-1">Size</th>
-                    <th class="col-1">Type</th>
-                    <th class="col-2">Filesystem</th>
-                    <th class="col-2">Tags</th>
-                    <th class="col-1">Health</th>
-                    <th class="col-1"><div class="u-align--right">Actions</div></th>
+                    <th class="p-double-row p-table__cell">
+                        <div>Model</div>
+                        <div>Firmware</div>
+                    </th>
+                    <th class="p-table__cell"><div class="u-align--center">Boot</div></th>
+                    <th class="p-table__cell">Size</th>
+                    <th class="col-3 p-double-row p-table__cell">
+                        <div>Type</div>
+                        <div>Tags</div>
+                    </th>
+                    <th class="p-table__cell">Health</th>
+                    <th class="p-table__cell"><div class="u-align--right">Actions</div></th>
                 </tr>
             </thead>
             <tbody>
@@ -34,32 +32,34 @@
                     </td>
                 </tr>
                 <tr class="p-table__row" data-ng-repeat="item in available | removeAvailableByNew:availableNew"
-                    data-ng-class="{ 'is-active': item.$selected }">
-                    <td class="col-3 p-form-validation" aria-label="Name"
+                    data-ng-class="{ 'is-active': item.$selected }" data-ng-if="item.parent_type !== 'vmfs6'">
+                    <td class="p-form-validation p-double-row p-table__cell" aria-label="Name"
                         data-ng-class="{ 'is-error': isNameInvalid(item) }">
-                        <div class="u-float--left">
-                            <input type="checkbox" class="checkbox u-float--left" id="{$ item.name $}"
-                            data-ng-hide="isAvailableDisabled()"
-                            data-ng-checked="item.$selected"
-                            data-ng-click="toggleAvailableSelect(item)"
-                            data-ng-disabled="isAvailableDisabled()" />
-                            <label for="{$ item.name $}">
-                                <span data-ng-show="tableInfo.column === 'name'"
-                                data-ng-hide="availableMode === 'edit' && item.$selected"
-                                title="{$ item.name $}">{$ item.name $}</span>
-                            </label>
+                        <div class="p-double-row__checkbox">
+                            <input type="checkbox" class="checkbox u-float--left" id="{$ item.name $}" data-ng-hide="isAvailableDisabled()" data-ng-checked="item.$selected" data-ng-click="toggleAvailableSelect(item)" data-ng-disabled="isAvailableDisabled()" />
+                            <label for="{$ item.name $}"></label>
                         </div>
-                        <span data-ng-show="tableInfo.column === 'model'" title="{$ item.model $}">{$ item.model $}</span>
-                        <span data-ng-show="tableInfo.column === 'serial'" title="{$ item.serial $}">{$ item.serial $}</span>
-                        <span data-ng-show="tableInfo.column === 'firmware_version'" title="{$ item.firmware_version $}">{$ item.firmware_version $}</span>
-                        <input type="text" class="p-form-validation__input"
-                            data-ng-model="item.name"
-                            data-ng-show="availableMode === 'edit' && item.$selected"
-                            data-ng-disabled="item.type === 'partition' || isAllStorageDisabled() || !canEdit()"
-                            data-ng-change="nameHasChanged(item)">
+                        <div class="p-double-row__rows-container--checkbox">
+                            <div class="p-double-row__main-row">
+                                {$ item.name $}
+                            </div>
+                            <div class="p-double-row__muted-row">
+                                {$ item.serial $}
+                            </div>
+                        </div>
                     </td>
-                    <td class="col-1" aria-label="Boot">
-                        <div class="u-align--center">
+                    <td class="p-double-row p-table__cell">
+                        <div class="p-double-row__container">
+                            <div class="p-double-row__main-row">
+                                {$ item.model $}
+                            </div>
+                            <div class="p-double-row__muted-row">
+                                {$ item.firmware_version $}
+                            </div>
+                        </div>
+                    </td>
+                    <td class="p-table__cell" aria-label="Boot">
+                        <div class="u-align--center" data-ng-if="storageLayout.id !== 'vmfs6'">
                             <input type="radio" name="boot-disk" id="{$ item.name $}-boot" class="u-no-margin--right"
                                 data-ng-click="setAsBootDisk(item)"
                                 data-ng-checked="item.is_boot"
@@ -69,30 +69,31 @@
                             <label for="{$ item.name $}-boot" data-ng-hide="availableMode === 'edit' && item.$selected"></label>
                         </div>
                     </td>
-                    <td class="col-1" aria-label="Size">
+                    <td class="p-table__cell" aria-label="Size">
                         <span data-ng-hide="availableMode === 'edit' && item.$selected" title="{$ item.size_human $}">
-                            {$ item.size_human $} <span class="table__label ng-hide" data-ng-show="showFreeSpace(item)">Free: {$ item.available_size_human $}</span>
+                            {$ item.size_human $} <span class="table__labeldatastore-name ng-hide" data-ng-show="showFreeSpace(item)">Free: {$ item.available_size_human $}</span>
                         </span>
                     </td>
-                    <td class="col-1" aria-label="type">
-                        <span data-ng-hide="availableMode === 'edit' && item.$selected" title="{$ getDeviceType(item) $}">{$ getDeviceType(item) $}</span>
+                    <td class="p-double-row p-table__cell" aria-label="type">
+                        <div class="p-double-rows__container">
+                            <div class="p-double-row__main-row">
+                                {$ getDeviceType(item) $}
+                            </div>
+                            <div class="p-double-row__muted-row">
+                                <span class="table__tag" data-ng-repeat="tag in item.tags" data-ng-hide="item.$options.editingTags">
+                                    <a href="#/machines/?query=storage_tags:({$ tag.text $})" title="{$ tag.text $}">{$ tag.text $}</a>
+                                </span>
+                            </div>
+                        </div>
                     </td>
-                    <td class="col-2" aria-label="Filesystem">
-                        <span data-ng-hide="availableMode === 'edit' && item.$selected" title="{$ item.fstype $}">{$ item.fstype $}</span>
-                    </td>
-                    <td class="col-2" aria-label="Tags">
-                        <span class="table__tag" data-ng-repeat="tag in item.tags" data-ng-hide="item.$options.editingTags">
-                            <a href="#/machines/?query=storage_tags:({$ tag.text $})" title="{$ tag.text $}">{$ tag.text $}</a>
-                        </span>
-                    </td>
-                    <td class="col-1" aria-label="Health">
+                    <td class="p-table__cell" aria-label="Health">
                         <span data-maas-script-status="script-status" data-script-status="item.test_status" data-ng-if="item.type === 'physical'"></span>
                         <span data-ng-if="item.test_status === 0 || item.test_status === 1 || item.test_status === 2 || item.test_status === 5 || item.test_status === 7" title="Ok">Ok</span>
                         <span data-ng-if="item.test_status === 3 || item.test_status === 4 || item.test_status === 8" title="Error">Error</span>
                         <span data-ng-if="item.test_status === 6" title="Degraded">Degraded</span>
                         <span data-ng-if="item.test_status === -1" title="Unknown">Unknown</span>
                     </td>
-                    <td class="col-1 p-table--action-cell">
+                    <td class="p-table--action-cell p-table__cell">
                         <div class="u-align--right">
                             <div class="p-contextual-menu" toggle-ctrl
                                 data-ng-if="canAddLogicalVolume(item) || canAddPartition(item) || canEdit(item) || canDelete(item)">
@@ -463,7 +464,7 @@
                                 <label class="checkbox-label" for="bcache-create"></label>
                             </div>
                             <div class="u-float--left p-form-validation"
-                                data-ng-class="{ 'is-error': isNewDiskNameInvalid() }">
+                                data-ng-class="{ 'is-error': isNewDiskNameInvalid(availableNew.name) }">
                                 <input type="text" class="p-form-validation__input"
                                     data-ng-model="availableNew.name">
                             </div>
@@ -481,7 +482,7 @@
                             <div class="row">
                                 <div class="col-6">
                                     <div class="p-form__group u-hide--large p-form-validation"
-                                        data-ng-class="{ 'is-error': isNewDiskNameInvalid() }">
+                                        data-ng-class="{ 'is-error': isNewDiskNameInvalid(availableNew.name) }">
                                         <label for="bcache-name" class="p-form__label">Name</label>
                                         <div class="p-form__control">
                                             <input type="text" id="bcache-name" data-ng-model="availableNew.name"
@@ -600,7 +601,7 @@
                                 <label for="raid-create"></label>
                             </div>
                             <div class="u-float--left p-form-validation"
-                                data-ng-class="{ 'is-error': isNewDiskNameInvalid() }">
+                                data-ng-class="{ 'is-error': isNewDiskNameInvalid(availableNew.name) }">
                                 <input type="text" class="p-form-validation__input"
                                     data-ng-model="availableNew.name">
                             </div>
@@ -619,7 +620,7 @@
                                 <div class="col-6">
                                     <div class="p-form__group u-hide--medium u-hide--large">
                                         <label for="new-raid-name" class="p-form__label">Name</label>
-                                        <div class="p-form__control" data-ng-class="{ 'is-error': isNewDiskNameInvalid() }">
+                                        <div class="p-form__control" data-ng-class="{ 'is-error': isNewDiskNameInvalid(availableNew.name) }">
                                             <input type="text" id="new-raid-name" data-ng-model="availableNew.name">
                                         </div>
                                     </div>
@@ -734,7 +735,7 @@
                                 <label for="vg-create"></label>
                             </div>
                             <div class="u-float--left p-form-validation"
-                                data-ng-class="{ 'is-error': isNewDiskNameInvalid() }">
+                                data-ng-class="{ 'is-error': isNewDiskNameInvalid(availableNew.name) }">
                                 <input type="text" class="p-form-validation__input"
                                     data-ng-model="availableNew.name">
                             </div>
@@ -753,7 +754,7 @@
                                 <div class="col-6">
                                     <div class="p-form__group p-form-validation">
                                         <label for="new-vg-name" class="p-form__label">Name</label>
-                                        <div class="p-form__control" data-ng-class="{ 'is-error': isNewDiskNameInvalid() }">
+                                        <div class="p-form__control" data-ng-class="{ 'is-error': isNewDiskNameInvalid(availableNew.name) }">
                                             <input type="text" class="p-form-validation__input" id="new-vg-name" data-ng-model="availableNew.name">
                                         </div>
                                     </div>
@@ -806,57 +807,212 @@
                 </tr>
             </tbody>
         </table>
-        <button class="p-button--neutral p-tooltip p-tooltip--top-center"
-            data-ng-disabled="!canCreateRAID()"
-            data-ng-hide="isAllStorageDisabled() || !canEdit()"
-            data-ng-click="createRAID()">
-            Create RAID
-            <span class="p-tooltip__message" role="tooltip">Select two or more physical devices to create a RAID</span>
-        </button>
-        <button class="p-button--neutral p-tooltip p-tooltip--top-center"
-            data-ng-disabled="!canCreateVolumeGroup()"
-            data-ng-hide="isAllStorageDisabled() || !canEdit()"
-            data-ng-click="createVolumeGroup()">
-            Create volume group
-            <span class="p-tooltip__message" role="tooltip">Select one or more devices to create a volume group</span>
-        </button>
-        <button class="p-button--neutral p-tooltip p-tooltip--top-center"
-            data-ng-disabled="!canCreateCacheSet()"
-            data-ng-hide="isAllStorageDisabled() || !canEdit()"
-            data-ng-click="createCacheSet()">
-            Create cache Set
-            <span class="p-tooltip__message" role="tooltip">Select one device to create a cache set</span>
-        </button>
-        <button class="p-button--neutral p-tooltip--top-center"
-            data-ng-class="{ 'p-tooltip': !canCreateBcache() }"
-            data-ng-disabled="!canCreateBcache()"
-            data-ng-hide="isAllStorageDisabled() || !canEdit()"
-            data-ng-click="createBcache()">
-            Create bcache
-            <span class="p-tooltip__message" role="tooltip">{$ getCannotCreateBcacheMsg() $}</span>
-        </button>
+
+        <div class="p-card" data-ng-if="createNewDatastore">
+            <div class="row">
+                <div class="row p-form--stacked">
+                    <div class="col-6">
+                        <div class="p-form__group p-form-validation"
+                            data-ng-class="{ 'is-error': isNewDiskNameInvalid(datastores.new.name) }">
+                            <label for="datastore-name" class="p-form__label u-sv3">Name</label>
+                            <div class="p-form__control">
+                                <input type="text"
+                                    name="datastore-name"
+                                    id="datastore-name"
+                                    class="p-form-validation__input"
+                                    data-ng-model="datastores.new.name"
+                                    data-ng-keydown="$event.keyCode == 13 && !isNewDiskNameInvalid(datastores.new.name) && $event.preventDefault()"
+                                    data-ng-keyup="$event.keyCode == 13 && !isNewDiskNameInvalid(datastores.new.name) && createDatastore()">
+
+                                <p class="p-form-validation__message"
+                                    data-ng-if="isNewDiskNameInvalid(datastores.new.name) && datastores.new.name != ''">
+                                    <strong>Error:</strong> Disk name is already in use
+                                </p>
+                                <p class="p-form-validation__message"
+                                    data-ng-if="isNewDiskNameInvalid(datastores.new.name) && datastores.new.name == ''">
+                                    <strong>Error:</strong> Please enter a name for your new datastore
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-form__group">
+                            <label for="datastore-filesystem" class="p-form__label u-sv3">Filesystem</label>
+                            <div class="p-form__control">
+                                <p>{$ datastores.new.filesystem $}</p>
+                            </div>
+                        </div>
+                        <div class="p-form__group" data-ng-if="datastores.new.path">
+                            <label for="datastore-mountpoint" class="p-form__label">Mount point</label>
+                            <div class="p-form__control">
+                                <p>{$ datastores.new.path $}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="u-sv2">
+                    <hr />
+                </div>
+                <div class="u-align--right">
+                    <button class="p-button--neutral u-no-margin--bottom" data-ng-click="closeNewDatastorePanel()" data-ng-disabled="creatingDatastore">Cancel</button>
+                    <button class="p-button--positive u-no-margin--bottom" data-ng-click="createDatastore()" data-ng-if="!creatingDatastore" data-ng-disabled="isNewDiskNameInvalid(datastores.new.name)">
+                        Create datastore
+                    </button>
+                    <button class="p-button--positive u-no-margin--bottom" data-ng-if="creatingDatastore">
+                        <i class="p-icon--spinner is-light u-animation--spin"></i>
+                        &nbsp;
+                        Creating datastore
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="p-card" data-ng-if="addToExistingDatastore">
+            <div class="row p-form--stacked">
+                <div class="col-6">
+                    <div class="p-form__group">
+                        <label for="datastore-name" class="p-form__label u-sv3">Datastore</label>
+                        <div class="p-form__control">
+                            <select name="datastore-name" id="datastore-name"
+                                data-ng-model="datastores.old"
+                                data-ng-options="disk as disk.name for disk in node.disks | datastoresOnly">
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="p-form__group">
+                        <label for="datastore-mountpoint" class="p-form__label">Mount point</label>
+                        <div class="p-form__control">
+                            <p>{$ datastores.old.path $}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="u-sv2">
+                <hr />
+            </div>
+            <div class="u-align--right">
+                <button class="p-button--neutral u-no-margin--bottom" data-ng-click="closeAddToExistingDatastorePanel()" data-ng-disabled="updatingDatastore">Cancel</button>
+                <span class="p-tooltip p-tooltip--top-right">
+                    <button class="p-button--positive u-no-margin--bottom"
+                        data-ng-click="addToDatastore()"
+                        data-ng-if="!updatingDatastore"
+                        data-ng-disabled="!addToDatastoreValid">
+                        Add to datastore
+                    </button>
+                    <span class="p-tooltip__message" role="tooltip" data-ng-if="!addToDatastoreValid">Disks with partitions cannot be added to a datastore</span>
+                </span>
+                <button class="p-button--positive u-no-margin--bottom" data-ng-if="updatingDatastore">
+                    <i class="p-icon--spinner is-light u-animation--spin"></i>
+                    &nbsp;
+                    Adding to datastore
+                </button>
+            </div>
+        </div>
+
+        <div>
+            <span class="p-tooltip p-tooltip--top-left">
+                <button class="p-button--neutral"
+                    data-ng-disabled="!canCreateRAID() || storageLayout.id === 'vmfs6'"
+                    data-ng-hide="isAllStorageDisabled() || !canEdit()"
+                    data-ng-click="createRAID()">
+                    Create RAID
+                </button>
+                <span data-ng-if="!canCreateRAID()">
+                    <span class="p-tooltip__message" role="tooltip" data-ng-if="storageLayout.id !== 'vmfs6'">Select two or more physical devices to create a RAID</span>
+                    <span class="p-tooltip__message" role="tooltip" data-ng-if="storageLayout.id === 'vmfs6'">Not supported in the VMFS6 layout</span>
+                </span>
+            </span>
+            <span class="p-tooltip p-tooltip--top-center">
+                <button class="p-button--neutral"
+                    data-ng-disabled="!canCreateVolumeGroup() || storageLayout.id === 'vmfs6'"
+                    data-ng-hide="isAllStorageDisabled() || !canEdit()"
+                    data-ng-click="createVolumeGroup()">
+                    Create volume group
+                </button>
+                <span data-ng-if="!canCreateVolumeGroup()">
+                    <span class="p-tooltip__message" role="tooltip" data-ng-if="storageLayout.id !== 'vmfs6'">Select one or more devices to create a volume group</span>
+                    <span class="p-tooltip__message" role="tooltip" data-ng-if="storageLayout.id === 'vmfs6'">Not supported in the VMFS6 layout</span>
+                </span>
+            </span>
+            <span class="p-tooltip p-tooltip--top-center">
+                <button class="p-button--neutral"
+                    data-ng-disabled="!canCreateCacheSet() || storageLayout.id === 'vmfs6'"
+                    data-ng-hide="isAllStorageDisabled() || !canEdit()"
+                    data-ng-click="createCacheSet()">
+                    Create cache Set
+                </button>
+                <span data-ng-if="!canCreateCacheSet()">
+                    <span class="p-tooltip__message" role="tooltip" data-ng-if="storageLayout.id !== 'vmfs6'">Select one device to create a cache set</span>
+                    <span class="p-tooltip__message" role="tooltip" data-ng-if="storageLayout.id === 'vmfs6'">Not supported in the VMFS6 layout</span>
+                </span>
+            </span>
+            <span class="p-tooltip p-tooltip--top-center">
+                <button class="p-button--neutral"
+                    data-ng-class="{ 'p-tooltip': !canCreateBcache() }"
+                    data-ng-disabled="!canCreateBcache() || storageLayout.id === 'vmfs6'"
+                    data-ng-hide="isAllStorageDisabled() || !canEdit()"
+                    data-ng-click="createBcache()">
+                    Create bcache
+                </button>
+                <span data-ng-if="!canCreateBcache()">
+                    <span class="p-tooltip__message" role="tooltip" data-ng-if="storageLayout.id !== 'vmfs6'">{$ getCannotCreateBcacheMsg() $}</span>
+                    <span class="p-tooltip__message" role="tooltip" data-ng-if="storageLayout.id === 'vmfs6'">Not supported in the VMFS6 layout</span>
+                </span>
+            </span>
+            <span class="p-tooltip p-tooltip--top-center">
+                <button class="p-button--neutral"
+                    data-ng-click="openNewDatastorePanel()"
+                    data-ng-hide="isAllStorageDisabled() || !canEdit()"
+                    data-ng-disabled="!canPerformActionOnDatastoreSet()">
+                    Create new datastore
+                </button>
+                <span data-ng-if="!canPerformActionOnDatastoreSet()">
+                    <span class="p-tooltip__message" role="tooltip" data-ng-if="storageLayout.id === 'vmfs6'">Select one or more devices to create a datastore</span>
+                    <span class="p-tooltip__message" role="tooltip" data-ng-if="storageLayout.id !== 'vmfs6'">Only available in the VMFS6 layout</span>
+                </span>
+            </span>
+            <span class="p-tooltip p-tooltip--top-center" data-ng-if="storageLayout.id === 'vmfs6'">
+                <button class="p-button--neutral"
+                    data-ng-click="openAddToExistingDatastorePanel()"
+                    data-ng-hide="isAllStorageDisabled() || !canEdit()"
+                    data-ng-disabled="!canPerformActionOnDatastoreSet()">
+                    Add to existing datastore
+                </button>
+                <span data-ng-if="!canPerformActionOnDatastoreSet()">
+                    <span class="p-tooltip__message" role="tooltip" data-ng-if="storageLayout.id === 'vmfs6'">Select one or more devices to add an existing datastore</span>
+                    <span class="p-tooltip__message" role="tooltip" data-ng-if="storageLayout.id !== 'vmfs6'">Only available in the VMFS6 layout</span>
+                </span>
+            </span>
+        </div>
     </div>
 </div>
+
 <div class="p-strip is-shallow">
     <div class="row">
-        <hr>
         <h3 class="p-heading--four">Used disks and partitions</h3>
-        <table class="p-table-expanding">
+        <table class="p-table-expanding p-table--used-disks">
             <thead>
-                <tr>
-                    <th class="col-3">
-                        <a data-ng-click="tableInfo.column = 'name'" data-ng-class="{'p-link--soft': tableInfo.column === 'name'}">Name</a>
-                        <span class="divide"> | </span>
-                        <a data-ng-click="tableInfo.column = 'model'" data-ng-class="{'p-link--soft': tableInfo.column === 'model'}">Model</a>
-                        <span class="divide"> | </span>
-                        <a data-ng-click="tableInfo.column = 'serial'" data-ng-class="{'p-link--soft': tableInfo.column === 'serial'}">Serial</a>
-                        <span class="divide"> | </span>
-                        <a data-ng-click="tableInfo.column = 'firmware_version'" data-ng-class="{'p-link--soft': tableInfo.column === 'firmware_version'}">Firmware</a>
+                <tr class="p-table__row">
+                    <th class="p-double-row p-table__cell">
+                        <div>Name</div>
+                        <div>Serial</div>
                     </th>
-                    <th class="col-1"><div class="u-align--center">Boot</div></th>
-                    <th class="col-2">Device type</th>
-                    <th class="col-3">Used for</th>
-                    <th class="col-2">Health</th>
+                    <th class="p-double-row p-table__cell">
+                        <div>Model</div>
+                        <div>Firmware</div>
+                    </th>
+                    <th class="p-table__cell"><div class="u-align--center">Boot</div></th>
+                    <th class="p-table__cell">Size</th>
+                    <th class="p-double-row p-table__cell">
+                        <div>Type</div>
+                        <div>Tags</div>
+                    </th>
+                    <th class="p-table__cell">Health</th>
+                    <th class="p-double-row p-table__cell">
+                        <div>Used for</div>
+                        <div>Mount point</div>
+                    </th>
                 </tr>
             </thead>
             <tbody>
@@ -865,16 +1021,31 @@
                         No disk or partition has been fully utilized.
                     </td>
                 </tr>
-                <tr data-ng-repeat="item in used" class="table__row details__used">
-                    <td class="col-3" aria-label="Name">
-                        <span data-ng-show="tableInfo.column === 'name'" title="{$ item.name $}">{$ item.name $}</span>
-                        <span data-ng-show="tableInfo.column === 'model'" title="{$ item.model $}">{$ item.model $}</span>
-                        <span data-ng-show="tableInfo.column === 'serial'" title="{$ item.serial $}">{$ item.serial $}</span>
-                        <span data-ng-show="tableInfo.column === 'firmware_version'" title="{$ item.firmware_version $}">{$ item.firmware_version $}</span>
+                <tr data-ng-repeat="item in used" class="table__row details__used p-table__row">
+                    <td class="p-double-row p-table__cell" aria-label="Name">
+                        <div class="p-double-rows__container">
+                            <div class="p-double-row__main-row">
+                                {$ item.name $}
+                            </div>
+                            <div class="p-double-row__muted-row">
+                                {$ item.serial $}
+                            </div>
+                        </div>
                     </td>
-                    <td class="col-1" aria-label="Boot disk">
-                        <div class="u-align--center">
+                    <td class="p-double-row p-table__cell">
+                        <div class="p-double-rows__container">
+                            <div class="p-double-row__main-row">
+                                {$ item.model $}
+                            </div>
+                            <div class="p-double-row__muted-row">
+                                {$ item.firmware_version $}
+                            </div>
+                        </div>
+                    </td>
+                    <td aria-label="Boot disk" class="p-table__cell">
+                        <div class="u-align--center" data-ng-hide="item.parent_type !== 'vmfs6' && !item.is_boot">
                             <input type="radio" id="{$ item.name $}-boot" name="boot-disk"
+                                class="u-no-margin--right"
                                 data-ng-click="setAsBootDisk(item)"
                                 data-ng-checked="item.is_boot"
                                 data-ng-if="item.type === 'physical'"
@@ -882,19 +1053,46 @@
                             <label for="{$ item.name $}-boot"></label>
                         </div>
                     </td>
-                    <td class="col-2" aria-label="Device type" title="{$ getDeviceType(item) $}">{$ getDeviceType(item) $}</td>
-                    <td class="col-3" aria-label="Used for" title="{$ item.used_for $}">{$ item.used_for $}</td>
-                    <td class="col-2" aria-label="Health">
+                    <td class="p-table__cell">{$ item.size_human $}</td>
+                    <td class="p-double-row p-table__cell">
+                        <div class="p-double-rows__container">
+                            <div class="p-double-row__main-row">
+                                {$ getDeviceType(item) $}
+                            </div>
+                            <div class="p-double-row__muted-row">
+                                <span class="table__tag" data-ng-repeat="tag in item.tags" data-ng-hide="item.$options.editingTags">
+                                    <a href="#/machines/?query=storage_tags:({$ tag.text $})" title="{$ tag.text $}">{$ tag.text $}</a>
+                                </span>
+                            </div>
+                        </div>
+                    </td>
+                    <td aria-label="Health" class="p-table__cell">
                         <span data-ng-if="item.type === 'physical'">
                             <span data-maas-script-status="script-status" data-script-status="item.test_status"></span>
-                            <span data-ng-if="item.test_status === 0 || item.test_status === 1 || item.test_status === 2 || item.test_status === 5 || item.test_status === 7" title="Ok">Ok</span>
-                            <span data-ng-if="item.test_status === 3 || item.test_status === 4 || item.test_status === 8" title="Error">Error</span>
+                            <span
+                                data-ng-if="item.test_status === 0 || item.test_status === 1 || item.test_status === 2 || item.test_status === 5 || item.test_status === 7"
+                                title="Ok">Ok</span>
+                            <span data-ng-if="item.test_status === 3 || item.test_status === 4 || item.test_status === 8"
+                                title="Error">Error</span>
                             <span data-ng-if="item.test_status === 6" title="Degraded">Degraded</span>
                             <span data-ng-if="item.test_status === -1" title="Unknown">Unknown</span>
                         </span>
+                    </td>
+                    <td class="p-double-row p-table__cell" aria-label="Used for" title="{$ item.used_for $}">
+                        <div class="p-double-rows__container">
+                            <div class="p-double-row__main-row">
+                                {$ item.used_for $}
+                            </div>
+                            <div class="p-double-row__muted-row">
+                                {$ item.mount_point $}
+                            </div>
+                        </div>
                     </td>
                 </tr>
             </tbody>
         </table>
     </div>
 </div>
+
+<p>Learn more about deploying <a href="https://docs.maas.io/en/installconfig-images" class="p-link--external" target="_blank">Windows</a></p>
+<p>Change the default layout in <a href="/MAAS/settings/storage/">Settings &rsaquo; Storage</a></p>

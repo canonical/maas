@@ -77,6 +77,21 @@ function MachinesManager(RegionConnection, NodesManager) {
     return RegionConnection.callMethod(method, params);
   };
 
+  MachinesManager.prototype.applyStorageLayout = function(params) {
+    var method = this._handler + ".apply_storage_layout";
+    return RegionConnection.callMethod(method, params);
+  };
+
+  MachinesManager.prototype.createDatastore = function(params) {
+    var method = this._handler + ".create_vmfs_datastore";
+    return RegionConnection.callMethod(method, params);
+  };
+
+  MachinesManager.prototype.updateDatastore = function(params) {
+    var method = this._handler + ".update_vmfs_datastore";
+    return RegionConnection.callMethod(method, params);
+  };
+
   return new MachinesManager();
 }
 

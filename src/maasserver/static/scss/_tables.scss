@@ -326,9 +326,12 @@
     }
   }
 
-  .p-table--disks-partitions {
+  .p-table--disks-partitions,
+  .p-table--used-disks {
     .p-table__row {
       .p-table__cell {
+        flex: 0 0 auto !important;
+
         &:nth-child(1) {
           width: 15%;
         }
@@ -346,22 +349,58 @@
         }
 
         &:nth-child(5) {
-          width: 12%;
+          width: 22%;
         }
 
         &:nth-child(6) {
-          width: 10%;
+          width: 22%;
         }
 
         &:nth-child(7) {
-          width: 12%;
-        }
-
-        &:nth-child(8) {
           width: 10%;
         }
+      }
+    }
+  }
 
-        &:nth-child(9) {
+  .p-table--used-disks {
+    .p-table__row {
+      .p-table__cell {
+        &:nth-child(6) {
+          width: 7%;
+        }
+
+        &:nth-child(7) {
+          width: 25%;
+        }
+      }
+    }
+  }
+
+  .p-table--datastores {
+    flex: 0 0 auto !important;
+
+    .p-table__row {
+      .p-table__cell {
+        flex: 0 0 auto !important;
+
+        &:nth-child(1) {
+          width: 15%;
+        }
+
+        &:nth-child(2) {
+          width: 22%;
+        }
+
+        &:nth-child(3) {
+          width: 9%;
+        }
+
+        &:nth-child(4) {
+          width: 44%;
+        }
+
+        &:nth-child(5) {
           width: 10%;
         }
       }
