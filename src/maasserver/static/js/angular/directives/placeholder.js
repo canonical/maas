@@ -12,7 +12,7 @@ function ngPlaceholder() {
     scope: {
       ngPlaceholder: "="
     },
-    link: function(scope, element, attrs) {
+    link: function(scope, element) {
       scope.$watch("ngPlaceholder", function() {
         element[0].placeholder = scope.ngPlaceholder;
       });

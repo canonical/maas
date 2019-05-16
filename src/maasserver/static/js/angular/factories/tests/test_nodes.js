@@ -10,10 +10,11 @@ describe("NodesManager", function() {
   beforeEach(module("MAAS"));
 
   // Load the MachinesManager and RegionConnection factory.
-  var MachinesManager, RegionConnection, webSocket;
+  var MachinesManager, RegionConnection, webSocket, $log;
   beforeEach(inject(function($injector) {
     MachinesManager = $injector.get("MachinesManager");
     RegionConnection = $injector.get("RegionConnection");
+    $log = $injector.get("$log");
 
     // Mock buildSocket so an actual connection is not made.
     webSocket = new MockWebSocket();
@@ -117,12 +118,12 @@ describe("NodesManager", function() {
     it("sets power_state to error on error and logs error", function(done) {
       var machine = makemachine();
       var error = makeName("error");
-      spyOn(console, "log");
+      spyOn($log, "error");
       webSocket.returnData.push(makeFakeResponse(error, true));
       MachinesManager.checkPowerState(machine).then(function(state) {
         expect(machine.power_state).toBe("error");
         expect(state).toBe("error");
-        expect(console.log).toHaveBeenCalledWith(error);
+        expect($log.error).toHaveBeenCalledWith(error);
         done();
       });
     });

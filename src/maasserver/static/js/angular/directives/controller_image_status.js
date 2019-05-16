@@ -130,7 +130,7 @@ export function maasControllerImageStatus(ControllerImageStatusService) {
       'data-ng-if="showSpinner()"></i> ',
       "{$ getImageStatus() $}"
     ].join(""),
-    link: function(scope, element, attrs) {
+    link: function(scope) {
       // Don't register until the systemId is set.
       var unwatch,
         registered = false;

@@ -91,7 +91,7 @@ function maasDefaultOsSelect() {
       };
 
       // Call switchTo any time the os changes.
-      osElement.on("change", function(evt) {
+      osElement.on("change", function() {
         switchTo(osElement.val(), false);
       });
 

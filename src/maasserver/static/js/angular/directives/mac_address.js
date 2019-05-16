@@ -35,7 +35,7 @@ function macAddress() {
       ele.on("input", function() {
         var value = macAddressFormat(ele.val());
 
-        if (value !== undefined) {
+        if (angular.isUndefined(value)) {
           ngModelCtrl.$setViewValue(value);
           ngModelCtrl.$render();
         }

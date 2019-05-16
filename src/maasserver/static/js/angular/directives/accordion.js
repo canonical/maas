@@ -12,7 +12,7 @@
 function maasAccordion() {
   return {
     restrict: "C",
-    link: function(scope, element, attrs) {
+    link: function(scope, element) {
       // Called when accordion tabs are clicked. Removes active on
       // all other tabs except to the tab that was clicked.
       var clickHandler = function(evt) {

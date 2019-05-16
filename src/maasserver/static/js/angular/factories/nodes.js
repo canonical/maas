@@ -9,7 +9,7 @@
  * update the nodes, and listen for notification events about nodes.
  */
 
-function NodesManager(RegionConnection, Manager, KVMDeployOSBlacklist) {
+function NodesManager(RegionConnection, Manager, KVMDeployOSBlacklist, $log) {
   function NodesManager() {
     Manager.call(this);
   }
@@ -50,7 +50,7 @@ function NodesManager(RegionConnection, Manager, KVMDeployOSBlacklist) {
 
         // Already been logged server side, but log it client
         // side so if they really care they can see why.
-        console.log(error);
+        $log.error(error);
 
         // Return the state as error to the remaining callbacks.
         return "error";
@@ -170,7 +170,6 @@ function NodesManager(RegionConnection, Manager, KVMDeployOSBlacklist) {
     mount_options,
     tags
   ) {
-    var self = this;
     var method = this._handler + ".update_filesystem";
     var params = {
       system_id: node.system_id,
@@ -186,7 +185,6 @@ function NodesManager(RegionConnection, Manager, KVMDeployOSBlacklist) {
 
   // Delete the disk.
   NodesManager.prototype.deleteDisk = function(node, block_id) {
-    var self = this;
     var method = this._handler + ".delete_disk";
     var params = {
       system_id: node.system_id,
@@ -197,7 +195,6 @@ function NodesManager(RegionConnection, Manager, KVMDeployOSBlacklist) {
 
   // Delete the partition.
   NodesManager.prototype.deletePartition = function(node, partition_id) {
-    var self = this;
     var method = this._handler + ".delete_partition";
     var params = {
       system_id: node.system_id,
@@ -208,7 +205,6 @@ function NodesManager(RegionConnection, Manager, KVMDeployOSBlacklist) {
 
   // Delete the disk or partition.
   NodesManager.prototype.deleteVolumeGroup = function(node, volume_group_id) {
-    var self = this;
     var method = this._handler + ".delete_volume_group";
     var params = {
       system_id: node.system_id,
@@ -219,7 +215,6 @@ function NodesManager(RegionConnection, Manager, KVMDeployOSBlacklist) {
 
   // Delete a cache set.
   NodesManager.prototype.deleteCacheSet = function(node, cache_set_id) {
-    var self = this;
     var method = this._handler + ".delete_cache_set";
     var params = {
       system_id: node.system_id,
@@ -235,7 +230,6 @@ function NodesManager(RegionConnection, Manager, KVMDeployOSBlacklist) {
     partition_id,
     filesystem_id
   ) {
-    var self = this;
     var method = this._handler + ".delete_filesystem";
     var params = {
       system_id: node.system_id,
@@ -254,7 +248,6 @@ function NodesManager(RegionConnection, Manager, KVMDeployOSBlacklist) {
     } else {
       params = {};
     }
-    var self = this;
     var method = this._handler + ".create_partition";
     params.system_id = partition["system_id"];
     params.block_id = partition["block_id"];
@@ -269,7 +262,6 @@ function NodesManager(RegionConnection, Manager, KVMDeployOSBlacklist) {
     block_id,
     partition_id
   ) {
-    var self = this;
     var method = this._handler + ".create_cache_set";
     var params = {
       system_id: node.system_id,
@@ -323,7 +315,6 @@ function NodesManager(RegionConnection, Manager, KVMDeployOSBlacklist) {
     if (!angular.isObject(params)) {
       params = {};
     }
-    var self = this;
     var method = this._handler + ".create_logical_volume";
     params.system_id = node.system_id;
     params.volume_group_id = volume_group_id;
@@ -414,6 +405,11 @@ function NodesManager(RegionConnection, Manager, KVMDeployOSBlacklist) {
   return NodesManager;
 }
 
-NodesManager.$inject = ["RegionConnection", "Manager", "KVMDeployOSBlacklist"];
+NodesManager.$inject = [
+  "RegionConnection",
+  "Manager",
+  "KVMDeployOSBlacklist",
+  "$log"
+];
 
 export default NodesManager;

@@ -96,7 +96,7 @@ export function NodeStorageController(
       title: "RAID 1",
       min_disks: 2,
       allows_spares: true,
-      calculateSize: function(minSize, numDisks) {
+      calculateSize: function(minSize) {
         return minSize;
       }
     },
@@ -986,7 +986,7 @@ export function NodeStorageController(
   };
 
   // Cancel the current available operation.
-  $scope.availableCancel = function(disk) {
+  $scope.availableCancel = function() {
     $scope.updateAvailableSelection(true);
     $scope.availableNew = {};
   };
@@ -1887,7 +1887,7 @@ export function NodeStorageController(
     MachinesManager.createRAID($scope.node, params);
 
     // Remove devices from available.
-    angular.forEach($scope.availableNew.devices, function(device) {
+    angular.forEach($scope.availableNew.devices, function() {
       var idx = $scope.available.indexOf($scope.availableNew.device);
       $scope.available.splice(idx, 1);
     });
@@ -1969,7 +1969,7 @@ export function NodeStorageController(
     MachinesManager.createVolumeGroup($scope.node, params);
 
     // Remove devices from available.
-    angular.forEach($scope.availableNew.devices, function(device) {
+    angular.forEach($scope.availableNew.devices, function() {
       var idx = $scope.available.indexOf($scope.availableNew.device);
       $scope.available.splice(idx, 1);
     });

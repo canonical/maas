@@ -126,7 +126,6 @@ function UsersManager(Manager, RegionConnection, ErrorService) {
 
   // Create a new authorisation token for the current user.
   UsersManager.prototype.createAuthorisationToken = function() {
-    var self = this;
     return RegionConnection.callMethod(
       "user.create_authorisation_token",
       {}
@@ -137,7 +136,6 @@ function UsersManager(Manager, RegionConnection, ErrorService) {
 
   // Delete the authorisation token for the current user.
   UsersManager.prototype.deleteAuthorisationToken = function(key) {
-    var self = this;
     return RegionConnection.callMethod("user.delete_authorisation_token", {
       key: key
     }).catch(function(error) {

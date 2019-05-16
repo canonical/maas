@@ -58,7 +58,7 @@ export function maasDblClickOverlay(BrowserService) {
       maasDblClickOverlay: "&"
     },
     templateUrl: "directive/templates/double_click_overlay.html",
-    link: function(scope, element, attrs) {
+    link: function(scope, element) {
       // Create the click function that will be called when the
       // overlay is clicked. This changes based on the element that
       // is transcluded into this directive.

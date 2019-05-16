@@ -15,7 +15,7 @@ function maasCodeLines() {
     scope: {
       maasCodeLines: "&"
     },
-    link: function(scope, element, attributes) {
+    link: function(scope, element) {
       function insertContent() {
         // Empty the element contents and include again, this assures
         // its the most up-to-date content
@@ -29,7 +29,7 @@ function maasCodeLines() {
 
         // Each line is to be wrapped by a span which is style & given
         // its appropriate line number
-        $.each(lines, function() {
+        angular.forEach(lines, function() {
           insert += newLine + '<span class="code-line">' + this + "</span>";
           newLine = "\n";
         });

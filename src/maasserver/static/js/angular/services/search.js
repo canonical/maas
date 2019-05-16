@@ -23,7 +23,7 @@ function SearchService() {
     var terms = search.split(" ");
     var fixedTerms = [];
     var spanningParentheses = false;
-    angular.forEach(terms, function(term, idx) {
+    angular.forEach(terms, function(term) {
       if (spanningParentheses) {
         // Previous term had an opening '(' but not a ')'. This
         // term should join that previous term.

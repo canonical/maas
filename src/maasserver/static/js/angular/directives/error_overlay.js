@@ -8,7 +8,7 @@
  */
 
 /* @ngInject */
-export function cacheErrorOverlay($templateCache) {
+export function cacheErrorOverlay($templateCache, $window) {
   // Inject the error_overlay.html into the template cache.
   $templateCache.put(
     "directive/templates/error_overlay.html",
@@ -49,7 +49,7 @@ export function cacheErrorOverlay($templateCache) {
   //
   // Note: This is skipped if unit testing because it will throw 404 errors
   // continuously.
-  if (!angular.isDefined(window.jasmine)) {
+  if (angular.isUndefined($window.jasmine)) {
     var image = new Image();
     image.src = "static/assets/images/icons/error.svg";
     image = new Image();
@@ -69,7 +69,7 @@ export function maasErrorOverlay(
     transclude: true,
     scope: true,
     templateUrl: "directive/templates/error_overlay.html",
-    link: function(scope, element, attrs) {
+    link: function(scope) {
       scope.connected = false;
       scope.showDisconnected = false;
       scope.clientError = false;

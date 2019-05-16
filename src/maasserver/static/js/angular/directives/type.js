@@ -10,7 +10,7 @@ function ngType() {
     scope: {
       ngType: "="
     },
-    link: function(scope, element, attrs) {
+    link: function(scope, element) {
       scope.$watch("ngType", function() {
         let valid_types = [
           "button",
