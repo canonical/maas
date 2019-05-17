@@ -105,7 +105,7 @@ def get_default_config():
         'disk_erase_with_secure_erase': True,
         'disk_erase_with_quick_erase': False,
         # Curtin.
-        'curtin_verbose': False,
+        'curtin_verbose': True,
         # Netplan
         'force_v1_network_yaml': False,
         # Analytics.
