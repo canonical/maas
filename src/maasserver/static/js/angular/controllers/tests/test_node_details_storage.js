@@ -5375,4 +5375,40 @@ describe("NodeStorageController", function() {
       expect(MachinesManager.createDatastore).toHaveBeenCalled();
     });
   });
+
+  describe("getRemoveDatastoreWarningText", function() {
+    it("returns correct string if more datastores exist", function() {
+      makeController();
+      var disks = [
+        {
+          used_for: "VMFS Datastore"
+        },
+        {
+          used_for: "VMFS Datastore"
+        },
+        {
+          used_for: "GPT partitioned with 1 partition"
+        }
+      ];
+      expect($scope.getRemoveDatastoreWarningText(disks)).toBe(
+        "Are you sure you want to remove this datastore?"
+      );
+    });
+
+    it("returns correct string if last datastore", function() {
+      makeController();
+      var disks = [
+        {
+          used_for: "VMFS Datastore"
+        },
+        {
+          used_for: "GPT partitioned with 1 partition"
+        }
+      ];
+      expect($scope.getRemoveDatastoreWarningText(disks)).toBe(
+        "Are you sure you want to remove this datastore? " +
+          "ESXi requires at least one VMFS datastore to deploy."
+      );
+    });
+  });
 });

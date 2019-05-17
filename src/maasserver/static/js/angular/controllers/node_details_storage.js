@@ -2390,6 +2390,20 @@ export function NodeStorageController(
     return false;
   };
 
+  // Returns warning text based on number of datastores
+  $scope.getRemoveDatastoreWarningText = function(disks) {
+    var datastores = disks.filter(function(disk) {
+      return disk.used_for === "VMFS Datastore";
+    });
+    var warningText = "Are you sure you want to remove this datastore?";
+
+    if (datastores.length === 1) {
+      warningText += " ESXi requires at least one VMFS datastore to deploy.";
+    }
+
+    return warningText;
+  };
+
   // Tell $parent that the storageController has been loaded.
   $scope.$parent.controllerLoaded("storageController", $scope);
 }

@@ -51,8 +51,7 @@
           <div data-ng-if="filesystemMode !== null && filesystemMode !== 'multi'"
             data-ng-class="{ 'is-active': filesystemMode !== null && filesystemMode !== 'multi' }">
             <div data-ng-if="filesystemMode === 'delete'" class="p-space-between">
-              <p><span class="p-icon--warning">Warning:</span> Are you sure you want to remove this {$
-                getRemoveTypeText(filesystem) $}?</p>
+              <p class="u-remove-max-width"><span class="p-icon--warning">Warning:</span> {$ getRemoveDatastoreWarningText(node.disks) $}</p>
               <div class="p-space-between__align-right">
                 <button class="p-button--base u-width--auto" type="button"
                   data-ng-click="filesystemCancel(filesystem)">Cancel</button>
