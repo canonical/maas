@@ -2,7 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 __all__ = [
-    'AcquireNodeForm',
+    'FilterNodeForm',
     ]
 
 
@@ -19,6 +19,10 @@ from django.db.models import (
     Q,
 )
 from django.forms.fields import Field
+from maasserver.enum import (
+    NODE_STATUS,
+    NODE_STATUS_SHORT_LABEL_CHOICES,
+)
 from maasserver.fields import (
     mac_validator,
     MODEL_NAME_VALIDATOR,
@@ -206,7 +210,7 @@ def parse_legacy_tags(values):
     return list(result)
 
 
-# Mapping used to rename the fields from the AcquireNodeForm form.
+# Mapping used to rename the fields from the FilterNodeForm form.
 # The new names correspond to the names used by Juju.  This is used so
 # that the search form present on the node listing page can be used to
 # filter nodes using Juju's semantics.
@@ -254,7 +258,7 @@ class RenamableFieldsForm(forms.Form):
 def detect_nonexistent_names(model_class, names):
     """Check for, and return, names of nonexistent objects.
 
-    Used for checking object names as passed to the `AcquireNodeForm`.
+    Used for checking object names as passed to the `FilterNodeForm`.
 
     :param model_class: A model class that has a name attribute.
     :param names: List, tuple, or set of purpoprted zone names.
@@ -591,26 +595,12 @@ class LabeledConstraintMapField(Field):
             return LabeledConstraintMap(value)
 
 
-class AcquireNodeForm(RenamableFieldsForm):
-    """A form handling the constraints used to acquire a node."""
-
-    name = forms.CharField(
-        label="The hostname of the desired node", required=False)
-
-    system_id = forms.CharField(
-        label="The system_id of the desired node", required=False)
+class FilterNodeForm(RenamableFieldsForm):
+    """A form for filtering nodes."""
 
     # This becomes a multiple-choice field during cleaning, to accommodate
     # architecture wildcards.
     arch = forms.CharField(label="Architecture", required=False)
-
-    cpu_count = forms.FloatField(
-        label="CPU count", required=False,
-        error_messages={'invalid': "Invalid CPU count: number required."})
-
-    mem = forms.FloatField(
-        label="Memory", required=False,
-        error_messages={'invalid': "Invalid memory: number of MiB required."})
 
     tags = UnconstrainedMultipleChoiceField(label="Tags", required=False)
 
@@ -713,7 +703,13 @@ class AcquireNodeForm(RenamableFieldsForm):
     interfaces = LabeledConstraintMapField(
         validators=[interfaces_validator], label="Interfaces", required=False)
 
-    ignore_unknown_constraints = False
+    cpu_count = forms.FloatField(
+        label="CPU count", required=False,
+        error_messages={'invalid': "Invalid CPU count: number required."})
+
+    mem = forms.FloatField(
+        label="Memory", required=False,
+        error_messages={'invalid': "Invalid memory: number of MiB required."})
 
     pod = forms.CharField(
         label="The name of the desired pod", required=False)
@@ -726,6 +722,8 @@ class AcquireNodeForm(RenamableFieldsForm):
 
     not_pod_type = forms.CharField(
         label="The power_type of the undesired pod", required=False)
+
+    ignore_unknown_constraints = False
 
     @classmethod
     def Strict(cls, *args, **kwargs):
@@ -846,18 +844,15 @@ class AcquireNodeForm(RenamableFieldsForm):
         value = self.cleaned_data[self.get_field_name('not_vlans')]
         return self._clean_specifiers(VLAN, value)
 
-    def __init__(self, *args, **kwargs):
-        super(AcquireNodeForm, self).__init__(*args, **kwargs)
-
     def clean(self):
         if not self.ignore_unknown_constraints:
             unknown_constraints = set(
                 self.data).difference(set(self.field_mapping.values()))
             for constraint in unknown_constraints:
                 if constraint not in IGNORED_FIELDS:
-                    msg = "Unable to allocate a machine. No such constraint."
+                    msg = "No such constraint."
                     self._errors[constraint] = self.error_class([msg])
-        return super(AcquireNodeForm, self).clean()
+        return super().clean()
 
     def describe_constraint(self, field_name):
         """Return a human-readable representation of a constraint.
@@ -909,37 +904,26 @@ class AcquireNodeForm(RenamableFieldsForm):
         :return: A QuerySet of the nodes that match the form's constraints.
         :rtype: `django.db.models.query.QuerySet`
         """
-        filtered_nodes = nodes
-        filtered_nodes = self.filter_by_pod_or_pod_type(filtered_nodes)
-        filtered_nodes = self.filter_by_hostname(filtered_nodes)
-        filtered_nodes = self.filter_by_system_id(filtered_nodes)
-        filtered_nodes = self.filter_by_arch(filtered_nodes)
-        filtered_nodes = self.filter_by_cpu_count(filtered_nodes)
-        filtered_nodes = self.filter_by_mem(filtered_nodes)
-        filtered_nodes = self.filter_by_tags(filtered_nodes)
-        filtered_nodes = self.filter_by_zone(filtered_nodes)
-        filtered_nodes = self.filter_by_pool(filtered_nodes)
-        filtered_nodes = self.filter_by_subnets(filtered_nodes)
-        filtered_nodes = self.filter_by_vlans(filtered_nodes)
-        filtered_nodes = self.filter_by_fabrics(filtered_nodes)
-        filtered_nodes = self.filter_by_fabric_classes(filtered_nodes)
+        filtered_nodes = self._apply_filters(nodes)
         compatible_nodes, filtered_nodes = self.filter_by_storage(
             filtered_nodes)
         compatible_interfaces, filtered_nodes = self.filter_by_interfaces(
             filtered_nodes)
-        filtered_nodes = self.reorder_nodes_by_cost(filtered_nodes)
         return filtered_nodes, compatible_nodes, compatible_interfaces
 
-    def reorder_nodes_by_cost(self, filtered_nodes):
-        # This uses a very simple procedure to compute a machine's
-        # cost. This procedure is loosely based on how ec2 computes
-        # the costs of machines. This is here to give a hint to let
-        # the call to acquire() decide which machine to return based
-        # on the machine's cost when multiple machines match the
-        # constraints.
-        filtered_nodes = filtered_nodes.distinct().extra(
-            select={'cost': "cpu_count + memory / 1024."})
-        return filtered_nodes.order_by("cost")
+    def _apply_filters(self, nodes):
+        nodes = self.filter_by_arch(nodes)
+        nodes = self.filter_by_tags(nodes)
+        nodes = self.filter_by_zone(nodes)
+        nodes = self.filter_by_pool(nodes)
+        nodes = self.filter_by_subnets(nodes)
+        nodes = self.filter_by_vlans(nodes)
+        nodes = self.filter_by_fabrics(nodes)
+        nodes = self.filter_by_fabric_classes(nodes)
+        nodes = self.filter_by_cpu_count(nodes)
+        nodes = self.filter_by_mem(nodes)
+        nodes = self.filter_by_pod_or_pod_type(nodes)
+        return nodes.distinct()
 
     def filter_by_interfaces(self, filtered_nodes):
         compatible_interfaces = {}
@@ -1077,22 +1061,6 @@ class AcquireNodeForm(RenamableFieldsForm):
             filtered_nodes = filtered_nodes.filter(system_id=system_id)
         return filtered_nodes
 
-    def filter_by_hostname(self, filtered_nodes):
-        # Filter by hostname.
-        hostname = self.cleaned_data.get(self.get_field_name('name'))
-        if hostname:
-            # If the given hostname has a domain part, try matching
-            # against the nodes' FQDN.
-            if "." in hostname:
-                host, domain = hostname.split('.', 1)
-                hostname_clause = Q(hostname=host)
-                domain_clause = Q(domain__name=domain)
-                clause = (hostname_clause & domain_clause)
-            else:
-                clause = Q(hostname=hostname)
-            filtered_nodes = filtered_nodes.filter(clause)
-        return filtered_nodes
-
     def filter_by_pod_or_pod_type(self, filtered_nodes):
         # Filter by pod, pod type, not_pod or not_pod_type.
         # We are filtering for all of these to keep the query count down.
@@ -1113,4 +1081,120 @@ class AcquireNodeForm(RenamableFieldsForm):
                 pods = pods.exclude(power_type=not_pod_type)
             filtered_nodes = filtered_nodes.filter(
                 bmc_id__in=pods.values_list('id', flat=True))
+        return filtered_nodes.distinct()
+
+
+class AcquireNodeForm(FilterNodeForm):
+    """A form handling the constraints used to acquire a node."""
+
+    name = forms.CharField(
+        label="The hostname of the desired node", required=False)
+
+    system_id = forms.CharField(
+        label="The system_id of the desired node", required=False)
+
+    def _apply_filters(self, nodes):
+        nodes = super()._apply_filters(nodes)
+        nodes = self.filter_by_hostname(nodes)
+        nodes = self.filter_by_system_id(nodes)
+        return nodes
+
+    def filter_by_hostname(self, filtered_nodes):
+        # Filter by hostname.
+        hostname = self.cleaned_data.get(self.get_field_name('name'))
+        if hostname:
+            # If the given hostname has a domain part, try matching
+            # against the nodes' FQDN.
+            if "." in hostname:
+                host, domain = hostname.split('.', 1)
+                hostname_clause = Q(hostname=host)
+                domain_clause = Q(domain__name=domain)
+                clause = (hostname_clause & domain_clause)
+            else:
+                clause = Q(hostname=hostname)
+            filtered_nodes = filtered_nodes.filter(clause)
+        return filtered_nodes
+
+    def filter_nodes(self, nodes):
+        result = super().filter_nodes(nodes)
+        filtered_nodes, compatible_nodes, compatible_interfaces = result
+        filtered_nodes = self.reorder_nodes_by_cost(filtered_nodes)
+        return filtered_nodes, compatible_nodes, compatible_interfaces
+
+    def reorder_nodes_by_cost(self, filtered_nodes):
+        # This uses a very simple procedure to compute a machine's
+        # cost. This procedure is loosely based on how ec2 computes
+        # the costs of machines. This is here to give a hint to let
+        # the call to acquire() decide which machine to return based
+        # on the machine's cost when multiple machines match the
+        # constraints.
+        filtered_nodes = filtered_nodes.extra(
+            select={'cost': "cpu_count + memory / 1024."})
+        return filtered_nodes.order_by("cost")
+
+
+class ReadNodesForm(FilterNodeForm):
+
+    id = UnconstrainedMultipleChoiceField(
+        label="System IDs to filter on", required=False)
+
+    hostname = UnconstrainedMultipleChoiceField(
+        label="Hostnames to filter on", required=False)
+
+    mac_address = ValidatorMultipleChoiceField(
+        validator=mac_validator, label="MAC addresses to filter on",
+        required=False,
+        error_messages={
+            'invalid_list': "Invalid parameter: invalid MAC address format",
+            })
+
+    agent_name = forms.CharField(
+        label="Only include nodes with events matching the agent name",
+        required=False)
+
+    status = forms.ChoiceField(
+        label="Only inclides nodes with the specified status",
+        choices=NODE_STATUS_SHORT_LABEL_CHOICES, required=False)
+
+    def _apply_filters(self, nodes):
+        nodes = super()._apply_filters(nodes)
+        nodes = self.filter_by_ids(nodes)
+        nodes = self.filter_by_hostnames(nodes)
+        nodes = self.filter_by_mac_addresses(nodes)
+        nodes = self.filter_by_agent_name(nodes)
+        nodes = self.filter_by_status(nodes)
+        return nodes
+
+    def filter_by_ids(self, filtered_nodes):
+        ids = self.cleaned_data.get(self.get_field_name('id'))
+        if ids:
+            filtered_nodes = filtered_nodes.filter(system_id__in=ids)
+        return filtered_nodes
+
+    def filter_by_hostnames(self, filtered_nodes):
+        hostnames = self.cleaned_data.get(self.get_field_name('hostname'))
+        if hostnames:
+            filtered_nodes = filtered_nodes.filter(hostname__in=hostnames)
+        return filtered_nodes
+
+    def filter_by_mac_addresses(self, filtered_nodes):
+        mac_addresses = self.cleaned_data.get(
+            self.get_field_name('mac_address'))
+        if mac_addresses:
+            filtered_nodes = filtered_nodes.filter(
+                interface__mac_address__in=mac_addresses)
+        return filtered_nodes
+
+    def filter_by_agent_name(self, filtered_nodes):
+        field_name = self.get_field_name('agent_name')
+        if field_name in self.data:
+            agent_name = self.cleaned_data.get(field_name)
+            filtered_nodes = filtered_nodes.filter(agent_name=agent_name)
+        return filtered_nodes
+
+    def filter_by_status(self, filtered_nodes):
+        status = self.cleaned_data.get(self.get_field_name('status'))
+        if status:
+            status_id = getattr(NODE_STATUS, status.upper())
+            filtered_nodes = filtered_nodes.filter(status=status_id)
         return filtered_nodes

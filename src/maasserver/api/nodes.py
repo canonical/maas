@@ -58,6 +58,7 @@ from maasserver.models import (
     VirtualBlockDevice,
 )
 from maasserver.models.nodeprobeddetails import get_single_probed_details
+from maasserver.node_constraint_filter_forms import ReadNodesForm
 from maasserver.permissions import NodePermission
 from maasserver.utils.orm import prefetch_queryset
 from metadataserver.enum import (
@@ -674,6 +675,12 @@ class NodesHandler(OperationsHandler):
         node with the matching hostname will be returned. This can be specified
         multiple times to see multiple nodes.
 
+        @param (int) "cpu_count" [required=false] Only nodes with the specified
+        minimum number of CPUs will be included.
+
+        @param (string) "mem" [required=false] Only nodes with the specified
+        minimum amount of RAM (in MiB) will be included.
+
         @param (string) "mac_address" [required=false] Only nodes relating to
         the node owning the specified MAC address will be returned. This can be
         specified multiple times to see multiple nodes.
@@ -693,12 +700,46 @@ class NodesHandler(OperationsHandler):
         @param (string) "agent_name" [required=false] Only nodes relating to
         the nodes with matching agent names will be returned.
 
+        @param (string) "fabrics" [required=false] Only nodes with interfaces
+        in specified fabrics will be returned.
+
+        @param (string) "not_fabrics" [required=false] Only nodes with
+        interfaces not in specified fabrics will be returned.
+
+        @param (string) "vlans" [required=false] Only nodes with interfaces in
+        specified VLANs will be returned.
+
+        @param (string) "not_vlans" [required=false] Only nodes with interfaces
+        not in specified VLANs will be returned.
+
+        @param (string) "subnets" [required=false] Only nodes with interfaces
+        in specified subnets will be returned.
+
+        @param (string) "not_subnets" [required=false] Only nodes with
+        interfaces not in specified subnets will be returned.
+
+        @param (string) "status" [required=false] Only nodes with specified
+        status will be returned.
+
+        @param (string) "pod": [required=false] Only nodes that belong to a
+        specified pod will be returned.
+
+        @param (string) "not_pod": [required=false] Only nodes that don't
+        belong to a specified pod will be returned.
+
+        @param (string) "pod_type": [required=false] Only nodes that belong to
+        a pod of the specified type will be returned.
+
+        @param (string) "not_pod_type": [required=false] Only nodes that don't
+        belong a pod of the specified type will be returned.
+
         @success (http-status-code) "200" 200
 
         @success (json) "success_json" A JSON object containing a list of node
         objects.
         @success-example "success_json" [exkey=read-visible-nodes] placeholder
         text
+
         """
 
         if self.base_model == Node:
@@ -719,7 +760,12 @@ class NodesHandler(OperationsHandler):
             ))
             return nodes
         else:
-            nodes = filtered_nodes_list_from_request(request, self.base_model)
+            form = ReadNodesForm(data=request.GET)
+            if not form.is_valid():
+                raise MAASAPIValidationError(form.errors)
+            nodes = self.base_model.objects.get_nodes(
+                request.user, NodePermission.view)
+            nodes, _, _ = form.filter_nodes(nodes)
             nodes = nodes.select_related(*NODES_SELECT_RELATED)
             nodes = prefetch_queryset(
                 nodes, NODES_PREFETCH).order_by('id')

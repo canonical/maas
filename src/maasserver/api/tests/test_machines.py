@@ -426,7 +426,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         # `default_gateways`, `health_status`, 'special_filesystems' and
         # 'resource_pool' the number of queries is not the same but it is
         # proportional to the number of machines.
-        DEFAULT_NUM = 62
+        DEFAULT_NUM = 63
         self.assertEqual(DEFAULT_NUM + (10 * 6), num_queries1)
         self.assertEqual(DEFAULT_NUM + (20 * 6), num_queries2)
 
@@ -538,9 +538,12 @@ class TestMachinesAPI(APITestCase.ForUser):
             'mac_address': [bad_mac1, bad_mac2, ok_mac],
         })
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
-        self.assertIn(
-            "Invalid MAC address(es): 00:E0:81:DD:D1:ZZ, 00:E0:81:DD:D1:XX",
+        parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
+        self.assertEqual(
+            parsed_result,
+            {'mac_address': [
+                "'00:E0:81:DD:D1:ZZ' is not a valid MAC address."]})
 
     def test_GET_with_agent_name_filters_by_agent_name(self):
         non_listed_machine = factory.make_Node(
@@ -762,7 +765,7 @@ class TestMachinesAPI(APITestCase.ForUser):
             machines_module, 'ComposeMachineForPodsForm', FakeComposer)
 
         mock_filter_nodes = self.patch(AcquireNodeForm, 'filter_nodes')
-        mock_filter_nodes.return_value = [], {}, {}
+        mock_filter_nodes.return_value = Node.objects.none(), {}, {}
         response = self.client.post(
             reverse('machines_handler'), {'op': 'allocate'})
         self.assertEqual(http.client.OK, response.status_code)
@@ -780,7 +783,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         machine = factory.make_Node(
             status=available_status, owner=None, with_boot_disk=True)
         mock_filter_nodes = self.patch(AcquireNodeForm, 'filter_nodes')
-        mock_filter_nodes.return_value = [], {}, {}
+        mock_filter_nodes.return_value = Node.objects.none(), {}, {}
         mock_compose = self.patch(ComposeMachineForPodsForm, 'compose')
         mock_compose.return_value = machine
         response = self.client.post(
@@ -816,7 +819,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         mock_list_all_usable_architectures.return_value = sorted(
             pod.architectures)
         mock_filter_nodes = self.patch(AcquireNodeForm, 'filter_nodes')
-        mock_filter_nodes.return_value = [], {}, {}
+        mock_filter_nodes.return_value = Node.objects.none(), {}, {}
         mock_compose = self.patch(ComposeMachineForPodsForm, 'compose')
         mock_compose.return_value = machine
         response = self.client.post(
@@ -889,7 +892,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         mock_list_all_usable_architectures.return_value = sorted(
             pod.architectures)
         mock_filter_nodes = self.patch(AcquireNodeForm, 'filter_nodes')
-        mock_filter_nodes.return_value = [], {}, {}
+        mock_filter_nodes.return_value = Node.objects.none(), {}, {}
         mock_compose = self.patch(ComposeMachineForPodsForm, 'compose')
         mock_compose.return_value = machine
         response = self.client.post(
@@ -927,7 +930,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         mock_list_all_usable_architectures.return_value = sorted(
             pod.architectures)
         mock_filter_nodes = self.patch(AcquireNodeForm, 'filter_nodes')
-        mock_filter_nodes.return_value = [], {}, {}
+        mock_filter_nodes.return_value = Node.objects.none(), {}, {}
         mock_compose = self.patch(ComposeMachineForPodsForm, 'compose')
         mock_compose.return_value = machine
         response = self.client.post(
@@ -964,7 +967,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         mock_list_all_usable_architectures.return_value = sorted(
             pod.architectures)
         mock_filter_nodes = self.patch(AcquireNodeForm, 'filter_nodes')
-        mock_filter_nodes.return_value = [], {}, {}
+        mock_filter_nodes.return_value = Node.objects.none(), {}, {}
         mock_compose = self.patch(ComposeMachineForPodsForm, 'compose')
         mock_compose.return_value = machine
         response = self.client.post(
@@ -1000,7 +1003,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         mock_list_all_usable_architectures.return_value = sorted(
             pod.architectures)
         mock_filter_nodes = self.patch(AcquireNodeForm, 'filter_nodes')
-        mock_filter_nodes.return_value = [], {}, {}
+        mock_filter_nodes.return_value = Node.objects.none(), {}, {}
         mock_compose = self.patch(ComposeMachineForPodsForm, 'compose')
         mock_compose.return_value = machine
         response = self.client.post(
@@ -1036,7 +1039,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         mock_list_all_usable_architectures.return_value = sorted(
             pod.architectures)
         mock_filter_nodes = self.patch(AcquireNodeForm, 'filter_nodes')
-        mock_filter_nodes.return_value = [], {}, {}
+        mock_filter_nodes.return_value = Node.objects.none(), {}, {}
         mock_compose = self.patch(ComposeMachineForPodsForm, 'compose')
         mock_compose.return_value = machine
         response = self.client.post(
@@ -1071,7 +1074,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         mock_list_all_usable_architectures.return_value = sorted(
             pod.architectures)
         mock_filter_nodes = self.patch(AcquireNodeForm, 'filter_nodes')
-        mock_filter_nodes.return_value = [], {}, {}
+        mock_filter_nodes.return_value = Node.objects.none(), {}, {}
         mock_compose = self.patch(ComposeMachineForPodsForm, 'compose')
         mock_compose.return_value = machine
         response = self.client.post(
@@ -1113,7 +1116,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         mock_list_all_usable_architectures.return_value = sorted(
             pod.architectures)
         mock_filter_nodes = self.patch(AcquireNodeForm, 'filter_nodes')
-        mock_filter_nodes.return_value = [], {}, {}
+        mock_filter_nodes.return_value = Node.objects.none(), {}, {}
         mock_compose = self.patch(ComposeMachineForPodsForm, 'compose')
         mock_compose.return_value = machine
         response = self.client.post(
@@ -1152,7 +1155,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         mock_list_all_usable_architectures.return_value = sorted(
             pod.architectures)
         mock_filter_nodes = self.patch(AcquireNodeForm, 'filter_nodes')
-        mock_filter_nodes.return_value = [], {}, {}
+        mock_filter_nodes.return_value = Node.objects.none(), {}, {}
         mock_compose = self.patch(ComposeMachineForPodsForm, 'compose')
         mock_compose.return_value = machine
         space = factory.make_Space()
@@ -1192,7 +1195,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         mock_list_all_usable_architectures.return_value = sorted(
             pod.architectures)
         mock_filter_nodes = self.patch(AcquireNodeForm, 'filter_nodes')
-        mock_filter_nodes.return_value = [], {}, {}
+        mock_filter_nodes.return_value = Node.objects.none(), {}, {}
         mock_compose = self.patch(ComposeMachineForPodsForm, 'compose')
         mock_compose.return_value = None
         response = self.client.post(
@@ -1334,8 +1337,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(
-            {unknown_constraint:
-                ["Unable to allocate a machine. No such constraint."]},
+            {unknown_constraint: ["No such constraint."]},
             parsed_result)
 
     def test_POST_allocate_allocates_machine_by_name(self):
@@ -1492,7 +1494,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         ])]
         pod.save()
         mock_filter_nodes = self.patch(AcquireNodeForm, 'filter_nodes')
-        mock_filter_nodes.return_value = [], {}, {}
+        mock_filter_nodes.return_value = Node.objects.none(), {}, {}
         mock_compose = self.patch(ComposeMachineForPodsForm, 'compose')
         factory.make_Tag('fast')
         factory.make_Tag('stable')

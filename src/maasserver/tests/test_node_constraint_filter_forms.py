@@ -24,6 +24,7 @@ from maasserver.models import (
 from maasserver.node_constraint_filter_forms import (
     AcquireNodeForm,
     detect_nonexistent_names,
+    FilterNodeForm,
     generate_architecture_wildcards,
     get_architecture_wildcards,
     get_storage_constraints_from_string,
@@ -31,6 +32,7 @@ from maasserver.node_constraint_filter_forms import (
     nodes_by_interface,
     nodes_by_storage,
     parse_legacy_tags,
+    ReadNodesForm,
     RenamableFieldsForm,
 )
 from maasserver.testing.architecture import patch_usable_architectures
@@ -209,7 +211,22 @@ class TestRenamableFieldsForm(MAASServerTestCase):
             (form.is_valid(), form.errors))
 
 
-class TestAcquireNodeForm(MAASServerTestCase):
+class FilterConstraintsMixin:
+
+    form_class = None  # set in subclasses
+
+    def assertConstrainedNodes(self, nodes, data):
+        form = self.form_class(data=data)
+        self.assertTrue(form.is_valid(), dict(form.errors))
+        filtered_nodes, storage, interfaces = (
+            form.filter_nodes(Machine.objects.all()))
+        self.assertItemsEqual(nodes, filtered_nodes)
+        return (filtered_nodes, storage, interfaces)
+
+
+class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
+
+    form_class = FilterNodeForm
 
     def set_usable_arch(self):
         """Produce an arbitrary, valid, architecture name."""
@@ -228,145 +245,22 @@ class TestAcquireNodeForm(MAASServerTestCase):
 
     def test_strict_form_checks_unknown_constraints(self):
         data = {'unknown_constraint': 'boo'}
-        form = AcquireNodeForm.Strict(data=data)
+        form = FilterNodeForm.Strict(data=data)
         self.assertEqual(
             (False,
-                {'unknown_constraint':
-                    ["Unable to allocate a machine. No such constraint."]}),
+                {'unknown_constraint': ["No such constraint."]}),
             (form.is_valid(), form.errors))
 
     def test_not_strict_check_unknown_constraints(self):
         data = {'unknown_constraint': 'boo'}
-        form = AcquireNodeForm(data=data)
+        form = FilterNodeForm(data=data)
         self.assertFalse(form.is_valid())
-
-    def assertConstrainedNodes(self, nodes, data):
-        form = AcquireNodeForm(data=data)
-        self.assertTrue(form.is_valid(), dict(form.errors))
-        filtered_nodes, storage, interfaces = (
-            form.filter_nodes(Machine.objects.all()))
-        self.assertItemsEqual(nodes, filtered_nodes)
-        return (filtered_nodes, storage, interfaces)
 
     def test_no_constraints(self):
         nodes = [factory.make_Node() for _ in range(3)]
-        form = AcquireNodeForm(data={})
+        form = FilterNodeForm(data={})
         self.assertTrue(form.is_valid())
         self.assertItemsEqual(nodes, Machine.objects.all())
-
-    def test_hostname(self):
-        nodes = [factory.make_Node() for _ in range(3)]
-        self.assertConstrainedNodes([nodes[0]], {'name': nodes[0].hostname})
-        self.assertConstrainedNodes([], {'name': 'unknown-name'})
-
-    def test_hostname_with_domain_part(self):
-        Domain.objects.get_or_create(name='mydomain', authoritative=True)
-        nodes = [
-            factory.make_Node(domain=factory.make_Domain()) for _ in range(3)]
-        self.assertConstrainedNodes(
-            [nodes[0]],
-            {'name': '%s.%s' % (nodes[0].hostname, nodes[0].domain.name)})
-        self.assertConstrainedNodes(
-            [],
-            {'name': '%s.%s' % (nodes[0].hostname, 'unknown-domain')})
-        self.assertConstrainedNodes(
-            [],
-            {'name': '%s.%s' % (nodes[0].hostname, nodes[1].domain.name)})
-        node = factory.make_Node(hostname="host21.mydomain")
-        self.assertConstrainedNodes(
-            [node],
-            {'name': 'host21.mydomain'})
-
-        self.assertConstrainedNodes(
-            [node],
-            {'name': 'host21.%s' % node.domain.name})
-
-    def test_cpu_count(self):
-        node1 = factory.make_Node(cpu_count=1)
-        node2 = factory.make_Node(cpu_count=2)
-        nodes = [node1, node2]
-        self.assertConstrainedNodes(nodes, {'cpu_count': '0'})
-        self.assertConstrainedNodes(nodes, {'cpu_count': '1.0'})
-        self.assertConstrainedNodes([node2], {'cpu_count': '2'})
-        self.assertConstrainedNodes([], {'cpu_count': '4'})
-
-    def test_pod_not_pod_pod_type_or_not_pod_type_for_pod(self):
-        node1 = factory.make_Node(power_type='virsh')
-        pod1 = factory.make_Pod(pod_type=node1.power_type, name='pod1')
-        node2 = factory.make_Node(power_type='rsd')
-        pod2 = factory.make_Pod(pod_type=node2.power_type, name='pod2')
-        node1.bmc = pod1
-        node1.save()
-        node2.bmc = pod2
-        node2.save()
-        self.assertConstrainedNodes([node1], {'pod': pod1.name})
-        self.assertConstrainedNodes([node2], {'pod': pod2.name})
-        self.assertConstrainedNodes([], {'pod': factory.make_name('pod')})
-
-    def test_pod_not_pod_pod_type_or_not_pod_type_for_not_pod(self):
-        node1 = factory.make_Node(power_type='virsh')
-        pod1 = factory.make_Pod(pod_type=node1.power_type, name='pod1')
-        node2 = factory.make_Node(power_type='rsd')
-        pod2 = factory.make_Pod(pod_type=node2.power_type, name='pod2')
-        node1.bmc = pod1
-        node1.save()
-        node2.bmc = pod2
-        node2.save()
-        self.assertConstrainedNodes([node2], {'not_pod': pod1.name})
-        self.assertConstrainedNodes([node1], {'not_pod': pod2.name})
-        self.assertConstrainedNodes(
-            [node1, node2], {'not_pod': factory.make_name('not_pod')})
-
-    def test_pod_not_pod_pod_type_or_not_pod_type_for_pod_type(self):
-        node1 = factory.make_Node(power_type='virsh')
-        pod1 = factory.make_Pod(pod_type=node1.power_type)
-        node2 = factory.make_Node(power_type='rsd')
-        pod2 = factory.make_Pod(pod_type=node2.power_type)
-        node1.bmc = pod1
-        node1.save()
-        node2.bmc = pod2
-        node2.save()
-        self.assertConstrainedNodes([node1], {'pod_type': pod1.power_type})
-        self.assertConstrainedNodes([node2], {'pod_type': pod2.power_type})
-        self.assertConstrainedNodes(
-            [], {'pod_type': factory.make_name('pod_type')})
-
-    def test_pod_not_pod_pod_type_or_not_pod_type_for_not_pod_type(self):
-        node1 = factory.make_Node(power_type='virsh')
-        pod1 = factory.make_Pod(pod_type=node1.power_type)
-        node2 = factory.make_Node(power_type='rsd')
-        pod2 = factory.make_Pod(pod_type=node2.power_type)
-        node1.bmc = pod1
-        node1.save()
-        node2.bmc = pod2
-        node2.save()
-        self.assertConstrainedNodes([node2], {'not_pod_type': pod1.power_type})
-        self.assertConstrainedNodes([node1], {'not_pod_type': pod2.power_type})
-        self.assertConstrainedNodes(
-            [node1, node2],
-            {'not_pod_type': factory.make_name('not_pod_type')})
-
-    def test_invalid_cpu_count(self):
-        form = AcquireNodeForm(data={'cpu_count': 'invalid'})
-        self.assertEqual(
-            (False, {'cpu_count': ["Invalid CPU count: number required."]}),
-            (form.is_valid(), form.errors))
-
-    def test_memory(self):
-        node1 = factory.make_Node(memory=1024)
-        node2 = factory.make_Node(memory=4096)
-        self.assertConstrainedNodes([node1, node2], {'mem': '512'})
-        self.assertConstrainedNodes([node1, node2], {'mem': '1024'})
-        self.assertConstrainedNodes([node2], {'mem': '2048'})
-        self.assertConstrainedNodes([node2], {'mem': '4096'})
-        self.assertConstrainedNodes([], {'mem': '8192'})
-        self.assertConstrainedNodes([node2], {'mem': '4096.0'})
-
-    def test_invalid_memory(self):
-        form = AcquireNodeForm(data={'mem': 'invalid'})
-        self.assertEqual(
-            (False, {'mem': ["Invalid memory: number of MiB required."]}),
-            (form.is_valid(), form.errors))
 
     def test_subnets_filters_by_name(self):
         subnets = [
@@ -390,7 +284,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
         v1 = factory.make_VLAN(space=space1)
         s1 = factory.make_Subnet(vlan=v1, space=None)
         factory.make_Node_with_Interface_on_Subnet(subnet=s1)
-        form = AcquireNodeForm(data={
+        form = FilterNodeForm(data={
             'subnets': 'space:bar',
         })
         self.assertThat(form.is_valid(), Equals(False), dict(form.errors))
@@ -484,7 +378,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
             })
 
     def test_fails_validation_for_no_matching_vlans(self):
-        form = AcquireNodeForm(data={
+        form = FilterNodeForm(data={
             'vlans': ["space:foo"]
         })
         self.assertThat(form.is_valid(), Equals(False))
@@ -492,7 +386,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
             dict(form.errors)['vlans'], Equals(["No matching VLANs found."]))
 
     def test_fails_validation_for_no_matching_not_vlans(self):
-        form = AcquireNodeForm(data={
+        form = FilterNodeForm(data={
             'not_vlans': ["space:foo"]
         })
         self.assertThat(form.is_valid(), Equals(False))
@@ -501,7 +395,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
             Equals(["No matching VLANs found."]))
 
     def test_fails_validation_for_no_matching_subnets(self):
-        form = AcquireNodeForm(data={
+        form = FilterNodeForm(data={
             'subnets': ["foo"]
         })
         self.assertThat(form.is_valid(), Equals(False))
@@ -510,7 +404,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
             Equals(["No matching subnets found."]))
 
     def test_fails_validation_for_no_matching_not_subnets(self):
-        form = AcquireNodeForm(data={
+        form = FilterNodeForm(data={
             'not_subnets': ["foo"]
         })
         self.assertThat(form.is_valid(), Equals(False))
@@ -576,7 +470,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
             {'subnets': [subnets[1].name]})
 
     def test_invalid_subnets(self):
-        form = AcquireNodeForm(data={'subnets': 'ip:10.0.0.0'})
+        form = FilterNodeForm(data={'subnets': 'ip:10.0.0.0'})
         self.assertEqual(
             (
                 False,
@@ -591,7 +485,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
 
         # The validator is unit-tested separately.  This just verifies that it
         # is being consulted.
-        form = AcquireNodeForm(data={'subnets': ['vlan:-1']})
+        form = FilterNodeForm(data={'subnets': ['vlan:-1']})
         self.assertEqual(
             (False, {'subnets': [
                 "VLAN tag (VID) out of range (0-4094; 0 for untagged.)"]}),
@@ -697,7 +591,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
         self.assertConstrainedNodes([], {'not_subnets': [not_subnet.name]})
 
     def test_invalid_not_subnets(self):
-        form = AcquireNodeForm(data={'not_subnets': 'ip:10.0.0.0'})
+        form = FilterNodeForm(data={'not_subnets': 'ip:10.0.0.0'})
         self.assertEqual(
             (
                 False,
@@ -712,7 +606,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
 
         # The validator is unit-tested separately.  This just verifies that it
         # is being consulted.
-        form = AcquireNodeForm(data={'not_subnets': ['vlan:-1']})
+        form = FilterNodeForm(data={'not_subnets': ['vlan:-1']})
         self.assertEqual(
             (False, {'not_subnets': [
                 "VLAN tag (VID) out of range (0-4094; 0 for untagged.)"]}),
@@ -766,7 +660,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
             [], {'zone': zone2.name})
 
     def test_invalid_zone(self):
-        form = AcquireNodeForm(data={'zone': 'unknown'})
+        form = FilterNodeForm(data={'zone': 'unknown'})
         self.assertEqual(
             (False, {'zone': ["No such zone: 'unknown'."]}),
             (form.is_valid(), form.errors))
@@ -785,13 +679,13 @@ class TestAcquireNodeForm(MAASServerTestCase):
 
     def test_validates_not_in_zone(self):
         bad_zone_name = '#$&*!'
-        form = AcquireNodeForm(data={'not_in_zone': [bad_zone_name]})
+        form = FilterNodeForm(data={'not_in_zone': [bad_zone_name]})
         self.assertFalse(form.is_valid())
         self.assertEqual(['not_in_zone'], list(form.errors.keys()))
 
     def test_not_in_zone_must_be_zone_name(self):
         non_zone = factory.make_name('nonzone')
-        form = AcquireNodeForm(data={'not_in_zone': [non_zone]})
+        form = FilterNodeForm(data={'not_in_zone': [non_zone]})
         self.assertFalse(form.is_valid())
         self.assertEqual(
             {'not_in_zone': ["No such zone(s): %s." % non_zone]},
@@ -824,7 +718,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
             [], {'pool': pool2.name})
 
     def test_invalid_pool(self):
-        form = AcquireNodeForm(data={'pool': 'unknown'})
+        form = FilterNodeForm(data={'pool': 'unknown'})
         self.assertEqual(
             (False, {'pool': ["No such pool: 'unknown'."]}),
             (form.is_valid(), form.errors))
@@ -848,13 +742,13 @@ class TestAcquireNodeForm(MAASServerTestCase):
 
     def test_validates_not_in_pool(self):
         bad_pool_name = '#$&*!'
-        form = AcquireNodeForm(data={'not_in_pool': [bad_pool_name]})
+        form = FilterNodeForm(data={'not_in_pool': [bad_pool_name]})
         self.assertFalse(form.is_valid())
         self.assertEqual(['not_in_pool'], list(form.errors.keys()))
 
     def test_not_in_pool_must_be_pool_name(self):
         non_pool = factory.make_name('nonpool')
-        form = AcquireNodeForm(data={'not_in_pool': [non_pool]})
+        form = FilterNodeForm(data={'not_in_pool': [non_pool]})
         self.assertFalse(form.is_valid())
         self.assertEqual(
             {'not_in_pool': ["No such pool(s): %s." % non_pool]},
@@ -916,7 +810,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
             {'not_tags': ['eggs', 'ham']})
 
     def test_invalid_tags(self):
-        form = AcquireNodeForm(data={'tags': ['big', 'unknown']})
+        form = FilterNodeForm(data={'tags': ['big', 'unknown']})
         self.assertFalse(form.is_valid())
         self.assertThat(form.errors, MatchesDict({
             'tags': MatchesListwise([
@@ -925,7 +819,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
         }))
 
     def test_storage_invalid_constraint(self):
-        form = AcquireNodeForm(data={'storage': '10(ssd,20'})
+        form = FilterNodeForm(data={'storage': '10(ssd,20'})
         self.assertEqual(
             (False, {
                 'storage':
@@ -933,7 +827,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
             (form.is_valid(), form.errors))
 
     def test_storage_invalid_size_constraint(self):
-        form = AcquireNodeForm(data={'storage': 'abc'})
+        form = FilterNodeForm(data={'storage': 'abc'})
         self.assertEqual(
             (False, {
                 'storage':
@@ -1309,7 +1203,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
             node=node1, size=6 * (1000 ** 3), tags=['rotary', '5400rpm'])
         iscsi = factory.make_ISCSIBlockDevice(
             node=node1, size=21 * (1000 ** 3))
-        form = AcquireNodeForm({
+        form = FilterNodeForm({
             'storage': 'root:8(lvm),physical:5(rotary,5400rpm),iscsi:20'})
         self.assertTrue(form.is_valid(), form.errors)
         filtered_nodes, constraint_map, _ = form.filter_nodes(
@@ -1331,7 +1225,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
         fabric2 = factory.make_Fabric(name="fabric2")
         factory.make_Node_with_Interface_on_Subnet(fabric=fabric1)
         node2 = factory.make_Node_with_Interface_on_Subnet(fabric=fabric2)
-        form = AcquireNodeForm({
+        form = FilterNodeForm({
             'fabrics': ['fabric2']})
         self.assertTrue(form.is_valid(), dict(form.errors))
         filtered_nodes, _, _ = form.filter_nodes(Machine.objects)
@@ -1342,7 +1236,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
         fabric2 = factory.make_Fabric(name="fabric2")
         factory.make_Node_with_Interface_on_Subnet(fabric=fabric1)
         node2 = factory.make_Node_with_Interface_on_Subnet(fabric=fabric2)
-        form = AcquireNodeForm({
+        form = FilterNodeForm({
             'not_fabrics': ['fabric1']})
         self.assertTrue(form.is_valid(), dict(form.errors))
         filtered_nodes, _, _ = form.filter_nodes(Machine.objects)
@@ -1353,7 +1247,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
         fabric2 = factory.make_Fabric(class_type="1g")
         factory.make_Node_with_Interface_on_Subnet(fabric=fabric1)
         node2 = factory.make_Node_with_Interface_on_Subnet(fabric=fabric2)
-        form = AcquireNodeForm({
+        form = FilterNodeForm({
             'fabric_classes': ['1g']})
         self.assertTrue(form.is_valid(), dict(form.errors))
         filtered_nodes, _, _ = form.filter_nodes(Machine.objects)
@@ -1364,7 +1258,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
         fabric2 = factory.make_Fabric(class_type="1g")
         factory.make_Node_with_Interface_on_Subnet(fabric=fabric1)
         node2 = factory.make_Node_with_Interface_on_Subnet(fabric=fabric2)
-        form = AcquireNodeForm({
+        form = FilterNodeForm({
             'not_fabric_classes': ['10g']})
         self.assertTrue(form.is_valid(), dict(form.errors))
         filtered_nodes, _, _ = form.filter_nodes(Machine.objects)
@@ -1372,34 +1266,34 @@ class TestAcquireNodeForm(MAASServerTestCase):
 
     def test_interfaces_constraint_rejected_if_syntax_is_invalid(self):
         factory.make_Node_with_Interface_on_Subnet()
-        form = AcquireNodeForm({
+        form = FilterNodeForm({
             'interfaces': 'label:x'})
         self.assertFalse(form.is_valid(), dict(form.errors))
         self.assertThat(form.errors, Contains('interfaces'))
 
     def test_interfaces_constraint_rejected_if_key_is_invalid(self):
         factory.make_Node_with_Interface_on_Subnet()
-        form = AcquireNodeForm({
+        form = FilterNodeForm({
             'interfaces': 'label:chirp_chirp_thing=silenced'})
         self.assertFalse(form.is_valid(), dict(form.errors))
         self.assertThat(form.errors, Contains('interfaces'))
 
     def test_interfaces_constraint_validated(self):
         factory.make_Node_with_Interface_on_Subnet()
-        form = AcquireNodeForm({
+        form = FilterNodeForm({
             'interfaces': 'label:fabric=fabric-0'})
         self.assertTrue(form.is_valid(), dict(form.errors))
 
     def test_interfaces_constraint_works_with_object_form(self):
         factory.make_Node_with_Interface_on_Subnet()
-        form = AcquireNodeForm({
+        form = FilterNodeForm({
             'interfaces': LabeledConstraintMap('label:fabric=fabric-0')})
         self.assertTrue(form.is_valid(), dict(form.errors))
 
     def test_interfaces_constraint_works_for_subnet(self):
         subnet = factory.make_Subnet()
         factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
-        form = AcquireNodeForm({
+        form = FilterNodeForm({
             'interfaces': LabeledConstraintMap(
                 'eth0:subnet=%s' % subnet.cidr)})
         self.assertTrue(form.is_valid(), dict(form.errors))
@@ -1408,7 +1302,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
         subnet = factory.make_Subnet()
         node = factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
         ip = factory.make_StaticIPAddress(interface=node.get_boot_interface())
-        form = AcquireNodeForm({
+        form = FilterNodeForm({
             'interfaces': LabeledConstraintMap(
                 'eth0:ip=%s' % str(ip.ip))})
         self.assertTrue(form.is_valid(), dict(form.errors))
@@ -1428,7 +1322,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
     def test_interfaces_constraint_with_multiple_labels_and_values_validated(
             self):
         factory.make_Node_with_Interface_on_Subnet()
-        form = AcquireNodeForm({
+        form = FilterNodeForm({
             'interfaces':
             'label:fabric=fabric-0,fabric=fabric-1,space=default;'
             'label2:fabric=fabric-3,fabric=fabric-4,space=foo'})
@@ -1440,13 +1334,13 @@ class TestAcquireNodeForm(MAASServerTestCase):
         node1 = factory.make_Node_with_Interface_on_Subnet(fabric=fabric1)
         node2 = factory.make_Node_with_Interface_on_Subnet(fabric=fabric2)
 
-        form = AcquireNodeForm({
+        form = FilterNodeForm({
             'interfaces': 'label:fabric_class=10g'})
         self.assertTrue(form.is_valid(), dict(form.errors))
         filtered_nodes, _, _ = form.filter_nodes(Machine.objects)
         self.assertItemsEqual([node2], filtered_nodes)
 
-        form = AcquireNodeForm({
+        form = FilterNodeForm({
             'interfaces': 'label:fabric_class=1g'})
         self.assertTrue(form.is_valid(), dict(form.errors))
         filtered_nodes, _, _ = form.filter_nodes(Machine.objects)
@@ -1462,13 +1356,13 @@ class TestAcquireNodeForm(MAASServerTestCase):
         node2 = factory.make_Node_with_Interface_on_Subnet(
             fabric=fabric2, vlan=vlan2)
 
-        form = AcquireNodeForm({
+        form = FilterNodeForm({
             'interfaces': 'fabric:fabric_class=1g;vlan:vid=1'})
         self.assertTrue(form.is_valid(), dict(form.errors))
         filtered_nodes, _, _ = form.filter_nodes(Machine.objects)
         self.assertItemsEqual([node1], filtered_nodes)
 
-        form = AcquireNodeForm({
+        form = FilterNodeForm({
             'interfaces': 'label:fabric_class=10g;vlan:vid=2'})
         self.assertTrue(form.is_valid(), dict(form.errors))
         filtered_nodes, _, _ = form.filter_nodes(Machine.objects)
@@ -1484,14 +1378,14 @@ class TestAcquireNodeForm(MAASServerTestCase):
         node2 = factory.make_Node_with_Interface_on_Subnet(
             fabric=fabric2, vlan=vlan2)
 
-        form = AcquireNodeForm({
+        form = FilterNodeForm({
             'interfaces':
             'fabric:fabric_class=1g,fabric_class=10g;vlan:vid=1'})
         self.assertTrue(form.is_valid(), dict(form.errors))
         filtered_nodes, _, _ = form.filter_nodes(Machine.objects)
         self.assertItemsEqual([node1], filtered_nodes)
 
-        form = AcquireNodeForm({
+        form = FilterNodeForm({
             'interfaces':
             'label:fabric_class=10g,fabric_class=1g;vlan:vid=2'})
         self.assertTrue(form.is_valid(), dict(form.errors))
@@ -1508,14 +1402,14 @@ class TestAcquireNodeForm(MAASServerTestCase):
         node2 = factory.make_Node_with_Interface_on_Subnet(
             fabric=fabric2, vlan=vlan2)
 
-        form = AcquireNodeForm({
+        form = FilterNodeForm({
             'interfaces':
             'none:fabric_class=1g,vid=2'})
         self.assertTrue(form.is_valid(), dict(form.errors))
         filtered_nodes, _, _ = form.filter_nodes(Machine.objects)
         self.assertItemsEqual([], filtered_nodes)
 
-        form = AcquireNodeForm({
+        form = FilterNodeForm({
             'interfaces':
             'any:fabric_class=10g,fabric_class=1g,vid=1,vid=2'})
         self.assertTrue(form.is_valid(), dict(form.errors))
@@ -1539,12 +1433,12 @@ class TestAcquireNodeForm(MAASServerTestCase):
             [node_big], {'arch': arch, 'tags': ['big']})
 
     def test_invalid_combined_constraints(self):
-        form = AcquireNodeForm(
-            data={'tags': ['unknown'], 'mem': 'invalid'})
+        form = FilterNodeForm(
+            data={'tags': ['unknown'], 'arch': 'invalid'})
         self.assertEqual(
             (False, {
+                'arch': ["Architecture not recognised."],
                 'tags': ["No such tag(s): 'unknown'."],
-                'mem': ["Invalid memory: number of MiB required."],
             }),
             (form.is_valid(), form.errors))
 
@@ -1564,47 +1458,158 @@ class TestAcquireNodeForm(MAASServerTestCase):
             {'subnets': [subnet.name]})
 
     def test_describe_constraints_returns_empty_if_no_constraints(self):
-        form = AcquireNodeForm(data={})
+        form = FilterNodeForm(data={})
         self.assertTrue(form.is_valid(), form.errors)
         self.assertEqual('', form.describe_constraints())
-
-    def test_describe_constraints_shows_simple_constraint(self):
-        hostname = factory.make_name('host')
-        form = AcquireNodeForm(data={'name': hostname})
-        self.assertTrue(form.is_valid(), form.errors)
-        self.assertEqual('name=%s' % hostname, form.describe_constraints())
 
     def test_describe_constraints_shows_arch_as_special_case(self):
         # The "arch" field is technically a single-valued string field
         # on the form, but its "cleaning" produces a list of strings.
         arch = self.set_usable_arch()
-        form = AcquireNodeForm(data={'arch': arch})
+        form = FilterNodeForm(data={'arch': arch})
         self.assertTrue(form.is_valid(), form.errors)
         self.assertEqual('arch=%s' % arch, form.describe_constraints())
 
     def test_describe_constraints_shows_multi_constraint(self):
         tag = factory.make_Tag()
-        form = AcquireNodeForm(data={'tags': [tag.name]})
+        form = FilterNodeForm(data={'tags': [tag.name]})
         self.assertTrue(form.is_valid(), form.errors)
         self.assertEqual('tags=%s' % tag.name, form.describe_constraints())
 
     def test_describe_constraints_sorts_constraints(self):
-        hostname = factory.make_name('host')
         zone = factory.make_Zone()
-        form = AcquireNodeForm(data={'name': hostname, 'zone': zone})
+        pool = factory.make_ResourcePool()
+        form = FilterNodeForm(data={'pool': pool, 'zone': zone})
         self.assertTrue(form.is_valid(), form.errors)
         self.assertEqual(
-            'name=%s zone=%s' % (hostname, zone),
+            'pool=%s zone=%s' % (pool, zone),
             form.describe_constraints())
 
     def test_describe_constraints_combines_constraint_values(self):
         tag1 = factory.make_Tag()
         tag2 = factory.make_Tag()
-        form = AcquireNodeForm(data={'tags': [tag1.name, tag2.name]})
+        form = FilterNodeForm(data={'tags': [tag1.name, tag2.name]})
         self.assertTrue(form.is_valid(), form.errors)
         self.assertEqual(
             'tags=%s,%s' % tuple(sorted([tag1.name, tag2.name])),
             form.describe_constraints())
+
+    def test_describe_constraints_shows_all_constraints(self):
+        constraints = {
+            'arch': self.set_usable_arch(),
+            'cpu_count': randint(1, 32),
+            'mem': randint(1024, 256 * 1024),
+            'tags': [factory.make_Tag().name],
+            'not_tags': [factory.make_Tag().name],
+            'subnets': [factory.make_Subnet().name],
+            'not_subnets': [factory.make_Subnet().name],
+            'vlans': ['name:' + factory.make_VLAN(name=RANDOM).name],
+            'not_vlans': ['name:' + factory.make_VLAN(name=RANDOM).name],
+            'connected_to': [factory.make_mac_address()],
+            'not_connected_to': [factory.make_mac_address()],
+            'zone': factory.make_Zone(),
+            'not_in_zone': [factory.make_Zone().name],
+            'pool': factory.make_ResourcePool(),
+            'not_in_pool': [factory.make_ResourcePool().name],
+            'pod': factory.make_name(),
+            'not_pod': factory.make_name(),
+            'pod_type': factory.make_name(),
+            'not_pod_type': factory.make_name(),
+            'storage': '0(ssd),10(ssd)',
+            'interfaces': 'label:fabric=fabric-0',
+            'fabrics': [factory.make_Fabric().name],
+            'not_fabrics': [factory.make_Fabric().name],
+            'fabric_classes': [
+                factory.make_Fabric(class_type="10g").class_type],
+            'not_fabric_classes': [
+                factory.make_Fabric(class_type="1g").class_type],
+            }
+        form = FilterNodeForm(data=constraints)
+        self.assertTrue(form.is_valid(), form.errors)
+        # Check first: we didn't forget to test any attributes.  When we add
+        # a constraint to the form, we'll have to add it here as well.
+        self.assertItemsEqual(form.fields.keys(), constraints.keys())
+
+        described_constraints = {
+            constraint.split('=', 1)[0]
+            for constraint in form.describe_constraints().split()
+            }
+
+        self.assertItemsEqual(constraints.keys(), described_constraints)
+
+
+class TestAcquireNodeForm(MAASServerTestCase, FilterConstraintsMixin):
+
+    form_class = AcquireNodeForm
+
+    def set_usable_arch(self):
+        """Produce an arbitrary, valid, architecture name."""
+        arch = '%s/%s' % (factory.make_name('arch'), factory.make_name('sub'))
+        patch_usable_architectures(self, [arch])
+        return arch
+
+    def test_hostname(self):
+        nodes = [factory.make_Node() for _ in range(3)]
+        self.assertConstrainedNodes([nodes[0]], {'name': nodes[0].hostname})
+        self.assertConstrainedNodes([], {'name': 'unknown-name'})
+
+    def test_hostname_with_domain_part(self):
+        Domain.objects.get_or_create(name='mydomain', authoritative=True)
+        nodes = [
+            factory.make_Node(domain=factory.make_Domain()) for _ in range(3)]
+        self.assertConstrainedNodes(
+            [nodes[0]],
+            {'name': '%s.%s' % (nodes[0].hostname, nodes[0].domain.name)})
+        self.assertConstrainedNodes(
+            [],
+            {'name': '%s.%s' % (nodes[0].hostname, 'unknown-domain')})
+        self.assertConstrainedNodes(
+            [],
+            {'name': '%s.%s' % (nodes[0].hostname, nodes[1].domain.name)})
+        node = factory.make_Node(hostname="host21.mydomain")
+        self.assertConstrainedNodes(
+            [node],
+            {'name': 'host21.mydomain'})
+
+        self.assertConstrainedNodes(
+            [node],
+            {'name': 'host21.%s' % node.domain.name})
+
+    def test_cpu_count(self):
+        node1 = factory.make_Node(cpu_count=1)
+        node2 = factory.make_Node(cpu_count=2)
+        nodes = [node1, node2]
+        self.assertConstrainedNodes(nodes, {'cpu_count': '0'})
+        self.assertConstrainedNodes(nodes, {'cpu_count': '1.0'})
+        self.assertConstrainedNodes([node2], {'cpu_count': '2'})
+        self.assertConstrainedNodes([], {'cpu_count': '4'})
+
+    def test_invalid_cpu_count(self):
+        form = AcquireNodeForm(data={'cpu_count': 'invalid'})
+        self.assertEqual(
+            (False, {'cpu_count': ["Invalid CPU count: number required."]}),
+            (form.is_valid(), form.errors))
+
+    def test_memory(self):
+        node1 = factory.make_Node(memory=1024)
+        node2 = factory.make_Node(memory=4096)
+        self.assertConstrainedNodes([node1, node2], {'mem': '512'})
+        self.assertConstrainedNodes([node1, node2], {'mem': '1024'})
+        self.assertConstrainedNodes([node2], {'mem': '2048'})
+        self.assertConstrainedNodes([node2], {'mem': '4096'})
+        self.assertConstrainedNodes([], {'mem': '8192'})
+        self.assertConstrainedNodes([node2], {'mem': '4096.0'})
+
+    def test_invalid_memory(self):
+        form = AcquireNodeForm(data={'mem': 'invalid'})
+        self.assertEqual(
+            (False, {'mem': ["Invalid memory: number of MiB required."]}),
+            (form.is_valid(), form.errors))
+
+    def test_describe_constraints_shows_simple_constraint(self):
+        form = AcquireNodeForm(data={'cpu_count': '10'})
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual('cpu_count=10.0', form.describe_constraints())
 
     def test_describe_constraints_shows_all_constraints(self):
         constraints = {
@@ -1651,6 +1656,62 @@ class TestAcquireNodeForm(MAASServerTestCase):
 
         self.assertItemsEqual(constraints.keys(), described_constraints)
 
+    def test_pod_not_pod_pod_type_or_not_pod_type_for_pod(self):
+        node1 = factory.make_Node(power_type='virsh')
+        pod1 = factory.make_Pod(pod_type=node1.power_type, name='pod1')
+        node2 = factory.make_Node(power_type='rsd')
+        pod2 = factory.make_Pod(pod_type=node2.power_type, name='pod2')
+        node1.bmc = pod1
+        node1.save()
+        node2.bmc = pod2
+        node2.save()
+        self.assertConstrainedNodes([node1], {'pod': pod1.name})
+        self.assertConstrainedNodes([node2], {'pod': pod2.name})
+        self.assertConstrainedNodes([], {'pod': factory.make_name('pod')})
+
+    def test_pod_not_pod_pod_type_or_not_pod_type_for_not_pod(self):
+        node1 = factory.make_Node(power_type='virsh')
+        pod1 = factory.make_Pod(pod_type=node1.power_type, name='pod1')
+        node2 = factory.make_Node(power_type='rsd')
+        pod2 = factory.make_Pod(pod_type=node2.power_type, name='pod2')
+        node1.bmc = pod1
+        node1.save()
+        node2.bmc = pod2
+        node2.save()
+        self.assertConstrainedNodes([node2], {'not_pod': pod1.name})
+        self.assertConstrainedNodes([node1], {'not_pod': pod2.name})
+        self.assertConstrainedNodes(
+            [node1, node2], {'not_pod': factory.make_name('not_pod')})
+
+    def test_pod_not_pod_pod_type_or_not_pod_type_for_pod_type(self):
+        node1 = factory.make_Node(power_type='virsh')
+        pod1 = factory.make_Pod(pod_type=node1.power_type)
+        node2 = factory.make_Node(power_type='rsd')
+        pod2 = factory.make_Pod(pod_type=node2.power_type)
+        node1.bmc = pod1
+        node1.save()
+        node2.bmc = pod2
+        node2.save()
+        self.assertConstrainedNodes([node1], {'pod_type': pod1.power_type})
+        self.assertConstrainedNodes([node2], {'pod_type': pod2.power_type})
+        self.assertConstrainedNodes(
+            [], {'pod_type': factory.make_name('pod_type')})
+
+    def test_pod_not_pod_pod_type_or_not_pod_type_for_not_pod_type(self):
+        node1 = factory.make_Node(power_type='virsh')
+        pod1 = factory.make_Pod(pod_type=node1.power_type)
+        node2 = factory.make_Node(power_type='rsd')
+        pod2 = factory.make_Pod(pod_type=node2.power_type)
+        node1.bmc = pod1
+        node1.save()
+        node2.bmc = pod2
+        node2.save()
+        self.assertConstrainedNodes([node2], {'not_pod_type': pod1.power_type})
+        self.assertConstrainedNodes([node1], {'not_pod_type': pod2.power_type})
+        self.assertConstrainedNodes(
+            [node1, node2],
+            {'not_pod_type': factory.make_name('not_pod_type')})
+
 
 class TestAcquireNodeFormOrdersResults(MAASServerTestCase):
 
@@ -1671,3 +1732,54 @@ class TestAcquireNodeFormOrdersResults(MAASServerTestCase):
         self.assertEqual(
             sorted_nodes,
             list(filtered_nodes))
+
+
+class TestReadNodesForm(MAASServerTestCase, FilterConstraintsMixin):
+
+    form_class = ReadNodesForm
+
+    def test_system_ids(self):
+        node1 = factory.make_Node()
+        node2 = factory.make_Node()
+        factory.make_Node()
+        self.assertConstrainedNodes(
+            [node1, node2],
+            {'id': [node1.system_id, node2.system_id]})
+
+    def test_hostnames(self):
+        node1 = factory.make_Node()
+        node2 = factory.make_Node()
+        factory.make_Node()
+        self.assertConstrainedNodes(
+            [node1, node2],
+            {'hostname': [node1.hostname, node2.hostname]})
+
+    def test_mac_addresses(self):
+        if1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        if2 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        self.assertConstrainedNodes(
+            [if1.node, if2.node],
+            {'mac_address': [if1.mac_address, if2.mac_address]})
+
+    def test_mac_addresses_invalid(self):
+        form = ReadNodesForm(
+            data={'mac_address': ['AA:BB:CC:DD:EE:XX']})
+        self.assertFalse(form.is_valid())
+        self.assertEqual(
+            form.errors,
+            {'mac_address': [
+                "'AA:BB:CC:DD:EE:XX' is not a valid MAC address."]})
+
+    def test_agent_name(self):
+        agent_name = factory.make_name('agent-name')
+        node = factory.make_Node(agent_name=agent_name)
+        factory.make_Node(agent_name=factory.make_name('agent-name'))
+        self.assertConstrainedNodes([node], {'agent_name': agent_name})
+
+    def test_status(self):
+        node1 = factory.make_Node(status=NODE_STATUS.NEW)
+        node2 = factory.make_Node(status=NODE_STATUS.DEPLOYING)
+        node3 = factory.make_Node(status=NODE_STATUS.NEW)
+        self.assertConstrainedNodes([node1, node3], {'status': 'new'})
+        self.assertConstrainedNodes([node2], {'status': 'deploying'})

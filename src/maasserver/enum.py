@@ -129,6 +129,12 @@ NODE_STATUS_CHOICES = (
     (NODE_STATUS.FAILED_TESTING, "Failed testing"),
 )
 
+# A version of NODE_STATUS_CHOICES with one-word labels
+NODE_STATUS_SHORT_LABEL_CHOICES = tuple(
+    sorted(
+        (attr.lower(), attr.lower())
+        for attr in dir(NODE_STATUS)
+        if not attr.startswith('_') and attr != 'DEFAULT'))
 
 NODE_STATUS_CHOICES_DICT = OrderedDict(NODE_STATUS_CHOICES)
 

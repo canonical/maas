@@ -530,9 +530,12 @@ class TestNodesAPI(APITestCase.ForUser):
             'mac_address': [bad_mac1, bad_mac2, ok_mac],
         })
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
-        self.assertIn(
-            "Invalid MAC address(es): 00:E0:81:DD:D1:ZZ, 00:E0:81:DD:D1:XX",
+        parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
+        self.assertEqual(
+            parsed_result,
+            {'mac_address': [
+                "'00:E0:81:DD:D1:ZZ' is not a valid MAC address."]})
 
     def test_GET_with_agent_name_filters_by_agent_name(self):
         non_listed_node = factory.make_Node(
