@@ -67,7 +67,7 @@
                             options="arch for arch in pod.architectures" data-ng-if="pod.architectures.length > 1" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
                         <maas-obj-field type="text" key="cores" label="Minimum Cores" subtle="false" placeholder="Number of cores (optional)" subtle-text="{$ availableWithOvercommit(pod.total.cores, pod.used.cores, pod.cpu_over_commit_ratio, 1) $} cores available" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
                         <maas-obj-field type="text" key="cpu_speed" label="Minimum Speed (MHz)" subtle="false" placeholder="CPU speed (optional)" subtle-text="{$ pod.hints.cpu_speed $}MHz maximum" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
-                        <maas-obj-field type="text" key="memory" label="Minimum RAM (GB)" subtle="false" placeholder="Memory amount (optional)" subtle-text="{$ availableWithOvercommit(pod.total.memory_gb, pod.used.memory_gb, pod.memory_over_commit_ratio, 1) $}GB available" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
+                        <maas-obj-field type="text" key="memory" label="Minimum RAM (MB)" subtle="false" placeholder="Memory amount (optional)" subtle-text="{$ availableWithOvercommit(pod.total.memory_gb, pod.used.memory_gb, pod.memory_over_commit_ratio, 1) $}GB available" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
                     </div>
                 </div>
                 <div class="p-strip">
