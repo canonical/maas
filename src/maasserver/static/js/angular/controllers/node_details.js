@@ -82,6 +82,7 @@ function NodeDetailsController(
   $scope.scripts = ScriptsManager.getItems();
   $scope.vlans = VLANsManager.getItems();
   $scope.hideHighAvailabilityNotification = false;
+  $scope.failedUpdateError = "";
 
   // Node header section.
   $scope.header = {
@@ -468,20 +469,24 @@ function NodeDetailsController(
     if (angular.isUndefined(queryPower)) {
       queryPower = false;
     }
-    return $scope.nodesManager.updateItem(node).then(
-      function() {
+
+    return $scope.nodesManager
+      .updateItem(node)
+      .then(function() {
         updateHeader();
         updateSummary();
         if (queryPower) {
           $scope.checkPowerState();
         }
-      },
-      function(error) {
+        $scope.failedUpdateError = "";
+      })
+      .catch(function(error) {
         $log.error(error);
         updateHeader();
         updateSummary();
-      }
-    );
+        $scope.node.power_parameters = {};
+        $scope.failedUpdateError = error;
+      });
   };
 
   // Called for autocomplete when the user is typing a tag name.
@@ -1256,6 +1261,34 @@ function NodeDetailsController(
     } else {
       return error;
     }
+  };
+
+  $scope.powerParametersValid = function(power_parameters) {
+    if (!angular.isObject(power_parameters)) {
+      return false;
+    }
+
+    // If no keys in obj
+    if (Object.keys(power_parameters).length === 0) {
+      return false;
+    }
+
+    // If keys but no values in obj
+    var hasParameters = false;
+
+    Object.keys(power_parameters).forEach(function(key) {
+      if (power_parameters[key] !== "") {
+        hasParameters = true;
+      } else {
+        hasParameters = false;
+      }
+    });
+
+    if (!hasParameters) {
+      return false;
+    }
+
+    return true;
   };
 
   // Reload osinfo when the page reloads

@@ -2526,4 +2526,26 @@ describe("NodeDetailsController", function() {
       );
     }
   );
+
+  describe("powerParametersValid", function() {
+    it("returns false if no power_parameters", function() {
+      makeController();
+      expect($scope.powerParametersValid()).toBe(false);
+    });
+
+    it("returns false if power_parameters are empty", function() {
+      makeController();
+      expect($scope.powerParametersValid({})).toBe(false);
+    });
+
+    it("returns true if power_parameters have values", function() {
+      makeController();
+      expect(
+        $scope.powerParametersValid({
+          power_address: "qemu+ssh://ubuntu@172.16.3.247/system",
+          power_id: 26
+        })
+      ).toBe(true);
+    });
+  });
 });
