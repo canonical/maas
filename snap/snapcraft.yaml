@@ -20,9 +20,12 @@ apps:
     command: bin/maas
 
 parts:
-  maas:
+  maas-pypi:
+    # Keep the pypi dependencies separate from the deb dependencies, so
+    # that the pypi and deb versions of the same packages won't conflict
+    # when building the wheels
     plugin: python
-    source: .
+    source: snap-data/pypi
     requirements:
       - requirements.txt
     build-packages:
@@ -33,6 +36,13 @@ parts:
       - libpq-dev
       - libxml2-dev
       - libxslt1-dev
+  maas:
+    plugin: python
+    source: .
+    after:
+        # Make sure the pypi packages are built first, before we install
+        # the deb versions of possible dependencies.
+        - maas-pypi
     stage-packages:
       - amtterm                 # AMT
       - libsoap-lite-perl       # Dependencies for AMT

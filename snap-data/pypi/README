@@ -1,0 +1,9 @@
+This is a place where all the Python libraries can be put, that need to
+come from PyPI, rather than from a deb package.
+
+The package and the required version should be put in requirements.txt,
+which the snapcraft.yaml file references.
+
+Our preference is to pull dependencies from the Ubuntu archive.
+Dependencies should only be added to requirements.txt as a stop-gap
+while waiting for the dependency to reach the Ubuntu archive.
