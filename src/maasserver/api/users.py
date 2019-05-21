@@ -165,7 +165,13 @@ class UserHandler(OperationsHandler):
 
         @param (string) "{username}" [required=true] The username to delete.
 
+        @param (string) "transfer_resources_to" [required=false] An optional
+        username for a user to transfer resources currently allocated to this
+        user to.  A user can't be removed unless its resources (machines, IP
+        addresses, ...), are released or transfered to another user.
+
         @success (http-status-code) "204" 204
+
         """
         if request.user.username == username:
             raise ValidationError("An administrator cannot self-delete.")
