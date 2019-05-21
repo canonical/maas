@@ -941,17 +941,8 @@ class DeviceForm(NodeForm):
         self.request = request
 
         instance = kwargs.get('instance')
-        self.set_up_initial_device(instance)
         if instance is not None:
             self.initial['zone'] = instance.zone.name
-
-    def set_up_initial_device(self, instance):
-        """Initialize the 'parent' field if a device instance was given.
-
-        This is a workaround for Django bug #17657.
-        """
-        if instance is not None and instance.parent is not None:
-            self.initial['parent'] = instance.parent.system_id
 
     def save(self, commit=True):
         device = super(DeviceForm, self).save(commit=False)
