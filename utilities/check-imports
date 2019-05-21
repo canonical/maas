@@ -2,7 +2,7 @@
 
 import argparse
 import ast
-from collections import Iterable
+from collections.abc import Iterable
 from glob import iglob
 from itertools import (
     chain,
@@ -68,8 +68,9 @@ class Pattern:
 
     def compile(self):
         self._matcher = re.compile(
-            r"(%s)\Z(?ms)" % "|".join(chain.from_iterable(
-                map(self._compile_pattern, self.patterns))))
+            r"(%s)\Z" % "|".join(chain.from_iterable(
+                map(self._compile_pattern, self.patterns))),
+            re.MULTILINE | re.DOTALL)
 
     def match(self, name):
         return self._matcher.match(name) is not None
