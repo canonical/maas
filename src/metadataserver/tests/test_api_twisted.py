@@ -376,6 +376,22 @@ class TestStatusWorkerService(MAASServerTestCase):
         worker = StatusWorkerService(sentinel.dbtasks)
         return worker._processMessage(node, payload)
 
+    def test_process_message_logs_event_for_start_event_type(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYING, with_empty_script_sets=True)
+        payload = {
+            'event_type': 'start',
+            'origin': 'curtin',
+            'name': 'cmd-install',
+            'description': 'Installation has started.',
+            'timestamp': datetime.utcnow(),
+        }
+        self.processMessage(node, payload)
+        event = Event.objects.last()
+        self.assertEqual(
+            event.description,
+            CURTIN_INSTALL_LOG + " changed status from 'Pending' to 'Running'")
+
     def test_process_message_returns_false_when_node_deleted(self):
         node1 = factory.make_Node(status=NODE_STATUS.DEPLOYING)
         node1.delete()
@@ -390,10 +406,15 @@ class TestStatusWorkerService(MAASServerTestCase):
         self.assertFalse(self.processMessage(node1, payload))
 
     def test_status_installation_result_does_not_affect_other_node(self):
-        node1 = factory.make_Node(status=NODE_STATUS.DEPLOYING)
+        node1 = factory.make_Node(
+            status=NODE_STATUS.DEPLOYING, with_empty_script_sets=True)
         node2 = factory.make_Node(status=NODE_STATUS.DEPLOYING)
+        script = factory.make_Script(may_reboot=True)
+        factory.make_ScriptResult(
+            script=script, script_set=node1.current_installation_script_set,
+            status=SCRIPT_STATUS.RUNNING)
         payload = {
-            'event_type': 'finish',
+            'event_type': 'start',
             'result': 'SUCCESS',
             'origin': 'curtin',
             'name': 'cmd-install',
@@ -405,15 +426,21 @@ class TestStatusWorkerService(MAASServerTestCase):
             NODE_STATUS.DEPLOYING, reload_object(node2).status)
         # Check last node1 event.
         self.assertEqual(
-            "'curtin' Command Install",
+            CURTIN_INSTALL_LOG + " changed status from 'Pending' to 'Running'",
             Event.objects.filter(node=node1).last().description)
-        # There must me no events for node2.
+        # There must be no events for node2.
         self.assertFalse(Event.objects.filter(node=node2).exists())
 
     def test_status_installation_success_leaves_node_deploying(self):
-        node = factory.make_Node(interface=True, status=NODE_STATUS.DEPLOYING)
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.DEPLOYING,
+            with_empty_script_sets=True)
+        script = factory.make_Script(may_reboot=True)
+        factory.make_ScriptResult(
+            script=script, script_set=node.current_installation_script_set,
+            status=SCRIPT_STATUS.RUNNING)
         payload = {
-            'event_type': 'finish',
+            'event_type': 'start',
             'result': 'SUCCESS',
             'origin': 'curtin',
             'name': 'cmd-install',
@@ -424,7 +451,7 @@ class TestStatusWorkerService(MAASServerTestCase):
         self.assertEqual(NODE_STATUS.DEPLOYING, reload_object(node).status)
         # Check last node event.
         self.assertEqual(
-            "'curtin' Command Install",
+            "/tmp/install.log changed status from 'Pending' to 'Running'",
             Event.objects.filter(node=node).last().description)
 
     def test_status_commissioning_failure_leaves_node_failed(self):

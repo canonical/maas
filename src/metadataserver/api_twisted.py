@@ -306,10 +306,11 @@ class StatusWorkerService(TimerService, object):
         failed = result in ['FAIL', 'FAILURE']
         default_exit_status = 1 if failed else 0
 
-        # Add this event to the node event log.
-        add_event_to_node_event_log(
-            node, origin, activity_name, description, event_type, result,
-            message['timestamp'])
+        # Add this event to the node event log if 'start' or a 'failure'.
+        if event_type == 'start' or failed:
+            add_event_to_node_event_log(
+                node, origin, activity_name, description, event_type, result,
+                message['timestamp'])
 
         # Group files together with the ScriptResult they belong.
         results = {}
