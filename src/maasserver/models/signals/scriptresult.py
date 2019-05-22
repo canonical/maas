@@ -8,6 +8,7 @@ __all__ = [
 ]
 
 from maasserver.models import Event
+from maasserver.preseed import CURTIN_INSTALL_LOG
 from maasserver.utils.signals import SignalsManager
 from metadataserver.enum import (
     RESULT_TYPE,
@@ -59,7 +60,7 @@ def emit_script_result_status_transition_event(instance, old_values, **kwargs):
             EVENT_TYPES.SCRIPT_RESULT_CHANGED_STATUS,
             event_description="%s changed status from '%s' to '%s'" % (
                 script_result.name, old_status_name, new_status_name))
-        if ('install.log' in script_result.name and not
+        if (CURTIN_INSTALL_LOG == script_result.name and not
                 script_result.script_set.node.netboot):
             Event.objects.create_node_event(
                 script_result.script_set.node, EVENT_TYPES.REBOOTING)

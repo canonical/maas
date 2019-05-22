@@ -10,6 +10,7 @@ import json
 import random
 
 from maasserver.models import Event
+from maasserver.preseed import CURTIN_INSTALL_LOG
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from metadataserver.enum import (
@@ -138,7 +139,7 @@ class TestStatusTransitionEvent(MAASServerTestCase):
         script_result = factory.make_ScriptResult(
             status=old_status, script_set=factory.make_ScriptSet(
                 result_type=RESULT_TYPE.COMMISSIONING),
-            script=factory.make_Script(name="/tmp/install.log"))
+            script=factory.make_Script(name=CURTIN_INSTALL_LOG))
         script_result.status = SCRIPT_STATUS.PASSED
         script_result.script_set.node.netboot = False
         script_result.save()
