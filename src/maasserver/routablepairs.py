@@ -36,6 +36,7 @@ _find_addresses_sql = dedent("""\
       FROM maasserver_routable_pairs
      WHERE left_node_id IN (%s)
        AND right_node_id IN (%s)
+       AND metric < 4
      ORDER BY metric ASC
 """)
 

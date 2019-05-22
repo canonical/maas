@@ -170,9 +170,9 @@ class TestFindAddressesBetweenNodes(MAASServerTestCase):
             subnet=factory.make_Subnet(
                 space=space, cidr=next(networks)))
 
-        # Null space, different VLAN, subnet, and node.
+        # Null space, different VLAN, subnet, and node. (won't be included)
         node_null_space = factory.make_Node(hostname="null-space")
-        sip_null_space = factory.make_StaticIPAddress(
+        factory.make_StaticIPAddress(
             interface=factory.make_Interface(
                 node=node_null_space, disconnected=True),
             subnet=factory.make_Subnet(
@@ -186,7 +186,7 @@ class TestFindAddressesBetweenNodes(MAASServerTestCase):
             node_same_subnet,
             node_same_vlan,
             node_same_space,
-            node_null_space,
+            node_null_space,  # Should not be included.
         ]
 
         # This is in order, lowest "metric" first.
@@ -197,8 +197,6 @@ class TestFindAddressesBetweenNodes(MAASServerTestCase):
              node_same_vlan, sip_same_vlan.get_ipaddress()),
             (origin, origin_sip.get_ipaddress(),
              node_same_space, sip_same_space.get_ipaddress()),
-            (origin, origin_sip_null_space.get_ipaddress(),
-             node_null_space, sip_null_space.get_ipaddress()),
         ]
         self.assertThat(
             find_addresses_between_nodes(lefts, rights),
@@ -231,3 +229,31 @@ class TestFindAddressesBetweenNodes(MAASServerTestCase):
         )
         self.assertItemsEqual(
             expected_mutual, observed_mutual)
+
+    def test__doesnt_include_matches_between_undefined_spaces(self):
+        network1 = next(self.gen_disjoint_networks())
+        next(self.gen_disjoint_networks())
+        network2 = next(self.gen_disjoint_networks())
+
+        # Create the node for the "left" that has two IP addresses, one in the
+        # null space, one in a non-null space.
+        origin = factory.make_Node(hostname="origin")
+        origin_iface = factory.make_Interface(
+            node=origin, disconnected=True)
+        origin_subnet_null_space = factory.make_Subnet(
+            space=None, cidr=network1)
+        factory.make_StaticIPAddress(
+            interface=origin_iface, subnet=origin_subnet_null_space)
+
+        # Same subnet, different node.
+        node_no_match = factory.make_Node(hostname="no-match")
+        no_match_iface = factory.make_Interface(
+            node=node_no_match, disconnected=True)
+        no_match_subnet_null_space = factory.make_Subnet(
+            space=None, cidr=network2)
+        factory.make_StaticIPAddress(
+            interface=no_match_iface, subnet=no_match_subnet_null_space)
+
+        no_matches = list(find_addresses_between_nodes(
+            {origin}, {node_no_match}))
+        self.assertEqual([], no_matches)
