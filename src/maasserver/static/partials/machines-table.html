@@ -221,8 +221,8 @@
                             ></button>
                         </div>
                         <div class="p-double-row__muted-row">
-                            <span class="p-tooltip p-tooltip--btm" aria-describedby="status-message-tooltip-{$ node.fqdn $}">
-                                <span class="u-text-overflow">{$ getStatusMessage(node) $}</span>
+                            <span class="p-tooltip p-tooltip--btm u-text-overflow" aria-describedby="status-message-tooltip-{$ node.fqdn $}">
+                                <span>{$ getStatusMessage(node) $}</span>
                                 <span class="p-tooltip__message" role="tooltip" id="status-message-tooltip-{$ node.fqdn $}">{$ getStatusMessage(node) $}</span>
                             </span>
                         </div>

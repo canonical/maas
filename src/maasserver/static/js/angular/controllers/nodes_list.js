@@ -991,18 +991,22 @@ function NodesListController(
         tab.actionProgress.total = tab.selectedItems.length;
         // Perform the action on all selected items.
         angular.forEach(tab.selectedItems, function(node) {
-          tab.manager.performAction(node, tab.actionOption.name, extra).then(
-            function() {
-              tab.actionProgress.completed += 1;
-              node.action_failed = false;
-            },
-            function(error) {
-              addErrorToActionProgress(tabName, error, node);
-              node.action_failed = true;
-            }
-          );
+          tab.manager
+            .performAction(node, tab.actionOption.name, extra)
+            .then(
+              function() {
+                tab.actionProgress.completed += 1;
+                node.action_failed = false;
+              },
+              function(error) {
+                addErrorToActionProgress(tabName, error, node);
+                node.action_failed = true;
+              }
+            )
+            .finally(function() {
+              updateSelectedItems(tabName);
+            });
         });
-        updateSelectedItems(tabName);
       },
       function(error) {
         addErrorToActionProgress(tabName, error);
