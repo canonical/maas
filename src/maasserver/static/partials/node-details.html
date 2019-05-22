@@ -2907,21 +2907,21 @@
     <section class="p-strip is-shallow" data-ng-if="section.area === 'storage'" data-ng-controller="NodeStorageController">
         <div class="row">
             <div class="col-12">
-                <div class="p-notification--negative ng-hide" data-ng-hide="has_disks">
+                <div class="p-notification--negative" data-ng-if="!has_disks">
                     <p class="p-notification__response">
                         <span class="p-notification__status">Error:</span> No storage information. Commissioning this node will gather the storage information.
                     </p>
                 </div>
-                <div class="p-notification ng-hide" data-ng-show="isAllStorageDisabled() && canEdit()">
+                <div class="p-notification" data-ng-if="isAllStorageDisabled() && $parent.canEdit()">
                     <p class="p-notification__response">Storage configuration cannot be modified unless the machine is Ready or Allocated.</p>
                 </div>
-                <div class="p-notification ng-hide" data-ng-show="!isUbuntuOS() && !isCentOS()">
+                <div class="p-notification" data-ng-if="!isUbuntuOS() && !isCentOS()">
                     <p class="p-notification__response">Custom storage configuration is only supported on Ubuntu, CentOS, and RHEL.</p>
                 </div>
-                <div class="p-notification ng-hide" data-ng-show="!isUbuntuOS()">
+                <div class="p-notification" data-ng-if="!isUbuntuOS()">
                     <p class="p-notification__response">Bcache and ZFS are only supported on Ubuntu.</p>
                 </div>
-                <div data-ng-repeat="issue in node.storage_layout_issues" class="p-notification--negative ng-hide" data-ng-show="hasStorageLayoutIssues()">
+                <div data-ng-repeat="issue in node.storage_layout_issues" class="p-notification--negative" data-ng-if="hasStorageLayoutIssues()">
                     <p class="p-notification__response">
                         <span class="p-notification__status">Error:</span> {$ issue $}
                     </p>
