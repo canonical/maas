@@ -1051,6 +1051,10 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(ephemeral_deploy=False)
         self.assertFalse(node.ephemeral_deployment)
 
+    def test_ephemeral_deployment_checks_is_device(self):
+        device = factory.make_Device()
+        self.assertFalse(device.ephemeral_deployment)
+
     def test_system_id_is_a_valid_znum(self):
         node = factory.make_Node()
         self.assertThat(
@@ -3990,6 +3994,9 @@ class TestNode(MAASServerTestCase):
             ("local", {"status": NODE_STATUS.DEPLOYING, "netboot": False}),
             ("local", {"status": NODE_STATUS.DEPLOYED}),
             ("poweroff", {"status": NODE_STATUS.RETIRED}),
+            ("local", {
+                "status": NODE_STATUS.DEFAULT,
+                "node_type": NODE_TYPE.DEVICE}),
         ]
         node = factory.make_Node()
         mock_get_boot_images_for = self.patch(

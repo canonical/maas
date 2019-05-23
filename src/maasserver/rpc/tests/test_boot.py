@@ -16,6 +16,7 @@ from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
     NODE_STATUS,
+    NODE_TYPE,
 )
 from maasserver.models import (
     Config,
@@ -260,6 +261,47 @@ class TestGetConfig(MAASServerTestCase):
             "extra_opts": '',
             "http_boot": True,
         }, config)
+
+    def test__changes_purpose_to_local_device_for_device(self):
+        rack_controller = factory.make_RackController()
+        local_ip = factory.make_ip_address()
+        remote_ip = factory.make_ip_address()
+        device = self.make_node_with_extra(
+            status=NODE_STATUS.DEPLOYED, netboot=False,
+            node_type=NODE_TYPE.DEVICE)
+        device.boot_cluster_ip = local_ip
+        device.save()
+        mac = device.get_boot_interface().mac_address
+        self.patch_autospec(boot_module, 'event_log_pxe_request')
+        maaslog = self.patch(boot_module, 'maaslog')
+        config = get_config(
+            rack_controller.system_id, local_ip, remote_ip, mac=mac,
+            query_count=8)
+        self.assertEquals({
+            "system_id": device.system_id,
+            "arch": device.split_arch()[0],
+            "subarch": device.split_arch()[1],
+            "osystem": '',
+            "release": '',
+            "kernel": '',
+            "initrd": '',
+            "boot_dtb": '',
+            "purpose": 'local-device',
+            "hostname": device.hostname,
+            "domain": device.domain.name,
+            "preseed_url": ANY,
+            "fs_host": local_ip,
+            "log_host": local_ip,
+            "log_port": 5247,
+            "extra_opts": '',
+            "http_boot": True,
+        }, config)
+        self.assertThat(
+            maaslog.warning,
+            MockCalledOnceWith(
+                "Device %s with MAC address %s is PXE booting; "
+                "instructing the device to boot locally." % (
+                    device.hostname, mac)))
 
     def test__purpose_local_to_xinstall_for_ephemeral_deployment(self):
         # A diskless node is one that it is ephemerally deployed.

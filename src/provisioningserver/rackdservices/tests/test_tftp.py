@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the maastftp Twisted plugin."""
@@ -379,8 +379,6 @@ class TestTFTPBackend(MAASTestCase):
 
     @inlineCallbacks
     def test_get_boot_method_reader_uses_same_client(self):
-        # Fake configuration parameters, as discovered from the file path.
-        fake_params = {"mac": factory.make_mac_address("-")}
         # Fake kernel configuration parameters, as returned from the RPC call.
         fake_kernel_params = make_kernel_parameters()
         fake_params = fake_kernel_params._asdict()
@@ -450,8 +448,6 @@ class TestTFTPBackend(MAASTestCase):
 
     @inlineCallbacks
     def test_get_boot_method_reader_uses_different_clients(self):
-        # Fake configuration parameters, as discovered from the file path.
-        fake_params = {"mac": factory.make_mac_address("-")}
         # Fake kernel configuration parameters, as returned from the RPC call.
         fake_kernel_params = make_kernel_parameters()
         fake_params = fake_kernel_params._asdict()
@@ -524,8 +520,6 @@ class TestTFTPBackend(MAASTestCase):
 
     @inlineCallbacks
     def test_get_boot_method_reader_grabs_new_client_on_lost_conn(self):
-        # Fake configuration parameters, as discovered from the file path.
-        fake_params = {"mac": factory.make_mac_address("-")}
         # Fake kernel configuration parameters, as returned from the RPC call.
         fake_kernel_params = make_kernel_parameters()
         fake_params = fake_kernel_params._asdict()
@@ -602,8 +596,6 @@ class TestTFTPBackend(MAASTestCase):
 
     @inlineCallbacks
     def test_get_boot_method_reader_returns_rendered_params(self):
-        # Fake configuration parameters, as discovered from the file path.
-        fake_params = {"mac": factory.make_mac_address("-")}
         # Fake kernel configuration parameters, as returned from the RPC call.
         fake_kernel_params = make_kernel_parameters()
         fake_params = fake_kernel_params._asdict()
@@ -657,8 +649,6 @@ class TestTFTPBackend(MAASTestCase):
 
     @inlineCallbacks
     def test_get_boot_method_reader_returns_rendered_params_for_local(self):
-        # Fake configuration parameters, as discovered from the file path.
-        fake_params = {"mac": factory.make_mac_address("-")}
         # Fake kernel configuration parameters, as returned from the RPC call.
         fake_kernel_params = make_kernel_parameters(
             purpose="local", label="local")
@@ -699,9 +689,51 @@ class TestTFTPBackend(MAASTestCase):
             backend, kernel_params=fake_kernel_params, **params_with_ip))
 
     @inlineCallbacks
+    def test_get_boot_method_reader_returns_rendered_params_local_device(self):
+        # Fake kernel configuration parameters, as returned from the RPC call.
+        fake_kernel_params = make_kernel_parameters(
+            purpose="local", label="local")
+        fake_params = fake_kernel_params._asdict()
+        del fake_params["label"]
+
+        # Set purpose to `local-device` as this is what will be passed on.
+        fake_params["purpose"] = "local-device"
+
+        # Stub RPC call to return the fake configuration parameters.
+        client = Mock()
+        client.localIdent = factory.make_name("system_id")
+        client.return_value = succeed(fake_params)
+        client_service = Mock()
+        client_service.getClientNow.return_value = succeed(client)
+
+        # get_boot_method_reader() takes a dict() of parameters and returns an
+        # `IReader` of a PXE configuration, rendered by
+        # `PXEBootMethod.get_reader`.
+        backend = TFTPBackend(
+            self.make_dir(), client_service)
+
+        # Stub get_reader to return the render parameters.
+        method = PXEBootMethod()
+        fake_render_result = factory.make_name("render").encode("utf-8")
+        render_patch = self.patch(method, "get_reader")
+        render_patch.return_value = BytesReader(fake_render_result)
+
+        # Get the rendered configuration, which will actually be a JSON dump
+        # of the render-time parameters.
+        params_with_ip = dict(fake_params)
+        params_with_ip['remote_ip'] = factory.make_ipv4_address()
+        reader = yield backend.get_boot_method_reader(method, params_with_ip)
+        self.addCleanup(reader.finish)
+        self.assertIsInstance(reader, BytesReader)
+        output = reader.read(10000)
+
+        # The result has been rendered by `method.get_reader`.
+        self.assertEqual(fake_render_result, output)
+        self.assertThat(method.get_reader, MockCalledOnceWith(
+            backend, kernel_params=fake_kernel_params, **params_with_ip))
+
+    @inlineCallbacks
     def test_get_boot_method_reader_returns_no_image(self):
-        # Fake configuration parameters, as discovered from the file path.
-        fake_params = {"mac": factory.make_mac_address("-")}
         # Fake kernel configuration parameters, as returned from the RPC call.
         fake_kernel_params = make_kernel_parameters(label='no-such-image')
         fake_params = fake_kernel_params._asdict()
@@ -745,8 +777,6 @@ class TestTFTPBackend(MAASTestCase):
 
     @inlineCallbacks
     def test_get_boot_method_reader_rendered_parms_for_depoyed_ephemeral(self):
-        # Fake configuration parameters, as discovered from the file path.
-        fake_params = {"mac": factory.make_mac_address("-")}
         # Fake kernel configuration parameters, as returned from the RPC call.
         fake_kernel_params = make_kernel_parameters(
             purpose="local", label="local", osystem="caringo")

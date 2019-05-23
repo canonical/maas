@@ -39,6 +39,7 @@ from maasserver.third_party_drivers import get_third_party_driver
 from maasserver.utils.orm import transactional
 from maasserver.utils.osystems import validate_hwe_kernel
 from provisioningserver.events import EVENT_TYPES
+from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.exceptions import BootConfigNoResponse
 from provisioningserver.utils.network import get_source_address
 from provisioningserver.utils.twisted import (
@@ -46,6 +47,9 @@ from provisioningserver.utils.twisted import (
     undefined,
 )
 from provisioningserver.utils.url import splithost
+
+
+maaslog = get_maas_logger("rpc.boot")
 
 
 DEFAULT_ARCH = 'i386'
@@ -293,7 +297,7 @@ def get_final_boot_purpose(machine, arch, purpose):
 def get_config(
         system_id, local_ip, remote_ip, arch=None, subarch=None, mac=None,
         hardware_uuid=None, bios_boot_method=None):
-    """Get the booting configration for the a machine.
+    """Get the booting configration for a machine.
 
     Returns a structure suitable for returning in the response
     for :py:class:`~provisioningserver.rpc.region.GetBootConfig`.
@@ -408,6 +412,16 @@ def get_config(
 
         # Early out if the machine is booting local.
         if purpose == 'local':
+            if machine.is_device:
+                # Log that we are setting to local boot for a device.
+                maaslog.warning(
+                    "Device %s with MAC address %s is PXE booting; "
+                    "instructing the device to boot locally." % (
+                        machine.hostname, mac))
+                # Set the purpose to 'local-device' so we can log a message
+                # on the rack.
+                purpose = 'local-device'
+
             return {
                 "system_id": machine.system_id,
                 "arch": arch,

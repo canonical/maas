@@ -1351,6 +1351,9 @@ class Node(CleanSave, TimestampedModel):
     @property
     def ephemeral_deployment(self):
         """Return if node is set to ephemeral deployment."""
+        # Devices should always local boot.
+        if self.is_device:
+            return False
         return self.is_diskless or self.ephemeral_deploy
 
     def retrieve_storage_layout_issues(
@@ -4205,14 +4208,10 @@ class Node(CleanSave, TimestampedModel):
         """
         Return a suitable "purpose" for this boot, e.g. "install".
         """
-        # XXX: allenap bug=1031406 2012-07-31: The boot purpose is
-        # still in flux. It may be that there will just be an
-        # "ephemeral" environment and an "install" environment, and
-        # the differing behaviour between, say, enlistment and
-        # commissioning - both of which will use the "ephemeral"
-        # environment - will be governed by varying the preseed or PXE
-        # configuration.
-        if self.status in COMMISSIONING_LIKE_STATUSES:
+        if self.status == NODE_STATUS.DEFAULT and self.is_device:
+            # Always local boot a device.
+            return "local"
+        elif self.status in COMMISSIONING_LIKE_STATUSES:
             # It is commissioning or disk erasing. The environment (boot
             # images, kernel options, etc for erasing is the same as that
             # of commissioning.

@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Twisted Application Plugin for the MAAS TFTP server."""
@@ -36,6 +36,7 @@ from provisioningserver.rpc.region import (
     MarkNodeFailed,
 )
 from provisioningserver.utils import (
+    network,
     tftp,
     typed,
 )
@@ -236,10 +237,20 @@ class TFTPBackend(FilesystemSynchronousBackend):
         except Exception:
             pass
 
+        # Check to see if the we are PXE booting a device.
+        if params["purpose"] == "local-device":
+            mac = network.find_mac_via_arp(remote_ip)
+            log.info(
+                "Device %s with MAC address %s is PXE booting; "
+                "instructing the device to boot locally." % (
+                    params["hostname"], mac))
+            # Set purpose back to local now that we have the message logged.
+            params["purpose"] = "local"
+
         system_id = params.pop("system_id", None)
         if params["purpose"] == "local" and not is_ephemeral:
-            # Local purpose doesn't use a boot image so jsut set the label
-            # to "local", but this value will no be used.
+            # Local purpose doesn't use a boot image so just set the label
+            # to "local".
             params["label"] = "local"
             return params
         else:
