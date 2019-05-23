@@ -152,6 +152,7 @@ function NodeDetailsController(
     if (
       !$scope.hideHighAvailabilityNotification &&
       $scope.node.dhcp_on &&
+      $scope.vlan &&
       $scope.vlan.rack_sids.length > 1 &&
       !$scope.vlan.secondary_rack &&
       $scope.node.node_type !== NodeTypes.REGION_CONTROLLER
@@ -161,12 +162,10 @@ function NodeDetailsController(
         $scope.section.area === "vlans"
       ) {
         return true;
-      } else {
-        return false;
       }
-    } else {
-      return false;
     }
+
+    return false;
   };
 
   // Get the display text for device ip assignment type.

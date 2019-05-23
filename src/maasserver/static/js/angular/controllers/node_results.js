@@ -40,7 +40,6 @@ function NodeResultsController(
 
   function updateLogs() {
     var i;
-    var option;
     var had_installation = $scope.logs.availableOptions.length === 3;
     $scope.logs.availableOptions.length = 0;
     // XXX ltrager 2017-12-01 - Only show the current installation log
