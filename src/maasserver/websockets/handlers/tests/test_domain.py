@@ -1,4 +1,4 @@
-# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.domain`"""
@@ -590,6 +590,19 @@ class TestDomainHandlerAddressRecords(MAASServerTestCase):
                 'name': name,
                 'address_ttl': ttl,
                 'ip_addresses': ['127.0.0.1']
+            })
+
+    def test__add_address_without_ip_addresses_fails(self):
+        user = factory.make_admin()
+        handler = DomainHandler(user, {}, None)
+        domain = factory.make_Domain()
+        name = factory.make_hostname()
+        with ExpectedException(ValidationError):
+            handler.create_address_record({
+                'domain': domain.id,
+                'name': name,
+                'rrtype': choice(['A', 'AAAA']),
+                'ip_addresses': ['']
             })
 
     def test__update_address_as_non_admin_fails(self):

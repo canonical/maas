@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The domain handler for the WebSocket connection."""
@@ -112,6 +112,10 @@ class DomainHandler(TimestampedModelHandler, AdminOnlyMixin):
 
     def create_address_record(self, params):
         domain = self._get_domain_or_permission_error(params)
+        if params['ip_addresses'] == ['']:
+            raise ValidationError(
+                "Data field is required when creating an %s record." %
+                params['rrtype'])
         dnsresource, created = DNSResource.objects.get_or_create(
             domain=domain, name=params['name'])
         if created:
