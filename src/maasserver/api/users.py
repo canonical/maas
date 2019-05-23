@@ -1,4 +1,4 @@
-# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `User`."""
@@ -166,12 +166,12 @@ class UserHandler(OperationsHandler):
         @param (string) "{username}" [required=true] The username to delete.
 
         @param (string) "transfer_resources_to" [required=false] An optional
-        username for a user to transfer resources currently allocated to this
-        user to.  A user can't be removed unless its resources (machines, IP
-        addresses, ...), are released or transfered to another user.
+        username. If supplied, the allocated resources of the user being
+        deleted will be transferred to this user. A user can't be removed
+        unless its resources (machines, IP addresses, ...), are released or
+        transfered to another user.
 
         @success (http-status-code) "204" 204
-
         """
         if request.user.username == username:
             raise ValidationError("An administrator cannot self-delete.")
