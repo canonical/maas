@@ -22,6 +22,7 @@ __all__ = [
     "scriptresult",
     "services",
     "staticipaddress",
+    "subnet",
 ]
 
 from maasserver.models.signals import (
@@ -43,4 +44,5 @@ from maasserver.models.signals import (
     scriptresult,
     services,
     staticipaddress,
+    subnet,
 )
