@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `DNSResource`."""
@@ -184,7 +184,8 @@ class DNSResourcesHandler(OperationsHandler):
         in this zone.
 
         @param (string) "ip_addresses" [required=false] Address (ip or id) to
-        assign to the dnsresource.
+        assign to the dnsresource. This creates an A or AAAA record,
+        for each of the supplied ip_addresses, IPv4 or IPv6, respectively.
 
         @success (http-status-code) "server-success" 200
         @success (json) "success-json" A JSON object containing the new DNS
