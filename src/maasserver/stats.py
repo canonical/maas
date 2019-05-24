@@ -9,9 +9,11 @@ __all__ = [
     "STATS_SERVICE_PERIOD",
 ]
 
+from collections import defaultdict
 from datetime import timedelta
 
 from django.db.models import (
+    Count,
     Sum,
     Value,
 )
@@ -32,6 +34,7 @@ from collections import Counter
 import json
 
 from maasserver.enum import (
+    IPADDRESS_TYPE,
     NODE_TYPE,
     NODE_STATUS,
     BMC_TYPE,
@@ -42,6 +45,7 @@ from maasserver.models import (
     Fabric,
     VLAN,
     Space,
+    StaticIPAddress,
     Subnet,
     BMC,
     Pod,
@@ -150,28 +154,52 @@ def get_subnets_stats():
 
 def get_subnets_utilisation_stats():
     """Return a dict mapping subnet CIDRs to their utilisation details."""
+    ips_count = _get_subnets_ipaddress_count()
+
     stats = {}
     for subnet in Subnet.objects.all():
         full_range = subnet.get_iprange_usage()
         range_stats = IPRangeStatistics(subnet.get_iprange_usage())
         static = 0
-        reserved = 0
-        dynamic = 0
+        reserved_available = 0
+        reserved_used = 0
+        dynamic_available = 0
+        dynamic_used = 0
         for rng in full_range.ranges:
             if IPRANGE_TYPE.DYNAMIC in rng.purpose:
-                dynamic += rng.num_addresses
+                dynamic_available += rng.num_addresses
             elif IPRANGE_TYPE.RESERVED in rng.purpose:
-                reserved += rng.num_addresses
+                reserved_available += rng.num_addresses
             elif 'assigned-ip' in rng.purpose:
                 static += rng.num_addresses
+        # allocated IPs
+        subnet_ips = ips_count[subnet.id]
+        reserved_used += subnet_ips[IPADDRESS_TYPE.USER_RESERVED]
+        reserved_available -= reserved_used
+        dynamic_used += (
+            subnet_ips[IPADDRESS_TYPE.AUTO] +
+            subnet_ips[IPADDRESS_TYPE.DHCP] +
+            subnet_ips[IPADDRESS_TYPE.DISCOVERED])
+        dynamic_available -= dynamic_used
         stats[subnet.cidr] = {
             'available': range_stats.num_available,
             'unavailable': range_stats.num_unavailable,
-            'dynamic': dynamic,
+            'dynamic_available': dynamic_available,
+            'dynamic_used': dynamic_used,
             'static': static,
-            'reserved': reserved,
+            'reserved_available': reserved_available,
+            'reserved_used': reserved_used
         }
     return stats
+
+
+def _get_subnets_ipaddress_count():
+    counts = defaultdict(lambda: defaultdict(int))
+    rows = StaticIPAddress.objects.values('subnet_id', 'alloc_type').filter(
+        ip__isnull=False).annotate(count=Count('ip'))
+    for row in rows:
+        counts[row['subnet_id']][row['alloc_type']] = row['count']
+    return counts
 
 
 def get_maas_stats():

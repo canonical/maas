@@ -263,18 +263,23 @@ class TestGetSubnetsUtilisationStats(MAASServerTestCase):
         factory.make_Subnet(cidr='::1/128', gateway_ip='')
         self.assertEqual(
             stats.get_subnets_utilisation_stats(),
-            {'1.2.0.0/16': {
-                'available': 2 ** 16 - 3,
-                'dynamic': 0,
-                'reserved': 0,
-                'static': 0,
-                'unavailable': 1},
-             '::1/128': {
-                 'available': 1,
-                 'dynamic': 0,
-                 'reserved': 0,
-                 'static': 0,
-                 'unavailable': 0}})
+            {
+                '1.2.0.0/16': {
+                    'available': 2 ** 16 - 3,
+                    'dynamic_available': 0,
+                    'dynamic_used': 0,
+                    'reserved_available': 0,
+                    'reserved_used': 0,
+                    'static': 0,
+                    'unavailable': 1},
+                '::1/128': {
+                    'available': 1,
+                    'dynamic_available': 0,
+                    'dynamic_used': 0,
+                    'reserved_available': 0,
+                    'reserved_used': 0,
+                    'static': 0,
+                    'unavailable': 0}})
 
     def test_stats_dynamic(self):
         subnet = factory.make_Subnet(
@@ -285,12 +290,18 @@ class TestGetSubnetsUtilisationStats(MAASServerTestCase):
         factory.make_IPRange(
             subnet=subnet, start_ip='1.2.0.51', end_ip='1.2.0.60',
             alloc_type=IPRANGE_TYPE.DYNAMIC)
+        factory.make_StaticIPAddress(
+            ip='1.2.0.15', alloc_type=IPADDRESS_TYPE.DHCP, subnet=subnet)
+        factory.make_StaticIPAddress(
+            ip='1.2.0.52', alloc_type=IPADDRESS_TYPE.DHCP, subnet=subnet)
         self.assertEqual(
             stats.get_subnets_utilisation_stats(),
             {'1.2.0.0/16': {
                 'available': 2 ** 16 - 23,
-                'dynamic': 20,
-                'reserved': 0,
+                'dynamic_available': 18,
+                'dynamic_used': 2,
+                'reserved_available': 0,
+                'reserved_used': 0,
                 'static': 0,
                 'unavailable': 21}})
 
@@ -303,12 +314,17 @@ class TestGetSubnetsUtilisationStats(MAASServerTestCase):
         factory.make_IPRange(
             subnet=subnet, start_ip='1.2.0.51', end_ip='1.2.0.60',
             alloc_type=IPRANGE_TYPE.RESERVED)
+        factory.make_StaticIPAddress(
+            ip='1.2.0.15', alloc_type=IPADDRESS_TYPE.USER_RESERVED,
+            subnet=subnet)
         self.assertEqual(
             stats.get_subnets_utilisation_stats(),
             {'1.2.0.0/16': {
                 'available': 2 ** 16 - 23,
-                'dynamic': 0,
-                'reserved': 20,
+                'dynamic_available': 0,
+                'dynamic_used': 0,
+                'reserved_available': 19,
+                'reserved_used': 1,
                 'static': 0,
                 'unavailable': 21}})
 
@@ -318,13 +334,15 @@ class TestGetSubnetsUtilisationStats(MAASServerTestCase):
         for n in (10, 20, 30):
             factory.make_StaticIPAddress(
                 ip='1.2.0.{}'.format(n),
-                alloc_type=IPADDRESS_TYPE.USER_RESERVED, subnet=subnet)
+                alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet)
         self.assertEqual(
             stats.get_subnets_utilisation_stats(),
             {'1.2.0.0/16': {
                 'available': 2 ** 16 - 6,
-                'dynamic': 0,
-                'reserved': 0,
+                'dynamic_available': 0,
+                'dynamic_used': 0,
+                'reserved_available': 0,
+                'reserved_used': 0,
                 'static': 3,
                 'unavailable': 4}})
 
@@ -337,16 +355,25 @@ class TestGetSubnetsUtilisationStats(MAASServerTestCase):
         factory.make_IPRange(
             subnet=subnet, start_ip='1.2.0.51', end_ip='1.2.0.70',
             alloc_type=IPRANGE_TYPE.RESERVED)
-        for n in (80, 90, 100):
+        factory.make_StaticIPAddress(
+            ip='1.2.0.12',
+            alloc_type=IPADDRESS_TYPE.DHCP, subnet=subnet)
+        for n in (60, 61):
             factory.make_StaticIPAddress(
                 ip='1.2.0.{}'.format(n),
                 alloc_type=IPADDRESS_TYPE.USER_RESERVED, subnet=subnet)
+        for n in (80, 90, 100):
+            factory.make_StaticIPAddress(
+                ip='1.2.0.{}'.format(n),
+                alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet)
         self.assertEqual(
             stats.get_subnets_utilisation_stats(),
             {'1.2.0.0/16': {
                 'available': 2 ** 16 - 36,
-                'dynamic': 10,
-                'reserved': 20,
+                'dynamic_available': 9,
+                'dynamic_used': 1,
+                'reserved_available': 18,
+                'reserved_used': 2,
                 'static': 3,
                 'unavailable': 34}})
 

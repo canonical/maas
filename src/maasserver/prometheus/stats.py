@@ -62,8 +62,14 @@ STATS_DEFINITIONS = [
         'Gauge', 'maas_net_subnet_ip_count',
         'Number of IPs in a subnet by status', ['cidr', 'status']),
     MetricDefinition(
-        'Gauge', 'maas_net_subnet_ip_used',
-        'Number of used IPs in a subnet', ['cidr', 'type']),
+        'Gauge', 'maas_net_subnet_ip_dynamic',
+        'Number of used IPs in a subnet', ['cidr', 'status']),
+    MetricDefinition(
+        'Gauge', 'maas_net_subnet_ip_reserved',
+        'Number of used IPs in a subnet', ['cidr', 'status']),
+    MetricDefinition(
+        'Gauge', 'maas_net_subnet_ip_static',
+        'Number of used IPs in a subnet', ['cidr']),
     MetricDefinition(
         'Gauge', 'maas_machines_total_mem',
         'Amount of combined memory for all machines'),
@@ -172,11 +178,16 @@ def update_prometheus_stats(metrics: PrometheusMetrics):
                 'maas_net_subnet_ip_count', 'set',
                 value=stats[status],
                 labels={'cidr': cidr, 'status': status})
-        for addr_type in ('dynamic', 'reserved', 'static'):
-            metrics.update(
-                'maas_net_subnet_ip_used', 'set',
-                value=stats[addr_type],
-                labels={'cidr': cidr, 'type': addr_type})
+        metrics.update(
+            'maas_net_subnet_ip_static', 'set',
+            value=stats['static'], labels={'cidr': cidr})
+        for addr_type in ('dynamic', 'reserved'):
+            metric_name = 'maas_net_subnet_ip_{}'.format(addr_type)
+            for status in ('available', 'used'):
+                metrics.update(
+                    metric_name, 'set',
+                    value=stats['{}_{}'.format(addr_type, status)],
+                    labels={'cidr': cidr, 'status': status})
 
     return metrics
 

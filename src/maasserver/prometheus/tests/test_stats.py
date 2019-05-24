@@ -159,14 +159,18 @@ class TestPrometheus(MAASServerTestCase):
         subnet_stats = {
             '1.2.0.0/16': {
                 'available': 2 ** 16 - 3,
-                'dynamic': 0,
-                'reserved': 0,
+                'dynamic_available': 0,
+                'dynamic_used': 0,
+                'reserved_available': 0,
+                'reserved_used': 0,
                 'static': 0,
                 'unavailable': 1},
             '::1/128': {
                 'available': 1,
-                'dynamic': 0,
-                'reserved': 0,
+                'dynamic_available': 0,
+                'dynamic_used': 0,
+                'reserved_available': 0,
+                'reserved_used': 0,
                 'static': 0,
                 'unavailable': 0}}
         mock_subnet_stats = self.patch(
@@ -204,11 +208,17 @@ class TestPrometheus(MAASServerTestCase):
         factory.make_IPRange(
             subnet=subnet, start_ip='1.2.0.51', end_ip='1.2.0.70',
             alloc_type=IPRANGE_TYPE.RESERVED)
-        for n in (80, 90, 100):
+        factory.make_StaticIPAddress(
+            ip='1.2.0.12',
+            alloc_type=IPADDRESS_TYPE.DHCP, subnet=subnet)
+        for n in (60, 61):
             factory.make_StaticIPAddress(
                 ip='1.2.0.{}'.format(n),
                 alloc_type=IPADDRESS_TYPE.USER_RESERVED, subnet=subnet)
-
+        for n in (80, 90, 100):
+            factory.make_StaticIPAddress(
+                ip='1.2.0.{}'.format(n),
+                alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet)
         metrics = create_metrics(
             STATS_DEFINITIONS, registry=prometheus_client.CollectorRegistry())
         update_prometheus_stats(metrics)
@@ -222,13 +232,21 @@ class TestPrometheus(MAASServerTestCase):
             '{cidr="1.2.0.0/16",status="unavailable"} 34.0',
             output)
         self.assertIn(
-            'maas_net_subnet_ip_used{cidr="1.2.0.0/16",type="dynamic"} 10.0',
+            'maas_net_subnet_ip_dynamic'
+            '{cidr="1.2.0.0/16",status="available"} 9.0',
             output)
         self.assertIn(
-            'maas_net_subnet_ip_used{cidr="1.2.0.0/16",type="reserved"} 20.0',
+            'maas_net_subnet_ip_dynamic{cidr="1.2.0.0/16",status="used"} 1.0',
             output)
         self.assertIn(
-            'maas_net_subnet_ip_used{cidr="1.2.0.0/16",type="static"} 3.0',
+            'maas_net_subnet_ip_reserved'
+            '{cidr="1.2.0.0/16",status="available"} 18.0',
+            output)
+        self.assertIn(
+            'maas_net_subnet_ip_reserved{cidr="1.2.0.0/16",status="used"} 2.0',
+            output)
+        self.assertIn(
+            'maas_net_subnet_ip_static{cidr="1.2.0.0/16"} 3.0',
             output)
 
 
