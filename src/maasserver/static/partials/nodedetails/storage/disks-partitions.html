@@ -834,6 +834,12 @@
                                 </p>
                             </div>
                         </div>
+                        <div class="p-form__group">
+                            <label for="datastore-total-size" class="p-form__label">Size to add</label>
+                            <div class="p-form__control">
+                                <p id="datastore-total-size">{$ getFormattedTotalDiskSize(selectedAvailableDatastores) $}</p>
+                            </div>
+                        </div>
                     </div>
                     <div class="col-6">
                         <div class="p-form__group">
@@ -876,6 +882,12 @@
                                 data-ng-model="datastores.old"
                                 data-ng-options="disk as disk.name for disk in node.disks | datastoresOnly">
                             </select>
+                        </div>
+                    </div>
+                    <div class="p-form__group">
+                        <label for="datastore-total-size" class="p-form__label">Size to add</label>
+                        <div class="p-form__control">
+                            <p id="datastore-total-size">{$ getFormattedTotalDiskSize(selectedAvailableDatastores) $}</p>
                         </div>
                     </div>
                 </div>

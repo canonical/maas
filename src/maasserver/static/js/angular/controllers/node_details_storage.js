@@ -141,6 +141,7 @@ export function NodeStorageController(
   ];
 
   var datastoreOnly = $filter("datastoresOnly");
+  var formatBytes = $filter("formatBytes");
 
   $scope.tableInfo = { column: "name" };
   $scope.has_disks = false;
@@ -596,6 +597,7 @@ export function NodeStorageController(
         var data = {
           name: disk.name,
           size_human: disk.size_human,
+          size: disk.size,
           available_size_human: disk.available_size_human,
           used_size_human: disk.used_size_human,
           type: disk.type,
@@ -623,6 +625,7 @@ export function NodeStorageController(
           available.push({
             name: partition.name,
             size_human: partition.size_human,
+            size: partition.size,
             available_size_human: partition.available_size_human,
             used_size_human: partition.used_size_human,
             type: "partition",
@@ -2402,6 +2405,21 @@ export function NodeStorageController(
     }
 
     return warningText;
+  };
+
+  $scope.getTotalDiskSize = function(disks) {
+    var totalSize = 0;
+
+    angular.forEach(disks, function(disk) {
+      totalSize = totalSize + disk.size;
+    });
+
+    return totalSize;
+  };
+
+  $scope.getFormattedTotalDiskSize = function(disks) {
+    var totalDiskSize = $scope.getTotalDiskSize(disks);
+    return formatBytes(totalDiskSize);
   };
 
   // Tell $parent that the storageController has been loaded.

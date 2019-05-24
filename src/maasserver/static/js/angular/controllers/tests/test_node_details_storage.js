@@ -363,6 +363,7 @@ describe("NodeStorageController", function() {
         name: disks[0].name,
         is_boot: disks[0].is_boot,
         size_human: disks[0].size_human,
+        size: disks[0].size,
         available_size_human: disks[0].available_size_human,
         used_size_human: disks[0].used_size_human,
         type: disks[0].type,
@@ -385,6 +386,7 @@ describe("NodeStorageController", function() {
         name: disks[1].name,
         is_boot: disks[1].is_boot,
         size_human: disks[1].size_human,
+        size: disks[1].size,
         available_size_human: disks[1].available_size_human,
         used_size_human: disks[1].used_size_human,
         type: disks[1].type,
@@ -407,6 +409,7 @@ describe("NodeStorageController", function() {
         name: disks[3].partitions[0].name,
         is_boot: false,
         size_human: disks[3].partitions[0].size_human,
+        size: disks[3].partitions[0].size,
         available_size_human: disks[3].partitions[0].available_size_human,
         used_size_human: disks[3].partitions[0].used_size_human,
         type: disks[3].partitions[0].type,
@@ -5409,6 +5412,62 @@ describe("NodeStorageController", function() {
         "Are you sure you want to remove this datastore? " +
           "ESXi requires at least one VMFS datastore to deploy."
       );
+    });
+  });
+
+  describe("getTotalDiskSize", function() {
+    it("returns total disk size", function() {
+      makeController();
+      var disks = [
+        {
+          size: 2000000
+        },
+        {
+          size: 1000000
+        }
+      ];
+      expect($scope.getTotalDiskSize(disks)).toBe(3000000);
+    });
+  });
+
+  describe("getFormattedTotalDiskSize", function() {
+    it("returns formatted string in MB", function() {
+      makeController();
+      var disks = [
+        {
+          size: 1000000
+        },
+        {
+          size: 2000000
+        }
+      ];
+      expect($scope.getFormattedTotalDiskSize(disks)).toBe("3 MB");
+    });
+
+    it("returns formatted string in GB", function() {
+      makeController();
+      var disks = [
+        {
+          size: 1000000000
+        },
+        {
+          size: 2000000000
+        }
+      ];
+      expect($scope.getFormattedTotalDiskSize(disks)).toBe("3 GB");
+    });
+
+    it("returns formtted string in TB", function() {
+      makeController();
+      var disks = [
+        {
+          size: 1000000000000
+        },
+        {
+          size: 2000000000000
+        }
+      ];
+      expect($scope.getFormattedTotalDiskSize(disks)).toBe("3 TB");
     });
   });
 });
