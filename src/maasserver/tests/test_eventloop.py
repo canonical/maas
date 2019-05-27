@@ -62,7 +62,7 @@ from twisted.python.threadable import isInIOThread
 wait_for_reactor = wait_for(30)  # 30 seconds.
 
 
-class TestMAASServices(MAASTestCase):
+class TestMAASServices(MAASServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
@@ -309,7 +309,7 @@ class TestRegionEventLoop(MAASTestCase):
         self.assertEqual(eventloop.stop, eventloop.loop.stop)
 
 
-class TestFactories(MAASTestCase):
+class TestFactories(MAASServerTestCase):
 
     def test_make_DatabaseTaskService(self):
         service = eventloop.make_DatabaseTaskService()

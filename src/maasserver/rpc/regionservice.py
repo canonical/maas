@@ -47,7 +47,10 @@ from netaddr import (
     IPAddress,
 )
 from provisioningserver.logger import LegacyLogger
-from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
+from provisioningserver.prometheus.metrics import (
+    MAAS_UUID,
+    PROMETHEUS_METRICS,
+)
 from provisioningserver.rpc import (
     cluster,
     common,
@@ -686,7 +689,7 @@ class RegionServer(Region):
                     nodegroup_uuid)
 
             yield self.initResponder(rack_controller)
-        except:
+        except Exception:
             # Ensure we're not hanging onto this connection.
             self.factory.service._removeConnectionFor(self.ident, self)
             # Tell the logs about it.
@@ -698,7 +701,7 @@ class RegionServer(Region):
             raise exceptions.CannotRegisterRackController(msg)
         else:
             # Done registering the rack controller and connection.
-            return {'system_id': self.ident}
+            return {'system_id': self.ident, 'uuid': MAAS_UUID}
 
     @inlineCallbacks
     def performHandshake(self):
@@ -953,7 +956,7 @@ class RegionService(service.Service, object):
         for index, endpoint in enumerate(endpoints):
             try:
                 port = yield endpoint.listen(factory)
-            except:
+            except Exception:
                 if index == last:
                     raise
             else:

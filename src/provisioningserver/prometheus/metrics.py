@@ -49,16 +49,21 @@ METRICS_DEFINITIONS = [
 ]
 
 
-def _get_maas_id():
-    # Wrap the call in a function to avoid circular imports
-    from provisioningserver.utils.env import get_maas_id
-    return get_maas_id()
+# Global for tracking the MAAS UUID (which is loaded from the database) so that
+# also workers without database access can use it. The UUID doesn't change, so
+# it's safe to get once.
+MAAS_UUID = None
 
+
+def set_maas_uuid(uuid):
+    """Set the MAAS UUID global"""
+    global MAAS_UUID
+    MAAS_UUID = uuid
 
 PROMETHEUS_METRICS = create_metrics(
     METRICS_DEFINITIONS,
     extra_labels={
         'host': get_machine_default_gateway_ip,
-        'maas_id': _get_maas_id
+        'maas_id': lambda: MAAS_UUID,
     },
     update_handlers=[update_cpu_metrics, update_memory_metrics])

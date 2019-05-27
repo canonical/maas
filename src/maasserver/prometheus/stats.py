@@ -34,7 +34,6 @@ from provisioningserver.prometheus.utils import (
     MetricDefinition,
     PrometheusMetrics,
 )
-from provisioningserver.utils.env import get_maas_id
 from twisted.application.internet import TimerService
 
 
@@ -102,15 +101,14 @@ STATS_DEFINITIONS = [
 
 
 def prometheus_stats_handler(request):
-    have_prometheus = (
-        PROMETHEUS_SUPPORTED and
-        Config.objects.get_config('prometheus_enabled'))
+    configs = Config.objects.get_configs(['prometheus_enabled', 'uuid'])
+    have_prometheus = PROMETHEUS_SUPPORTED and configs['prometheus_enabled']
     if not have_prometheus:
         return HttpResponseNotFound()
 
     metrics = create_metrics(
         STATS_DEFINITIONS,
-        extra_labels={'maas_id': get_maas_id},
+        extra_labels={'maas_id': configs['uuid']},
         update_handlers=[update_prometheus_stats],
         registry=prom_cli.CollectorRegistry())
     return HttpResponse(

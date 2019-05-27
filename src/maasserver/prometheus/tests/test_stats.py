@@ -87,7 +87,7 @@ class TestPrometheusHandler(MAASServerTestCase):
                 "amd64": 2,
                 "i386": 1,
             }
-        self.patch(stats, 'get_maas_id').return_value = 'abcde'
+        Config.objects.set_config('uuid', 'abcde')
         Config.objects.set_config('prometheus_enabled', True)
         response = self.client.get(reverse('metrics'))
         content = response.content.decode("utf-8")

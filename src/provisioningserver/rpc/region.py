@@ -83,6 +83,7 @@ class RegisterRackController(amp.Command):
         (b"system_id", amp.Unicode()),
         (b"beacon_support", amp.Boolean(optional=True)),
         (b"version", amp.Unicode(optional=True)),
+        (b"uuid", amp.Unicode(optional=True)),
     ]
     errors = {
         CannotRegisterRackController: b"CannotRegisterRackController",

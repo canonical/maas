@@ -46,6 +46,7 @@ from provisioningserver.logger import (
     LegacyLogger,
 )
 from provisioningserver.path import get_data_path
+from provisioningserver.prometheus.metrics import set_maas_uuid
 from provisioningserver.refresh import (
     get_sys_info,
     refresh,
@@ -818,7 +819,6 @@ class ClusterClient(Cluster):
         self.authenticated = DeferredValue()
         self.ready = DeferredValue()
         self.localIdent = None
-        self.remoteVersion = None
 
     @property
     def ident(self):
@@ -864,6 +864,7 @@ class ClusterClient(Cluster):
                 nodegroup_uuid=cluster_uuid, beacon_support=True,
                 version=version)
             self.localIdent = data["system_id"]
+            set_maas_uuid(data.get('uuid'))
             set_maas_id(self.localIdent)
             version = data.get("version", None)
             if version is None:

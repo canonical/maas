@@ -1784,6 +1784,20 @@ class TestClusterClient(MAASTestCase):
         set_maas_id(None)
 
     @inlineCallbacks
+    def test_registerRackWithRegion_sets_maas_uuid(self):
+        mock_set_maas_uuid = self.patch(clusterservice, 'set_maas_uuid')
+        client = self.make_running_client()
+
+        system_id = factory.make_name("id")
+        callRemote = self.patch_autospec(client, "callRemote")
+        callRemote.side_effect = always_succeed_with(
+            {"system_id": system_id, "uuid": "a-b-c"})
+
+        result = yield client.registerRackWithRegion()
+        self.assertTrue(result)
+        mock_set_maas_uuid.assert_called_once_with('a-b-c')
+
+    @inlineCallbacks
     def test_registerRackWithRegion_returns_False_when_rejected(self):
         client = self.make_running_client()
 

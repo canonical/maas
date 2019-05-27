@@ -305,7 +305,10 @@ class TestRegionServer(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test_register_returns_system_id(self):
+    def test_register_returns_system_id_and_uuid(self):
+        uuid = 'a-b-c'
+        self.patch(regionservice, 'MAAS_UUID', uuid)
+
         yield self.installFakeRegion()
         rack_controller = yield deferToDatabase(factory.make_RackController)
         protocol = self.make_Region()
@@ -318,6 +321,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
             })
         self.assertThat(
             response['system_id'], Equals(rack_controller.system_id))
+        self.assertThat(response['uuid'], Equals(uuid))
 
     @wait_for_reactor
     @inlineCallbacks
