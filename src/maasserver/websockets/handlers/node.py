@@ -336,6 +336,11 @@ class NodeHandler(TimestampedModelHandler):
                     for disk in data["disks"]:
                         if disk["id"] == layout_bd.id:
                             for partition in disk["partitions"]:
+                                if partition["name"].endswith("-part3"):
+                                    # Partition 3 is for the default datastore.
+                                    # This partition may be modified by the
+                                    # user.
+                                    continue
                                 partition["used_for"] = (
                                     "VMware ESXi OS partition")
                                 partition["filesystem"] = {

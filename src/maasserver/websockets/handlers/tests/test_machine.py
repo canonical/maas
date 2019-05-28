@@ -735,16 +735,21 @@ class TestMachineHandler(MAASServerTestCase):
         for disk in handler.dehydrate(node, {})["disks"]:
             if disk["id"] == node.boot_disk.id:
                 for partition in disk["partitions"]:
-                    self.assertEquals(
-                        "VMware ESXi OS partition", partition["used_for"])
-                    self.assertDictEqual({
-                        "id": -1,
-                        "label": "RESERVED",
-                        "mount_point": "RESERVED",
-                        "mount_options": None,
-                        "fstype": None,
-                        "is_format_fstype": False,
-                        }, partition["filesystem"])
+                    if partition["name"].endswith("-part3"):
+                        self.assertEquals(
+                            "VMFS extent for datastore1",
+                            partition["used_for"])
+                    else:
+                        self.assertEquals(
+                            "VMware ESXi OS partition", partition["used_for"])
+                        self.assertDictEqual({
+                            "id": -1,
+                            "label": "RESERVED",
+                            "mount_point": "RESERVED",
+                            "mount_options": None,
+                            "fstype": None,
+                            "is_format_fstype": False,
+                            }, partition["filesystem"])
 
     def test_dehydrate_power_parameters_returns_None_when_empty(self):
         owner = factory.make_User()
