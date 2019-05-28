@@ -31,7 +31,6 @@ function maasCodeLines() {
         // its appropriate line number
         angular.forEach(lines, function(line) {
           insert += newLine + '<span class="code-line">' + line + "</span>";
-          newLine = "\n";
         });
         insert += "</code>";
 
