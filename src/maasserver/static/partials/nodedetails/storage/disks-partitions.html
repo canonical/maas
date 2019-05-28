@@ -848,10 +848,10 @@
                                 <p>{$ datastores.new.filesystem $}</p>
                             </div>
                         </div>
-                        <div class="p-form__group" data-ng-if="datastores.new.path">
+                        <div class="p-form__group" data-ng-if="datastores.new.filesystem.mount_point">
                             <label for="datastore-mountpoint" class="p-form__label">Mount point</label>
                             <div class="p-form__control">
-                                <p>{$ datastores.new.path $}</p>
+                                <p>{$ datastores.new.filesystem.mount_point $}</p>
                             </div>
                         </div>
                     </div>
@@ -895,7 +895,7 @@
                     <div class="p-form__group">
                         <label for="datastore-mountpoint" class="p-form__label">Mount point</label>
                         <div class="p-form__control">
-                            <p>{$ datastores.old.path $}</p>
+                            <p>{$ datastores.old.filesystem.mount_point $}</p>
                         </div>
                     </div>
                 </div>

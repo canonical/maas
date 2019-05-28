@@ -2194,6 +2194,24 @@ class TestVMFS(MAASServerTestCase, AssertStorageConfigMixin):
             type: vmfs6
             devices:
               - sdc-part1
+          - id: datastore1_format
+            type: format
+            fstype: vmfs6
+            volume: datastore1
+            label: null
+          - id: datastore2_format
+            type: format
+            fstype: vmfs6
+            volume: datastore2
+            label: null
+          - id: datastore1_mount
+            type: mount
+            device: datastore1_format
+            path: /vmfs/volumes/datastore1
+          - id: datastore2_mount
+            type: mount
+            device: datastore2_format
+            path: /vmfs/volumes/datastore2
     """)
 
     def test__renders_expected_output(self):

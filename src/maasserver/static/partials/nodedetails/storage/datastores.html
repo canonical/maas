@@ -20,11 +20,11 @@
           No datastores defined.
         </td>
       </tr>
-      <tr class="p-table__row" data-ng-repeat="filesystem in node.disks" data-ng-class="{ 'is-active': filesystem.$selected }" data-ng-if="filesystem.used_for == 'VMFS Datastore'">
+      <tr class="p-table__row" data-ng-repeat="filesystem in node.disks" data-ng-class="{ 'is-active': filesystem.$selected }" data-ng-if="filesystem.parent_type == 'vmfs6'">
         <td role="gridcell" class="p-table__cell" aria-label="Name" title="{$ filesystem.name $}">{$ filesystem.name $}</td>
         <td role="gridcell" class="p-table__cell" aria-label="Filesystem" title="VMFS6">VMFS6</td>
         <td role="gridcell" class="p-table__cell" aria-label="Size" title="{$ filesystem.size_human $}">{$ filesystem.size_human $}</td>
-        <td role="gridcell" class="p-table__cell" aria-label="Mount point" title="{$ filesystem.path $}">{$ filesystem.path $}</td>
+        <td role="gridcell" class="p-table__cell" aria-label="Mount point" title="{$ filesystem.filesystem.mount_point $}">{$ filesystem.filesystem.mount_point $}</td>
         <td role="gridcell" class="p-table__cell p-table--action-cell u-align--right">
           <div class="p-contextual-menu" toggle-ctrl data-ng-if="!isAllStorageDisabled()">
             <button class="p-button--base p-contextual-menu__toggle" aria-controls="#{$ item.name $}-menu"

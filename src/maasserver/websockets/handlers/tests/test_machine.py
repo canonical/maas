@@ -745,16 +745,6 @@ class TestMachineHandler(MAASServerTestCase):
                         "fstype": None,
                         "is_format_fstype": False,
                         }, partition["filesystem"])
-            else:
-                self.assertEquals("VMFS Datastore", disk["used_for"])
-                self.assertDictEqual({
-                    "id": -1,
-                    "label": "RESERVED",
-                    "mount_point": "RESERVED",
-                    "mount_options": None,
-                    "fstype": None,
-                    "is_format_fstype": False,
-                    }, disk["filesystem"])
 
     def test_dehydrate_power_parameters_returns_None_when_empty(self):
         owner = factory.make_User()

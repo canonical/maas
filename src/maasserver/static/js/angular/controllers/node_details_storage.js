@@ -48,7 +48,7 @@ export function removeAvailableByNew() {
 export function datastoresOnly() {
   return function(filesystems) {
     return filesystems.filter(filesystem => {
-      return filesystem.used_for === "VMFS Datastore";
+      return filesystem.parent_type == "vmfs6";
     });
   };
 }
@@ -2396,7 +2396,7 @@ export function NodeStorageController(
   // Returns warning text based on number of datastores
   $scope.getRemoveDatastoreWarningText = function(disks) {
     var datastores = disks.filter(function(disk) {
-      return disk.used_for === "VMFS Datastore";
+      return disk.parent_type === "vmfs6";
     });
     var warningText = "Are you sure you want to remove this datastore?";
 

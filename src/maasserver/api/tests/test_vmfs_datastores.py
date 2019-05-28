@@ -13,6 +13,7 @@ from maasserver.enum import (
     FILESYSTEM_GROUP_TYPE,
     NODE_STATUS,
 )
+from maasserver.models.filesystemgroup import VMFS
 from maasserver.models.partition import MIN_PARTITION_SIZE
 from maasserver.models.partitiontable import PARTITION_TABLE_EXTRA_SPACE
 from maasserver.storage_layouts import VMFS6StorageLayout
@@ -149,7 +150,9 @@ class TestVMFSDatastoreAPI(APITestCase.ForUser):
             self.get_vmfs_uri(vmfs))
 
     def test_GET(self):
-        vmfs = factory.make_VMFS()
+        part = factory.make_Partition()
+        name = factory.make_name('datastore')
+        vmfs = VMFS.objects.create_vmfs(name, [part])
 
         response = self.client.get(self.get_vmfs_uri(vmfs))
         self.assertThat(response, HasStatusCode(http.client.OK))
@@ -162,6 +165,10 @@ class TestVMFSDatastoreAPI(APITestCase.ForUser):
             'name': Equals(vmfs.name),
             'size': Equals(vmfs.get_size()),
             'human_size': Equals(human_readable_bytes(vmfs.get_size())),
+            'filesystem': Equals({
+                'fstype': 'vmfs6',
+                'mount_point': '/vmfs/volumes/%s' % name,
+            }),
         }))
         self.assertEquals(
             vmfs.filesystems.count(), len(parsed_result['devices']))

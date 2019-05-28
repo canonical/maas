@@ -32,6 +32,7 @@ from maasserver.models.filesystemgroup import (
     RAID,
     RAID_SUPERBLOCK_OVERHEAD,
     RAIDManager,
+    VMFS,
     VolumeGroup,
     VolumeGroupManager,
 )
@@ -877,6 +878,14 @@ class TestFilesystemGroup(MAASServerTestCase):
     def test_is_vmfs(self):
         vmfs = factory.make_VMFS()
         self.assertTrue(vmfs.is_vmfs())
+
+    def test_creating_vmfs_automatically_creates_mounted_fs(self):
+        part = factory.make_Partition()
+        name = factory.make_name('datastore')
+        vmfs = VMFS.objects.create_vmfs(name, [part])
+        self.assertEquals(
+            '/vmfs/volumes/%s' % name,
+            vmfs.virtual_device.get_effective_filesystem().mount_point)
 
     def test_can_save_new_filesystem_group_without_filesystems(self):
         fsgroup = FilesystemGroup(

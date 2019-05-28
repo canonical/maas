@@ -292,6 +292,9 @@ class VMFSManager(BaseFilesystemGroupManager):
                 fstype=FILESYSTEM_TYPE.VMFS6, partition=partition,
                 filesystem_group=vmfs)
         vmfs.save(force_update=True)
+        vmfs.virtual_device.filesystem_set.create(
+            fstype=FILESYSTEM_TYPE.VMFS6,
+            mount_point='/vmfs/volumes/%s' % name)
         return vmfs
 
 

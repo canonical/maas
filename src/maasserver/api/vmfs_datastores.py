@@ -34,6 +34,7 @@ DISPLAYED_VMFS_DATASTORE_FIELDS = (
     'devices',
     'size',
     'human_size',
+    'filesystem',
 )
 
 
@@ -159,6 +160,19 @@ class VmfsDatastoreHandler(OperationsHandler):
             filesystem.get_parent()
             for filesystem in vmfs.filesystems.all()
         ]
+
+    @classmethod
+    def filesystem(cls, vmfs):
+        # XXX: This is almost the same as
+        # m.api.partitions.PartitionHandler.filesystem.
+        filesystem = vmfs.virtual_device.get_effective_filesystem()
+        if filesystem is not None:
+            return {
+                'fstype': filesystem.fstype,
+                'mount_point': filesystem.mount_point,
+            }
+        else:
+            return None
 
     def read(self, request, system_id, id):
         """@description-title Read a VMFS datastore.

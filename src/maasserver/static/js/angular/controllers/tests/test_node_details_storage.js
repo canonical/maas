@@ -5384,14 +5384,12 @@ describe("NodeStorageController", function() {
       makeController();
       var disks = [
         {
-          used_for: "VMFS Datastore"
+          parent_type: "vmfs6"
         },
         {
-          used_for: "VMFS Datastore"
+          parent_type: "vmfs6"
         },
-        {
-          used_for: "GPT partitioned with 1 partition"
-        }
+        {}
       ];
       expect($scope.getRemoveDatastoreWarningText(disks)).toBe(
         "Are you sure you want to remove this datastore?"
@@ -5402,11 +5400,9 @@ describe("NodeStorageController", function() {
       makeController();
       var disks = [
         {
-          used_for: "VMFS Datastore"
+          parent_type: "vmfs6"
         },
-        {
-          used_for: "GPT partitioned with 1 partition"
-        }
+        {}
       ];
       expect($scope.getRemoveDatastoreWarningText(disks)).toBe(
         "Are you sure you want to remove this datastore? " +

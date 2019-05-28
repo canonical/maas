@@ -334,17 +334,7 @@ class NodeHandler(TimestampedModelHandler):
                 # UI knows that these partitions are in use.
                 if detected_layout == "vmfs6":
                     for disk in data["disks"]:
-                        if disk.get("parent", {}).get("type") == "vmfs6":
-                            disk["used_for"] = "VMFS Datastore"
-                            disk["filesystem"] = {
-                                "id": -1,
-                                "label": "RESERVED",
-                                "mount_point": "RESERVED",
-                                "mount_options": None,
-                                "fstype": None,
-                                "is_format_fstype": False
-                            }
-                        elif disk["id"] == layout_bd.id:
+                        if disk["id"] == layout_bd.id:
                             for partition in disk["partitions"]:
                                 partition["used_for"] = (
                                     "VMware ESXi OS partition")
