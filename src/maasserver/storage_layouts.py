@@ -661,7 +661,9 @@ class BcacheStorageLayout(FlatStorageLayout, BcacheStorageLayoutBase):
             if pt is None:
                 continue
             found_boot = False
-            for partition in pt.partitions.all():
+            ordered_partitions = sorted(
+                pt.partitions.all(), key=lambda part: part.id)
+            for partition in ordered_partitions:
                 # On UEFI systems the first partition is for the bootloader. If
                 # found check the next partition.
                 if (partition.get_partition_number() == 1 and
