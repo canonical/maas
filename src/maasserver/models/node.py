@@ -3414,10 +3414,10 @@ class Node(CleanSave, TimestampedModel):
         # groups and cache sets once filesystems that make up have been cloned.
         source_groups = list(
             FilesystemGroup.objects.filter_by_node(
-                source_node).prefetch_related('filesystems'))
+                source_node).order_by('id').prefetch_related('filesystems'))
         source_groups += list(
             CacheSet.objects.get_cache_sets_for_node(
-                source_node).prefetch_related('filesystems'))
+                source_node).order_by('id').prefetch_related('filesystems'))
 
         # Clone the model at the physical level.
         filesystem_map = self._copy_between_block_device_mappings(mapping)
@@ -3568,15 +3568,17 @@ class Node(CleanSave, TimestampedModel):
                 self_ptable.pk = None
                 self_ptable.block_device = self_disk
                 self_ptable.save(force_insert=True)
-                for source_partition in source_ptable.partitions.all():
+                source_partitions = source_ptable.partitions.order_by('id')
+                for source_partition in source_partitions.all():
                     self_partition = copy.deepcopy(source_partition)
                     self_partition.id = None
                     self_partition.pk = None
                     self_partition.uuid = None
                     self_partition.partition_table = self_ptable
                     self_partition.save(force_insert=True)
-                    for source_filesystem in (
-                            source_partition.filesystem_set.all()):
+                    source_filesystems = (
+                        source_partition.filesystem_set.order_by('id'))
+                    for source_filesystem in source_filesystems.all():
                         if not source_filesystem.acquired:
                             self_filesystem = copy.deepcopy(source_filesystem)
                             self_filesystem.id = None
@@ -3587,7 +3589,9 @@ class Node(CleanSave, TimestampedModel):
                             self_filesystem.save(force_insert=True)
                             filesystem_map[source_filesystem.id] = (
                                 self_filesystem)
-            for source_filesystem in source_disk.filesystem_set.all():
+            source_filesystems = (
+                source_disk.filesystem_set.order_by('id'))
+            for source_filesystem in source_filesystems.all():
                 if not source_filesystem.acquired:
                     self_filesystem = copy.deepcopy(source_filesystem)
                     self_filesystem.id = None
