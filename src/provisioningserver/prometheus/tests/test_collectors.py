@@ -4,6 +4,7 @@ from textwrap import dedent
 from maastesting.fixtures import TempDirectory
 from maastesting.testcase import MAASTestCase
 import prometheus_client
+from provisioningserver.prometheus import metrics
 from provisioningserver.prometheus.collectors import (
     MEMINFO_FIELDS,
     node_metrics_definitions,
@@ -30,6 +31,7 @@ class TestNodeMetricsDefinitions(MAASTestCase):
 class TestUpdateMemoryMetrics(MAASTestCase):
 
     def test_update_metrics(self):
+        self.patch(metrics, 'GLOBAL_LABELS', {'service_type': 'rack'})
         tempdir = self.useFixture(TempDirectory())
         meminfo = (Path(tempdir.path) / 'meminfo')
         meminfo.write_text(dedent(
@@ -44,15 +46,20 @@ class TestUpdateMemoryMetrics(MAASTestCase):
             registry=prometheus_client.CollectorRegistry())
         update_memory_metrics(prometheus_metrics, path=meminfo)
         output = prometheus_metrics.generate_latest().decode('ascii')
-        self.assertIn('maas_node_mem_MemTotal 123.0', output)
-        self.assertIn('maas_node_mem_SwapCached 456.0', output)
-        self.assertIn('maas_node_mem_VmallocUsed 789.0', output)
-        self.assertIn('maas_node_mem_HugePages_Total 321.0', output)
+        self.assertIn(
+            'maas_node_mem_MemTotal{service_type="rack"} 123.0', output)
+        self.assertIn(
+            'maas_node_mem_SwapCached{service_type="rack"} 456.0', output)
+        self.assertIn(
+            'maas_node_mem_VmallocUsed{service_type="rack"} 789.0', output)
+        self.assertIn(
+            'maas_node_mem_HugePages_Total{service_type="rack"} 321.0', output)
 
 
 class TestUpdateCPUMetrics(MAASTestCase):
 
     def test_update_metrics(self):
+        self.patch(metrics, 'GLOBAL_LABELS', {'service_type': 'rack'})
         tempdir = self.useFixture(TempDirectory())
         stat = (Path(tempdir.path) / 'stat')
         stat.write_text(dedent(
@@ -68,13 +75,33 @@ class TestUpdateCPUMetrics(MAASTestCase):
             registry=prometheus_client.CollectorRegistry())
         update_cpu_metrics(prometheus_metrics, path=stat)
         output = prometheus_metrics.generate_latest().decode('ascii')
-        self.assertIn('maas_node_cpu_time{state="user"} 1.11', output)
-        self.assertIn('maas_node_cpu_time{state="nice"} 2.22', output)
-        self.assertIn('maas_node_cpu_time{state="system"} 3.33', output)
-        self.assertIn('maas_node_cpu_time{state="idle"} 4.44', output)
-        self.assertIn('maas_node_cpu_time{state="iowait"} 5.55', output)
-        self.assertIn('maas_node_cpu_time{state="irq"} 6.66', output)
-        self.assertIn('maas_node_cpu_time{state="softirq"} 0.07', output)
-        self.assertIn('maas_node_cpu_time{state="steal"} 8.88', output)
-        self.assertIn('maas_node_cpu_time{state="guest"} 0.09', output)
-        self.assertIn('maas_node_cpu_time{state="guest_nice"} 0.11', output)
+        self.assertIn(
+            'maas_node_cpu_time{service_type="rack",state="user"} 1.11',
+            output)
+        self.assertIn(
+            'maas_node_cpu_time{service_type="rack",state="nice"} 2.22',
+            output)
+        self.assertIn(
+            'maas_node_cpu_time{service_type="rack",state="system"} 3.33',
+            output)
+        self.assertIn(
+            'maas_node_cpu_time{service_type="rack",state="idle"} 4.44',
+            output)
+        self.assertIn(
+            'maas_node_cpu_time{service_type="rack",state="iowait"} 5.55',
+            output)
+        self.assertIn(
+            'maas_node_cpu_time{service_type="rack",state="irq"} 6.66',
+            output)
+        self.assertIn(
+            'maas_node_cpu_time{service_type="rack",state="softirq"} 0.07',
+            output)
+        self.assertIn(
+            'maas_node_cpu_time{service_type="rack",state="steal"} 8.88',
+            output)
+        self.assertIn(
+            'maas_node_cpu_time{service_type="rack",state="guest"} 0.09',
+            output)
+        self.assertIn(
+            'maas_node_cpu_time{service_type="rack",state="guest_nice"} 0.11',
+            output)

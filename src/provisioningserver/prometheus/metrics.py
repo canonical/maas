@@ -49,21 +49,28 @@ METRICS_DEFINITIONS = [
 ]
 
 
-# Global for tracking the MAAS UUID (which is loaded from the database) so that
-# also workers without database access can use it. The UUID doesn't change, so
-# it's safe to get once.
-MAAS_UUID = None
+# Global for tracking global values for metrics label. These are set
+# differently from rackd and regiond code, but this is defined here so the
+# logic using it can be generic.
+GLOBAL_LABELS = {
+    # The MAAS installation UUID, the same for all regions/racks within a
+    # deployment
+    'maas_uuid': None,
+    # The type of service (region/rack) exporting the metrics.
+    'service_type': None
+}
 
 
-def set_maas_uuid(uuid):
-    """Set the MAAS UUID global"""
-    global MAAS_UUID
-    MAAS_UUID = uuid
+def set_global_labels(**labels):
+    """Update global labels for metrics."""
+    global GLOBAL_LABELS
+    GLOBAL_LABELS.update(labels)
+
 
 PROMETHEUS_METRICS = create_metrics(
     METRICS_DEFINITIONS,
     extra_labels={
         'host': get_machine_default_gateway_ip,
-        'maas_id': lambda: MAAS_UUID,
+        'maas_id': lambda: GLOBAL_LABELS['maas_uuid'],
     },
     update_handlers=[update_cpu_metrics, update_memory_metrics])

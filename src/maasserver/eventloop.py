@@ -47,7 +47,7 @@ from socket import gethostname
 
 from maasserver.utils.orm import disable_all_database_connections
 from maasserver.utils.threads import deferToDatabase
-from provisioningserver.prometheus.metrics import set_maas_uuid
+from provisioningserver.prometheus.metrics import set_global_labels
 from provisioningserver.utils.twisted import asynchronous
 from twisted.application.service import (
     MultiService,
@@ -216,18 +216,18 @@ class MAASServices(MultiService):
     def startService(self):
         yield maybeDeferred(self.eventloop.prepare)
         Service.startService(self)
-        yield self._set_maas_uuid()
+        yield self._set_globals()
         yield DeferredList([
             maybeDeferred(service.startService)
             for service in self
         ])
 
     @inlineCallbacks
-    def _set_maas_uuid(self):
+    def _set_globals(self):
         from maasserver.models.node import RegionControllerManager
         maas_uuid = yield deferToDatabase(
             RegionControllerManager().get_or_create_uuid)
-        set_maas_uuid(maas_uuid)
+        set_global_labels(maas_uuid=maas_uuid, service_type='region')
 
 
 class RegionEventLoop:

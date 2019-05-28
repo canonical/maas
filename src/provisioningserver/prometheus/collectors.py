@@ -58,34 +58,41 @@ def node_metrics_definitions():
     definitions = [
         MetricDefinition(
             'Gauge', 'maas_node_mem_{}'.format(field),
-            'Memory information field {}'.format(field))
+            'Memory information field {}'.format(field),
+            labels=['service_type'])
         for field in MEMINFO_FIELDS]
     definitions.append(
         MetricDefinition(
             'Counter', 'maas_node_cpu_time', 'CPU time',
-            labels=['state']))
+            labels=['service_type', 'state']))
     return definitions
 
 
 def update_memory_metrics(prometheus_metrics: PrometheusMetrics, path=None):
     """Update memory-related metrics."""
+    from provisioningserver.prometheus.metrics import GLOBAL_LABELS
     metric_values = _collect_memory_values(path=path)
     for field in MEMINFO_FIELDS:
         value = metric_values.get(field)
         if value is not None:
             prometheus_metrics.update(
-                'maas_node_mem_{}'.format(field), 'set', value=value)
+                'maas_node_mem_{}'.format(field), 'set', value=value,
+                labels={'service_type': GLOBAL_LABELS['service_type']})
 
 
 def update_cpu_metrics(prometheus_metrics: PrometheusMetrics, path=None):
     """Update memory-related metrics."""
+    from provisioningserver.prometheus.metrics import GLOBAL_LABELS
     cpu_values = _collect_cpu_values(path=path)
     for field in CPU_TIME_FIELDS:
         value = cpu_values.get(field)
         if value is not None:
             prometheus_metrics.update(
                 'maas_node_cpu_time',
-                'set', value=value / USER_HZ, labels={'state': field})
+                'set', value=value / USER_HZ,
+                labels={
+                    'service_type': GLOBAL_LABELS['service_type'],
+                    'state': field})
 
 
 def _collect_memory_values(path=None):

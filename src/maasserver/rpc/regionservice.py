@@ -48,7 +48,7 @@ from netaddr import (
 )
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.prometheus.metrics import (
-    MAAS_UUID,
+    GLOBAL_LABELS,
     PROMETHEUS_METRICS,
 )
 from provisioningserver.rpc import (
@@ -701,7 +701,10 @@ class RegionServer(Region):
             raise exceptions.CannotRegisterRackController(msg)
         else:
             # Done registering the rack controller and connection.
-            return {'system_id': self.ident, 'uuid': MAAS_UUID}
+            return {
+                'system_id': self.ident,
+                'uuid': GLOBAL_LABELS['maas_uuid']
+            }
 
     @inlineCallbacks
     def performHandshake(self):

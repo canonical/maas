@@ -6,6 +6,7 @@
 __all__ = []
 
 from unittest.mock import (
+    ANY,
     call,
     Mock,
     sentinel,
@@ -93,6 +94,16 @@ class TestMAASServices(MAASServerTestCase):
         yield services.startService()
         self.assertThat(calls, MockCallsMatch(call(), call()))
         self.assertThat(services.running, Equals(1))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__sets_global_labels(self):
+        mock_set_global_labels = self.patch(eventloop, 'set_global_labels')
+        fake_eventloop = Mock()
+        services = MAASServices(fake_eventloop)
+        yield services.startService()
+        mock_set_global_labels.assert_called_once_with(
+            maas_uuid=ANY, service_type='region')
 
 
 class TestRegionEventLoop(MAASTestCase):

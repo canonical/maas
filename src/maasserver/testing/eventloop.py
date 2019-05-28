@@ -50,15 +50,15 @@ class RegionEventLoopFixture(Fixture):
 
     def resetStartUp(self):
         eventloop.loop.prepare = self.original_prepare
-        eventloop.loop.services._set_maas_uuid = self.original_set_maas_uuid
+        eventloop.loop.services._set_globals = self.original_set_globals
 
     def setUp(self):
         super(RegionEventLoopFixture, self).setUp()
         # Patch start_up in the eventloop.
         self.original_prepare = eventloop.loop.prepare
-        self.original_set_maas_uuid = eventloop.loop.services._set_maas_uuid
+        self.original_set_globals = eventloop.loop.services._set_globals
         eventloop.loop.prepare = lambda: defer.succeed(None)
-        eventloop.loop.services._set_maas_uuid = lambda: defer.succeed(None)
+        eventloop.loop.services._set_globals = lambda: defer.succeed(None)
         # Check that the event-loop is dormant and clean.
         self.checkEventLoopClean()
         # Ensure the event-loop will be left in a consistent state.
@@ -105,15 +105,15 @@ class RunningEventLoopFixture(Fixture):
 
     def resetStartUp(self):
         eventloop.loop.prepare = self.original_prepare
-        eventloop.loop.services._set_maas_uuid = self.original_set_maas_uuid
+        eventloop.loop.services._set_globals = self.original_set_globals
 
     def setUp(self):
         super(RunningEventLoopFixture, self).setUp()
         # Patch start_up in the eventloop.
         self.original_prepare = eventloop.loop.prepare
-        self.original_set_maas_uuid = eventloop.loop.services._set_maas_uuid
+        self.original_set_globals = eventloop.loop.services._set_globals
         eventloop.loop.prepare = lambda: defer.succeed(None)
-        eventloop.loop.services._set_maas_uuid = lambda: defer.succeed(None)
+        eventloop.loop.services._set_globals = lambda: defer.succeed(None)
         # Check that the event-loop is dormant and clean.
         self.checkEventLoopClean()
         # Check that the event-loop will be left dormant and clean.

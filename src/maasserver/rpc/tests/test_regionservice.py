@@ -307,7 +307,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
     @inlineCallbacks
     def test_register_returns_system_id_and_uuid(self):
         uuid = 'a-b-c'
-        self.patch(regionservice, 'MAAS_UUID', uuid)
+        self.patch(regionservice, 'GLOBAL_LABELS', {'maas_uuid': uuid})
 
         yield self.installFakeRegion()
         rack_controller = yield deferToDatabase(factory.make_RackController)
