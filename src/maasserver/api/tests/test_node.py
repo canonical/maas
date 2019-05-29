@@ -57,6 +57,7 @@ from provisioningserver.refresh.node_info_scripts import (
     LSHW_OUTPUT_NAME,
 )
 from provisioningserver.rpc.exceptions import PowerActionAlreadyInProgress
+from twisted.internet.defer import succeed
 
 
 class NodeAnonAPITest(MAASServerTestCase):
@@ -707,6 +708,8 @@ class TestPowerMixin(APITestCase.ForUser):
         factory.make_Script(
             script_type=SCRIPT_TYPE.TESTING, tags=['commissioning'])
         self.patch(node_module.Node, "_power_cycle").return_value = None
+        self.patch(node_module.Node, "_power_control_node").return_value = (
+            succeed(None))
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYED, owner=factory.make_User())
         self.become_admin()
@@ -716,6 +719,8 @@ class TestPowerMixin(APITestCase.ForUser):
 
     def test_POST_test_tests_machine_with_options(self):
         self.patch(node_module.Node, "_power_cycle").return_value = None
+        self.patch(node_module.Node, "_power_control_node").return_value = (
+            succeed(None))
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYED, owner=factory.make_User())
         self.become_admin()
