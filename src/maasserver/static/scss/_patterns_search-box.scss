@@ -6,5 +6,9 @@
     &.u-min-margin--bottom {
       margin-bottom: $spv-nudge-compensation * 2;
     }
+
+    &.is-full-width {
+      width: 100%;
+    }
   }
 }
