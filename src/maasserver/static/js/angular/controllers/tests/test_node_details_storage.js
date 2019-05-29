@@ -5275,6 +5275,65 @@ describe("NodeStorageController", function() {
     });
   });
 
+  describe("canAddToDatastore", function() {
+    it("calls 'canPerformActionOnDatastoreSet", function() {
+      makeController();
+      spyOn($scope, "canPerformActionOnDatastoreSet");
+      $scope.canAddToDatastore();
+      expect($scope.canPerformActionOnDatastoreSet).toHaveBeenCalled();
+    });
+
+    it("return false if not on vmsf6 storage layout", function() {
+      makeController();
+      $scope.addToExistingDatastore = false;
+      $scope.createNewDatastore = false;
+      $scope.selectedAvailableDatastores = [1];
+      $scope.storageLayout = { id: "flat" };
+      $scope.node.disks = [];
+      expect($scope.canAddToDatastore()).toBe(false);
+    });
+
+    it("return false if already editing datastores", function() {
+      makeController();
+      $scope.addToExistingDatastore = false;
+      $scope.createNewDatastore = true;
+      $scope.selectedAvailableDatastores = [1];
+      $scope.storageLayout = { id: "vmfs6" };
+      $scope.node.disks = [];
+      expect($scope.canAddToDatastore()).toBe(false);
+    });
+
+    it("return false if no device is selected", function() {
+      makeController();
+      $scope.addToExistingDatastore = false;
+      $scope.createNewDatastore = false;
+      $scope.selectedAvailableDatastores = [];
+      $scope.storageLayout = { id: "vmfs6" };
+      $scope.node.disks = [];
+      expect($scope.canAddToDatastore()).toBe(false);
+    });
+
+    it("return false when there are no datastores", function() {
+      makeController();
+      $scope.addToExistingDatastore = false;
+      $scope.createNewDatastore = false;
+      $scope.selectedAvailableDatastores = [];
+      $scope.storageLayout = { id: "vmfs6" };
+      $scope.node.disks = [];
+      expect($scope.canAddToDatastore()).toBe(false);
+    });
+
+    it("return true when conditions are matched", function() {
+      makeController();
+      $scope.addToExistingDatastore = false;
+      $scope.createNewDatastore = false;
+      $scope.selectedAvailableDatastores = [1];
+      $scope.storageLayout = { id: "vmfs6" };
+      $scope.node.disks = [{ parent_type: "vmfs6" }];
+      expect($scope.canAddToDatastore()).toBe(true);
+    });
+  });
+
   describe("checkAddToDatastoreValid", function() {
     it("selected disks are valid when that condition is true", function() {
       makeController();

@@ -287,6 +287,18 @@ export function NodeStorageController(
     return !editing && selected && vmfs6;
   };
 
+  $scope.canAddToDatastore = function() {
+    var datastores = $scope.node.disks.filter(function(disk) {
+      return disk.parent_type === "vmfs6";
+    });
+
+    if ($scope.canPerformActionOnDatastoreSet() && datastores.length) {
+      return true;
+    }
+
+    return false;
+  };
+
   $scope.createDatastore = function() {
     $scope.createNewDatastore = true;
 
