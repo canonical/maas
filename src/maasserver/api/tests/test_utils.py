@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for API helpers."""
@@ -137,6 +137,13 @@ class TestOAuthHelpers(MAASTestCase):
             token,
             extract_oauth_key_from_auth_header(
                 factory.make_oauth_header(oauth_token=token)))
+
+    def test_extract_oauth_key_from_auth_header_no_whitespace_rtns_key(self):
+        token = factory.make_string(18)
+        auth_header = factory.make_oauth_header(oauth_token=token)
+        auth_header = auth_header.replace(", ", ",")
+        self.assertEqual(token, extract_oauth_key_from_auth_header(
+            auth_header))
 
     def test_extract_oauth_key_from_auth_header_returns_None_if_missing(self):
         self.assertIs(None, extract_oauth_key_from_auth_header(''))

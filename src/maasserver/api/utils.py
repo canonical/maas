@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Helpers for Piston-based MAAS APIs."""
@@ -193,12 +193,21 @@ def extract_oauth_key_from_auth_header(auth_data):
 
     :return: The oauth key from the header, or None.
     """
-    for entry in auth_data.split():
-        key_value = entry.split('=', 1)
-        if len(key_value) == 2:
-            key, value = key_value
-            if key == 'oauth_token':
-                return value.rstrip(',').strip('"')
+    # Values only separated by commas (no whitespace).
+    if len(auth_data.split()) == 2:
+        for entry in auth_data.split()[1].split(","):
+            key_value = entry.split('=', 1)
+            if len(key_value) == 2:
+                key, value = key_value
+                if key == 'oauth_token':
+                    return value.strip('"')
+    else:
+        for entry in auth_data.split():
+            key_value = entry.split('=', 1)
+            if len(key_value) == 2:
+                key, value = key_value
+                if key == 'oauth_token':
+                    return value.rstrip(',').strip('"')
     return None
 
 
