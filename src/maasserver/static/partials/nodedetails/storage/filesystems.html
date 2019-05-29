@@ -9,7 +9,7 @@
                 <th scope="col" aria-sort="none" class="col-2">Filesystem</th>
                 <th scope="col" aria-sort="none" class="col-2">Mount point</th>
                 <th scope="col" aria-sort="none" class="col-3">Mount options</th>
-                <th scope="col" aria-sort="none" class="col-1 u-align--right">Actions</th>
+                <th data-ng-if="canEdit()" scope="col" aria-sort="none" class="col-1 u-align--right">Actions</th>
                 <th class="u-hide"><!-- empty cell for validation --></th>
             </tr>
         </thead>
@@ -29,7 +29,7 @@
                     filesystem.mount_point $}</td>
                 <td role="gridcell" class="col-3" aria-label="Mount options" title="{$ filesystem.mount_options $}">{$
                     filesystem.mount_options $}</td>
-                <td role="gridcell" class="col-1 p-table--action-cell u-align--right">
+                <td data-ng-if="canEdit()" role="gridcell" class="col-1 p-table--action-cell u-align--right">
                     <div class="p-contextual-menu" toggle-ctrl data-ng-if="!isAllStorageDisabled()">
                         <button class="p-button--base p-contextual-menu__toggle" aria-controls="#{$ item.name $}-menu"
                             data-ng-click="toggleMenu()" aria-haspopup="true">
@@ -111,7 +111,7 @@
         </tbody>
     </table>
     <button class="p-button--neutral p-tooltip--top-left" data-ng-disabled="dropdown !== null" data-ng-class="{ 'p-tooltip': dropdown === null}"
-        data-ng-if="!isAllStorageDisabled()" data-ng-click="addSpecialFilesystem()">
+        data-ng-if="canEdit()" data-ng-click="addSpecialFilesystem()">
         Add special filesystem
         <span class="p-tooltip__message" role="tooltip">Create a tmpfs or ramfs filesystem</span>
     </button>

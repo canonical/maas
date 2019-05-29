@@ -2932,7 +2932,7 @@
 
     <section class="p-strip u-no-padding--bottom" data-ng-if="section.area === 'storage'" data-ng-controller="NodeStorageController">
         <form>
-            <div data-ng-if="node.status_code === 4 || node.status_code === 10">
+            <div data-ng-if="canEdit() && (node.status_code === 4 || node.status_code === 10)">
                 <div class="row" data-ng-if="!confirmStorageLayout">
                     <div class="col-12 prefix-9 u-sv3">
                         <div class="p-form__group u-align--right">
@@ -3021,7 +3021,7 @@
 
                 <div class="row">
                     <div data-ng-controller="NodeFilesystemsController" data-ng-if="storageLayout.id !== 'vmfs6'">
-                        <storage-filesystems></storage-filesystems>
+                        <storage-filesystems canEdit="canEdit()"></storage-filesystems>
                     </div>
                     <div data-ng-show="cachesets.length">
                         <div class="row">

@@ -283,7 +283,7 @@ export function NodeStorageController(
   $scope.canPerformActionOnDatastoreSet = function() {
     var editing = $scope.addToExistingDatastore || $scope.createNewDatastore;
     var selected = $scope.selectedAvailableDatastores.length > 0;
-    var vmfs6 = $scope.storageLayout.id === "vmfs6";
+    var vmfs6 = $scope.storageLayout && $scope.storageLayout.id === "vmfs6";
     return !editing && selected && vmfs6;
   };
 

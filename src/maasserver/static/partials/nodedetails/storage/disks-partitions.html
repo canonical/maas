@@ -5,7 +5,7 @@
             <thead>
                 <tr class="p-table__row">
                     <th class="p-double-row p-table__cell">
-                        <div class="p-double-row__checkbox">&nbsp;</div>
+                        <div data-ng-if="canEdit()" class="p-double-row__checkbox">&nbsp;</div>
                         <div class="p-double-row__rows-container--checkbox">
                             <div>Name</div>
                             <div>Serial</div>
@@ -22,7 +22,7 @@
                         <div>Tags</div>
                     </th>
                     <th class="p-table__cell">Health</th>
-                    <th class="p-table__cell"><div class="u-align--right">Actions</div></th>
+                    <th data-ng-if="canEdit()" class="p-table__cell"><div class="u-align--right">Actions</div></th>
                 </tr>
             </thead>
             <tbody>
@@ -35,11 +35,11 @@
                     data-ng-class="{ 'is-active': item.$selected }" data-ng-if="item.parent_type !== 'vmfs6'">
                     <td class="p-form-validation p-double-row p-table__cell" aria-label="Name"
                         data-ng-class="{ 'is-error': isNameInvalid(item) }">
-                        <div class="p-double-row__checkbox">
+                        <div data-ng-if="canEdit()" class="p-double-row__checkbox">
                             <input type="checkbox" class="checkbox u-float--left" id="{$ item.name $}" data-ng-hide="isAvailableDisabled()" data-ng-checked="item.$selected" data-ng-click="toggleAvailableSelect(item)" data-ng-disabled="isAvailableDisabled()" />
                             <label for="{$ item.name $}"></label>
                         </div>
-                        <div class="p-double-row__rows-container--checkbox">
+                        <div data-ng-class="{'p-double-row__rows-container--checkbox': canEdit(), 'p-double-row__rows-container': !canEdit()}">
                             <div class="p-double-row__main-row">
                                 {$ item.name $}
                             </div>
@@ -93,7 +93,7 @@
                         <span data-ng-if="item.test_status === 6" title="Degraded">Degraded</span>
                         <span data-ng-if="item.test_status === -1" title="Unknown">Unknown</span>
                     </td>
-                    <td class="p-table--action-cell p-table__cell">
+                    <td data-ng-if="canEdit()" class="p-table--action-cell p-table__cell">
                         <div class="u-align--right">
                             <div class="p-contextual-menu" toggle-ctrl
                                 data-ng-if="canAddLogicalVolume(item) || canAddPartition(item) || canEdit(item) || canDelete(item)">
