@@ -62,6 +62,9 @@ class HandlerDoesNotExistError(HandlerError):
 class HandlerPermissionError(HandlerError):
     """Raised when permission is denied for the user of a given action."""
 
+    def __init__(self):
+        super().__init__("Permission denied")
+
 
 class HandlerOptions(object):
     """Configuraton class for `Handler`.

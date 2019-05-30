@@ -6,6 +6,7 @@ __all__ = [
     "DevicesHandler",
     ]
 
+from django.core.exceptions import PermissionDenied
 from maasserver.api.interfaces import DISPLAYED_INTERFACE_FIELDS
 from maasserver.api.logger import maaslog
 from maasserver.api.nodes import (
@@ -228,6 +229,8 @@ class DevicesHandler(NodesHandler):
         parameters.
         """
         form = DeviceWithMACsForm(data=request.data, request=request)
+        if not form.has_perm(request.user):
+            raise PermissionDenied()
         if form.is_valid():
             device = form.save()
             parent = device.parent

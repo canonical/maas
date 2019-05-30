@@ -1018,8 +1018,10 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
 
     @transactional
     def test_update_owned_with_rbac(self):
-        self.useFixture(RBACEnabled())
+        rbac = self.useFixture(RBACEnabled())
         user = factory.make_User(is_local=False)
+        rbac.store.allow(
+            user.username, factory.make_ResourcePool(), 'admin-machines')
         node = factory.make_Node(owner=user, node_type=NODE_TYPE.DEVICE)
         handler = DeviceHandler(user, {}, None)
         new_hostname = factory.make_name("hostname")

@@ -16,6 +16,7 @@ from maasserver.models import (
     Interface,
 )
 from maasserver.testing.factory import factory
+from maasserver.testing.fixtures import RBACEnabled
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.forms import get_QueryDict
 from maasserver.utils.orm import (
@@ -57,6 +58,37 @@ class TestDeviceForm(MAASServerTestCase):
         reload_object(parent)
 
         self.assertEqual(parent, device.parent)
+
+    def test_has_perm_no_rbac(self):
+        form = DeviceForm()
+        self.assertTrue(form.has_perm(factory.make_User()))
+
+    def test_has_perm_rbac_no_permision(self):
+        self.useFixture(RBACEnabled())
+        form = DeviceForm()
+        self.assertFalse(form.has_perm(factory.make_User()))
+
+    def test_has_perm_rbac_global_admin(self):
+        self.useFixture(RBACEnabled())
+        user = factory.make_admin()
+        form = DeviceForm()
+        self.assertTrue(form.has_perm(user))
+
+    def test_has_perm_rbac_permission_on_pool(self):
+        rbac = self.useFixture(RBACEnabled())
+        user = factory.make_User()
+        rbac.store.allow(
+            user.username, factory.make_ResourcePool(), 'admin-machines')
+        form = DeviceForm()
+        self.assertTrue(form.has_perm(user))
+
+    def test_has_perm_rbac_read_permission_on_pool(self):
+        rbac = self.useFixture(RBACEnabled())
+        user = factory.make_User()
+        rbac.store.allow(
+            user.username, factory.make_ResourcePool(), 'view')
+        form = DeviceForm()
+        self.assertFalse(form.has_perm(user))
 
 
 class TestDeviceWithMACsForm(MAASServerTestCase):
