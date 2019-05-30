@@ -32,7 +32,10 @@ class SwitchHandler(NodeHandler):
             'list',
             'get',
             'update',
-            'action']
+            'action',
+            'get_summary_xml',
+            'get_summary_yaml',
+        ]
         exclude = MachineHandler.Meta.exclude
         list_fields = MachineHandler.Meta.list_fields
         listen_channels = [
