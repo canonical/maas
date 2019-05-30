@@ -944,6 +944,11 @@ class DeviceForm(NodeForm):
         if instance is not None:
             self.initial['zone'] = instance.zone.name
 
+    def has_perm(self, user):
+        # see MAASAuthorizationBackend.has_perm for the logic behind the
+        # permission check
+        return user.has_perm(NodePermission.view)
+
     def save(self, commit=True):
         device = super(DeviceForm, self).save(commit=False)
         device.node_type = NODE_TYPE.DEVICE
