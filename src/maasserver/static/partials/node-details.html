@@ -219,9 +219,9 @@
                 <button role="tab" class="page-navigation__link" data-ng-if="node.testing_script_count > 0"
                     data-ng-class="{ 'is-active': section.area === 'testing'}"
                     data-ng-click="section.area = 'testing'"><span data-maas-script-status="script-status" data-script-status="node.testing_status"></span> Hardware tests</button>
-                <button role="tab" class="page-navigation__link" data-ng-if="machine_output.viewable"
+                <button role="tab" class="page-navigation__link" data-ng-if="node.has_logs"
                     data-ng-class="{ 'is-active': section.area === 'logs'}"
-                    data-ng-click="section.area = 'logs'"><span data-maas-script-status="script-status" data-script-status="node.installation_status" data-ng-if="node.installation_results.length > 0"></span> Logs</button>
+                    data-ng-click="section.area = 'logs'"><span data-maas-script-status="script-status" data-script-status="node.installation_status" data-ng-if="node.installation_status !== -1"></span> Logs</button>
                 <button role="tab" class="page-navigation__link" data-ng-if="!isDevice"
                     data-ng-class="{ 'is-active': section.area === 'events'}"
                     data-ng-click="section.area = 'events'">Events</button>
@@ -257,7 +257,7 @@
         </div>
         <div class="p-notification--warning twelve-col" data-ng-if="showFailedTestWarning()">
             <p class="p-notification__response">
-	        <span class="p-notification__status">Warning:</span>Machine has failed tests; use with caution!</p>
+                <span class="p-notification__status">Warning:</span>Machine has failed tests; use with caution!</p>
         </div>
         <div class="twelve-col u-equal-height" data-ng-if="isDevice">
           <div class="four-col action-card action-card--positionable u-border--solid">
@@ -2393,30 +2393,23 @@
         </div>
     </section>
     <section class="row" data-ng-if="section.area === 'logs'">
-      <div class="wrapper--inner">
-        <div class="twelve-col">
-          <div data-maas-cta="machine_output.views"
-              data-ng-model="machine_output.selectedView">
-          </div>
+        <div data-ng-controller="NodeResultsController">
+            <div class="twelve-col" data-ng-if="!resultsLoaded">
+                <p class="u-text--loading"><i class="icon icon--loading u-animation--spin"></i>&nbsp;&nbsp;Loading...</p>
+            </div>
+            <div data-ng-if="resultsLoaded">
+                <div class="wrapper--inner">
+                    <div class="twelve-col">
+                        <div data-maas-cta="logs.availableOptions" data-ng-model="logs.option" data-ng-change="updateLogOutput()">
+                    </div>
+                </div>
+                <div class="wrapper--inner">
+                    <div class="twelve-col">
+                        <pre class="code-block code-block--numbering code-block--terminal" data-maas-code-lines="logOutput"></pre>
+                    </div>
+                </div>
+            </div>
         </div>
-      </div>
-      <div class="wrapper--inner" data-ng-if="machine_output.selectedView.name == 'summary_yaml'">
-        <div class="twelve-col">
-          <pre class="code-block code-block--numbering code-block--terminal" data-maas-code-lines="getSummaryData('yaml')">
-          </pre>
-        </div>
-      </div>
-      <div class="wrapper--inner" data-ng-if="machine_output.selectedView.name == 'summary_xml'">
-        <div class="twelve-col">
-          <pre class="code-block code-block--numbering code-block--terminal" data-maas-code-lines="getSummaryData('xml')">
-          </pre>
-        </div>
-      </div>
-      <div class="wrapper--inner" data-ng-if="machine_output.selectedView.name == 'installation'">
-        <div class="twelve-col">
-          <pre class="code-block code-block--numbering code-block--terminal" data-maas-code-lines="getInstallationData()"></pre>
-        </div>
-      </div>
     </section>
     <section class="row" data-ng-if="section.area === 'commissioning'">
         <div data-maas-script-results-list="script-results"></div>

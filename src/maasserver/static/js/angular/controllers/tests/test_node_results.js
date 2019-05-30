@@ -49,6 +49,35 @@ describe("NodeResultsController", function() {
         return node;
     }
 
+    // Make a result.
+    function makeResult(type, status) {
+        if(type === null) {
+            type = makeInteger(0, 3);
+        }
+        if(status === null) {
+            status = makeInteger(0, 8);
+        }
+        var id = makeInteger(0, 1000);
+        var result = {
+            id: id,
+            name: makeName("name"),
+            type: type,
+            status: status,
+            history_list: [{
+                id: id,
+                status: status
+            }]
+        };
+        var i;
+        for(i = 0; i < 3; i++) {
+            result.history_list.push({
+                id: makeInteger(0, 1000),
+                status: makeInteger(0, 8)
+            });
+        }
+        return result;
+    }
+
     // Makes the NodeResultsController
     function makeController(loadManagerDefer) {
         var loadManager = spyOn(ManagerHelperService, "loadManager");
@@ -88,6 +117,9 @@ describe("NodeResultsController", function() {
         expect($scope.testing_results).toBeNull();
         expect($scope.installation_results).toBeNull();
         expect($scope.results).toBeNull();
+        expect($scope.logs.option).toBeNull();
+        expect($scope.logs.availableOptions).toEqual([]);
+        expect($scope.logOutput).toEqual("Loading...");
         expect($scope.loaded).toBe(false);
         expect($scope.resultsLoaded).toBe(false);
         expect($scope.node).toBeNull();
@@ -101,6 +133,9 @@ describe("NodeResultsController", function() {
         expect($scope.testing_results).toBeNull();
         expect($scope.installation_results).toBeNull();
         expect($scope.results).toBeNull();
+        expect($scope.logs.option).toBeNull();
+        expect($scope.logs.availableOptions).toEqual([]);
+        expect($scope.logOutput).toEqual("Loading...");
         expect($scope.loaded).toBe(false);
         expect($scope.resultsLoaded).toBe(false);
         expect($scope.node).toBeNull();
@@ -202,5 +237,200 @@ describe("NodeResultsController", function() {
         loadDefer.resolve();
         $rootScope.$digest();
         expect($scope.resultsLoaded).toBe(true);
+    });
+
+    describe("updateLogs", function() {
+        it("only runs on logs page", function() {
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            MachinesManager._activeItem = node;
+            var manager = NodeResultsManagerFactory.getManager(node);
+            var loadDefer = $q.defer();
+
+            defer.resolve();
+            $rootScope.$digest();
+            loadDefer.resolve();
+            $rootScope.$digest();
+            expect($scope.logs.availableOptions).toEqual([]);
+        });
+
+        it("loads summary", function() {
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            $scope.section = {area: "logs"};
+            MachinesManager._activeItem = node;
+            webSocket.returnData.push(makeFakeResponse([]));
+            var manager = NodeResultsManagerFactory.getManager(node);
+
+            defer.resolve();
+            $rootScope.$digest();
+            var expectFunc;
+            expectFunc = function() {
+                if($scope.resultsLoaded) {
+                    expect($scope.logs.availableOptions).toEqual([
+                        {
+                            title: 'Machine output (YAML)',
+                            id: 'summary_yaml'
+                        },
+                        {
+                            title: 'Machine output (XML)',
+                            id: 'summary_xml'
+                        }
+                    ]);
+                    expect($scope.logs.option).toEqual({
+                        title: 'Machine output (YAML)',
+                        id: 'summary_yaml'
+                    });
+                }else{
+                    setTimeout(expectFunc);
+                }
+            };
+            setTimeout(expectFunc);
+        });
+    });
+
+    describe("updateLogOutput", function() {
+        it("sets to loading when no node", function() {
+            var controller = makeController();
+            $scope.updateLogOutput();
+            expect($scope.logOutput).toEqual("Loading...");
+        });
+
+        it("sets summary xml", function() {
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            MachinesManager._activeItem = node;
+            var managerDefer = $q.defer();
+            $scope.logs = {option: {id: "summary_xml"}};
+            spyOn(MachinesManager, "getSummaryXML").and.returnValue(
+                managerDefer.promise);
+
+            defer.resolve();
+            $rootScope.$digest();
+            managerDefer.resolve();
+            $rootScope.$digest();
+
+            $scope.updateLogOutput();
+            expect(MachinesManager.getSummaryXML).toHaveBeenCalledWith(node);
+        });
+
+        it("sets summary yaml", function() {
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            MachinesManager._activeItem = node;
+            var managerDefer = $q.defer();
+            $scope.logs = {option: {id: "summary_yaml"}};
+            spyOn(MachinesManager, "getSummaryYAML").and.returnValue(
+                managerDefer.promise);
+
+            defer.resolve();
+            $rootScope.$digest();
+            managerDefer.resolve();
+            $rootScope.$digest();
+
+            $scope.updateLogOutput();
+            expect(MachinesManager.getSummaryYAML).toHaveBeenCalledWith(node);
+        });
+
+        it("sets system booting", function() {
+            var controller = makeController();
+            var installation_result = makeResult(1, 0);
+            $scope.installation_results = [installation_result];
+            $scope.node = node;
+            $scope.logs = {option: {id: installation_result.id}};
+
+            $scope.updateLogOutput();
+            expect($scope.logOutput).toEqual("System is booting...");
+        });
+
+        it("sets installation has begun", function() {
+            var controller = makeController();
+            var installation_result = makeResult(1, 1);
+            $scope.installation_results = [installation_result];
+            $scope.node = node;
+            $scope.logs = {option: {id: installation_result.id}};
+
+            $scope.updateLogOutput();
+            expect($scope.logOutput).toEqual("Installation has begun!");
+        });
+
+        it("sets installation output succeeded", function() {
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            var installation_result = makeResult(1, 2);
+            MachinesManager._activeItem = node;
+            var manager = NodeResultsManagerFactory.getManager(node);
+            var managerDefer = $q.defer();
+            spyOn(manager, "get_result_data").and.returnValue(
+                managerDefer.promise);
+
+            defer.resolve();
+            $rootScope.$digest();
+            managerDefer.resolve();
+            $rootScope.$digest();
+
+            $scope.installation_results = [installation_result];
+            $scope.logs = {option: {id: installation_result.id}};
+            $scope.updateLogOutput();
+            expect(manager.get_result_data).toHaveBeenCalledWith(
+                installation_result.id, 'combined');
+        });
+
+        it("sets installation output failed", function() {
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            var installation_result = makeResult(1, 3);
+            MachinesManager._activeItem = node;
+            var manager = NodeResultsManagerFactory.getManager(node);
+            var managerDefer = $q.defer();
+            spyOn(manager, "get_result_data").and.returnValue(
+                managerDefer.promise);
+
+            defer.resolve();
+            $rootScope.$digest();
+            managerDefer.resolve();
+            $rootScope.$digest();
+
+            $scope.installation_results = [installation_result];
+            $scope.logs = {option: {id: installation_result.id}};
+            $scope.updateLogOutput();
+            expect(manager.get_result_data).toHaveBeenCalledWith(
+                installation_result.id, 'combined');
+        });
+
+        it("sets timed out", function() {
+            var controller = makeController();
+            var installation_result = makeResult(1, 4);
+            $scope.installation_results = [installation_result];
+            $scope.node = node;
+            $scope.logs = {option: {id: installation_result.id}};
+
+            $scope.updateLogOutput();
+            expect($scope.logOutput).toEqual(
+                "Installation failed after 40 minutes.");
+        });
+
+        it("sets installation aborted", function() {
+            var controller = makeController();
+            var installation_result = makeResult(1, 5);
+            $scope.installation_results = [installation_result];
+            $scope.node = node;
+            $scope.logs = {option: {id: installation_result.id}};
+
+            $scope.updateLogOutput();
+            expect($scope.logOutput).toEqual("Installation was aborted.");
+        });
+
+        it("sets unknown status", function() {
+            var controller = makeController();
+            var installation_result = makeResult(1, makeInteger(6, 100));
+            $scope.installation_results = [installation_result];
+            $scope.node = node;
+            $scope.logs = {option: {id: installation_result.id}};
+
+            $scope.updateLogOutput();
+            expect($scope.logOutput).toEqual(
+                "BUG: Unknown log status " + installation_result.status);
+        });
     });
 });

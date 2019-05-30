@@ -253,15 +253,6 @@ describe("NodeDetailsController", function() {
         });
     });
 
-    it("sets initial values for machine output section", function() {
-        var controller = makeController();
-        expect($scope.machine_output).toEqual({
-            viewable: false,
-            selectedView: null,
-            views: []
-        });
-    });
-
     it("sets initial area to routeParams value", function() {
         $routeParams.area = makeName("area");
         var controller = makeController();
@@ -452,71 +443,6 @@ describe("NodeDetailsController", function() {
         expect($scope.power.editing).toBe(false);
     });
 
-    it("machine output not visible if all required data missing", function() {
-        var controller = makeControllerResolveSetActiveItem();
-        expect($scope.machine_output.viewable).toBe(false);
-    });
-
-    it("machine output visible if summary_xml and summary_yaml", function() {
-        node.summary_xml = node.summary_yaml = "summary";
-        var controller = makeControllerResolveSetActiveItem();
-        expect($scope.machine_output.viewable).toBe(true);
-    });
-
-    it("machine output visible if installation_results", function() {
-        node.installation_results.push({});
-        var controller = makeControllerResolveSetActiveItem();
-        expect($scope.machine_output.viewable).toBe(true);
-    });
-
-    it("machine output not visible if installation_results not an array",
-        function() {
-            node.installation_results = undefined;
-            var controller = makeControllerResolveSetActiveItem();
-            expect($scope.machine_output.viewable).toBe(false);
-        });
-
-    it("machine output summary view available if summary_xml",
-        function() {
-            node.summary_xml = "summary_xml";
-            var controller = makeControllerResolveSetActiveItem();
-            expect($scope.machine_output.views).toEqual([{
-                name: "summary_xml",
-                title: "Machine output (XML)"
-            }]);
-        });
-
-    it("machine output summary view available if summary_yaml",
-        function() {
-            node.summary_yaml = "summary_yaml";
-            var controller = makeControllerResolveSetActiveItem();
-            expect($scope.machine_output.views).toEqual([{
-                name: "summary_yaml",
-                title: "Machine output (YAML)"
-            }]);
-        });
-
-    it("machine output installation view available if installation_results",
-        function() {
-            node.installation_results.push({});
-            var controller = makeControllerResolveSetActiveItem();
-            expect($scope.machine_output.views).toEqual([{
-                name: "installation",
-                title: "Installation output"
-            }]);
-        });
-
-    it("machine output install view is always selected first if possible",
-        function() {
-            node.summary_xml = node.summary_yaml = "summary";
-            node.installation_results.push({});
-            var controller = makeControllerResolveSetActiveItem();
-            expect($scope.machine_output.selectedView).toEqual({
-                name: "installation",
-                title: "Installation output"
-            });
-        });
-
     it("starts watching once setActiveItem resolves", function() {
         var setActiveDefer = $q.defer();
         spyOn(MachinesManager, "setActiveItem").and.returnValue(
@@ -553,11 +479,7 @@ describe("NodeDetailsController", function() {
             "node.zone.id",
             "node.power_type",
             "node.power_parameters",
-            "node.service_ids",
-            "node.summary_xml",
-            "node.summary_yaml",
-            "node.commissioning_results",
-            "node.installation_results"
+            "node.service_ids"
         ]);
         expect(watchCollections).toEqual([
             $scope.summary.architecture.options,
@@ -2178,72 +2100,6 @@ describe("NodeDetailsController", function() {
             $scope.node.events = [evt];
             expect($scope.getPowerEventErrorText()).toBe(evt.description);
             });
-    });
-
-    describe("getSummaryData", function() {
-
-        it("returns blank string if node is null", function() {
-            var controller = makeController();
-            expect($scope.getSummaryData()).toBe("");
-        });
-
-        it("returns summary_xml", function() {
-            var controller = makeController();
-            $scope.node = makeNode();
-            var summary_xml = {};
-            $scope.node.summary_xml = summary_xml;
-            expect($scope.getSummaryData("xml")).toBe(summary_xml);
-        });
-
-        it("returns summary_yaml when summaryType equal yaml", function() {
-            var controller = makeController();
-            $scope.node = makeNode();
-            var summary_yaml = {};
-            $scope.node.summary_yaml = summary_yaml;
-            expect($scope.getSummaryData("yaml")).toBe(summary_yaml);
-        });
-    });
-
-    describe("getInstallationData", function() {
-
-        it("returns blank string if node is null", function() {
-            var controller = makeController();
-            expect($scope.getInstallationData()).toBe("");
-        });
-
-        it("returns blank string if installation results not an array",
-            function() {
-                var controller = makeController();
-                $scope.node = makeNode();
-                $scope.node.installation_results = undefined;
-                expect($scope.getInstallationData()).toBe("");
-            });
-
-        it("returns blank string if no installation results", function() {
-            var controller = makeController();
-            $scope.node = makeNode();
-            expect($scope.getInstallationData()).toBe("");
-        });
-
-        it("returns first installation result data", function() {
-            var controller = makeController();
-            $scope.node = makeNode();
-            var install_result = {};
-            $scope.node.installation_results.push({
-                output: install_result
-            });
-            $scope.node.installation_results.push({
-                output: {}
-            });
-            expect($scope.getInstallationData()).toBe(install_result);
-        });
-
-        it("returns status message when no output and status", function() {
-            var controller = makeController();
-            $scope.node = makeNode();
-            $scope.node.installation_status = makeInteger(0, 5);
-            expect($scope.getInstallationData()).not.toBe("");
-        });
     });
 
     describe("getServiceClass", function() {
