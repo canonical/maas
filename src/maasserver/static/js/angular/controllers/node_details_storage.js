@@ -1796,6 +1796,8 @@ export function NodeStorageController(
             "new partition to use as the bcache backing " +
             "device"
           );
+        } else if (selected[0].parent_type === "bcache") {
+          return "Device is already bcache";
         } else {
           return null;
         }
@@ -1808,6 +1810,14 @@ export function NodeStorageController(
   // Return true if a bcache can be created.
   $scope.canCreateBcache = function() {
     if ($scope.isAvailableDisabled() || !$scope.canEdit()) {
+      return false;
+    }
+
+    var selectedBache = $scope.selectedAvailableDatastores.filter(function(ds) {
+      return ds.parent_type === "bcache";
+    });
+
+    if (selectedBache.length) {
       return false;
     }
 

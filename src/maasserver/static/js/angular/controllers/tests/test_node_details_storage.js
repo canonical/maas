@@ -3129,6 +3129,20 @@ describe("NodeStorageController", function() {
       );
     });
 
+    it("returns msg if selected is bcache", function() {
+      makeController();
+      $scope.available = [
+        {
+          $selected: true,
+          parent_type: "bcache"
+        }
+      ];
+      $scope.cachesets = [{}];
+      expect($scope.getCannotCreateBcacheMsg()).toBe(
+        "Device is already bcache"
+      );
+    });
+
     it("returns null if selected is valid", function() {
       makeController();
       $scope.available = [
@@ -3462,6 +3476,18 @@ describe("NodeStorageController", function() {
         return false;
       };
 
+      expect($scope.canCreateBcache()).toBe(false);
+    });
+
+    it("returns false if selected is bcache", function() {
+      makeController();
+      spyOn($scope, "isAvailableDisabled").and.returnValue(false);
+      $scope.available = [
+        {
+          $selected: true,
+          parent_type: "bcache"
+        }
+      ];
       expect($scope.canCreateBcache()).toBe(false);
     });
 
