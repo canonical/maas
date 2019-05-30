@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for DNSResource API."""
@@ -348,6 +348,103 @@ class TestDNSResourceAPI(APITestCase.ForUser):
         })
         self.assertEqual(
             http.client.FORBIDDEN, response.status_code, response.content)
+
+    def test_update_by_name_domain__id(self):
+        self.become_admin()
+        dnsresource = factory.make_DNSResource()
+        new_name = factory.make_name("dnsresource")
+        domain = factory.make_Domain()
+        fqdn = "%s.%s" % (new_name, domain.name)
+        sip = factory.make_StaticIPAddress()
+        uri = get_dnsresource_uri(dnsresource)
+        response = self.client.put(uri, {
+            "name": new_name,
+            "domain": domain.id,
+            "ip_addresses": str(sip.ip),
+        })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        self.assertEqual(
+            fqdn,
+            json.loads(
+                response.content.decode(settings.DEFAULT_CHARSET))['fqdn'])
+        self.assertEqual(
+            sip.ip,
+            json.loads(
+                response.content.decode(
+                    settings.DEFAULT_CHARSET))['ip_addresses'][0]['ip'])
+
+    def test_update_by_name_domain__name(self):
+        self.become_admin()
+        dnsresource = factory.make_DNSResource()
+        new_name = factory.make_name("dnsresource")
+        domain = factory.make_Domain()
+        fqdn = "%s.%s" % (new_name, domain.name)
+        sip = factory.make_StaticIPAddress()
+        uri = get_dnsresource_uri(dnsresource)
+        response = self.client.put(uri, {
+            "name": new_name,
+            "domain": domain.name,
+            "ip_addresses": str(sip.ip),
+        })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        self.assertEqual(
+            fqdn,
+            json.loads(
+                response.content.decode(settings.DEFAULT_CHARSET))['fqdn'])
+        self.assertEqual(
+            sip.ip,
+            json.loads(
+                response.content.decode(
+                    settings.DEFAULT_CHARSET))['ip_addresses'][0]['ip'])
+
+    def test_update_by_fqdn(self):
+        self.become_admin()
+        dnsresource = factory.make_DNSResource()
+        new_name = factory.make_name("dnsresource")
+        domain = factory.make_Domain()
+        fqdn = "%s.%s" % (new_name, domain.name)
+        sip = factory.make_StaticIPAddress()
+        uri = get_dnsresource_uri(dnsresource)
+        response = self.client.put(uri, {
+            "fqdn": fqdn,
+            "ip_addresses": str(sip.ip),
+        })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        self.assertEqual(
+            fqdn,
+            json.loads(
+                response.content.decode(settings.DEFAULT_CHARSET))['fqdn'])
+        self.assertEqual(
+            sip.ip,
+            json.loads(
+                response.content.decode(
+                    settings.DEFAULT_CHARSET))['ip_addresses'][0]['ip'])
+
+    def test_update_multiple_ips(self):
+        self.become_admin()
+        dnsresource = factory.make_DNSResource()
+        new_name = factory.make_name("dnsresource")
+        domain = factory.make_Domain()
+        fqdn = "%s.%s" % (new_name, domain.name)
+        ips = [factory.make_StaticIPAddress() for _ in range(2)]
+        uri = get_dnsresource_uri(dnsresource)
+        response = self.client.put(uri, {
+            "name": new_name,
+            "domain": domain.id,
+            "ip_addresses": " ".join([str(ip.ip) for ip in ips]),
+        })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        self.assertEqual(
+            fqdn,
+            json.loads(
+                response.content.decode(settings.DEFAULT_CHARSET))['fqdn'])
+        result = json.loads(response.content.decode(
+            settings.DEFAULT_CHARSET))['ip_addresses']
+        self.assertEqual([ip.ip for ip in ips], [ip['ip'] for ip in result])
 
     def test_delete_deletes_dnsresource(self):
         self.become_admin()
