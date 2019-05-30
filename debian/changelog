@@ -1,8 +1,14 @@
-maas (2.6.0~beta5-0ubuntu1) UNRELEASED; urgency=medium
+maas (2.6.0~rc2-0ubuntu1) UNRELEASED; urgency=medium
 
   * UNRELEASED
 
- -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 15 May 2019 03:47:33 -0400
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Thu, 30 May 2019 16:31:03 -0400
+
+maas (2.6.0~rc1-7799-g70b0fe161-0ubuntu1) eoan; urgency=medium
+
+  * New upstream release, MAAS 2.6.0 RC 1.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Thu, 30 May 2019 08:45:21 -0400
 
 maas (2.6.0~beta4-7743-g27b04aaf3-0ubuntu1) eoan; urgency=medium
 
