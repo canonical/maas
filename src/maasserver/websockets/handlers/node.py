@@ -1,4 +1,4 @@
-# Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The node handler for the WebSocket connection."""
@@ -51,6 +51,7 @@ from metadataserver.enum import (
     SCRIPT_STATUS,
     SCRIPT_STATUS_CHOICES,
 )
+from metadataserver.models.scriptresult import ScriptResult
 from metadataserver.models.scriptset import get_status_from_qs
 from provisioningserver.tags import merge_details_cleanly
 
@@ -312,22 +313,26 @@ class NodeHandler(TimestampedModelHandler):
 
         return data
 
-    def _refresh_script_result_cache(self, qs):
-        """Refresh the ScriptResult cache from the given qs.
-
-        If a node_id is given only that node is refreshed.
-        """
-        cleared_node_ids = []
-        for script_result in qs:
+    def _cache_pks(self, nodes):
+        """Refresh the ScriptResult cache from the given node."""
+        super()._cache_pks(nodes)
+        script_results = ScriptResult.objects.filter(
+            script_set__node__in=nodes)
+        script_results = script_results.select_related('script_set', 'script')
+        script_results = script_results.order_by(
+            'script_name', 'physical_blockdevice_id', 'script_set__node_id',
+            '-id')
+        script_results = script_results.distinct(
+            'script_name', 'physical_blockdevice_id', 'script_set__node_id')
+        for script_result in script_results:
             node_id = script_result.script_set.node_id
             if script_result.script is not None:
                 hardware_type = script_result.script.hardware_type
             else:
                 hardware_type = HARDWARE_TYPE.NODE
 
-            if node_id not in cleared_node_ids:
+            if node_id not in self._script_results:
                 self._script_results[node_id] = {}
-                cleared_node_ids.append(node_id)
 
             if hardware_type not in self._script_results[node_id]:
                 self._script_results[node_id][hardware_type] = []
@@ -341,7 +346,7 @@ class NodeHandler(TimestampedModelHandler):
                 for i, cached_script_result in enumerate(
                         self._script_results[node_id][hardware_type]):
                     if cached_script_result.id == script_result.id:
-                        self._script_results[node_id].pop(i)
+                        self._script_results[node_id][hardware_type].pop(i)
                         break
             else:
                 self._script_results[node_id][hardware_type].append(
@@ -629,8 +634,6 @@ class NodeHandler(TimestampedModelHandler):
     def get_object(self, params):
         """Get object by using the `pk` in `params`."""
         obj = super(NodeHandler, self).get_object(params)
-        # Get the object and update update the script_result_cache.
-        self._refresh_script_result_cache(obj.get_latest_script_results)
 
         if self.user.is_superuser:
             return obj.as_self()
@@ -706,12 +709,13 @@ class NodeHandler(TimestampedModelHandler):
         node = self.get_object(params)
         # Produce a "clean" composite details document.
         details_template = dict.fromkeys(script_output_nsmap.values())
-        for hw_type in self._script_results.get(node.id, {}).values():
-            for script_result in hw_type:
-                if (script_result.name in script_output_nsmap and
-                        script_result.status == SCRIPT_STATUS.PASSED):
-                    namespace = script_output_nsmap[script_result.name]
-                    details_template[namespace] = script_result.stdout
+        for script_result in ScriptResult.objects.filter(
+                script_name__in=script_output_nsmap.keys(),
+                status=SCRIPT_STATUS.PASSED,
+                script_set__node=node).order_by(
+                    'script_name', '-updated').distinct('script_name'):
+            namespace = script_output_nsmap[script_result.name]
+            details_template[namespace] = script_result.stdout
         probed_details = merge_details_cleanly(details_template)
 
         # We check here if there's something to show instead of after
@@ -728,12 +732,13 @@ class NodeHandler(TimestampedModelHandler):
         node = self.get_object(params)
         # Produce a "clean" composite details document.
         details_template = dict.fromkeys(script_output_nsmap.values())
-        for hw_type in self._script_results.get(node.id, {}).values():
-            for script_result in hw_type:
-                if (script_result.name in script_output_nsmap and
-                        script_result.status == SCRIPT_STATUS.PASSED):
-                    namespace = script_output_nsmap[script_result.name]
-                    details_template[namespace] = script_result.stdout
+        for script_result in ScriptResult.objects.filter(
+                script_name__in=script_output_nsmap.keys(),
+                status=SCRIPT_STATUS.PASSED,
+                script_set__node=node).order_by(
+                    'script_name', '-updated').distinct('script_name'):
+            namespace = script_output_nsmap[script_result.name]
+            details_template[namespace] = script_result.stdout
         probed_details = merge_details_cleanly(details_template)
 
         # We check here if there's something to show instead of after

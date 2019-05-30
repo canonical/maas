@@ -83,7 +83,6 @@ from metadataserver.enum import (
     HARDWARE_TYPE,
     RESULT_TYPE,
 )
-from metadataserver.models import ScriptResult
 from metadataserver.models.scriptset import get_status_from_qs
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.rpc.exceptions import UnknownPowerType
@@ -192,16 +191,6 @@ class MachineHandler(NodeHandler):
         self.default_osystem = Config.objects.get_config('default_osystem')
         self.default_distro_series = Config.objects.get_config(
             'default_distro_series')
-
-        qs = ScriptResult.objects.all()
-        qs = qs.select_related('script_set', 'script')
-        qs = qs.order_by(
-            'script_name', 'physical_blockdevice_id', 'script_set__node_id',
-            '-id')
-        qs = qs.distinct(
-            'script_name', 'physical_blockdevice_id', 'script_set__node_id')
-        self._refresh_script_result_cache(qs)
-
         return super(MachineHandler, self).list(params)
 
     def dehydrate(self, obj, data, for_list=False):

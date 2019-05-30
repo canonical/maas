@@ -1,4 +1,4 @@
-# Copyright 2016-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.node`"""
@@ -146,7 +146,7 @@ class TestMachineHandler(MAASServerTestCase):
     def dehydrate_node(self, node, handler, for_list=False):
         # Prime handler._script_results
         handler._script_results = {}
-        handler._refresh_script_result_cache(node.get_latest_script_results)
+        handler._cache_pks([node])
 
         boot_interface = node.get_boot_interface()
         pxe_mac_vendor = node.get_pxe_mac_vendor()
@@ -407,7 +407,7 @@ class TestMachineHandler(MAASServerTestCase):
                 factory.make_Node(
                     node_type=NODE_TYPE.DEVICE, parent=node, interface=True)
 
-    def test_get_object_refresh_script_result_cache(self):
+    def test_get_refresh_script_result_cache(self):
         owner = factory.make_User()
         node = factory.make_Node(owner=owner)
         script_result = factory.make_ScriptResult(
@@ -429,7 +429,7 @@ class TestMachineHandler(MAASServerTestCase):
         }
         handler = MachineHandler(owner, {})
         handler._script_results[cached_node.id] = cached_content
-        handler.get_object({'system_id': node.system_id})
+        handler._cache_pks([node])
 
         self.assertEquals(
             script_result.id,
@@ -444,7 +444,7 @@ class TestMachineHandler(MAASServerTestCase):
         self.assertEquals(
             cached_content, handler._script_results[cached_node.id])
 
-    def test_get_object_refresh_script_result_cache_clears_aborted(self):
+    def test_get_refresh_script_result_cache_clears_aborted(self):
         # Regression test for LP:1731350
         owner = factory.make_User()
         node = factory.make_Node(owner=owner)
@@ -459,10 +459,44 @@ class TestMachineHandler(MAASServerTestCase):
         # Simulate aborting commissioning/testing
         script_result.status = SCRIPT_STATUS.ABORTED
         script_result.save()
-        handler.get_object({'system_id': node.system_id})
+        handler._cache_pks([node])
 
         self.assertItemsEqual([], handler._script_results[node.id][
             script_result.script.hardware_type])
+
+    def test_list_num_queries_is_the_expected_number(self):
+        owner = factory.make_User()
+        for _ in range(10):
+            node = factory.make_Node(owner=owner)
+            commissioning_script_set = factory.make_ScriptSet(
+                node=node, result_type=RESULT_TYPE.COMMISSIONING)
+            testing_script_set = factory.make_ScriptSet(
+                node=node, result_type=RESULT_TYPE.TESTING)
+            node.current_commissioning_script_set = commissioning_script_set
+            node.current_testing_script_set = testing_script_set
+            node.save()
+            for __ in range(10):
+                factory.make_ScriptResult(
+                    status=SCRIPT_STATUS.PASSED,
+                    script_set=commissioning_script_set)
+                factory.make_ScriptResult(
+                    status=SCRIPT_STATUS.PASSED,
+                    script_set=testing_script_set)
+
+        handler = MachineHandler(owner, {})
+        queries_one, _ = count_queries(handler.list, {'limit': 1})
+        queries_total, _ = count_queries(handler.list, {})
+        # This check is to notify the developer that a change was made that
+        # affects the number of queries performed when doing a node listing.
+        # It is important to keep this number as low as possible. A larger
+        # number means regiond has to do more work slowing down its process
+        # and slowing down the client waiting for the response.
+        self.assertEqual(
+            queries_one, 12,
+            "Number of queries has changed; make sure this is expected.")
+        self.assertEqual(
+            queries_total, 12,
+            "Number of queries has changed; make sure this is expected.")
 
     def test_dehydrate_owner_empty_when_None(self):
         owner = factory.make_User()
@@ -1502,7 +1536,7 @@ class TestMachineHandler(MAASServerTestCase):
         user = factory.make_User()
         handler = MachineHandler(user, {})
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=user)
-        factory.make_ScriptResult(
+        script_result = factory.make_ScriptResult(
             script_set=factory.make_ScriptSet(node=node),
             status=SCRIPT_STATUS.PASSED)
         factory.make_PhysicalBlockDevice(node)
@@ -1510,7 +1544,10 @@ class TestMachineHandler(MAASServerTestCase):
         self.assertItemsEqual(
             [self.dehydrate_node(node, handler, for_list=True)],
             handler.list({}))
-        self.assertIn(node.id, handler._script_results.keys())
+        self.assertDictEqual(
+            {node.id: {
+                script_result.script.hardware_type: [script_result]}},
+            handler._script_results)
 
     def test_list_ignores_devices(self):
         owner = factory.make_User()
@@ -2673,7 +2710,7 @@ class TestMachineHandler(MAASServerTestCase):
         new_name = factory.make_name("name")
         new_vlan = factory.make_VLAN()
         handler._script_results = {}
-        handler._refresh_script_result_cache(node.get_latest_script_results)
+        handler._cache_pks([node])
         handler.update_interface({
             "system_id": node.system_id,
             "interface_id": interface.id,
@@ -2691,7 +2728,7 @@ class TestMachineHandler(MAASServerTestCase):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         new_name = factory.make_name("name")
         handler._script_results = {}
-        handler._refresh_script_result_cache(node.get_latest_script_results)
+        handler._cache_pks([node])
         handler.update_interface({
             "system_id": node.system_id,
             "interface_id": interface.id,
