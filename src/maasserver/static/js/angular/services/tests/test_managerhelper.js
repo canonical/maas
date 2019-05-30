@@ -6,7 +6,7 @@
 
 describe("ManagerHelperService", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Grab the needed angular pieces.
   var $rootScope, $scope, $timeout, $q;

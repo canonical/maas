@@ -6,7 +6,7 @@
 
 describe("pScriptExpander", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Get required angular pieces and create a new scope before each test.
   var $scope, $timeout;

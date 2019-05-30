@@ -4,25 +4,18 @@
  * Unit tests for FabricsManager.
  */
 
+import { makeInteger } from "testing/utils";
+
 describe("FabricsManager", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Load the FabricsManager.
-  var FabricsManager, VLANsManager, RegionConnection;
+  var FabricsManager, RegionConnection;
   beforeEach(inject(function($injector) {
     FabricsManager = $injector.get("FabricsManager");
-    VLANsManager = $injector.get("VLANsManager");
     RegionConnection = $injector.get("RegionConnection");
   }));
-
-  // Make a fake VLAN.
-  function makeVLAN() {
-    return {
-      id: makeInteger(0, 5000),
-      name: makeName("vlan")
-    };
-  }
 
   it("set requires attributes", function() {
     expect(FabricsManager._pk).toBe("id");

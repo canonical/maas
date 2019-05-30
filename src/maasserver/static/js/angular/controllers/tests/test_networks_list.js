@@ -4,9 +4,11 @@
  * Unit tests for SubentsListController.
  */
 
+import { makeInteger } from "testing/utils";
+
 describe("NetworksListController", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Grab the needed angular pieces.
   var $controller, $rootScope, $scope, $q, $routeParams, $location;

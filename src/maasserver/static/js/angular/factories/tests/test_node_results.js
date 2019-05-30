@@ -4,12 +4,20 @@
  * Unit tests for NodeResultsManagerFactory.
  */
 
+import {
+  makeBoolean,
+  makeFakeResponse,
+  makeInteger,
+  makeName,
+  pickItem
+} from "testing/utils";
+
 describe("NodeResultsManagerFactory", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Load the NodeResultsManager and RegionConnection factory.
-  var NodeResultsManagerFactory, RegionConnection, websocket;
+  var NodeResultsManagerFactory, RegionConnection, webSocket;
   beforeEach(inject(function($injector) {
     NodeResultsManagerFactory = $injector.get("NodeResultsManagerFactory");
     RegionConnection = $injector.get("RegionConnection");
@@ -542,7 +550,7 @@ describe("NodeResultsManagerFactory", function() {
       var id = makeInteger(0, 100);
       var data_type = "output";
       webSocket.returnData.push(makeFakeResponse(output));
-      NodeResultsManager = NodeResultsManagerFactory.getManager(node);
+      const NodeResultsManager = NodeResultsManagerFactory.getManager(node);
       NodeResultsManager.get_result_data(id, data_type).then(function() {
         var sentObject = angular.fromJson(webSocket.sentData[0]);
         expect(sentObject.method).toBe("noderesult.get_result_data");
@@ -565,7 +573,7 @@ describe("NodeResultsManagerFactory", function() {
       ];
       var id = makeInteger(0, 100);
       webSocket.returnData.push(makeFakeResponse(output));
-      NodeResultsManager = NodeResultsManagerFactory.getManager(node);
+      const NodeResultsManager = NodeResultsManagerFactory.getManager(node);
       NodeResultsManager.get_history(id).then(function() {
         var sentObject = angular.fromJson(webSocket.sentData[0]);
         expect(sentObject.method).toBe("noderesult.get_history");

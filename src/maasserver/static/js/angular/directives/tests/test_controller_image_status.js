@@ -4,9 +4,11 @@
  * Unit tests for controller image status directive.
  */
 
+import { makeName } from "testing/utils";
+
 describe("maasControllerImageStatus", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Get the manager and the directive service.
   var $timeout, $interval, $q;
@@ -208,7 +210,7 @@ describe("maasControllerImageStatus", function() {
   describe("directive", function() {
     it("registers when systemId is set", function() {
       spyOn(ControllerImageStatusService, "register");
-      var directive = compileDirective();
+      compileDirective();
 
       // Should only be called once system_id is set.
       expect(ControllerImageStatusService.register).not.toHaveBeenCalled();

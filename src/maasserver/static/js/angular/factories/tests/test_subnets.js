@@ -6,7 +6,7 @@
 
 describe("SubnetsManager", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Load the SubnetsManager.
   var SubnetsManager, RegionConnection;

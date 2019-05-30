@@ -4,9 +4,11 @@
  * Unit tests for NodeNetworkingController.
  */
 
+import { makeInteger, makeName } from "testing/utils";
+
 describe("filterByUnusedForInterface", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Load the filterByUnusedForInterface.
   var filterByUnusedForInterface;
@@ -83,7 +85,7 @@ describe("filterByUnusedForInterface", function() {
 
 describe("removeInterfaceParents", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Load the removeInterfaceParents.
   var removeInterfaceParents;
@@ -158,7 +160,7 @@ describe("removeInterfaceParents", function() {
 
 describe("filterVLANNotOnFabric", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Load the filter
   var filterVLANNotOnFabric;
@@ -186,7 +188,7 @@ describe("filterVLANNotOnFabric", function() {
 
 describe("filterEditInterface", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Load the filter
   var filterEditInterface;
@@ -252,7 +254,7 @@ describe("filterEditInterface", function() {
 
 describe("removeDefaultVLANIfVLAN", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Load the removeDefaultVLANIfVLAN.
   var removeDefaultVLANIfVLAN;
@@ -297,7 +299,7 @@ describe("removeDefaultVLANIfVLAN", function() {
 
 describe("filterSelectedInterfaces", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Load the filterSelectedInterfaces.
   var filterSelectedInterfaces;
@@ -368,7 +370,7 @@ describe("filterSelectedInterfaces", function() {
 
 describe("filterLinkModes", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Load the filterLinkModes.
   var filterLinkModes;
@@ -491,7 +493,7 @@ describe("filterLinkModes", function() {
 
 describe("NodeNetworkingController", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Grab the needed angular pieces.
   var $controller, $rootScope, $parentScope, $scope, $q;

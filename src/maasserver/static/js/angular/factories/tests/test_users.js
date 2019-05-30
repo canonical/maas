@@ -4,9 +4,11 @@
  * Unit tests for UsersManager.
  */
 
+import { makeName } from "testing/utils";
+
 describe("UsersManager", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Grab the needed angular pieces.
   var $q, $rootScope;

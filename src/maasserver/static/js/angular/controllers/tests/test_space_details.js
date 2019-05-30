@@ -4,9 +4,11 @@
  * Unit tests for SpacesListController.
  */
 
+import { makeInteger, makeName } from "testing/utils";
+
 describe("SpaceDetailsController", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Make a fake space
   function makeSpace() {

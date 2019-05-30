@@ -8,16 +8,14 @@ describe("maasExternalLogin", function() {
   var $rootScope,
     $scope,
     $compile,
-    $window,
-    getBakery,
     redirectUrl,
     visitPageFunc,
     dischargeResponse;
 
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   beforeEach(
-    module(function($provide) {
+    angular.mock.module(function($provide) {
       $provide.value("$window", {
         location: {
           replace: function(url) {
@@ -46,7 +44,6 @@ describe("maasExternalLogin", function() {
     $rootScope = $injector.get("$rootScope");
     $scope = $rootScope.$new();
     $compile = $injector.get("$compile");
-    $window = _$window_;
   }));
 
   function compileDirective() {
@@ -78,7 +75,7 @@ describe("maasExternalLogin", function() {
   });
 
   it("redirects after login", function() {
-    var directive = compileDirective();
+    compileDirective();
     expect(redirectUrl).toBe("/somepage");
   });
 

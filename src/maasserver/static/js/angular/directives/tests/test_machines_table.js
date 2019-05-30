@@ -4,9 +4,11 @@
  * Unit tests for machines table directive.
  */
 
+import { makeName } from "testing/utils";
+
 describe("maasMachinesTable", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Preload the $templateCache with empty contents. We only test the
   // controller of the directive, not the template.
@@ -18,13 +20,12 @@ describe("maasMachinesTable", function() {
   }));
 
   // Load the required managers.
-  var MachinesManager, GeneralManager, ManagerHelperService;
+  var MachinesManager, GeneralManager, NotificationsManager, UsersManager;
   beforeEach(inject(function($injector) {
     MachinesManager = $injector.get("MachinesManager");
     NotificationsManager = $injector.get("NotificationsManager");
     UsersManager = $injector.get("UsersManager");
     GeneralManager = $injector.get("GeneralManager");
-    ManagerHelperService = $injector.get("ManagerHelperService");
   }));
 
   // Create a new scope before each test.

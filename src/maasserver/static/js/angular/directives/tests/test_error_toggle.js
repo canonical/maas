@@ -4,9 +4,11 @@
  * Unit tests for error toggle.
  */
 
+import { makeName } from "testing/utils";
+
 describe("maasErrorToggle", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Get required angular pieces and create a new scope before each test.
   var $scope, $timeout;
@@ -16,7 +18,7 @@ describe("maasErrorToggle", function() {
   }));
 
   // Load the RegionConnection and ErrorService.
-  var RegionConnection;
+  var ErrorService, RegionConnection;
   beforeEach(inject(function($injector) {
     RegionConnection = $injector.get("RegionConnection");
     ErrorService = $injector.get("ErrorService");

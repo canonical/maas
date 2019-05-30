@@ -6,7 +6,7 @@
 
 describe("SSHKeysManager", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Load the SSHKeysManager.
   var SSHKeysManager, RegionConnection;

@@ -1,6 +1,5 @@
 const glob = require('glob');
 const path = require('path');
-const UglifyJSPlugin = require('uglifyjs-webpack-plugin');
 
 
 module.exports = {
@@ -25,5 +24,11 @@ module.exports = {
                 presets: ['@babel/preset-env', '@babel/preset-react']
             }
         }]
-    }
+    },
+    resolve: {
+        modules: [
+            path.resolve(__dirname, 'src/maasserver/static/js/angular/'),
+            'node_modules'
+        ]
+    },
 };

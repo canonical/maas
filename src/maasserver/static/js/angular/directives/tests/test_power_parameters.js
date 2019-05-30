@@ -4,9 +4,11 @@
  * Unit tests for power parameters directive.
  */
 
+import { makeName } from "testing/utils";
+
 describe("maasPowerParameters", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Make field for directive.
   function makeField(name, type, required, defaultValue, choices) {

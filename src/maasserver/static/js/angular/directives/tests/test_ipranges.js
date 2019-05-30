@@ -4,9 +4,11 @@
  * Unit tests for IP Ranges directive.
  */
 
+import { makeInteger } from "testing/utils";
+
 describe("maasIPRanges", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Preload the $templateCache with empty contents. We only test the
   // controller of the directive, not the template.

@@ -6,20 +6,19 @@ module.exports = {
     },
     "extends": ["angular", "eslint:recommended"],
     "globals": {
-        "Atomics": "readonly",
-        "SharedArrayBuffer": "readonly",
+        "__dirname": false,
         "angular": false,
-        "module": false,
+        "Atomics": "readonly",
         "inject": false,
-        "makeName": false, // TODO: export as named function
-        "makeInteger": false, // TODO: export as named function
-        "makeFakeResponse": false // TODO: export as named function
+        "setTimeout": false,
+        "SharedArrayBuffer": "readonly"
     },
     "parserOptions": {
         "ecmaVersion": 2018,
         "sourceType": "module"
     },
     "rules": {
-        "angular/di": [2, "function", { "matchNames": true }]
+        "angular/di": [2, "function", { "matchNames": true }],
+        "no-unused-vars": [2, { "args": "none" }]
     }
 };

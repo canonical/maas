@@ -4,9 +4,11 @@
  * Unit tests for PollingManager.
  */
 
+import { makeName } from "testing/utils";
+
 describe("PollingManager", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Grab the needed angular pieces.
   var $rootScope, $timeout, $q;

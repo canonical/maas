@@ -4,23 +4,11 @@
  * Unit tests for PodDetailsController.
  */
 
-// Make a fake user.
-var userId = 0;
-function makeUser() {
-  return {
-    id: userId++,
-    username: makeName("username"),
-    first_name: makeName("first_name"),
-    last_name: makeName("last_name"),
-    email: makeName("email"),
-    is_superuser: false,
-    sshkeys_count: 0
-  };
-}
+import { makeName } from "testing/utils";
 
 describe("PodDetailsController", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Grab the needed angular pieces.
   var $controller, $rootScope, $location, $scope, $q;
@@ -36,7 +24,7 @@ describe("PodDetailsController", function() {
   var PodsManager, UsersManager, GeneralManager, DomainsManager;
   var ZonesManager, ManagerHelperService, ErrorService;
   var SubnetsManager, VLANsManager, FabricsManager, SpacesManager;
-  var ResourcePoolsManager;
+  var ResourcePoolsManager, MachinesManager;
   beforeEach(inject(function($injector) {
     PodsManager = $injector.get("PodsManager");
     UsersManager = $injector.get("UsersManager");
@@ -80,9 +68,8 @@ describe("PodDetailsController", function() {
   var pod, $routeParams;
   beforeEach(function() {
     pod = makePod();
-    domain = { id: 0 };
+    const domain = { id: 0 };
     DomainsManager._items.push(domain);
-    zone = { id: 0 };
     ZonesManager._items.push(domain);
     $routeParams = {
       id: pod.id

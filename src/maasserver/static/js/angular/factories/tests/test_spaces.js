@@ -6,7 +6,7 @@
 
 describe("SpacesManager", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Load the SpacesManager.
   var SpacesManager, SubnetsManager, RegionConnection;

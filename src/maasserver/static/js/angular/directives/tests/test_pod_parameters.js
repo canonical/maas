@@ -6,7 +6,7 @@
 
 describe("maasPodParameters", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Get managers before the test.
   var PodsManager, GeneralManager, ManagerHelperService;

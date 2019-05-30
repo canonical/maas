@@ -4,23 +4,11 @@
  * Unit tests for NodesListController.
  */
 
-// Make a fake user.
-var userId = 0;
-function makeUser() {
-  return {
-    id: userId++,
-    username: makeName("username"),
-    first_name: makeName("first_name"),
-    last_name: makeName("last_name"),
-    email: makeName("email"),
-    is_superuser: false,
-    sshkeys_count: 0
-  };
-}
+import { makeInteger, makeName } from "testing/utils";
 
 describe("PodsListController", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Grab the needed angular pieces.
   var $controller, $rootScope, $scope, $q;

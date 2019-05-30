@@ -4,6 +4,13 @@
  * Unit tests for NodeResultsController
  */
 
+import {
+  makeFakeResponse,
+  makeInteger,
+  makeName,
+  pickItem
+} from "testing/utils";
+
 // 2019-04-30 Caleb - Syntax error `import { ScriptStatus }from "../../enum"`;
 // TODO - Fix es module imports in test files
 const ScriptStatus = {
@@ -21,10 +28,10 @@ const ScriptStatus = {
 
 describe("NodeResultsController", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Grab the needed angular pieces.
-  var $controller, $rootScope, $scope, $q;
+  var $controller, $location, $rootScope, $scope, $q;
   beforeEach(inject(function($injector) {
     $controller = $injector.get("$controller");
     $rootScope = $injector.get("$rootScope");

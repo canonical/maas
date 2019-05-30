@@ -4,12 +4,14 @@
  * Unit tests for NodeEventsController.
  */
 
+import { makeName } from "testing/utils";
+
 describe("NodeEventsController", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Grab the needed angular pieces.
-  var $controller, $rootScope, $scope, $q;
+  var $controller, $location, $rootScope, $scope, $q;
   beforeEach(inject(function($injector) {
     $controller = $injector.get("$controller");
     $rootScope = $injector.get("$rootScope");

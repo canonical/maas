@@ -4,9 +4,11 @@
  * Unit tests for SubnetsListController.
  */
 
+import { makeInteger, makeName } from "testing/utils";
+
 describe("SubnetDetailsController", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Make a fake fabric
   function makeFabric() {
@@ -47,17 +49,8 @@ describe("SubnetDetailsController", function() {
     return subnet;
   }
 
-  function makeIPRange() {
-    var iprange = {
-      id: makeInteger(1, 10000),
-      subnet: subnet.id
-    };
-    IPRangesManager._items.push(iprange);
-    return iprange;
-  }
-
   // Grab the needed angular pieces.
-  var $controller, $rootScope, $location, $scope, $q, $routeParams, $filter;
+  var $controller, $rootScope, $location, $scope, $q, $routeParams;
   beforeEach(inject(function($injector) {
     $controller = $injector.get("$controller");
     $rootScope = $injector.get("$rootScope");
@@ -70,8 +63,8 @@ describe("SubnetDetailsController", function() {
 
   // Load any injected managers and services.
   var ConfigsManager, SubnetsManager, IPRangesManager, StaticRoutesManager;
-  var SpacesManager, VLANsManager, FabricsManager, UsersManager;
-  var HelperService, ErrorService, ConverterService;
+  var SpacesManager, VLANsManager, FabricsManager;
+  var ErrorService, ConverterService, ManagerHelperService;
   beforeEach(inject(function($injector) {
     ConfigsManager = $injector.get("ConfigsManager");
     SubnetsManager = $injector.get("SubnetsManager");
@@ -80,17 +73,16 @@ describe("SubnetDetailsController", function() {
     SpacesManager = $injector.get("SpacesManager");
     VLANsManager = $injector.get("VLANsManager");
     FabricsManager = $injector.get("FabricsManager");
-    UsersManager = $injector.get("UsersManager");
     ManagerHelperService = $injector.get("ManagerHelperService");
     ErrorService = $injector.get("ErrorService");
     ConverterService = $injector.get("ConverterService");
   }));
 
-  var fabric, vlan, space, subnet;
+  var subnet;
   beforeEach(function() {
-    fabric = makeFabric();
-    vlan = makeVLAN();
-    space = makeSpace();
+    makeFabric();
+    makeVLAN();
+    makeSpace();
     subnet = makeSubnet();
   });
 
@@ -610,7 +602,7 @@ describe("SubnetDetailsController", function() {
       makeControllerResolveSetActiveItem();
       var scanSubnet = spyOn(SubnetsManager, "scanSubnet");
       var defer = $q.defer();
-      result = {
+      const result = {
         result: "Error message from scan.",
         scan_started_on: ["not empty"]
       };
@@ -631,7 +623,7 @@ describe("SubnetDetailsController", function() {
       makeControllerResolveSetActiveItem();
       var scanSubnet = spyOn(SubnetsManager, "scanSubnet");
       var defer = $q.defer();
-      result = {
+      const result = {
         result: "Error message from scan.",
         scan_started_on: []
       };
@@ -656,7 +648,7 @@ describe("SubnetDetailsController", function() {
       var defer = $q.defer();
       spyOn(SubnetsManager, "scanSubnet").and.returnValue(defer.promise);
       $scope.actionGo();
-      error = "errorString";
+      const error = "errorString";
       $scope.actionOption = null;
       defer.reject(error);
       $scope.$digest();
@@ -691,7 +683,7 @@ describe("SubnetDetailsController", function() {
       var defer = $q.defer();
       spyOn(SubnetsManager, "deleteSubnet").and.returnValue(defer.promise);
       $scope.actionGo();
-      error = "errorString";
+      const error = "errorString";
       $scope.actionOption = null;
       defer.reject(error);
       $scope.$digest();

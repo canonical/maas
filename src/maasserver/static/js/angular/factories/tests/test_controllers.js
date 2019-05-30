@@ -4,9 +4,11 @@
  * Unit tests for ControllersManager.
  */
 
+import { makeFakeResponse, makeName } from "testing/utils";
+
 describe("ControllersManager", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Load the ControllersManager and RegionConnection factory.
   var ControllersManager, RegionConnection, webSocket;
@@ -54,7 +56,7 @@ describe("ControllersManager", function() {
     it("calls controller.check_images with system_ids", function(done) {
       var controllers = [makecontroller(), makecontroller()];
       var states = [makeName("state"), makeName("state")];
-      response = {};
+      let response = {};
       response[controllers[0].system_id] = states[0];
       response[controllers[1].system_id] = states[1];
       webSocket.returnData.push(makeFakeResponse(response));

@@ -4,24 +4,26 @@
  * Unit tests for DashboardController.
  */
 
+import { makeInteger, makeName } from "testing/utils";
+
 describe("DashboardController", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Grab the needed angular pieces.
-  var $controller, $rootScope, $scope, $q, $routeParams, $location;
+  var $controller, $rootScope, $scope, $q, $location;
   beforeEach(inject(function($injector) {
     $controller = $injector.get("$controller");
     $rootScope = $injector.get("$rootScope");
     $location = $injector.get("$location");
     $scope = $rootScope.$new();
     $q = $injector.get("$q");
-    $routeParams = {};
   }));
 
   // Load any injected managers and services.
   var DiscoveriesManager, DomainsManager, MachinesManager, DevicesManager;
   var SubnetsManager, VLANsManager, ConfigsManager, ManagerHelperService;
+  let SearchService;
   beforeEach(inject(function($injector) {
     DiscoveriesManager = $injector.get("DiscoveriesManager");
     DomainsManager = $injector.get("DomainsManager");

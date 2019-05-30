@@ -4,9 +4,11 @@
  * Unit tests for SettingsController.
  */
 
+import { makeInteger, makeName } from "testing/utils";
+
 describe("SettingsController", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Grab the needed angular pieces.
   var $controller, $rootScope, $scope, $q;
@@ -567,7 +569,7 @@ describe("SettingsController", function() {
     it("updateItem reject resets enabled", function() {
       makeController();
       var snippet = makeSnippet();
-      defer = $q.defer();
+      let defer = $q.defer();
       spyOn(DHCPSnippetsManager, "updateItem").and.returnValue(defer.promise);
       spyOn(console, "log");
       $scope.snippetToggle(snippet);

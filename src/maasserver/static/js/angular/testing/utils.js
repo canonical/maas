@@ -6,7 +6,7 @@
  * Helper functions that make testing easier.
  */
 
-function makeString(size) {
+export function makeString(size) {
   var chars =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ" + "abcdefghijklmnopqrstuvwxyz" + "0123456789";
   if (!angular.isNumber(size)) {
@@ -21,11 +21,11 @@ function makeString(size) {
   return text;
 }
 
-function makeName(name, size) {
+export function makeName(name, size) {
   return name + "_" + makeString(size);
 }
 
-function makeFakeResponse(data, error) {
+export function makeFakeResponse(data, error) {
   if (error) {
     return angular.toJson({
       type: 1,
@@ -41,14 +41,14 @@ function makeFakeResponse(data, error) {
   }
 }
 
-function makeInteger(min, max) {
+export function makeInteger(min, max) {
   return Math.floor(Math.random() * (max - min)) + min;
 }
 
-function pickItem(array) {
+export function pickItem(array) {
   return array[Math.floor(Math.random() * array.length)];
 }
 
-function makeBoolean() {
+export function makeBoolean() {
   return pickItem([true, false]);
 }

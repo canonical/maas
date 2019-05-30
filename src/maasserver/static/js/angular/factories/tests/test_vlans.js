@@ -4,25 +4,18 @@
  * Unit tests for VLANsManager.
  */
 
+import { makeInteger } from "testing/utils";
+
 describe("VLANsManager", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Load the VLANsManager.
-  var VLANsManager, SubnetsManager, RegionConnection;
+  var VLANsManager, RegionConnection;
   beforeEach(inject(function($injector) {
     VLANsManager = $injector.get("VLANsManager");
-    SubnetsManager = $injector.get("SubnetsManager");
     RegionConnection = $injector.get("RegionConnection");
   }));
-
-  // Make a fake subnet.
-  function makeSubnet() {
-    return {
-      id: makeInteger(0, 5000),
-      name: makeName("subnet")
-    };
-  }
 
   it("set requires attributes", function() {
     expect(VLANsManager._pk).toBe("id");

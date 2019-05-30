@@ -4,9 +4,11 @@
  * Unit tests for controller status directive.
  */
 
+import { makeName, pickItem } from "testing/utils";
+
 describe("maasControllerStatus", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Make service.
   var _nextId = 0;
@@ -36,9 +38,8 @@ describe("maasControllerStatus", function() {
   }
 
   // Get the required managers.
-  var ControllersManager, ServicesManager;
+  var ServicesManager;
   beforeEach(inject(function($injector) {
-    ControllersManager = $injector.get("ControllersManager");
     ServicesManager = $injector.get("ServicesManager");
   }));
 
@@ -76,7 +77,6 @@ describe("maasControllerStatus", function() {
 
   it("services is ServicesManager.getItems()", function() {
     var directive = compileDirective();
-    var serviceClass = makeName("serviceClass");
     expect(directive.isolateScope().services).toBe(ServicesManager.getItems());
   });
 

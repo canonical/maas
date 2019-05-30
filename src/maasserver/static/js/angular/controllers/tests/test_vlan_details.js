@@ -4,9 +4,11 @@
  * Unit tests for SubentsListController.
  */
 
+import { makeInteger, makeName } from "testing/utils";
+
 describe("VLANDetailsController", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   var VLAN_ID = makeInteger(5000, 6000);
 
@@ -117,7 +119,7 @@ describe("VLANDetailsController", function() {
   }));
 
   var vlan, fabric, fabric2, primaryController, secondaryController;
-  var space, subnet, $routeParams;
+  var subnet, $routeParams;
   beforeEach(function() {
     primaryController = makeRackController(1, "primary", "p1");
     secondaryController = makeRackController(2, "secondary", "p2");
@@ -126,7 +128,7 @@ describe("VLANDetailsController", function() {
     VLANsManager.addRackController(vlan, secondaryController);
     fabric = makeFabric(1);
     fabric2 = makeFabric(2);
-    space = makeSpace();
+    makeSpace();
     subnet = makeSubnet();
     $routeParams = {
       vlan_id: vlan.id
@@ -768,7 +770,7 @@ describe("VLANDetailsController", function() {
       var defer = $q.defer();
       spyOn(VLANsManager, "configureDHCP").and.returnValue(defer.promise);
       controller.enableDHCP();
-      result = {
+      const result = {
         error: "errorString",
         request: {
           params: {

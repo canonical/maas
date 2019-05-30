@@ -6,7 +6,7 @@
 
 describe("maasCodeLines", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Create a new scope before each test.
   var $scope;

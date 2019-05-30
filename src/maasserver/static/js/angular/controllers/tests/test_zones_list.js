@@ -6,7 +6,7 @@
 
 describe("ZonesListController", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Grab the needed angular pieces.
   var $controller, $rootScope, $scope, $q, $routeParams;

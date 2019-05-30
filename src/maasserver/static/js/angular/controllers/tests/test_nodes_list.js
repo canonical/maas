@@ -4,6 +4,8 @@
  * Unit tests for NodesListController.
  */
 
+import { makeInteger, makeName } from "testing/utils";
+
 // Make a fake user.
 var userId = 0;
 function makeUser() {
@@ -18,12 +20,9 @@ function makeUser() {
   };
 }
 
-// Global MAAS_config;
-MAAS_config = {};
-
 describe("NodesListController", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Grab the needed angular pieces.
   var $controller, $rootScope, $scope, $q, $routeParams, $location;
@@ -44,7 +43,7 @@ describe("NodesListController", function() {
     SwitchesManager,
     ZonesManager,
     UsersManager,
-    ServicesManage,
+    ServicesManager,
     ResourcePoolsManager,
     TagsManager;
   var ManagerHelperService, SearchService;

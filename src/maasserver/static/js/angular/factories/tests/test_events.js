@@ -4,9 +4,11 @@
  * Unit tests for EventsManagerFactory.
  */
 
+import { makeInteger } from "testing/utils";
+
 describe("EventsManagerFactory", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Grab the needed angular pieces.
   var $q, $rootScope;

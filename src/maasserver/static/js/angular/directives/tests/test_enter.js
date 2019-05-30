@@ -6,7 +6,7 @@
 
 describe("maasEnter", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Create a new scope before each test. Not used in this test, but
   // required to compile the directive.

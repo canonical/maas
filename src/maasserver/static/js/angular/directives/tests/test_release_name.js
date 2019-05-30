@@ -4,9 +4,11 @@
  * Unit tests for release name directive.
  */
 
+import { makeName } from "testing/utils";
+
 describe("maasReleaseName", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Load the required services and factories.
   var $q, GeneralManager, ManagerHelperService;

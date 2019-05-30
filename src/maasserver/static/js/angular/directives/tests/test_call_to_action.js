@@ -4,9 +4,11 @@
  * Unit tests for Call-To-Action dropdown directive.
  */
 
+import { makeName } from "testing/utils";
+
 describe("maasCta", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Make items for the dropdown.
   function makeItems() {
@@ -195,8 +197,6 @@ describe("maasCta", function() {
 
   it("clicking body will set shown to false", function() {
     var directive = compileDirective("items", "active");
-    var links = directive.find("button.p-cta__link");
-
     // Open the dropdown.
     directive.find("button.p-cta__toggle").click();
     expect(directive.isolateScope().shown).toBe(true);
@@ -214,8 +214,6 @@ describe("maasCta", function() {
   it("clicking button will fire ng-click", function() {
     $scope.clicked = jasmine.createSpy("clicked");
     var directive = compileDirective("items", "active", null, "clicked()");
-    var links = directive.find("button.p-cta__link");
-
     // Open the dropdown.
     directive.find("button.p-cta__toggle").click();
     expect($scope.clicked).toHaveBeenCalled();

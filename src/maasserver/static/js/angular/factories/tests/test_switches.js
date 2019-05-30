@@ -4,12 +4,14 @@
  * Unit tests for SwitchesManager.
  */
 
+import { makeFakeResponse, makeName } from "testing/utils";
+
 describe("SwitchesManager", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Load the SwitchesManager and RegionConnection factory.
-  var DevicesManager, RegionConnection, webSocket;
+  var RegionConnection, SwitchesManager, webSocket;
   beforeEach(inject(function($injector) {
     SwitchesManager = $injector.get("SwitchesManager");
     RegionConnection = $injector.get("RegionConnection");

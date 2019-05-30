@@ -1,6 +1,8 @@
 // Karma configuration
 // Generated on Fri Jan 09 2015 20:41:58 GMT-0500 (EST)
 
+const path = require('path');
+
 module.exports = function(config) {
   config.set({
 
@@ -23,7 +25,8 @@ module.exports = function(config) {
       '/usr/share/javascript/angular.js/angular-sanitize.js',
       '../../src/maasserver/static/js/bundle/vendor-min.js',
       '../../src/maasserver/static/js/bundle/maas-min.js',
-      '../../src/maasserver/static/js/angular/testing/*.js',
+      '../../src/maasserver/static/js/angular/testing/setup.js',
+      '../../src/maasserver/static/js/angular/testing/websocket.js',
       '../../src/maasserver/static/js/angular/*/tests/test_*.js',
       '../../src/maasserver/static/partials/*.html'
     ],
@@ -38,7 +41,30 @@ module.exports = function(config) {
     // available preprocessors: https://npmjs.org/browse/keyword/karma-preprocessor
     preprocessors: {
         '../../src/maasserver/static/partials/*.html': ['ng-html2js'],
+        '../../src/maasserver/static/js/angular/*/tests/test_*.js': ['webpack'],
         '**/*.js': ['sourcemap']
+    },
+
+    webpack: {
+        mode: 'development',
+        module: {
+            rules: [{
+                test: /\.js$/,
+                loader: 'babel-loader',
+                include: [
+                    path.resolve(__dirname, '../maasserver/static/js/angular/*/tests/')
+                ],
+                query: {
+                    presets: ['@babel/preset-env', '@babel/preset-react']
+                }
+            }]
+        },
+        resolve: {
+            modules: [
+                path.resolve(__dirname, '../maasserver/static/js/angular/'),
+                '../../node_modules'
+            ]
+        }
     },
 
     ngHtml2JsPreprocessor: {
@@ -92,7 +118,8 @@ module.exports = function(config) {
       'karma-phantomjs-launcher',
       'karma-failed-reporter',
       'karma-ng-html2js-preprocessor',
-      'karma-sourcemap-loader'
+      'karma-sourcemap-loader',
+      'karma-webpack'
     ]
   });
 };

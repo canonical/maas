@@ -4,9 +4,11 @@
  * Unit tests for DHCPSnippetsManager.
  */
 
+import { makeFakeResponse, makeName } from "testing/utils";
+
 describe("DHCPSnippetsManager", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Load the DHCPSnippetsManagera nd RegionConnection factory.
   var DHCPSnippetsManager, RegionConnection, webSocket;

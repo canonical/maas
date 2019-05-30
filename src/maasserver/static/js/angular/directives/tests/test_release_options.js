@@ -6,7 +6,7 @@
 
 describe("maasReleaseOptions", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Get the required managers.
   var GeneralManager;

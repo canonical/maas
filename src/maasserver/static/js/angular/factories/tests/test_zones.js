@@ -4,9 +4,11 @@
  * Unit tests for ZonesManager.
  */
 
+import { makeInteger, makeName } from "testing/utils";
+
 describe("ZonesManager", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Load the ZonesManager.
   var ZonesManager;

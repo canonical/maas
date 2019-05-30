@@ -4,9 +4,11 @@
  * Unit tests for DevicesManager.
  */
 
+import { makeFakeResponse, makeName } from "testing/utils";
+
 describe("DevicesManager", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Load the DevicesManager and RegionConnection factory.
   var DevicesManager, RegionConnection, webSocket;

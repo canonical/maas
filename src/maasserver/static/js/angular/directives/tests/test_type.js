@@ -4,9 +4,11 @@
  * Unit tests for type directive.
  */
 
+import { makeName } from "testing/utils";
+
 describe("ngType", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Create a new scope before each test.
   var $scope;

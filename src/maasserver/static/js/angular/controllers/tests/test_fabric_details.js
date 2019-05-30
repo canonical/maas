@@ -4,9 +4,11 @@
  * Unit tests for FabricsListController.
  */
 
+import { makeInteger, makeName } from "testing/utils";
+
 describe("FabricDetailsController", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Make a fake fabric
   function makeFabric() {

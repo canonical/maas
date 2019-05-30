@@ -4,6 +4,8 @@
  * Unit tests for NodeDetailsController.
  */
 
+import { makeInteger, makeName } from "testing/utils";
+
 // Make a fake user.
 var userId = 0;
 function makeUser() {
@@ -20,7 +22,7 @@ function makeUser() {
 
 describe("NodeDetailsController", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Grab the needed angular pieces.
   var $controller, $rootScope, $location, $scope, $q, $log;
@@ -38,7 +40,7 @@ describe("NodeDetailsController", function() {
   var MachinesManager, ControllersManager, ServicesManager;
   var DevicesManager, GeneralManager, UsersManager, DomainsManager;
   var TagsManager, RegionConnection, ManagerHelperService, ErrorService;
-  var ScriptsManager, ResourcePoolsManager, VLANsManager;
+  var ScriptsManager, ResourcePoolsManager, VLANsManager, ZonesManager;
   var webSocket;
   beforeEach(inject(function($injector) {
     MachinesManager = $injector.get("MachinesManager");

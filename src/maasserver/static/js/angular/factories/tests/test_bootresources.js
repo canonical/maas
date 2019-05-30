@@ -4,9 +4,11 @@
  * Unit tests for BootResourcesManager.
  */
 
+import { makeName } from "testing/utils";
+
 describe("BootResourcesManager", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Grab the needed angular pieces.
   var $rootScope, $timeout, $q;
@@ -17,11 +19,10 @@ describe("BootResourcesManager", function() {
   }));
 
   // Load the needed services.
-  var BootResourcesManager, RegionConnection, ErrorService, webSocket;
+  var BootResourcesManager, RegionConnection, webSocket;
   beforeEach(inject(function($injector) {
     BootResourcesManager = $injector.get("BootResourcesManager");
     RegionConnection = $injector.get("RegionConnection");
-    ErrorService = $injector.get("ErrorService");
 
     // Mock buildSocket so an actual connection is not made.
     webSocket = new MockWebSocket();

@@ -4,9 +4,11 @@
  * Unit tests for ZonesListController.
  */
 
+import { makeInteger, makeName } from "testing/utils";
+
 describe("ZoneDetailsController", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Make a fake zone
   function makeZone() {

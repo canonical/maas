@@ -4,9 +4,11 @@
  * Unit tests for switches table directive.
  */
 
+import { makeName } from "testing/utils";
+
 describe("maasSwitchesTable", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Preload the $templateCache with empty contents. We only test the
   // controller of the directive, not the template.
@@ -18,11 +20,10 @@ describe("maasSwitchesTable", function() {
   }));
 
   // Load the required managers.
-  var SwitchesManager, GeneralManager, ManagerHelperService;
+  var SwitchesManager, GeneralManager;
   beforeEach(inject(function($injector) {
     SwitchesManager = $injector.get("SwitchesManager");
     GeneralManager = $injector.get("GeneralManager");
-    ManagerHelperService = $injector.get("ManagerHelperService");
   }));
 
   // Create a new scope before each test.

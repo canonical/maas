@@ -6,7 +6,7 @@
 
 describe("maasNotifications", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Some example notifications as sent from the server.
   var exampleNotifications = [

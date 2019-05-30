@@ -4,9 +4,11 @@
  * Unit tests for DomainsListController.
  */
 
+import { makeInteger, makeName } from "testing/utils";
+
 describe("DomainDetailsController", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Make a fake domain
   function makeDomain() {

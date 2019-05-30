@@ -4,9 +4,11 @@
  * Unit tests for PodsManager.
  */
 
+import { makeFakeResponse, makeInteger, makeName } from "testing/utils";
+
 describe("PodsManager", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Load the PodsManager.
   var PodsManager, RegionConnection, webSocket;

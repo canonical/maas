@@ -4,9 +4,11 @@
  * Unit tests for script select directive.
  */
 
+import { makeInteger, makeName } from "testing/utils";
+
 describe("maasScriptSelect", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Create a new scope before each test.
   var $rootScope, $scope, $q;
@@ -16,7 +18,7 @@ describe("maasScriptSelect", function() {
     $q = $injector.get("$q");
   }));
 
-  var ScriptManager, ManagerHelperService;
+  var ScriptsManager, ManagerHelperService;
   beforeEach(inject(function($injector) {
     ScriptsManager = $injector.get("ScriptsManager");
     ManagerHelperService = $injector.get("ManagerHelperService");
@@ -32,7 +34,7 @@ describe("maasScriptSelect", function() {
   }));
 
   function makeScript(script_type, tags, for_hardware) {
-    script = {
+    const script = {
       id: makeInteger(0, 100),
       name: makeName("script_name"),
       description: makeName("description"),

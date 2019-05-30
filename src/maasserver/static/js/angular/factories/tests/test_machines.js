@@ -4,9 +4,11 @@
  * Unit tests for MachinesManager.
  */
 
+import { makeName } from "testing/utils";
+
 describe("MachinesManager", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Load the MachinesManager and RegionConnection factory.
   var MachinesManager, RegionConnection, webSocket;

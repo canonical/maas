@@ -4,9 +4,11 @@
  * Unit tests for boot images directive.
  */
 
+import { makeInteger, makeName } from "testing/utils";
+
 describe("maasBootImages", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Preload the $templateCache with empty contents. We only test the
   // controller of the directive, not the template.
@@ -1392,7 +1394,6 @@ describe("maasBootImages", function() {
       var directive = compileDirective();
       var scope = directive.isolateScope();
       var image1 = { image_id: 3 };
-      var image2 = { image_id: 7 };
       scope.removingImage = image1;
       expect(scope.isShowingDeleteConfirm(image1)).toBe(true);
     });
@@ -1433,7 +1434,6 @@ describe("maasBootImages", function() {
       var directive = compileDirective();
       var scope = directive.isolateScope();
       var image1 = { image_id: 3 };
-      var image2 = { image_id: 7 };
       scope.removingImage = image1;
       spyOn(BootResourcesManager, "deleteImage");
       scope.confirmRemove(image1);

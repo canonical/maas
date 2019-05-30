@@ -4,9 +4,11 @@
  * Unit tests for user preference keys directive.
  */
 
+import { makeName } from "testing/utils";
+
 describe("maasPrefKeys", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Inject a fake RegionConnection.
   var RegionConnection;
@@ -19,7 +21,7 @@ describe("maasPrefKeys", function() {
     // when the directive is created if will use this
     // RegionConnection object instead of the one provided by
     // angular.
-    module(function($provide) {
+    angular.mock.module(function($provide) {
       $provide.value("RegionConnection", RegionConnection);
     });
   });
@@ -36,7 +38,7 @@ describe("maasPrefKeys", function() {
     // when the directive is created if will use this
     // UsersManager object instead of the one provided by
     // angular.
-    module(function($provide) {
+    angular.mock.module(function($provide) {
       $provide.value("UsersManager", UsersManager);
     });
   });

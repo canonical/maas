@@ -4,9 +4,11 @@
  * Unit tests for PackageRepositoriesManager.
  */
 
+import { makeFakeResponse, makeName } from "testing/utils";
+
 describe("PackageRepositoriesManager", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Load the PackageRepositoriesManager and RegionConnection factory.
   var PackageRepositoriesManager, RegionConnection, webSocket;

@@ -4,9 +4,11 @@
  * Unit tests for SSH keys directive.
  */
 
+import { makeName } from "testing/utils";
+
 describe("maasSshKeys", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Preload the $templateCache with empty contents. We only test the
   // controller of the directive, not the template.
@@ -19,10 +21,9 @@ describe("maasSshKeys", function() {
   }));
 
   // Load the required managers.
-  var SSHKeysManager, JSONService, ManagerHelperService;
+  var SSHKeysManager, ManagerHelperService;
   beforeEach(inject(function($injector) {
     SSHKeysManager = $injector.get("SSHKeysManager");
-    JSONService = $injector.get("JSONService");
     ManagerHelperService = $injector.get("ManagerHelperService");
     // Mock buildSocket so an actual connection is not made.
     let RegionConnection = $injector.get("RegionConnection");

@@ -4,12 +4,14 @@
  * Unit tests for DomainsManager.
  */
 
+import { makeInteger, makeName } from "testing/utils";
+
 describe("DomainsManager", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Load the DomainsManager.
-  var DomainsManager;
+  var DomainsManager, RegionConnection;
   var $q, $rootScope;
   beforeEach(inject(function($injector) {
     DomainsManager = $injector.get("DomainsManager");

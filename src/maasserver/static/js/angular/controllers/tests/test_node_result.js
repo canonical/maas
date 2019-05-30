@@ -4,9 +4,11 @@
  * Unit tests for NodeResultController.
  */
 
+import { makeFakeResponse, makeInteger, makeName } from "testing/utils";
+
 describe("NodeResultController", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Grab the needed angular pieces.
   var $controller, $rootScope, $location, $scope, $q;
@@ -56,7 +58,7 @@ describe("NodeResultController", function() {
   }
 
   // Create the node that will be used and set the routeParams.
-  var node, $routeParams;
+  var node, $routeParams, script_result;
   beforeEach(function() {
     node = makeNode();
     script_result = makeResult();

@@ -4,9 +4,11 @@
  * Unit tests for BrowserService.
  */
 
+import { makeName } from "testing/utils";
+
 describe("BrowserService", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Inject a fake $window allowing the test
   // to set the user agent string.
@@ -22,7 +24,7 @@ describe("BrowserService", function() {
     // when the directive is created if will use this
     // $window object instead of the one provided by
     // angular.
-    module(function($provide) {
+    angular.mock.module(function($provide) {
       $provide.value("$window", $window);
     });
   });
@@ -35,7 +37,7 @@ describe("BrowserService", function() {
 
   it("browser set to other if none of the regex match", function() {
     $window.navigator.userAgent = makeName("randomBrowser");
-    BrowserService = $injector.get("BrowserService");
+    const BrowserService = $injector.get("BrowserService");
     expect(BrowserService.browser).toBe("other");
   });
 
@@ -71,7 +73,7 @@ describe("BrowserService", function() {
   angular.forEach(scenarios, function(scenario) {
     it("browser set to " + scenario.browser, function() {
       $window.navigator.userAgent = scenario.userAgent;
-      BrowserService = $injector.get("BrowserService");
+      const BrowserService = $injector.get("BrowserService");
       expect(BrowserService.browser).toBe(scenario.browser);
     });
   });

@@ -4,9 +4,11 @@
  * Unit tests for version reloader.
  */
 
+import { makeName } from "testing/utils";
+
 describe("maasVersionReloader", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Grab the needed angular pieces.
   var $q;

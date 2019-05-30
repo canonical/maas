@@ -4,12 +4,14 @@
  * Unit tests for ResourcePoolsManager.
  */
 
+import { makeInteger, makeName } from "testing/utils";
+
 describe("ResourcePoolsManager", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Load the ResourcePoolsManager.
-  var ResourcePools;
+  var ResourcePoolsManager;
   beforeEach(inject(function($injector) {
     ResourcePoolsManager = $injector.get("ResourcePoolsManager");
   }));

@@ -4,20 +4,22 @@
  * Unit tests for OS select directive.
  */
 
+import { makeName } from "testing/utils";
+
 describe("maasOsSelect", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Make OS choice.
   function makeOS() {
-    name = makeName("os");
+    const name = makeName("os");
     return [name, name];
   }
 
   // Make release choice for os.
   function makeRelease(os) {
-    release = makeName("release");
-    osRelease = os[0] + "/" + release;
+    const release = makeName("release");
+    const osRelease = os[0] + "/" + release;
     return [osRelease, release];
   }
 
@@ -27,7 +29,7 @@ describe("maasOsSelect", function() {
     var osystems = [],
       releases = [];
     for (i = 0; i < 5; i++) {
-      os = makeOS();
+      const os = makeOS();
       osystems.push(os);
       for (j = 0; j < 5; j++) {
         var release = makeRelease(os);
@@ -47,7 +49,7 @@ describe("maasOsSelect", function() {
     var i,
       available = [];
     for (i = 0; i < releases.length; i++) {
-      choice = releases[i];
+      const choice = releases[i];
       if (choice[0].indexOf(os) > -1) {
         available.push(choice);
       }
@@ -122,12 +124,12 @@ describe("maasOsSelect", function() {
   });
 
   it("adds the $reset function to the model", function() {
-    var directive = compileDirective("osinfo", "selected");
+    compileDirective("osinfo", "selected");
     expect(angular.isFunction($scope.selected.$reset)).toBe(true);
   });
 
   it("model $reset resets the default selection", function() {
-    var directive = compileDirective("osinfo", "selected");
+    compileDirective("osinfo", "selected");
     $scope.selected.osystem = makeName("os");
     $scope.selected.release = makeName("release");
     $scope.selected.$reset();
@@ -138,7 +140,7 @@ describe("maasOsSelect", function() {
   });
 
   it("default $scope.selected to be initialized with defaults", function() {
-    var directive = compileDirective("osinfo", "selected");
+    compileDirective("osinfo", "selected");
     expect($scope.selected.osystem).toBe($scope.osinfo.default_osystem);
     expect($scope.selected.release).toBe(
       $scope.osinfo.default_osystem + "/" + $scope.osinfo.default_release
@@ -147,13 +149,13 @@ describe("maasOsSelect", function() {
 
   it(`default $scope.selected to be initialized
       with weighted ubuntu os`, function() {
-    os = ["ubuntu", "Ubuntu"];
-    release = ["ubuntu/trusty", "Ubuntu Trusty 14.04 (LTS)"];
+    const os = ["ubuntu", "Ubuntu"];
+    const release = ["ubuntu/trusty", "Ubuntu Trusty 14.04 (LTS)"];
     $scope.osinfo.osystems.push(os);
     $scope.osinfo.releases.push(release);
     $scope.osinfo.default_osystem = makeName("default_os");
     $scope.osinfo.default_release = makeName("default_release");
-    var directive = compileDirective("osinfo", "selected");
+    compileDirective("osinfo", "selected");
     expect($scope.selected.osystem).toBe("ubuntu");
     expect($scope.selected.release).toBe("ubuntu/trusty");
   });
@@ -162,7 +164,7 @@ describe("maasOsSelect", function() {
       with first available`, function() {
     $scope.osinfo.default_osystem = makeName("default_os");
     $scope.osinfo.default_release = makeName("default_release");
-    var directive = compileDirective("osinfo", "selected");
+    compileDirective("osinfo", "selected");
     expect($scope.selected.osystem).toBe($scope.osinfo.osystems[0][0]);
     expect($scope.selected.release).toBe($scope.osinfo.releases[0][0]);
   });
@@ -173,7 +175,7 @@ describe("maasOsSelect", function() {
     $scope.osinfo.releases = [];
     $scope.osinfo.default_osystem = makeName("default_os");
     $scope.osinfo.default_release = makeName("default_release");
-    var directive = compileDirective("osinfo", "selected");
+    compileDirective("osinfo", "selected");
     expect($scope.selected.osystem).toBeNull();
     expect($scope.selected.release).toBeNull();
   });
@@ -184,7 +186,7 @@ describe("maasOsSelect", function() {
       release: "release"
     };
     $scope.selected = current;
-    var directive = compileDirective("osinfo", "selected");
+    compileDirective("osinfo", "selected");
     expect($scope.selected.osystem).toBe(current.osystem);
     expect($scope.selected.release).toBe(current.release);
   });

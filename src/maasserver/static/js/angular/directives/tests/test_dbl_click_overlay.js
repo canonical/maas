@@ -6,7 +6,7 @@
 
 describe("maasDblClickOverlay", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Get the BrowserService before each test.
   var BrowserService;

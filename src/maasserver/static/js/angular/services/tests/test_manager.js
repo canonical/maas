@@ -4,9 +4,11 @@
  * Unit tests for Manager.
  */
 
+import { makeFakeResponse, makeName } from "testing/utils";
+
 describe("Manager", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Grab the needed angular pieces.
   var $rootScope, $timeout, $q;
@@ -204,11 +206,11 @@ describe("Manager", function() {
       webSocket.returnData.push(makeFakeResponse([]));
       NodesManager.loadItems().then(function(nodes) {
         // Expect first message to not have a start.
-        first_msg = angular.fromJson(webSocket.sentData[0]);
+        const first_msg = angular.fromJson(webSocket.sentData[0]);
         expect(first_msg.params.start).toBeUndefined();
 
         // Expect the second message to have the last node's id.
-        second_msg = angular.fromJson(webSocket.sentData[1]);
+        const second_msg = angular.fromJson(webSocket.sentData[1]);
         expect(second_msg.params.start).toEqual(node_id);
         done();
       });

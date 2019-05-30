@@ -4,9 +4,11 @@
  * Unit tests for NodeStorageController.
  */
 
+import { makeInteger, makeName } from "testing/utils";
+
 describe("removeAvailableByNew", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Load the removeAvailableByNew.
   var removeAvailableByNew;
@@ -84,7 +86,7 @@ describe("removeAvailableByNew", function() {
 
 describe("NodeStorageController", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Grab the needed angular pieces.
   var $controller, $rootScope, $parentScope, $scope, $q;
@@ -5001,7 +5003,7 @@ describe("NodeStorageController", function() {
   });
 
   describe("isAllStorageDisabled", function() {
-    var RegionConnection, UserManager;
+    var RegionConnection, UsersManager, webSocket;
     beforeEach(inject(function($injector) {
       UsersManager = $injector.get("UsersManager");
       RegionConnection = $injector.get("RegionConnection");

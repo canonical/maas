@@ -6,9 +6,9 @@
 
 describe("maasProxySettings", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
   // Make the templates available.
-  beforeEach(module("MAAS.templates"));
+  beforeEach(angular.mock.module("MAAS.templates"));
 
   // Get required angular pieces and create a new scope before each test.
   var $scope, $compile, $q, ConfigsManager, ManagerHelperService;

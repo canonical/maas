@@ -4,9 +4,11 @@
  * Unit tests for SearchService.
  */
 
+import { makeName } from "testing/utils";
+
 describe("SearchService", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Load the SearchService.
   var SearchService;

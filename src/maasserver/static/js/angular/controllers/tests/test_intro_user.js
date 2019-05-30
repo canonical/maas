@@ -4,12 +4,9 @@
  * Unit tests for IntroUserController.
  */
 
-// Global maas config.
-MAAS_config = {};
-
 describe("IntroUserController", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Grab the needed angular pieces.
   var $controller, $rootScope, $location, $scope, $q, $window;

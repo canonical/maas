@@ -4,9 +4,11 @@
  * Unit tests for AddHardwareController.
  */
 
+import { makeName } from "testing/utils";
+
 describe("AddHardwareController", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Grab the needed angular pieces.
   var $controller, $rootScope, $timeout, $http, $q;

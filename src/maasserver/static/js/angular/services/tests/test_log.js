@@ -4,6 +4,8 @@
  * Unit tests for LogService.
  */
 
+import { makeName } from "testing/utils";
+
 describe("LogService", function() {
   beforeEach(function() {
     spyOn(console, "debug");
@@ -14,7 +16,7 @@ describe("LogService", function() {
   });
 
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Get the $injector so the test can grab the LogService.
   var $injector;

@@ -4,9 +4,11 @@
  * Unit tests for AddDomainController.
  */
 
+import { makeName } from "testing/utils";
+
 describe("AddDomainController", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Grab the needed angular pieces.
   var $controller, $rootScope, $q;

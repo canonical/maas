@@ -4,9 +4,11 @@
  * Unit tests for DomainsListController.
  */
 
+import { makeInteger } from "testing/utils";
+
 describe("DomainsListController", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Grab the needed angular pieces.
   var $controller, $rootScope, $scope, $q, $routeParams;
@@ -20,7 +22,7 @@ describe("DomainsListController", function() {
 
   // Load the managers and services.
   var DomainsManager, UsersManager;
-  var ManagerHelperService, RegionConnection;
+  var ManagerHelperService;
   beforeEach(inject(function($injector) {
     DomainsManager = $injector.get("DomainsManager");
     UsersManager = $injector.get("UsersManager");
@@ -135,21 +137,4 @@ describe("DomainsListController", function() {
       expect($scope.confirmSetDefaultRow).toBe(null);
     });
   });
-
-  setupController = function(domains) {
-    var defer = $q.defer();
-    var controller = makeController(defer);
-    $scope.domains = domains;
-    DomainsManager._items = domains;
-    defer.resolve();
-    $rootScope.$digest();
-    return controller;
-  };
-
-  testUpdates = function(controller, domains, expectedDomainsData) {
-    $scope.domains = domains;
-    DomainsManager._items = domains;
-    $rootScope.$digest();
-    expect($scope.data).toEqual(expectedDomainsData);
-  };
 });

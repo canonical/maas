@@ -4,20 +4,21 @@
  * Unit tests for error overlay.
  */
 
+import { makeName } from "testing/utils";
+
 describe("maasErrorOverlay", function() {
   // Load the MAAS module.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Get required angular pieces and create a new scope before each test.
-  var $scope, $window, $timeout;
+  var $scope, $timeout;
   beforeEach(inject(function($rootScope, $injector) {
     $scope = $rootScope.$new();
-    $window = $injector.get("$window");
     $timeout = $injector.get("$timeout");
   }));
 
   // Load the RegionConnection and ErrorService.
-  var RegionConnection;
+  var ErrorService, RegionConnection;
   beforeEach(inject(function($injector) {
     RegionConnection = $injector.get("RegionConnection");
     ErrorService = $injector.get("ErrorService");

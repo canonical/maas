@@ -4,9 +4,11 @@
  * Unit tests for RegionConnection.
  */
 
+import { makeName } from "testing/utils";
+
 describe("RegionConnection", function() {
   // Load the MAAS module to test.
-  beforeEach(module("MAAS"));
+  beforeEach(angular.mock.module("MAAS"));
 
   // Grab the needed angular pieces.
   var $timeout, $rootScope, $q, $cookies, $window;
