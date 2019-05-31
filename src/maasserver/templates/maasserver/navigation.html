@@ -77,7 +77,7 @@
             </li>
             {% endif %}
             <li class="p-navigation__link" role="menuitem">
-              <a href="{% url 'index' %}#/pods">Pods</a>
+              <a href="{% url 'index' %}#/kvm">KVM</a>
             </li>
           </ul>
         </li>
@@ -119,12 +119,12 @@
         <li
           class="p-navigation__link u-hide-nav-viewport--medium"
           role="menuitem"
-          data-ng-class="{ 'is-selected': page === 'pods' }"
+          data-ng-class="{ 'is-selected': page === 'kvm' }"
         >
           <a
             class="{% block nav-active-pod-list %}{% endblock %} p-dropdown__item"
-            href="{% url 'index' %}#/pods"
-            >Pods</a
+            href="{% url 'index' %}#/kvm"
+            >KVM</a
           >
         </li>
         <li

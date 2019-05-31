@@ -16,8 +16,8 @@ function PodsListController(
   ResourcePoolsManager
 ) {
   // Set title and page.
-  $rootScope.title = "Pods";
-  $rootScope.page = "pods";
+  $rootScope.title = "KVM";
+  $rootScope.page = "kvm";
 
   // Set initial values.
   $scope.podManager = PodsManager;

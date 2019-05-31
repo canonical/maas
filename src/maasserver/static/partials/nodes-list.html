@@ -882,7 +882,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                             </div>
                         </li>
                         <li class="p-accordion__group ng-hide" data-ng-show="tabs.machines.metadata.pod.length">
-                            <button class="maas-accordion-tab p-accordion__tab">Pods</button>
+                            <button class="maas-accordion-tab p-accordion__tab">KVM</button>
                             <div class="p-accordion__panel">
                                 <ul class="p-list">
                                     <li class="p-list__item"  data-ng-repeat="pod in tabs.machines.metadata.pod | orderBy:['name', '-count']">

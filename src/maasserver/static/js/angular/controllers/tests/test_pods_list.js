@@ -81,8 +81,8 @@ describe("PodsListController", function() {
 
   it("sets title and page on $rootScope", function() {
     makeController();
-    expect($rootScope.title).toBe("Pods");
-    expect($rootScope.page).toBe("pods");
+    expect($rootScope.title).toBe("KVM");
+    expect($rootScope.page).toBe("kvm");
   });
 
   it("sets initial values on $scope", function() {

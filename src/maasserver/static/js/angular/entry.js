@@ -353,13 +353,19 @@ function configureMaas(
       .when("/node/controller/:system_id/events", {
         redirectTo: "/controller/:system_id/events"
       })
-      .when("/pods", {
+      .when("/kvm", {
         templateUrl: versionedPath("static/partials/pods-list.html"),
         controller: "PodsListController"
       })
-      .when("/pod/:id", {
+      .when("/kvm/:id", {
         templateUrl: versionedPath("static/partials/pod-details.html"),
         controller: "PodDetailsController"
+      })
+      .when("/pods", {
+        redirectTo: "/kvm"
+      })
+      .when("/pod/:id", {
+        redirectTo: "/kvm/:id"
       })
       .when("/images", {
         templateUrl: versionedPath("static/partials/images.html"),

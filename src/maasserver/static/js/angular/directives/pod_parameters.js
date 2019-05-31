@@ -10,8 +10,8 @@ export function cachePodParameters($templateCache) {
   $templateCache.put(
     "directive/templates/pod-parameters.html",
     [
-      '<maas-obj-field type="options" key="type" label="Pod type" ',
-      'placeholder="Select the pod type" ',
+      '<maas-obj-field type="options" key="type" label="KVM type" ',
+      'placeholder="Select the KVM type" ',
       'options="type.name as type.description for type in podTypes" ',
       'label-width="2" label-width-tablet="2" ',
       'input-width="3" input-width-tablet="4" ',

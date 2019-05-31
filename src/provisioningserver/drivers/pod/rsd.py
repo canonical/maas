@@ -85,10 +85,10 @@ class RSDPodDriver(RedfishPowerDriverBase, PodDriverBase):
     description = "Rack Scale Design"
     settings = [
         make_setting_field(
-            'power_address', "Pod address", required=True),
-        make_setting_field('power_user', "Pod user", required=True),
+            'power_address', "KVM address", required=True),
+        make_setting_field('power_user', "KVM user", required=True),
         make_setting_field(
-            'power_pass', "Pod password",
+            'power_pass', "KVM password",
             field_type='password', required=True),
         make_setting_field(
             'node_id', "Node ID",

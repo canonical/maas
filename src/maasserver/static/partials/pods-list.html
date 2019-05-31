@@ -1,13 +1,13 @@
 <header class="p-strip--light is-shallow u-no-padding--bottom page-header" media-query="min-width: 769px">
     <div class="row">
         <div class="tablet-col-4 col-8">
-            <h1 class="page-header__title">Pods</h1>
+            <h1 class="page-header__title">KVM</h1>
             <p class="page-header__status u-no-margin--top" data-ng-show="loading"><span class="u-text--loading"><i class="p-icon--spinner u-animation--spin"></i> Loading...</span></p>
         </div>
         <div class="tablet-col-2 col-4">
             <div class="page-header__controls">
                 <div data-ng-if="pods.length > 0 && !selectedItems.length">
-                    <button class="p-button--neutral" data-ng-click="addPod()" data-ng-if="!add.open && canAddPod()">Add pod</button>
+                    <button class="p-button--neutral" data-ng-click="addPod()" data-ng-if="!add.open && canAddPod()">Add KVM</button>
                 </div>
                 <ul class="p-inline-list u-no-margin--top" data-ng-if="showActions() && selectedItems.length">
                     <li class="p-inline-list__item">{$ selectedItems.length $} Selected</li>
@@ -28,24 +28,24 @@
             <form>
                 <p data-ng-if="hasActionsFailed()">
                     Performing {$ action.option.sentence $} failed for {$ action.progress.errors $}
-                    <span data-ng-pluralize count="action.progress.errors" when="{'one': 'pod', 'other': 'pods'}"></span>,
-                    see listing for specific error for each pod.
+                    <span data-ng-pluralize count="action.progress.errors" when="{'one': 'KVM', 'other': 'KVMs'}"></span>,
+                    see listing for specific error for each KVM.
                 </p>
 
                 <div data-ng-if="action.option.name === 'refresh'" class="col-8">
                     <p class="u-remove-max-width u-align--left">
-                        Refreshing <span data-ng-if="selectedItems.length === 1">this pod</span><span data-ng-if="selectedItems.length > 1">these pods</span> will cause MAAS to recalculate usage metrics, update information about storage pools,
-                        and commission any machines present in <span data-ng-if="selectedItems.length === 1">the pod</span><span data-ng-if="selectedItems.length > 1">the pods</span> that are not yet known to MAAS.
+                        Refreshing <span data-ng-if="selectedItems.length === 1">this KVM</span><span data-ng-if="selectedItems.length > 1">these KVMs</span> will cause MAAS to recalculate usage metrics, update information about storage pools,
+                        and commission any machines present in <span data-ng-if="selectedItems.length === 1">the KVM</span><span data-ng-if="selectedItems.length > 1">the KVMs</span> that are not yet known to MAAS.
                     </p>
                 </div>
 
                 <button class="p-button--base is-inline" type="button" data-ng-click="actionCancel()">Cancel</button>
                 <button class="is-inline" data-ng-class="action.option.name === 'delete' ? 'p-button--negative' : 'p-button--positive'" data-ng-click="actionGo()" data-ng-if="!hasActionsFailed()">
                     <span data-ng-if="action.option.name === 'refresh'">Refresh {$ selectedItems.length $}
-                        <span data-ng-pluralize count="selectedItems.length" when="{'one': 'pod', 'other': 'pods'}"></span>
+                        <span data-ng-pluralize count="selectedItems.length" when="{'one': 'KVM', 'other': 'KVMs'}"></span>
                     </span>
                     <span data-ng-if="action.option.name === 'delete'">Delete {$ selectedItems.length $}
-                        <span data-ng-pluralize count="selectedItems.length" when="{'one': 'pod', 'other': 'pods'}"></span>
+                        <span data-ng-pluralize count="selectedItems.length" when="{'one': 'KVM', 'other': 'KVMs'}"></span>
                     </span>
                 </button>
                 <button class="p-button--neutral is-inline" data-ng-click="actionGo()" data-ng-if="hasActionsFailed()">Retry</button>
@@ -55,7 +55,7 @@
             <div class="col-12" data-ng-if="hasActionsInProgress()">
                 <p>
                     <i class="p-icon--spinner u-animation--spin"></i>
-                    Finished performing {$ action.option.sentence $} on {$ action.progress.completed $} of {$ action.progress.total $} pods.
+                    Finished performing {$ action.option.sentence $} on {$ action.progress.completed $} of {$ action.progress.total $} KVMs.
                 </p>
             </div>
         </div>
@@ -64,7 +64,7 @@
         <maas-obj-form obj="add.obj" manager="podManager" manager-method="createItem"
             save-on-blur="false" after-save="cancelAddPod" data-ng-if="add.open">
             <div class="row">
-                <h3 class="page-header__dropdown-title p-heading--five">Add pod</h3>
+                <h3 class="page-header__dropdown-title p-heading--five">Add KVM</h3>
             </div>
             <div class="row">
                 <div class="col-5">
@@ -81,10 +81,10 @@
                     <hr />
                     <div class="col-12">
                         <p maas-obj-hide-saving class="u-no-margin--bottom"><maas-obj-errors></maas-obj-errors></p>
-                        <p maas-obj-show-saving class="u-no-margin--bottom"><maas-obj-saving>Trying to connect and discover pod</maas-obj-saving></p>
+                        <p maas-obj-show-saving class="u-no-margin--bottom"><maas-obj-saving>Trying to connect and discover KVM</maas-obj-saving></p>
                         <div class="page-header__controls u-no-margin--top" maas-obj-hide-saving>
                             <button class="p-button--base is-inline" type="button" data-ng-click="cancelAddPod()">Cancel</button>
-                            <button class="p-button--positive is-inline u-no-margin--top" maas-obj-save>Save pod</button>
+                            <button class="p-button--positive is-inline u-no-margin--top" maas-obj-save>Save KVM</button>
                         </div>
                     </div>
                 </div>
@@ -101,7 +101,7 @@
         <div class="col-12 u-align--center">
             <div data-ng-if="!loading && pods.length == 0" class="p-heading-icon">
                 <svg width="85px" height="104px" viewBox="0 0 85 104" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-                    <title>add-pod</title>
+                    <title>add-kvm</title>
                     <defs></defs>
                     <g id="Pod-creation" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
                         <g id="003_Pod---empty-state" transform="translate(-677.000000, -320.000000)">
@@ -121,8 +121,8 @@
                         </g>
                     </g>
                 </svg>
-                <h3 class="p-heading-icon__title p-heading--four">You have not added any pods yet.</h3>
-                <button class="p-button--positive is-inline ng-scope" data-ng-click="addPod()" data-ng-if="!add.open && canAddPod()">Add pod</button>
+                <h3 class="p-heading-icon__title p-heading--four">You have not added any KVMs yet.</h3>
+                <button class="p-button--positive is-inline ng-scope" data-ng-click="addPod()" data-ng-if="!add.open && canAddPod()">Add KVM</button>
             </div>
         </div>
         <div class="row">
@@ -151,7 +151,7 @@
                                 <input type="checkbox" class="checkbox" data-ng-click="toggleChecked(pod)" data-ng-checked="pod.$selected" id="{$ pod.id $}" data-ng-disabled="add.open || hasActionsInProgress()"/>
                                 <label for="{$ pod.id $}" class="checkbox-label"></label>
                             </div>
-                            <a href="#/pod/{$ pod.id $}"><strong>{$ pod.name $}</strong></a>
+                            <a href="#/kvm/{$ pod.id $}"><strong>{$ pod.name $}</strong></a>
                         </td>
                         <td class="p-table__cell" aria-label="Type" title="{$ getPowerTypeTitle(pod.type) $}">
                             {$ getPowerTypeTitle(pod.type) $}
