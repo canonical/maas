@@ -1,8 +1,14 @@
-maas (2.3.6-0ubuntu1) UNRELEASED; urgency=medium
+maas (2.3.7-0ubuntu1) UNRELEASED; urgency=medium
 
   * UNRELEASED
 
- -- Andres Rodriguez <andreserl@ubuntu.com>  Fri, 28 Sep 2018 09:32:43 -0400
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Fri, 31 May 2019 10:17:18 -0400
+
+maas (2.3.6-6526-g182d293-0ubuntu1~16.04.1) xenial; urgency=medium
+
+  * New upstream release.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Fri, 31 May 2019 10:14:38 -0400
 
 maas (2.3.5-6511-gf466fdb-0ubuntu1) xenial-proposed; urgency=medium
 
