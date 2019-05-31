@@ -5,6 +5,7 @@
  */
 
 import { makeInteger, makeName } from "testing/utils";
+import MockWebSocket from "testing/websocket";
 
 describe("PodsListController", function() {
   // Load the MAAS module.
@@ -215,7 +216,7 @@ describe("PodsListController", function() {
     it(
       "sets allViewableChecked to false when not all objects " + "selected",
       function() {
-        var pod2 = makePod();
+        makePod();
         $scope.toggleChecked(pod);
         expect($scope.allViewableChecked).toBe(false);
       }
@@ -352,7 +353,6 @@ describe("PodsListController", function() {
       spyOn($scope, "hasActionsInProgress").and.returnValue(false);
       var defer = $q.defer();
       var refresh = jasmine.createSpy("refresh").and.returnValue(defer.promise);
-      var spy = spyOn(PodsManager, "unselectItem");
       $scope.action.option = { name: "refresh", operation: refresh };
       $scope.selectedItems = [pod];
       $scope.actionGo();

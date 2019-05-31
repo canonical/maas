@@ -26,7 +26,6 @@ module.exports = function(config) {
       '../../src/maasserver/static/js/bundle/vendor-min.js',
       '../../src/maasserver/static/js/bundle/maas-min.js',
       '../../src/maasserver/static/js/angular/testing/setup.js',
-      '../../src/maasserver/static/js/angular/testing/websocket.js',
       '../../src/maasserver/static/js/angular/*/tests/test_*.js',
       '../../src/maasserver/static/partials/*.html'
     ],

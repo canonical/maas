@@ -10,14 +10,6 @@ describe("maasReleaseName", function() {
   // Load the MAAS module.
   beforeEach(angular.mock.module("MAAS"));
 
-  // Load the required services and factories.
-  var $q, GeneralManager, ManagerHelperService;
-  beforeEach(inject(function($injector) {
-    $q = $injector.get("$q");
-    GeneralManager = $injector.get("GeneralManager");
-    ManagerHelperService = $injector.get("ManagerHelperService");
-  }));
-
   // Create a new scope before each test.
   var $scope;
   beforeEach(inject(function($rootScope) {

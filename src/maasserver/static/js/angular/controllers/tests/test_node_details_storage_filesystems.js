@@ -3,7 +3,7 @@ describe("NodeAddSpecialFilesystemController", function() {
   beforeEach(angular.mock.module("MAAS"));
 
   // Grab the needed angular pieces.
-  var $controller, $rootScope, $parentScope, $scope, $q;
+  var $controller, $rootScope, $parentScope, $scope;
   beforeEach(inject(function($injector) {
     $controller = $injector.get("$controller");
     $rootScope = $injector.get("$rootScope");

@@ -5,6 +5,7 @@
  */
 
 import { makeName } from "testing/utils";
+import MockWebSocket from "testing/websocket";
 
 describe("PollingManager", function() {
   // Load the MAAS module.
@@ -96,7 +97,6 @@ describe("PollingManager", function() {
 
   describe("_pollAgain", function() {
     it("sets _nextPromise and calls _poll after timeout", function() {
-      var sentinel = {};
       spyOn(TestManager, "_poll");
       TestManager._pollAgain(1);
 
@@ -108,7 +108,6 @@ describe("PollingManager", function() {
 
   describe("_poll", function() {
     it("calls reloadItems", function() {
-      var sentinel = {};
       var defer = $q.defer();
       spyOn(TestManager, "reloadItems").and.returnValue(defer.promise);
       TestManager._poll();
@@ -116,7 +115,6 @@ describe("PollingManager", function() {
     });
 
     it("calls _pollAgain with timeout", function() {
-      var sentinel = {};
       var defer = $q.defer();
       spyOn(TestManager, "_pollAgain");
       spyOn(TestManager, "reloadItems").and.returnValue(defer.promise);
@@ -129,7 +127,6 @@ describe("PollingManager", function() {
     });
 
     it("calls _pollAgain with empty timeout", function() {
-      var sentinel = {};
       var defer = $q.defer();
       spyOn(TestManager, "_pollAgain");
       spyOn(TestManager, "reloadItems").and.returnValue(defer.promise);
@@ -142,7 +139,6 @@ describe("PollingManager", function() {
     });
 
     it("calls _pollAgain with error timeout", function() {
-      var sentinel = {};
       var defer = $q.defer();
       spyOn(TestManager, "_pollAgain");
       spyOn(TestManager, "reloadItems").and.returnValue(defer.promise);

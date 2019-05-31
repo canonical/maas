@@ -64,6 +64,7 @@ describe("LogService", function() {
         var logFunction = LogService[scenario.func];
         var message = makeName();
         logFunction(message);
+        // eslint-disable-next-line no-console
         expect(console[scenario.func]).toHaveBeenCalled();
       }
     );
@@ -82,6 +83,7 @@ describe("LogService", function() {
         var logFunction = LogService[scenario.func];
         var message = makeName();
         logFunction(message);
+        // eslint-disable-next-line no-console
         expect(console[scenario.func]).not.toHaveBeenCalled();
       }
     );

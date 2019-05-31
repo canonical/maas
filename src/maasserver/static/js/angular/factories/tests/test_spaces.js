@@ -9,20 +9,11 @@ describe("SpacesManager", function() {
   beforeEach(angular.mock.module("MAAS"));
 
   // Load the SpacesManager.
-  var SpacesManager, SubnetsManager, RegionConnection;
+  var SpacesManager, RegionConnection;
   beforeEach(inject(function($injector) {
     SpacesManager = $injector.get("SpacesManager");
-    SubnetsManager = $injector.get("SubnetsManager");
     RegionConnection = $injector.get("RegionConnection");
   }));
-
-  // Make a fake subnet.
-  function makeSubnet() {
-    return {
-      id: makeInteger(0, 5000),
-      name: makeName("subnet")
-    };
-  }
 
   it("set requires attributes", function() {
     expect(SpacesManager._pk).toBe("id");

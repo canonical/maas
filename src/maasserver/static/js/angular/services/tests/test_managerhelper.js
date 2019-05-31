@@ -18,11 +18,10 @@ describe("ManagerHelperService", function() {
   }));
 
   // Load the ManagerHelperService.
-  var ManagerHelperService, RegionConnection, ErrorService;
+  var ManagerHelperService, RegionConnection;
   beforeEach(inject(function($injector) {
     ManagerHelperService = $injector.get("ManagerHelperService");
     RegionConnection = $injector.get("RegionConnection");
-    ErrorService = $injector.get("ErrorService");
   }));
 
   // Makes a fake manager.

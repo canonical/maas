@@ -5,6 +5,7 @@
  */
 
 import { makeInteger, makeName } from "testing/utils";
+import MockWebSocket from "testing/websocket";
 
 describe("SettingsController", function() {
   // Load the MAAS module.
@@ -577,6 +578,7 @@ describe("SettingsController", function() {
       defer.reject(errorMsg);
       $scope.$digest();
       expect(snippet.enabled).toBe(false);
+      // eslint-disable-next-line no-console
       expect(console.log).toHaveBeenCalledWith(errorMsg);
     });
   });

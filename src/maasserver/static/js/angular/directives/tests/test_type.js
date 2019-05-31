@@ -54,7 +54,7 @@ describe("ngType", function() {
   it("rejects invalid input type", function() {
     var type = "text";
     $scope.type = type;
-    var directive = compileDirective("type");
+    compileDirective("type");
     // Change the type to something invalid.
     type = makeName("type");
     $scope.type = type;

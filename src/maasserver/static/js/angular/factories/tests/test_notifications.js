@@ -17,23 +17,6 @@ describe("NotificationsManager", function() {
     NotificationsManager = $injector.get("NotificationsManager");
   }));
 
-  // Make a random notification.
-  function makeNotification(id, selected) {
-    var notification = {
-      name: makeName("name"),
-      authoritative: true
-    };
-    if (angular.isDefined(id)) {
-      notification.id = id;
-    } else {
-      notification.id = makeInteger(1, 100);
-    }
-    if (angular.isDefined(selected)) {
-      notification.$selected = selected;
-    }
-    return notification;
-  }
-
   it("set requires attributes", function() {
     expect(NotificationsManager._pk).toBe("id");
     expect(NotificationsManager._handler).toBe("notification");

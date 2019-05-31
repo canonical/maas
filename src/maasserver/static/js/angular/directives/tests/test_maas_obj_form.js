@@ -296,7 +296,7 @@ describe("maasObjForm", function() {
     });
 
     it("calls on-change function", function() {
-      var directive, options;
+      var options;
       $scope.obj = {};
       $scope.manager = {};
       $scope.changeForm = function(key, val, form) {
@@ -338,7 +338,7 @@ describe("maasObjForm", function() {
   });
 
   describe("checkboxes", function() {
-    var directive, options;
+    var directive;
     beforeEach(function() {
       $scope.obj = {
         key: []
@@ -377,7 +377,7 @@ describe("maasObjForm", function() {
   });
 
   describe("tags", function() {
-    var directive, options;
+    var directive;
     beforeEach(function() {
       $scope.obj = {
         key: []
@@ -406,7 +406,7 @@ describe("maasObjForm", function() {
   });
 
   describe("onoffswitch", function() {
-    var directive, options;
+    var directive;
     beforeEach(function() {
       $scope.obj = {
         key: false
@@ -435,7 +435,7 @@ describe("maasObjForm", function() {
   });
 
   describe("slider", function() {
-    var directive, options;
+    var directive;
     beforeEach(function() {
       $scope.obj = {
         key: []
@@ -464,7 +464,7 @@ describe("maasObjForm", function() {
   });
 
   describe("hidden", function() {
-    var directive, options;
+    var directive;
     beforeEach(function() {
       $scope.obj = {
         key: false
@@ -705,7 +705,6 @@ describe("maasObjForm", function() {
 
     it("sets field error on both fields", function() {
       var field1 = angular.element(directive.find("#key1"));
-      var field2 = angular.element(directive.find("#key2"));
       var selector1 = "label[for='key1'] + .p-form__control";
       var selector2 = "label[for='key2'] + .p-form__control";
       var control1 = angular.element(directive.find(selector1));
@@ -1139,7 +1138,6 @@ describe("maasObjForm", function() {
   });
 
   describe("unregisterField", function() {
-    var directive;
     beforeEach(function() {
       $scope.obj = {};
       $scope.manager = {};
@@ -1153,7 +1151,7 @@ describe("maasObjForm", function() {
         "</div>",
         "</maas-obj-form>"
       ].join("");
-      directive = compileDirective(html);
+      compileDirective(html);
     });
 
     it("fields is unregistered when removed", function() {

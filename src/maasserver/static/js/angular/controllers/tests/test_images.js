@@ -9,11 +9,10 @@ describe("ImagesController", function() {
   beforeEach(angular.mock.module("MAAS"));
 
   // Grab the needed angular pieces.
-  var $controller, $rootScope, $location, $scope, $q;
+  var $controller, $rootScope, $scope, $q;
   beforeEach(inject(function($injector) {
     $controller = $injector.get("$controller");
     $rootScope = $injector.get("$rootScope");
-    $location = $injector.get("$location");
     $scope = $rootScope.$new();
     $q = $injector.get("$q");
   }));

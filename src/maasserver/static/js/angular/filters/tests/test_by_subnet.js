@@ -61,7 +61,7 @@ describe("filterBySubnetOrVlan", function() {
   beforeEach(angular.mock.module("MAAS"));
 
   // Load filterBySubnet function.
-  var filterBySubnet;
+  var filterBySubnetOrVlan;
   beforeEach(inject(function($filter) {
     filterBySubnetOrVlan = $filter("filterBySubnetOrVlan");
   }));

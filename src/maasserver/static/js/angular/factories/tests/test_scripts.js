@@ -9,10 +9,9 @@ describe("ScriptsManager", function() {
   beforeEach(angular.mock.module("MAAS"));
 
   // Load the ScriptsManager.
-  var ScriptsManager, RegionConnection;
+  var ScriptsManager;
   beforeEach(inject(function($injector) {
     ScriptsManager = $injector.get("ScriptsManager");
-    RegionConnection = $injector.get("RegionConnection");
   }));
 
   it("set requires attributes", function() {

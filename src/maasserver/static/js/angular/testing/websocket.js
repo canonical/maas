@@ -134,3 +134,5 @@ MockWebSocket.prototype.send = function(data) {
     }
   });
 };
+
+export default MockWebSocket;

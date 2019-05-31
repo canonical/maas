@@ -4,6 +4,8 @@
  * Unit tests for notifications directive.
  */
 
+import MockWebSocket from "testing/websocket";
+
 describe("maasNotifications", function() {
   // Load the MAAS module.
   beforeEach(angular.mock.module("MAAS"));

@@ -12,9 +12,8 @@ describe("maasSwitchesTable", function() {
 
   // Preload the $templateCache with empty contents. We only test the
   // controller of the directive, not the template.
-  var $q, $templateCache;
+  var $templateCache;
   beforeEach(inject(function($injector) {
-    $q = $injector.get("$q");
     $templateCache = $injector.get("$templateCache");
     $templateCache.put("static/partials/switches-table.html?v=undefined", "");
   }));

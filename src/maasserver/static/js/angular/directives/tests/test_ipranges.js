@@ -5,6 +5,7 @@
  */
 
 import { makeInteger } from "testing/utils";
+import MockWebSocket from "testing/websocket";
 
 describe("maasIPRanges", function() {
   // Load the MAAS module.

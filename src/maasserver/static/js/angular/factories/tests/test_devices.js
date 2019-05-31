@@ -5,6 +5,7 @@
  */
 
 import { makeFakeResponse, makeName } from "testing/utils";
+import MockWebSocket from "testing/websocket";
 
 describe("DevicesManager", function() {
   // Load the MAAS module.
