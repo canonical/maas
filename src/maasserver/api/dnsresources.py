@@ -289,10 +289,20 @@ class DNSResourceHandler(OperationsHandler):
         @param (int) "{id}" [required=true] The DNS resource id.
 
         @param (string) "fqdn" [required=false] Hostname (with domain) for the
-        dnsresource.
+        dnsresource.  Either ``fqdn`` or ``name`` and ``domain`` must be
+        specified.  ``fqdn`` is ignored if either ``name`` or ``domain`` is
+        given.
 
-        @param (string) "ip_address" [required=false] Address to assign to the
-        dnsresource.
+        @param (string) "name" [required=false] Hostname (without domain).
+
+        @param (string) "domain" [required=false] Domain (name or id).
+
+        @param (string) "address_ttl" [required=false] Default TTL for entries
+        in this zone.
+
+        @param (string) "ip_addresses" [required=false] Address (ip or id) to
+        assign to the dnsresource. This creates an A or AAAA record,
+        for each of the supplied ip_addresses, IPv4 or IPv6, respectively.
 
         @success (http-status-code) "server-success" 200
         @success (json) "success-json" A JSON object containing the updated DNS
@@ -309,10 +319,32 @@ class DNSResourceHandler(OperationsHandler):
         @error-example "not-found"
             Not Found
         """
+        data = request.data.copy()
+        fqdn = data.get('fqdn', None)
+        name = data.get('name', None)
+        domainname = data.get('domain', None)
+        # If the user gave us fqdn and did not give us name/domain, expand
+        # fqdn.
+        if domainname is None and name is None and fqdn is not None:
+            # Assume that we're working with an address, since we ignore
+            # rrtype and rrdata.
+            (name, domainname) = separate_fqdn(fqdn, 'A')
+            data['domain'] = domainname
+            data['name'] = name
+        # If the domain is a name, make it an id.
+        if domainname is not None:
+            if domainname.isdigit():
+                domain = Domain.objects.get_domain_or_404(
+                    domainname, user=request.user, perm=NodePermission.view)
+            else:
+                domain = Domain.objects.get_domain_or_404(
+                    "name:%s" % domainname, user=request.user,
+                    perm=NodePermission.view)
+            data['domain'] = domain.id
         dnsresource = DNSResource.objects.get_dnsresource_or_404(
             id, request.user, NodePermission.admin)
         form = DNSResourceForm(
-            instance=dnsresource, data=request.data, request=request)
+            instance=dnsresource, data=data, request=request)
         if form.is_valid():
             return form.save()
         else:
