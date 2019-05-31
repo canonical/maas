@@ -498,6 +498,58 @@ class TestMachineHandler(MAASServerTestCase):
             queries_total, 12,
             "Number of queries has changed; make sure this is expected.")
 
+    def test_trigger_update_updates_script_result_cache(self):
+        owner = factory.make_User()
+        node = factory.make_Node(owner=owner)
+        commissioning_script_set = factory.make_ScriptSet(
+            node=node, result_type=RESULT_TYPE.COMMISSIONING)
+        testing_script_set = factory.make_ScriptSet(
+            node=node, result_type=RESULT_TYPE.TESTING)
+        node.current_commissioning_script_set = commissioning_script_set
+        node.current_testing_script_set = testing_script_set
+        node.save()
+        for _ in range(10):
+            factory.make_ScriptResult(
+                status=SCRIPT_STATUS.PASSED,
+                script_set=commissioning_script_set)
+            factory.make_ScriptResult(
+                status=SCRIPT_STATUS.PASSED,
+                script_set=testing_script_set)
+
+        handler = MachineHandler(owner, {})
+        # Simulate a trigger pushing an update to the UI
+        _, _, ret = handler.on_listen_for_active_pk(
+            'update', node.system_id, node)
+        self.assertEquals(ret['commissioning_script_count'], 10)
+        self.assertEquals(ret['testing_script_count'], 10)
+
+    def test_cache_clears_on_reload(self):
+        owner = factory.make_User()
+        node = factory.make_Node(owner=owner)
+        commissioning_script_set = factory.make_ScriptSet(
+            node=node, result_type=RESULT_TYPE.COMMISSIONING)
+        testing_script_set = factory.make_ScriptSet(
+            node=node, result_type=RESULT_TYPE.TESTING)
+        node.current_commissioning_script_set = commissioning_script_set
+        node.current_testing_script_set = testing_script_set
+        node.save()
+        for _ in range(10):
+            factory.make_ScriptResult(
+                status=SCRIPT_STATUS.PASSED,
+                script_set=commissioning_script_set)
+            factory.make_ScriptResult(
+                status=SCRIPT_STATUS.PASSED,
+                script_set=testing_script_set)
+
+        handler = MachineHandler(owner, {})
+        handler.list({})
+        handler.list({})
+        count = 0
+        for result_type in handler._script_results[node.id].values():
+            for _ in result_type:
+                count += 1
+        self.assertEqual(20, count)
+
     def test_dehydrate_owner_empty_when_None(self):
         owner = factory.make_User()
         handler = MachineHandler(owner, {})
