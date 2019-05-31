@@ -32,6 +32,7 @@ class NodeResultHandler(TimestampedModelHandler):
             'clear',
             'get',
             'get_result_data',
+            'get_history',
             'list',
         ]
         listen_channels = ['scriptresult']
@@ -88,18 +89,6 @@ class NodeResultHandler(TimestampedModelHandler):
             # Script object.
             data["hardware_type"] = HARDWARE_TYPE.NODE
             data["tags"] = 'commissioning'
-        data["history_list"] = [
-            {
-                "id": history.id,
-                "updated": dehydrate_datetime(history.updated),
-                "status": history.status,
-                "status_name": history.status_name,
-                "runtime": history.runtime,
-                "starttime": history.starttime,
-                "endtime": history.endtime,
-                "estimated_runtime": history.estimated_runtime,
-            } for history in obj.history
-        ]
         try:
             results = obj.read_results()
         except ValidationError as e:
@@ -212,6 +201,26 @@ class NodeResultHandler(TimestampedModelHandler):
             return script_result.result.decode().strip()
         else:
             return "Unknown data_type %s" % data_type
+
+    def get_history(self, params):
+        """Return a list of historic results."""
+        id = params.get('id')
+        script_result = ScriptResult.objects.filter(id=id).only(
+            'script_id', 'script_set_id', 'physical_blockdevice_id',
+            'script_name').first()
+        history_qs = script_result.history.only(
+            'id', 'updated', 'status', 'started', 'ended', 'script_id',
+            'script_name', 'script_set_id', 'physical_blockdevice_id')
+        return [{
+            'id': history.id,
+            'updated': dehydrate_datetime(history.updated),
+            'status': history.status,
+            'status_name': history.status_name,
+            'runtime': history.runtime,
+            'starttime': history.starttime,
+            'endtime': history.endtime,
+            'estimated_runtime': history.estimated_runtime,
+        } for history in history_qs]
 
     def clear(self, params):
         """Clears the current node for events.

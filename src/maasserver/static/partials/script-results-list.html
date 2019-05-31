@@ -44,7 +44,7 @@
                                     <div class="table__controls-menu ng-hide" role="menu" data-ng-show="isToggled">
                                         <button class="table__controls-action" aria-label="View metrics" data-ng-if="!result.showing_results" data-ng-click="toggleMenu(); result.showing_history = false; result.showing_results = true">View metrics</button>
                                         <button class="table__controls-action" aria-label="Hide metrics" data-ng-if="result.showing_results" data-ng-click="toggleMenu(); result.showing_history = false; result.showing_results = false">Hide metrics</button>
-                                        <button class="table__controls-action" aria-label="View previous {$ result.result_section $}" data-ng-if="!result.showing_history" data-ng-click="toggleMenu(); result.showing_results = false; result.showing_history = true">View previous {$ result.result_section $}</button>
+                                        <button class="table__controls-action" aria-label="View previous {$ result.result_section $}" data-ng-if="!result.showing_history" data-ng-click="toggleMenu(); loadHistory(result)">View previous {$ result.result_section $}</button>
                                         <button class="table__controls-action" aria-label="Hide previous {$ result.result_section $}" data-ng-if="result.showing_history" data-ng-click="toggleMenu(); result.showing_results = false; result.showing_history = false">Hide previous {$ result.result_section $}</button>
                                     </div>
                                 </div>
@@ -60,6 +60,11 @@
                                 </div>
                             </div>
 
+			    <div class="p-table-expanding__panel col-12" aria-label="loading history" data-ng-if="result.loading_history">
+			        <div class="col-12">
+				    <p class="u-text--loading"><i class="p-icon--spinner u-animation--spin"></i>&nbsp;&nbsp;Loading...</p>
+				</div>
+			    </div>
                             <div class="table__dropdown" aria-label="history" data-ng-if="result.showing_history">
                                 <div class="table__row is-active">
                                     <div class="table__data table-col--100">
@@ -83,6 +88,7 @@
                                         <p class="u-align--center u-margin--bottom">
                                             <button class="button--secondary button--inline" data-ng-click="result.showing_history = false">Hide previous {$ result.result_section $}</button>
                                         </p>
+
                                     </div>
                                 </div>
                             </div>

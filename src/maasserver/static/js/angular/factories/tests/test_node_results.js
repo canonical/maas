@@ -1,4 +1,4 @@
-/* Copyright 2017 Canonical Ltd.  This software is licensed under the
+/* Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * Unit tests for NodeResultsManagerFactory.
@@ -527,6 +527,27 @@ describe("NodeResultsManagerFactory", function() {
                 expect(sentObject.method).toBe("noderesult.get_result_data");
                 expect(sentObject.params.id).toEqual(id);
                 expect(sentObject.params.data_type).toEqual(data_type);
+                done();
+            });
+        });
+    });
+
+    describe("get_history", function() {
+
+        it("calls NodeResultHandler.get_history", function(done) {
+            var node = makenode();
+            var output = [{
+                id: makeInteger(0, 100),
+                name: makeName("output"),
+                status: makeInteger(0, 100)
+            }];
+            var id = makeInteger(0, 100);
+            webSocket.returnData.push(makeFakeResponse(output));
+            NodeResultsManager = NodeResultsManagerFactory.getManager(node);
+            NodeResultsManager.get_history(id).then(function() {
+                var sentObject = angular.fromJson(webSocket.sentData[0]);
+                expect(sentObject.method).toBe("noderesult.get_history");
+                expect(sentObject.params.id).toEqual(id);
                 done();
             });
         });

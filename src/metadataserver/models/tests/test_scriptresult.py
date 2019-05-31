@@ -1,4 +1,4 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 __all__ = []
@@ -19,6 +19,7 @@ from maasserver.models import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
+from maastesting.djangotestcase import CountQueries
 from maastesting.matchers import (
     DocTestMatches,
     MockCalledOnceWith,
@@ -28,7 +29,10 @@ from metadataserver.enum import (
     SCRIPT_STATUS,
     SCRIPT_STATUS_CHOICES,
 )
-from metadataserver.models import scriptresult as scriptresult_module
+from metadataserver.models import (
+    ScriptResult,
+    scriptresult as scriptresult_module,
+)
 from provisioningserver.events import EVENT_TYPES
 import yaml
 
@@ -623,6 +627,26 @@ class TestScriptResult(MAASServerTestCase):
         factory.make_ScriptResult(script_name=script_name)
         script_result = script_results[-1]
         self.assertItemsEqual(script_results, script_result.history)
+
+    def test_history_query_count(self):
+        script_name = factory.make_name('script_name')
+        script_set = factory.make_ScriptSet()
+        script_results = [
+            factory.make_ScriptResult(
+                script_name=script_name, script_set=script_set)
+            for _ in range(10)
+        ]
+        queries_one = CountQueries()
+        script_result_one = ScriptResult.objects.get(id=script_results[0].id)
+        with queries_one:
+            script_result_one.history
+        queries_many = CountQueries()
+        script_result_many = ScriptResult.objects.get(
+            id=script_results[-1].id)
+        with queries_many:
+            script_result_many.history
+        self.assertEquals(1, queries_one.num_queries)
+        self.assertEquals(1, queries_many.num_queries)
 
     def test_history_storage_device(self):
         # Regression test for LP: #1721524
