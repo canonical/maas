@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The user handler for the WebSocket connection."""
@@ -35,9 +35,9 @@ class UserHandler(Handler):
             "user",
         ]
 
-    def get_queryset(self):
+    def get_queryset(self, for_list=False):
         """Return `QuerySet` for users only viewable by `user`."""
-        users = super(UserHandler, self).get_queryset()
+        users = super(UserHandler, self).get_queryset(for_list=for_list)
         if reload_object(self.user).is_superuser:
             # Super users can view all users, except for the built-in users
             return users.exclude(username__in=SYSTEM_USERS)

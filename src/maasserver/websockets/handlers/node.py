@@ -53,6 +53,9 @@ from metadataserver.enum import (
 )
 from metadataserver.models.scriptresult import ScriptResult
 from metadataserver.models.scriptset import get_status_from_qs
+from provisioningserver.refresh.node_info_scripts import (
+    LIST_MODALIASES_OUTPUT_NAME,
+)
 from provisioningserver.tags import merge_details_cleanly
 
 
@@ -68,7 +71,8 @@ NODE_TYPE_TO_LINK_TYPE = {
 def node_prefetch(queryset, *args):
     return (
         queryset
-        .select_related('boot_interface', 'owner', 'zone', 'domain', *args)
+        .select_related(
+            'boot_interface', 'owner', 'zone', 'domain', 'bmc', *args)
         .prefetch_related('blockdevice_set__iscsiblockdevice')
         .prefetch_related('blockdevice_set__physicalblockdevice')
         .prefetch_related('blockdevice_set__virtualblockdevice')
@@ -83,14 +87,14 @@ def node_prefetch(queryset, *args):
 
 class NodeHandler(TimestampedModelHandler):
 
-    default_osystem = None
-    default_distro_series = None
-    _script_results = {}
-
     class Meta:
         abstract = True
         pk = 'system_id'
         pk_type = str
+
+    def __init__(self, user, cache):
+        super().__init__(user, cache)
+        self._script_results = {}
 
     def dehydrate_owner(self, user):
         """Return owners username."""
@@ -167,35 +171,10 @@ class NodeHandler(TimestampedModelHandler):
         data["node_type_display"] = obj.get_node_type_display()
         data["link_type"] = NODE_TYPE_TO_LINK_TYPE[obj.node_type]
 
-        data["extra_macs"] = [
-            "%s" % mac_address
-            for mac_address in obj.get_extra_macs()
-        ]
-        subnets = self.get_all_subnets(obj)
-        data["subnets"] = [subnet.cidr for subnet in subnets]
-        data["fabrics"] = self.get_all_fabric_names(obj, subnets)
-        data["spaces"] = self.get_all_space_names(subnets)
-
-        data["tags"] = [
-            tag.name
-            for tag in obj.tags.all()
-        ]
-        data["metadata"] = {
-            metadata.key: metadata.value
-            for metadata in obj.nodemetadata_set.all()
-        }
-        if obj.node_type != NODE_TYPE.DEVICE:
-            data["architecture"] = obj.architecture
-            data["memory"] = obj.display_memory()
-            data["status"] = obj.display_status()
-            data["status_code"] = obj.status
-            boot_interface = obj.get_boot_interface()
-            if boot_interface is not None:
-                data["pxe_mac"] = "%s" % boot_interface.mac_address
-                data["pxe_mac_vendor"] = obj.get_pxe_mac_vendor()
-            else:
-                data["pxe_mac"] = data["pxe_mac_vendor"] = ""
-
+        if obj.node_type == NODE_TYPE.MACHINE or (
+                obj.is_controller and not for_list):
+            # Disk count and storage amount is shown on the machine listing
+            # page and the machine and controllers details page.
             blockdevices = self.get_blockdevices_for(obj)
             physical_blockdevices = [
                 blockdevice for blockdevice in blockdevices
@@ -208,16 +187,6 @@ class NodeHandler(TimestampedModelHandler):
                     for blockdevice in physical_blockdevices
                     ) / (1000 ** 3))
             data["storage_tags"] = self.get_all_storage_tags(blockdevices)
-            data["grouped_storages"] = self.get_grouped_storages(
-                physical_blockdevices)
-
-            data["osystem"] = obj.get_osystem(
-                default=self.default_osystem)
-            data["distro_series"] = obj.get_distro_series(
-                default=self.default_distro_series)
-            data["dhcp_on"] = self.get_providing_dhcp(obj)
-
-        if obj.node_type != NODE_TYPE.DEVICE:
             commissioning_script_results = []
             testing_script_results = []
             log_results = set()
@@ -235,12 +204,12 @@ class NodeHandler(TimestampedModelHandler):
                             RESULT_TYPE.COMMISSIONING):
                         commissioning_script_results.append(script_result)
                         if (script_result.name in script_output_nsmap and
-                                script_result.status == SCRIPT_STATUS.PASSED):
+                                script_result.status ==
+                                SCRIPT_STATUS.PASSED):
                             log_results.add(script_result.name)
                     elif (script_result.script_set.result_type ==
                             RESULT_TYPE.TESTING):
                         testing_script_results.append(script_result)
-
             data["commissioning_script_count"] = len(
                 commissioning_script_results)
             data["commissioning_status"] = get_status_from_qs(
@@ -250,11 +219,41 @@ class NodeHandler(TimestampedModelHandler):
                     commissioning_script_results).replace(
                         'test', 'commissioning script'))
             data["testing_script_count"] = len(testing_script_results)
-            data["testing_status"] = get_status_from_qs(testing_script_results)
+            data["testing_status"] = get_status_from_qs(
+                testing_script_results)
             data["testing_status_tooltip"] = (
-                self.dehydrate_hardware_status_tooltip(testing_script_results))
+                self.dehydrate_hardware_status_tooltip(
+                    testing_script_results))
             data["has_logs"] = (
-                log_results.difference(script_output_nsmap.keys()) == set())
+                log_results.difference(script_output_nsmap.keys()) ==
+                set())
+        else:
+            blockdevices = []
+
+        if obj.node_type != NODE_TYPE.DEVICE:
+            # These values are not defined on a device.
+            data["architecture"] = obj.architecture
+            data["osystem"] = obj.osystem
+            data["distro_series"] = obj.distro_series
+            data["memory"] = obj.display_memory()
+            data["status"] = obj.display_status()
+            data["status_code"] = obj.status
+
+        # Filters are only available on machines and devices.
+        if not obj.is_controller:
+            # For filters
+            subnets = self.get_all_subnets(obj)
+            data["subnets"] = [subnet.cidr for subnet in subnets]
+            data["fabrics"] = self.get_all_fabric_names(obj, subnets)
+            data["spaces"] = self.get_all_space_names(subnets)
+            data["tags"] = [
+                tag.name
+                for tag in obj.tags.all()
+            ]
+            data["extra_macs"] = [
+                "%s" % mac_address
+                for mac_address in obj.get_extra_macs()
+            ]
 
         if not for_list:
             data["on_network"] = obj.on_network()
@@ -262,11 +261,18 @@ class NodeHandler(TimestampedModelHandler):
                 # XXX lamont 2017-02-15 Much of this should be split out into
                 # individual methods, rather than having this huge block of
                 # dense code here.
+                # Status of the commissioning, testing, and logs tabs
+                data["metadata"] = {
+                    metadata.key: metadata.value
+                    for metadata in obj.nodemetadata_set.all()
+                }
+
                 # Network
                 data["interfaces"] = [
                     self.dehydrate_interface(interface, obj)
                     for interface in obj.interface_set.all().order_by('name')
                 ]
+                data["dhcp_on"] = self.get_providing_dhcp(obj)
 
                 data["hwe_kernel"] = make_hwe_kernel_ui_text(obj.hwe_kernel)
 
@@ -294,6 +300,8 @@ class NodeHandler(TimestampedModelHandler):
                     self.dehydrate_filesystem(filesystem)
                     for filesystem in obj.special_filesystems.order_by("id")
                 ]
+                data["grouped_storages"] = self.get_grouped_storages(
+                    physical_blockdevices)
 
                 # Events
                 data["events"] = self.dehydrate_events(obj)
@@ -304,7 +312,18 @@ class NodeHandler(TimestampedModelHandler):
 
                 # Third party drivers
                 if Config.objects.get_config('enable_third_party_drivers'):
-                    driver = get_third_party_driver(obj)
+                    # Pull modaliases from the cache
+                    modaliases = []
+                    for script_result in commissioning_script_results:
+                        if script_result.name == LIST_MODALIASES_OUTPUT_NAME:
+                            if script_result.status == SCRIPT_STATUS.PASSED:
+                                # STDOUT is deferred in the cache so load it.
+                                script_result = ScriptResult.objects.filter(
+                                    id=script_result.id).only(
+                                        'id', 'stdout').first()
+                                modaliases = script_result.stdout.decode(
+                                    'utf-8').splitlines()
+                    driver = get_third_party_driver(obj, modaliases)
                     if "module" in driver and "comment" in driver:
                         data["third_party_driver"] = {
                             "module": driver["module"],

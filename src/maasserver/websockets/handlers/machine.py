@@ -54,7 +54,6 @@ from maasserver.forms.interface import (
 from maasserver.forms.interface_link import InterfaceLinkForm
 from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.cacheset import CacheSet
-from maasserver.models.config import Config
 from maasserver.models.filesystem import Filesystem
 from maasserver.models.filesystemgroup import VolumeGroup
 from maasserver.models.interface import Interface
@@ -96,7 +95,20 @@ class MachineHandler(NodeHandler):
 
     class Meta(NodeHandler.Meta):
         abstract = False
-        queryset = node_prefetch(Machine.objects.all()).select_related('bmc')
+        queryset = node_prefetch(Machine.objects.all())
+        list_queryset = (
+            Machine.objects.select_related(
+                'boot_interface', 'owner', 'zone', 'domain')
+            .prefetch_related('blockdevice_set__iscsiblockdevice')
+            .prefetch_related('blockdevice_set__physicalblockdevice')
+            .prefetch_related('blockdevice_set__virtualblockdevice')
+            .prefetch_related(
+                'interface_set__ip_addresses__subnet__vlan__space')
+            .prefetch_related(
+                'interface_set__ip_addresses__subnet__vlan__fabric')
+            .prefetch_related('interface_set__vlan__fabric')
+            .prefetch_related('tags')
+        )
         allowed_methods = [
             'list',
             'get',
@@ -174,42 +186,24 @@ class MachineHandler(NodeHandler):
             "machine",
         ]
 
-    def get_queryset(self):
+    def get_queryset(self, for_list=False):
         """Return `QuerySet` for devices only viewable by `user`."""
         return Machine.objects.get_nodes(
-            self.user, NODE_PERMISSION.VIEW, from_nodes=self._meta.queryset)
-
-    def list(self, params):
-        """List objects.
-
-        Caches default_osystem and default_distro_series so only 2 queries are
-        made for the whole list of nodes.
-
-        Caches the hardware status so only one additional query is needed for
-        all nodes.
-        """
-        self.default_osystem = Config.objects.get_config('default_osystem')
-        self.default_distro_series = Config.objects.get_config(
-            'default_distro_series')
-        return super(MachineHandler, self).list(params)
+            self.user, NODE_PERMISSION.VIEW,
+            from_nodes=super().get_queryset(for_list=for_list))
 
     def dehydrate(self, obj, data, for_list=False):
         """Add extra fields to `data`."""
         data = super(MachineHandler, self).dehydrate(
             obj, data, for_list=for_list)
-        bmc = obj.bmc
-        if bmc is not None and bmc.bmc_type == BMC_TYPE.POD:
-            data['pod'] = bmc.id
 
-        if not for_list:
-            # Add info specific to a machine.
-            data["show_os_info"] = self.dehydrate_show_os_info(obj)
-            devices = [
-                self.dehydrate_device(device)
-                for device in obj.children.all()
-            ]
-            data["devices"] = sorted(
-                devices, key=itemgetter("fqdn"))
+        if obj.is_machine or not for_list:
+            boot_interface = obj.get_boot_interface()
+            if boot_interface is not None:
+                data["pxe_mac"] = "%s" % boot_interface.mac_address
+                data["pxe_mac_vendor"] = obj.get_pxe_mac_vendor()
+            else:
+                data["pxe_mac"] = data["pxe_mac_vendor"] = ""
 
         cpu_script_results = [
             script_result for script_result in
@@ -263,6 +257,18 @@ class MachineHandler(NodeHandler):
                 self.dehydrate_hardware_status_tooltip(script_results))
         else:
             data["status_tooltip"] = ""
+
+        if not for_list:
+            if obj.bmc is not None and obj.bmc.bmc_type == BMC_TYPE.POD:
+                data['pod'] = self.dehydrate_pod(obj.bmc)
+            # Add info specific to a machine.
+            data["show_os_info"] = self.dehydrate_show_os_info(obj)
+            devices = [
+                self.dehydrate_device(device)
+                for device in obj.children.all()
+            ]
+            data["devices"] = sorted(
+                devices, key=itemgetter("fqdn"))
 
         return data
 

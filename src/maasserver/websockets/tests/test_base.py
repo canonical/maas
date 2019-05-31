@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.base`"""
@@ -336,6 +336,25 @@ class TestHandler(MAASServerTestCase):
         self.assertRaises(
             HandlerDoesNotExistError,
             handler.get_object, {"system_id": machine.system_id})
+
+    def test_get_queryset(self):
+        queryset = MagicMock()
+        list_queryset = MagicMock()
+        handler = make_handler(
+            "TestHandler", queryset=queryset, list_queryset=list_queryset)
+        self.assertEqual(queryset, handler.get_queryset())
+
+    def test_get_queryset_list(self):
+        queryset = MagicMock()
+        list_queryset = MagicMock()
+        handler = make_handler(
+            "TestHandler", queryset=queryset, list_queryset=list_queryset)
+        self.assertEqual(list_queryset, handler.get_queryset(for_list=True))
+
+    def test_get_queryset_list_only_if_avail(self):
+        queryset = MagicMock()
+        handler = make_handler("TestHandler", queryset=queryset)
+        self.assertEqual(queryset, handler.get_queryset(for_list=True))
 
     def test_execute_only_allows_meta_allowed_methods(self):
         handler = self.make_nodes_handler(allowed_methods=['list'])

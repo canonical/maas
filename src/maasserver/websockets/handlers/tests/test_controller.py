@@ -1,4 +1,4 @@
-# Copyright 2016-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.controller`"""
@@ -12,6 +12,11 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.websockets.base import dehydrate_datetime
 from maasserver.websockets.handlers.controller import ControllerHandler
+from maastesting.djangotestcase import count_queries
+from metadataserver.enum import (
+    RESULT_TYPE,
+    SCRIPT_STATUS,
+)
 from testscenarios import multiply_scenarios
 from testtools.matchers import (
     ContainsDict,
@@ -64,6 +69,69 @@ class TestControllerHandler(MAASServerTestCase):
         result = handler.list({})
         self.assertEqual(1, len(result))
         self.assertEqual(NODE_TYPE.RACK_CONTROLLER, result[0].get('node_type'))
+
+    def test_list_num_queries_is_the_expected_number(self):
+        owner = factory.make_admin()
+        for _ in range(10):
+            node = factory.make_RegionRackController(owner=owner)
+            commissioning_script_set = factory.make_ScriptSet(
+                node=node, result_type=RESULT_TYPE.COMMISSIONING)
+            testing_script_set = factory.make_ScriptSet(
+                node=node, result_type=RESULT_TYPE.TESTING)
+            node.current_commissioning_script_set = commissioning_script_set
+            node.current_testing_script_set = testing_script_set
+            node.save()
+            for __ in range(10):
+                factory.make_ScriptResult(
+                    status=SCRIPT_STATUS.PASSED,
+                    script_set=commissioning_script_set)
+                factory.make_ScriptResult(
+                    status=SCRIPT_STATUS.PASSED,
+                    script_set=testing_script_set)
+
+        handler = ControllerHandler(owner, {})
+        queries_one, _ = count_queries(handler.list, {'limit': 1})
+        queries_total, _ = count_queries(handler.list, {})
+        # This check is to notify the developer that a change was made that
+        # affects the number of queries performed when doing a node listing.
+        # It is important to keep this number as low as possible. A larger
+        # number means regiond has to do more work slowing down its process
+        # and slowing down the client waiting for the response.
+        self.assertEqual(
+            queries_one, 3,
+            "Number of queries has changed; make sure this is expected.")
+        self.assertEqual(
+            queries_total, 3,
+            "Number of queries has changed; make sure this is expected.")
+
+    def test_get_num_queries_is_the_expected_number(self):
+        owner = factory.make_admin()
+        node = factory.make_RegionRackController(owner=owner)
+        commissioning_script_set = factory.make_ScriptSet(
+            node=node, result_type=RESULT_TYPE.COMMISSIONING)
+        testing_script_set = factory.make_ScriptSet(
+            node=node, result_type=RESULT_TYPE.TESTING)
+        node.current_commissioning_script_set = commissioning_script_set
+        node.current_testing_script_set = testing_script_set
+        node.save()
+        for __ in range(10):
+            factory.make_ScriptResult(
+                status=SCRIPT_STATUS.PASSED,
+                script_set=commissioning_script_set)
+            factory.make_ScriptResult(
+                status=SCRIPT_STATUS.PASSED,
+                script_set=testing_script_set)
+
+        handler = ControllerHandler(owner, {})
+        queries, _ = count_queries(handler.get, {'system_id': node.system_id})
+        # This check is to notify the developer that a change was made that
+        # affects the number of queries performed when doing a node get.
+        # It is important to keep this number as low as possible. A larger
+        # number means regiond has to do more work slowing down its process
+        # and slowing down the client waiting for the response.
+        self.assertEqual(
+            queries, 28,
+            "Number of queries has changed; make sure this is expected.")
 
     def test_get_form_class_for_create(self):
         user = factory.make_admin()

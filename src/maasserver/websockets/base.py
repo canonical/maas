@@ -80,6 +80,7 @@ class HandlerOptions(object):
     handler_name = None
     object_class = None
     queryset = None
+    list_queryset = None
     pk = 'id'
     pk_type = int
     fields = None
@@ -280,19 +281,22 @@ class Handler(metaclass=HandlerMetaclass):
             })
         pk = params[self._meta.pk]
         try:
-            obj = self.get_queryset().get(**{
+            obj = self.get_queryset(for_list=False).get(**{
                 self._meta.pk: pk,
                 })
         except self._meta.object_class.DoesNotExist:
             raise HandlerDoesNotExistError(pk)
         return obj
 
-    def get_queryset(self):
+    def get_queryset(self, for_list=False):
         """Return `QuerySet` used by this handler.
 
         Override if you need to modify the queryset based on the current user.
         """
-        return self._meta.queryset
+        if for_list and self._meta.list_queryset is not None:
+            return self._meta.list_queryset
+        else:
+            return self._meta.queryset
 
     def get_form_class(self, action):
         """Return the form class used for `action`.
@@ -349,7 +353,7 @@ class Handler(metaclass=HandlerMetaclass):
         :param offset: Offset into the queryset to return.
         :param limit: Maximum number of objects to return.
         """
-        queryset = self.get_queryset()
+        queryset = self.get_queryset(for_list=True)
         queryset = queryset.order_by(self._meta.batch_key)
         if "start" in params:
             queryset = queryset.filter(**{
