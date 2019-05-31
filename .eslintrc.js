@@ -4,12 +4,14 @@ module.exports = {
         "es6": true,
         "jasmine": true
     },
-    "extends": ["angular", "eslint:recommended"],
+    "extends": ["eslint:recommended"],
     "globals": {
         "__dirname": false,
+        "$": false,
         "angular": false,
         "Atomics": "readonly",
         "inject": false,
+        "MAAS_config": false,
         "setTimeout": false,
         "SharedArrayBuffer": "readonly"
     },
@@ -18,7 +20,6 @@ module.exports = {
         "sourceType": "module"
     },
     "rules": {
-        "angular/di": [2, "function", { "matchNames": true }],
         "no-unused-vars": [2, { "args": "none" }]
     }
 };

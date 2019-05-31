@@ -1219,20 +1219,20 @@ function NodeDetailsController(
       // NEW
       case 0:
       // COMMISSIONING
-      case 1:
+      case 1: // eslint-disable-line no-fallthrough
       // FAILED_COMMISSIONING
-      case 2:
+      case 2: // eslint-disable-line no-fallthrough
       // TESTING
-      case 21:
+      case 21: // eslint-disable-line no-fallthrough
       // FAILED_TESTING
-      case 22:
+      case 22: // eslint-disable-line no-fallthrough
         return false;
     }
     switch ($scope.node.testing_status) {
       // Tests haven't been run
       case -1:
       // Tests have passed
-      case 2:
+      case 2: // eslint-disable-line no-fallthrough
         return false;
     }
     return true;

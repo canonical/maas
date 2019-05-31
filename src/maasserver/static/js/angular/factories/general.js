@@ -378,7 +378,7 @@ function GeneralManager($q, $timeout, RegionConnection, ErrorService) {
       },
       function(error) {
         // Don't raise the error, just log it and try again.
-        console.log(error);
+        console.log(error); // eslint-disable-line no-console
         self._pollAgain(data, self._pollErrorTimeout);
       }
     );

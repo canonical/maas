@@ -16,7 +16,9 @@ function JSONService() {
       if (obj && typeof obj === "object" && obj !== null) {
         return obj;
       }
-    } catch (e) {}
+    } catch (e) {
+      // Ignore this error.
+    }
     return null;
   };
 }

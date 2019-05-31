@@ -33,11 +33,13 @@ function LogService($window) {
   };
 
   // Standard logging functions.
+  /* eslint-disable no-console */
   self._debug = console.debug;
   self._log = console.log;
   self._info = console.info;
   self._warn = console.warn;
   self._error = console.error;
+  /* eslint-enable no-console */
 
   // Formats the specified time (in milliseconds) in seconds.
   this.formatMilliseconds = function(milliseconds) {

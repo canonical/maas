@@ -171,8 +171,6 @@ function PodsListController(
 
   // Perform the action on all pods.
   $scope.actionGo = function() {
-    var extra = {};
-
     // Setup actionProgress.
     resetActionProgress();
     $scope.action.progress.total = $scope.selectedItems.length;

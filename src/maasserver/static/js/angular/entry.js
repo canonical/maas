@@ -265,6 +265,7 @@ function configureMaas(
     path += "/";
   }
   if (path === href) {
+    // eslint-disable-next-line no-unused-vars
     var routes = $routeProvider
       .when("/intro", {
         templateUrl: versionedPath("static/partials/intro.html"),
