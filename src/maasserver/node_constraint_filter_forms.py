@@ -1148,6 +1148,9 @@ class ReadNodesForm(FilterNodeForm):
             'invalid_list': "Invalid parameter: invalid MAC address format",
             })
 
+    domain = UnconstrainedMultipleChoiceField(
+        label="Domain names to filter on", required=False)
+
     agent_name = forms.CharField(
         label="Only include nodes with events matching the agent name",
         required=False)
@@ -1161,6 +1164,7 @@ class ReadNodesForm(FilterNodeForm):
         nodes = self.filter_by_ids(nodes)
         nodes = self.filter_by_hostnames(nodes)
         nodes = self.filter_by_mac_addresses(nodes)
+        nodes = self.filter_by_domain(nodes)
         nodes = self.filter_by_agent_name(nodes)
         nodes = self.filter_by_status(nodes)
         return nodes
@@ -1183,6 +1187,12 @@ class ReadNodesForm(FilterNodeForm):
         if mac_addresses:
             filtered_nodes = filtered_nodes.filter(
                 interface__mac_address__in=mac_addresses)
+        return filtered_nodes
+
+    def filter_by_domain(self, filtered_nodes):
+        domains = self.cleaned_data.get(self.get_field_name('domain'))
+        if domains:
+            filtered_nodes = filtered_nodes.filter(domain__name__in=domains)
         return filtered_nodes
 
     def filter_by_agent_name(self, filtered_nodes):
