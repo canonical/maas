@@ -1754,6 +1754,16 @@ class TestReadNodesForm(MAASServerTestCase, FilterConstraintsMixin):
             [node1, node2],
             {'hostname': [node1.hostname, node2.hostname]})
 
+    def test_domain(self):
+        domain1 = factory.make_Domain()
+        domain2 = factory.make_Domain()
+        node1 = factory.make_Node(domain=domain1)
+        node2 = factory.make_Node(domain=domain2)
+        factory.make_Node()
+        self.assertConstrainedNodes(
+            [node1, node2],
+            {'domain': [domain1.name, domain2.name]})
+
     def test_mac_addresses(self):
         if1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         if2 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
