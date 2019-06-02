@@ -5,6 +5,7 @@
     "lint": "eslint ./src/maasserver/static/js/angular/",
     "prettier": "prettier --write 'src/maasserver/static/**/*.{js,scss}' '!**/build.scss' '!**/*-min.js' '!**/3rdparty/**/*'",
     "prettier-check": "prettier --check 'src/maasserver/static/**/*.{js,scss}' '!**/build.scss' '!**/*-min.js' '!**/3rdparty/**/*'",
+    "test": "jest",
     "watch": "NODE_ENV=development webpack --watch"
   },
   "devDependencies": {
@@ -15,11 +16,16 @@
     "@types/prop-types": "^15.5.2",
     "@types/react": "^16.0.40",
     "@types/react-dom": "^15.5.7",
+    "babel-jest": "24.8.0",
     "babel-loader": "^8.0.0-beta.0",
     "babel-plugin-angularjs-annotate": "^0.10.0",
+    "enzyme-adapter-react-16": "1.13.2",
+    "enzyme-to-json": "3.3.5",
+    "enzyme": "3.9.0",
     "eslint": "^5.15.3",
     "glob": "^7.1.2",
     "jasmine-core": "=2.99.1",
+    "jest": "24.8.0",
     "karma": "^2.0.0",
     "karma-chrome-launcher": "^2.2.0",
     "karma-failed-reporter": "^0.0.3",
@@ -47,6 +53,6 @@
   },
   "dependencies": {
     "babel-polyfill": "^6.26.0",
-    "macaroon-bakery": "^0.2.0"
+    "macaroon-bakery": "^0.2.1"
   }
 }

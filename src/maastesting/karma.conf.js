@@ -33,6 +33,8 @@ module.exports = function(config) {
 
     // list of files to exclude
     exclude: [
+      // This file is handled by the Jest tests.
+      '../../src/maasserver/static/js/angular/controllers/tests/test_dashboard.js',
     ],
 
 

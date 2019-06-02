@@ -11,7 +11,9 @@ module.exports = {
         "angular": false,
         "Atomics": "readonly",
         "inject": false,
+        "jest": false,
         "MAAS_config": false,
+        "require": false,
         "setTimeout": false,
         "SharedArrayBuffer": "readonly"
     },

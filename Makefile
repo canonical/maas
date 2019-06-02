@@ -277,7 +277,8 @@ test: bin/test.parallel bin/coverage
 	@bin/coverage combine
 
 test-js: bin/test.js javascript
-	@bin/test.js
+	bin/test.js
+	bin/yarn test
 
 test-serial: $(strip $(test-scripts))
 	@bin/maas-region makemigrations --dry-run --exit && exit 1 ||:
@@ -393,6 +394,7 @@ lint-js:
 		-not -path '*-min.js' -a \
 	    '(' -name '*.html' -o -name '*.js' ')' -print0 \
 		| xargs -r0 -n20 -P4 $(pocketlint)
+		bin/yarn lint
 		bin/yarn prettier-check
 
 # Apply automated formatting to all Python, Sass and Javascript files.
