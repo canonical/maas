@@ -901,7 +901,7 @@ class TestMetadataCommon(MAASServerTestCase):
             yaml.safe_load(content['cloud-init']),
             Equals(get_vendor_data.return_value))
         self.assertThat(
-            get_vendor_data, MockCalledOnceWith(node))
+            get_vendor_data, MockCalledOnceWith(node, ANY))
 
 
 class TestMetadataUserData(MAASServerTestCase):
