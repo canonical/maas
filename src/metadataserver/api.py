@@ -44,6 +44,7 @@ from maasserver.api.utils import (
     get_mandatory_param,
     get_optional_param,
 )
+from maasserver.compose_preseed import get_apt_proxy
 from maasserver.enum import (
     NODE_STATUS,
     NODE_STATUS_CHOICES_DICT,
@@ -849,7 +850,11 @@ class MetaDataHandler(VersionIndexHandler):
             return make_list_response(sorted(subfields))
 
         producer = self.get_attribute_producer(item)
-        return producer(node, version, item)
+        if producer == self.vendor_data:
+            proxy = get_apt_proxy(request, node=node)
+            return producer(node, version, item, proxy)
+        else:
+            return producer(node, version, item)
 
     def local_hostname(self, node, version, item):
         """Produce local-hostname attribute."""
@@ -859,9 +864,9 @@ class MetaDataHandler(VersionIndexHandler):
         """Produce instance-id attribute."""
         return make_text_response(node.system_id)
 
-    def vendor_data(self, node, version, item):
+    def vendor_data(self, node, version, item, proxy):
         vendor_data = {"cloud-init": "#cloud-config\n%s" % yaml.safe_dump(
-            get_vendor_data(node)
+            get_vendor_data(node, proxy)
         )}
         vendor_data_dump = yaml.safe_dump(
             vendor_data, encoding="utf-8", default_flow_style=False)

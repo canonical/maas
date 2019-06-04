@@ -28,11 +28,11 @@ from provisioningserver.utils.version import get_maas_version_track_channel
 import yaml
 
 
-def get_vendor_data(node):
+def get_vendor_data(node, proxy):
     return dict(chain(
         generate_system_info(node),
         generate_ntp_configuration(node),
-        generate_rack_controller_configuration(node),
+        generate_rack_controller_configuration(node, proxy),
         generate_kvm_pod_configuration(node),
         generate_ephemeral_deployment_network_configuration(node),
         generate_vcenter_configuration(node),
@@ -80,7 +80,7 @@ def generate_ntp_configuration(node):
         yield "ntp", {"servers": servers, "pools": pools}
 
 
-def generate_rack_controller_configuration(node):
+def generate_rack_controller_configuration(node, proxy):
     """Generate cloud-init configuration to install the rack controller."""
 
     # FIXME: For now, we are using a tag ('switch') to deploy the rack
@@ -100,9 +100,13 @@ def generate_rack_controller_configuration(node):
         secret = Config.objects.get_config("rpc_shared_secret")
         source = get_maas_version_track_channel()
         yield "runcmd", [
-            "snap install maas --devmode --channel=%s" % source,
-            "/snap/bin/maas init --mode rack --maas-url %s --secret %s" % (
-                maas_url, secret)
+            ['snap', 'set', 'system', 'proxy.http=%s' % proxy,
+             'proxy.https=%s' % proxy],
+            ['snap', 'install', 'maas', '--devmode', '--channel=%s' % source],
+            ['systemctl', 'restart', 'snapd'],
+            ['export', 'PATH=$PATH'],
+            ['/snap/bin/maas', 'init', '--mode', 'rack', '--maas-url',
+             '%s' % maas_url, '--secret', '%s' % secret]
         ]
 
 

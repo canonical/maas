@@ -42,17 +42,17 @@ class TestGetVendorData(MAASServerTestCase):
 
     def test_returns_dict(self):
         node = factory.make_Node()
-        self.assertThat(get_vendor_data(node), IsInstance(dict))
+        self.assertThat(get_vendor_data(node, None), IsInstance(dict))
 
     def test_includes_no_system_information_if_no_default_user(self):
         node = factory.make_Node(owner=factory.make_User())
-        vendor_data = get_vendor_data(node)
+        vendor_data = get_vendor_data(node, None)
         self.assertThat(vendor_data, Not(Contains('system_info')))
 
     def test_includes_system_information_if_default_user(self):
         owner = factory.make_User()
         node = factory.make_Node(owner=owner, default_user=owner)
-        vendor_data = get_vendor_data(node)
+        vendor_data = get_vendor_data(node, None)
         self.assertThat(vendor_data, ContainsDict({
             "system_info": MatchesDict({
                 "default_user": KeysEqual("name", "gecos"),
@@ -63,7 +63,7 @@ class TestGetVendorData(MAASServerTestCase):
         Config.objects.set_config("ntp_external_only", True)
         Config.objects.set_config("ntp_servers", "foo bar")
         node = factory.make_Node()
-        vendor_data = get_vendor_data(node)
+        vendor_data = get_vendor_data(node, None)
         self.assertThat(vendor_data, ContainsDict({
             "ntp": Equals({
                 "servers": [],
@@ -175,22 +175,24 @@ class TestGenerateRackControllerConfiguration(MAASServerTestCase):
 
     def test_yields_nothing_when_node_is_not_netboot_disabled(self):
         configuration = generate_rack_controller_configuration(
-            node=factory.make_Node(osystem='ubuntu'))
+            node=factory.make_Node(osystem='ubuntu'),
+            proxy="http://proxy.example.com/")
         self.assertThat(dict(configuration), Equals({}))
 
     def test_yields_nothing_when_node_is_not_ubuntu(self):
         tag = factory.make_Tag(name='switch')
         node = factory.make_Node(osystem='centos', netboot=False)
         node.tags.add(tag)
-        configuration = generate_rack_controller_configuration(node)
+        configuration = generate_rack_controller_configuration(
+            node, proxy="http://proxy.example.com/")
         self.assertThat(dict(configuration), Equals({}))
 
     def test_yields_configuration_with_ubuntu(self):
         tag = factory.make_Tag(name='wedge100')
         node = factory.make_Node(osystem='ubuntu', netboot=False)
         node.tags.add(tag)
-        configuration = generate_rack_controller_configuration(node)
-
+        configuration = generate_rack_controller_configuration(
+            node, proxy="http://proxy.example.com/")
         secret = '1234'
         Config.objects.set_config("rpc_shared_secret", secret)
         channel = version.get_maas_version_track_channel()
@@ -208,14 +210,16 @@ class TestGenerateRackControllerConfiguration(MAASServerTestCase):
     def test_yields_nothing_when_machine_install_rackd_false(self):
         node = factory.make_Node(osystem='ubuntu', netboot=False)
         node.install_rackd = False
-        configuration = generate_rack_controller_configuration(node)
+        configuration = generate_rack_controller_configuration(
+            node, proxy="http://proxy.example.com/")
         self.assertThat(dict(configuration), Equals({}))
 
     def test_yields_configuration_when_machine_install_rackd_true(self):
         node = factory.make_Node(osystem='ubuntu', netboot=False)
         node.install_rackd = True
-        configuration = generate_rack_controller_configuration(node)
-
+        proxy = "http://proxy.example.com/"
+        configuration = generate_rack_controller_configuration(
+            node, proxy=proxy)
         secret = '1234'
         Config.objects.set_config("rpc_shared_secret", secret)
         channel = version.get_maas_version_track_channel()
@@ -225,6 +229,8 @@ class TestGenerateRackControllerConfiguration(MAASServerTestCase):
 
         self.assertThat(dict(configuration), KeysEqual({
             "runcmd": [
+                "snap set system proxy.http=%s proxy.https=%s" % (
+                    proxy, proxy),
                 "snap install maas --devmode --channel=%s" % channel,
                 "%s --maas-url %s --secret %s" % (cmd, maas_url, secret),
                 ]
@@ -233,7 +239,7 @@ class TestGenerateRackControllerConfiguration(MAASServerTestCase):
     def test_yields_configuration_when_machine_install_kvm_true(self):
         node = factory.make_Node(osystem='ubuntu', netboot=False)
         node.install_kvm = True
-        configuration = get_vendor_data(node)
+        configuration = get_vendor_data(node, None)
         config = str(dict(configuration))
         self.assertThat(config, Contains("virsh"))
         self.assertThat(config, Contains("ssh_pwauth"))
@@ -251,7 +257,7 @@ class TestGenerateRackControllerConfiguration(MAASServerTestCase):
         node = factory.make_Node(
             osystem='ubuntu', netboot=False, architecture='amd64/generic')
         node.install_kvm = True
-        configuration = get_vendor_data(node)
+        configuration = get_vendor_data(node, None)
         config = dict(configuration)
         self.assertThat(config['packages'], Contains("qemu-efi"))
 
@@ -259,7 +265,7 @@ class TestGenerateRackControllerConfiguration(MAASServerTestCase):
         node = factory.make_Node(
             osystem='ubuntu', netboot=False, architecture='arm64/generic')
         node.install_kvm = True
-        configuration = get_vendor_data(node)
+        configuration = get_vendor_data(node, None)
         config = dict(configuration)
         self.assertThat(config['packages'], Contains("qemu-efi"))
 
@@ -267,7 +273,7 @@ class TestGenerateRackControllerConfiguration(MAASServerTestCase):
         node = factory.make_Node(
             osystem='ubuntu', netboot=False, architecture='ppc64el/generic')
         node.install_kvm = True
-        configuration = get_vendor_data(node)
+        configuration = get_vendor_data(node, None)
         config = dict(configuration)
         self.assertThat(
             config['runcmd'], Contains([
@@ -293,7 +299,7 @@ class TestGenerateEphemeralDeploymentNetworkConfiguration(MAASServerTestCase):
 
     def test_yields_configuration_when_node_is_ephemeral_deployment(self):
         node = factory.make_Node(with_boot_disk=False)
-        configuration = get_vendor_data(node)
+        configuration = get_vendor_data(node, None)
         config = dict(configuration)
         self.assertThat(
             config['write_files'][0]['path'],
@@ -307,14 +313,14 @@ class TestGenerateVcenterConfiguration(MAASServerTestCase):
     def test_does_nothing_if_not_vmware(self):
         mock_get_configs = self.patch(Config.objects, 'get_configs')
         node = factory.make_Node(owner=factory.make_admin())
-        config = get_vendor_data(node)
+        config = get_vendor_data(node, None)
         self.assertThat(mock_get_configs, MockNotCalled())
         self.assertDictEqual({}, config)
 
     def test_returns_nothing_if_no_values_set(self):
         node = factory.make_Node(osystem='esxi', owner=factory.make_admin())
         node.nodemetadata_set.create(key='vcenter_registration', value='True')
-        config = get_vendor_data(node)
+        config = get_vendor_data(node, None)
         self.assertDictEqual({}, config)
 
     def test_returns_vcenter_yaml(self):
@@ -328,7 +334,7 @@ class TestGenerateVcenterConfiguration(MAASServerTestCase):
         }
         for key, value in vcenter.items():
             Config.objects.set_config(key, value)
-        config = get_vendor_data(node)
+        config = get_vendor_data(node, None)
         self.assertDictEqual(
             {'write_files': [{
                 'content': yaml.safe_dump(vcenter),
@@ -349,7 +355,7 @@ class TestGenerateVcenterConfiguration(MAASServerTestCase):
         }
         for key, value in vcenter.items():
             Config.objects.set_config(key, value)
-        config = get_vendor_data(node)
+        config = get_vendor_data(node, None)
         self.assertDictEqual(
             {'write_files': [{
                 'content': yaml.safe_dump(vcenter),
@@ -370,7 +376,7 @@ class TestGenerateVcenterConfiguration(MAASServerTestCase):
         }
         for key, value in vcenter.items():
             Config.objects.set_config(key, value)
-        config = get_vendor_data(node)
+        config = get_vendor_data(node, None)
         self.assertDictEqual({}, config)
 
     def test_returns_nothing_if_no_user(self):
@@ -378,7 +384,7 @@ class TestGenerateVcenterConfiguration(MAASServerTestCase):
         for i in ['server', 'username', 'password', 'datacenter']:
             key = 'vcenter_%s' % i
             Config.objects.set_config(key, factory.make_name(key))
-        config = get_vendor_data(node)
+        config = get_vendor_data(node, None)
         self.assertDictEqual({}, config)
 
     def test_returns_nothing_if_user(self):
@@ -386,7 +392,7 @@ class TestGenerateVcenterConfiguration(MAASServerTestCase):
         for i in ['server', 'username', 'password', 'datacenter']:
             key = 'vcenter_%s' % i
             Config.objects.set_config(key, factory.make_name(key))
-        config = get_vendor_data(node)
+        config = get_vendor_data(node, None)
         self.assertDictEqual({}, config)
 
     def test_returns_nothing_if_vcenter_registration_not_set(self):
@@ -394,5 +400,5 @@ class TestGenerateVcenterConfiguration(MAASServerTestCase):
         for i in ['server', 'username', 'password', 'datacenter']:
             key = 'vcenter_%s' % i
             Config.objects.set_config(key, factory.make_name(key))
-        config = get_vendor_data(node)
+        config = get_vendor_data(node, None)
         self.assertDictEqual({}, config)
