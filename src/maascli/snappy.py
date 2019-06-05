@@ -615,22 +615,22 @@ class cmd_init(SnappyCommand):
             if not database_host:
                 database_host = required_prompt(
                     "Database host: ",
-                    help_text=ARGUMENTS['database_host']['help'])
+                    help_text=ARGUMENTS['database-host']['help'])
             database_name = options.database_name
             if not database_name:
                 database_name = required_prompt(
                     "Database name: ",
-                    help_text=ARGUMENTS['database_name']['help'])
+                    help_text=ARGUMENTS['database-name']['help'])
             database_user = options.database_user
             if not database_user:
                 database_user = required_prompt(
                     "Database user: ",
-                    help_text=ARGUMENTS['database_user']['help'])
+                    help_text=ARGUMENTS['database-user']['help'])
             database_pass = options.database_pass
             if not database_pass:
                 database_pass = required_prompt(
                     "Database password: ",
-                    help_text=ARGUMENTS['database_pass']['help'])
+                    help_text=ARGUMENTS['database-pass']['help'])
         if mode == 'rack':
             rpc_secret = options.secret
             if not rpc_secret:

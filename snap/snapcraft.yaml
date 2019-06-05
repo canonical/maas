@@ -14,10 +14,21 @@ apps:
     daemon: simple
     command: bin/run-supervisord
     plugs:
+        - avahi-observe # network discovery
+        - block-devices # allows writing, but we need only reading.
+        - hardware-observe
+        - kernel-module-observe
         - network
         - network-bind
+        - network-observe
+        - network-control
+        - system-observe
+        - time-control # chrony
   maas:
     command: bin/maas
+    plugs:
+        - network # needed for external authentication
+        - network-observe # needed to get default URL
 
 parts:
   maas-pypi:
@@ -109,6 +120,7 @@ parts:
       - squid
       - tcpdump
       - ubuntu-keyring
+      - util-linux
     organize:
         lib/python3.*/site-packages/etc/*: etc
         lib/python3.*/site-packages/usr/bin/*: usr/bin
@@ -225,3 +237,8 @@ parts:
         --with-libxml \
         --with-libxslt && make world
       make install-world DESTDIR=$SNAPCRAFT_PART_INSTALL
+
+hooks:
+  configure:
+    plugs:
+      - network  # needed to connect to the db for running upgrades

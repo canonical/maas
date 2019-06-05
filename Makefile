@@ -1,5 +1,5 @@
 python := python3
-snapcraft := snapcraft
+snapcraft := SNAPCRAFT_BUILD_INFO=1 snapcraft
 
 # pkg_resources makes some incredible noise about version numbers. They
 # are not indications of bugs in MAAS so we silence them everywhere.

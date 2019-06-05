@@ -18,6 +18,7 @@ mkdir -p "$SNAP_DATA/proxy"
 mkdir -p "$SNAP_DATA/syslog"
 mkdir -p "$SNAP_DATA/supervisord"
 mkdir -p "$SNAP_DATA/var/lib/maas"
+mkdir -p "$SNAP_DATA/var/lib/chrony"
 
 # Always overwrite sample preseeds to ensure samples are up-to-date in case
 # we do changes that need to be reflected.

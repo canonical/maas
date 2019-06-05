@@ -14,6 +14,7 @@ import time
 from unittest.mock import MagicMock
 
 from maascli import snappy
+from maascli.parser import ArgumentParser
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
@@ -357,3 +358,34 @@ class TestConfigHelpers(MAASTestCase):
         snappy.set_rpc_secret(secret)
         snappy.set_rpc_secret(None)
         self.assertIsNone(snappy.get_rpc_secret())
+
+
+class TestCmdInit(MAASTestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.parser = ArgumentParser()
+        self.cmd = snappy.cmd_init(self.parser)
+        self.patch(os, 'getuid').return_value = 0
+        self.patch(
+            os, 'environ',
+            {'SNAP': '/snap/maas', 'SNAP_COMMON': '/snap/maas/common',
+             'SNAP_DATA': '/snap/maas/data'})
+        self.mock_read_input = self.patch(snappy, 'read_input')
+
+    def test_init_snap_db_options_prompt(self):
+        self.mock_maas_configuration = self.patch(snappy, 'MAASConfiguration')
+        self.patch(snappy, 'set_rpc_secret')
+        self.patch(snappy.cmd_init, '_finalize_init')
+
+        self.mock_read_input.side_effect = [
+            'http://localhost:5240/MAAS', 'localhost', 'db', 'maas', 'pwd']
+        options = self.parser.parse_args(['--mode=region+rack'])
+        self.cmd(options)
+        self.mock_maas_configuration().update.assert_called_once_with(
+            {'maas_url': 'http://localhost:5240/MAAS',
+             'database_host': 'localhost',
+             'database_name': 'db',
+             'database_user': 'maas',
+             'database_pass': 'pwd'}
+        )
