@@ -1,21 +1,27 @@
 module.exports = {
     "env": {
         "browser": true,
-        "es6": true,
-        "jasmine": true
+        "es6": true
     },
     "extends": ["eslint:recommended"],
     "globals": {
         "__dirname": false,
         "$": false,
+        "afterEach": false,
         "angular": false,
         "Atomics": "readonly",
+        "beforeEach": false,
+        "describe": false,
+        "expect": false,
         "inject": false,
+        "it": false,
+        "jasmine": false,
         "jest": false,
         "MAAS_config": false,
         "require": false,
         "setTimeout": false,
-        "SharedArrayBuffer": "readonly"
+        "SharedArrayBuffer": "readonly",
+        "spyOn": false
     },
     "parserOptions": {
         "ecmaVersion": 2018,
