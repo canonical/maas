@@ -4017,8 +4017,7 @@ describe("NodeStorageController", function() {
             devices.push({});
           }
           $scope.availableNew.devices = devices;
-          expect(
-            $scope.getTotalNumberOfAvailableSpares(),
+          expect($scope.getTotalNumberOfAvailableSpares()).toBe(
             count - mode.min_disks
           );
         }

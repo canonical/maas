@@ -1071,10 +1071,13 @@ describe("maasObjForm", function() {
     });
 
     it("should call preventDefault on click", function() {
-      var event = jasmine.createSpyObj("clickEvent", ["preventDefault"]);
+      const event = {
+        preventDefault: () => {},
+        type: "click"
+      };
+      jest.spyOn(event, "preventDefault");
       var label = directive.find("label");
       var icon = label.find("i");
-      event.type = "click";
       icon.triggerHandler(event);
       expect(event.preventDefault).toHaveBeenCalled();
     });
@@ -1107,10 +1110,13 @@ describe("maasObjForm", function() {
     });
 
     it("should call preventDefault on click", function() {
-      var event = jasmine.createSpyObj("clickEvent", ["preventDefault"]);
+      const event = {
+        preventDefault: () => {},
+        type: "click"
+      };
+      jest.spyOn(event, "preventDefault");
       var label = directive.find("label");
       var icon = label.find("i");
-      event.type = "click";
       icon.triggerHandler(event);
       expect(event.preventDefault).toHaveBeenCalled();
     });

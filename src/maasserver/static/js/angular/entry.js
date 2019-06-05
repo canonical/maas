@@ -227,11 +227,11 @@ function configureMaas(
   $compileProvider,
   tagsInputConfigProvider
 ) {
-  // Disable debugInfo unless in a karma context.
+  // Disable debugInfo unless in a Jest context.
   // Re-enable debugInfo in development by running
   // angular.reloadWithDebugInfo(); in the console.
   // See: https://docs.angularjs.org/guide/production#disabling-debug-data
-  $compileProvider.debugInfoEnabled(!!window.__karma__);
+  $compileProvider.debugInfoEnabled(!!window.DEBUG);
 
   $interpolateProvider.startSymbol("{$");
   $interpolateProvider.endSymbol("$}");

@@ -20,12 +20,12 @@ const config = {
   ],
   snapshotSerializers: ['enzyme-to-json/serializer'],
   testMatch: [
-    // Disable the test catch-all until the switch to Jest is made.
-    // '<rootDir>/src/maasserver/static/js/angular/*/tests/test_*.js',
-    '<rootDir>/src/maasserver/static/js/angular/controllers/tests/test_dashboard.js',
+    '<rootDir>/src/maasserver/static/js/angular/*/tests/test_*.js'
   ],
+  testURL: 'http://example.com:8000/',
   transform: {
     '^.+\\.js$': 'babel-jest',
+    '^.+\\.html?$': 'html-loader-jest'
   },
 };
 

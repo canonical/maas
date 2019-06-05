@@ -142,21 +142,6 @@ describe("SubnetDetailsController", function() {
     expect($rootScope.page).toBe("networks");
   });
 
-  it(
-    "calls loadManagers with required managers" +
-      function() {
-        makeController();
-        expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith($scope, [
-          ConfigsManager,
-          SubnetsManager,
-          IPRangesManager,
-          SpacesManager,
-          VLANsManager,
-          FabricsManager
-        ]);
-      }
-  );
-
   it("raises error if subnet identifier is invalid", function() {
     spyOn(SubnetsManager, "setActiveItem").and.returnValue($q.defer().promise);
     spyOn(ConfigsManager, "getItemFromList").and.returnValue({

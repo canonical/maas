@@ -4,18 +4,25 @@
  * Unit tests for MAAS proxy settings directive.
  */
 
+import template from "../../../../partials/proxy-settings.html";
+
 describe("maasProxySettings", function() {
   // Load the MAAS module.
   beforeEach(angular.mock.module("MAAS"));
-  // Make the templates available.
-  beforeEach(angular.mock.module("MAAS.templates"));
 
   // Get required angular pieces and create a new scope before each test.
-  var $scope, $compile, $q, ConfigsManager, ManagerHelperService;
+  var $scope,
+    $compile,
+    $q,
+    $templateCache,
+    ConfigsManager,
+    ManagerHelperService;
   beforeEach(inject(function($rootScope, $injector) {
     $scope = $rootScope.$new();
     $compile = $injector.get("$compile");
     $q = $injector.get("$q");
+    $templateCache = $injector.get("$templateCache");
+    $templateCache.put("static/partials/proxy-settings.html", template);
     ConfigsManager = $injector.get("ConfigsManager");
     ManagerHelperService = $injector.get("ManagerHelperService");
   }));

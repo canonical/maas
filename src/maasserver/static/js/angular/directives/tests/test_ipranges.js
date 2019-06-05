@@ -21,11 +21,10 @@ describe("maasIPRanges", function() {
   }));
 
   // Load the required managers.
-  var IPRangesManager, UsersManager, ManagerHelperService;
+  var IPRangesManager, UsersManager;
   beforeEach(inject(function($injector) {
     IPRangesManager = $injector.get("IPRangesManager");
     UsersManager = $injector.get("UsersManager");
-    ManagerHelperService = $injector.get("ManagerHelperService");
     // Mock buildSocket so an actual connection is not made.
     let RegionConnection = $injector.get("RegionConnection");
     let webSocket = new MockWebSocket();
@@ -70,19 +69,6 @@ describe("maasIPRanges", function() {
     expect(scope.editIPRange).toBeNull();
     expect(scope.deleteIPRange).toBeNull();
   });
-
-  it(
-    "clears loading once loadManagers called with required managers" +
-      function() {
-        var directive = compileDirective("subnet", "subnet");
-        var scope = directive.isolateScope();
-        expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(scope, [
-          IPRangesManager,
-          UsersManager
-        ]);
-        expect(scope.loading).toBe(false);
-      }
-  );
 
   describe("isSuperUser", function() {
     it("returns UsersManager.isSuperUser", function() {

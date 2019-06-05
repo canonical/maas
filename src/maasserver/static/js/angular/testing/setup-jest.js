@@ -1,2 +1,5 @@
 import $ from "/usr/share/javascript/jquery/jquery.js";
-global.jQuery = $; // eslint-disable-line no-undef
+/* eslint-disable no-undef */
+global.jQuery = $;
+global.$ = $;
+/* eslint-enable no-undef */

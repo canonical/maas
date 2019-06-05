@@ -96,17 +96,6 @@ describe("DomainDetailsController", function() {
     expect($rootScope.page).toBe("domains");
   });
 
-  it(
-    "calls loadManagers with [DomainsManager, UsersManager]" +
-      function() {
-        makeController();
-        expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith($scope, [
-          DomainsManager,
-          UsersManager
-        ]);
-      }
-  );
-
   it("raises error if domain identifier is invalid", function() {
     spyOn(DomainsManager, "setActiveItem").and.returnValue($q.defer().promise);
     spyOn(ErrorService, "raiseError").and.returnValue($q.defer().promise);

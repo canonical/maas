@@ -480,7 +480,17 @@ describe("NodeResultsController", function() {
       defer.resolve();
       loadItems_defer.resolve();
       $rootScope.$digest();
-      expect($scope.logs.availableOptions[0].id, installation_result.id);
+      var expectFunc;
+      expectFunc = function() {
+        if ($scope.resultsLoaded) {
+          expect($scope.logs.availableOptions[0].id).toBe(
+            installation_result.id
+          );
+        } else {
+          setTimeout(expectFunc);
+        }
+      };
+      setTimeout(expectFunc);
     });
   });
 

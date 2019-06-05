@@ -103,20 +103,6 @@ describe("SpaceDetailsController", function() {
     expect($rootScope.page).toBe("networks");
   });
 
-  it(
-    "calls loadManagers with correct managers" +
-      function() {
-        makeController();
-        expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith($scope, [
-          SpacesManager,
-          VLANsManager,
-          SubnetsManager,
-          FabricsManager,
-          UsersManager
-        ]);
-      }
-  );
-
   it("raises error if space identifier is invalid", function() {
     spyOn(SpacesManager, "setActiveItem").and.returnValue($q.defer().promise);
     spyOn(ErrorService, "raiseError").and.returnValue($q.defer().promise);

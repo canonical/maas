@@ -24,6 +24,7 @@
     "enzyme": "3.9.0",
     "eslint": "^5.15.3",
     "glob": "^7.1.2",
+    "html-loader-jest": "0.2.1",
     "jest": "24.8.0",
     "node-sass": "^4.7.2",
     "prettier": "^1.17.0",

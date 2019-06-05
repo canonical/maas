@@ -24,3 +24,5 @@ angular.module("MAAS").run([
 beforeEach(function() {
   window.MAAS_config = {};
 });
+
+window.DEBUG = true;

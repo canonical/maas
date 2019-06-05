@@ -261,6 +261,9 @@ test: bin/test.parallel bin/coverage
 test-js: javascript
 	bin/yarn test
 
+test-js-watch: javascript
+	bin/yarn test --watch
+
 test-serial: $(strip $(test-scripts))
 	@bin/maas-region makemigrations --dry-run --exit && exit 1 ||:
 	@$(RM) .coverage .coverage.* .failed
