@@ -24,6 +24,7 @@ apps:
         - network-control
         - system-observe
         - time-control # chrony
+
   maas:
     command: bin/maas
     plugs:
@@ -47,6 +48,7 @@ parts:
       - libpq-dev
       - libxml2-dev
       - libxslt1-dev
+
   maas:
     plugin: python
     source: .
@@ -161,12 +163,14 @@ parts:
       # See https://bugs.launchpad.net/snapcraft/+bug/1774410
       ln -s -f ../../../../../../var/lib/ieee-data/oui.txt $SNAPCRAFT_PART_INSTALL/usr/lib/python3/dist-packages/netaddr/eui/oui.txt
       ln -s -f ../../../../../../var/lib/ieee-data/iab.txt $SNAPCRAFT_PART_INSTALL/usr/lib/python3/dist-packages/netaddr/eui/iab.txt
+
   region-static:
     plugin: dump
     source: src/maasserver/static
     organize:
       '*': usr/share/maas/web/static/
-  nginx-user-workaround:
+
+  stub-initgroups:
     plugin: make
     source: snap-data/stub_initgroups
     artifacts:
@@ -175,6 +179,15 @@ parts:
         stub_initgroups.so: usr/lib/stub_initgroups.so
     prime:
         - usr/lib/stub_initgroups.so
+
+  snapcraft-preload:
+    plugin: cmake
+    source: https://github.com/sergiusens/snapcraft-preload.git
+    build-packages:
+      - on amd64:
+          - gcc-multilib
+          - g++-multilib
+
   snap:
     plugin: dump
     source: snap-data
@@ -183,6 +196,7 @@ parts:
       conf/chrony.conf: usr/share/maas/chrony.conf
       conf/supervisord.conf.template: usr/share/maas/supervisord.conf.template
       nginx: usr/share/maas/nginx
+
   postgres-95:
     plugin: autotools
     source: .  # Ignored because of override-pull.

@@ -1,8 +1,8 @@
-#!/bin/bash
+#!/bin/bash -e
 # Copyright 2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-set -e
+SQUID="$SNAP/bin/snapcraft-preload $SNAP/usr/sbin/squid"
 
 # Do not proceed unless maas-proxy.conf exists.
 if [ ! -e "$SNAP_DATA/proxy/maas-proxy.conf" ]; then
@@ -12,12 +12,13 @@ fi
 
 # Ensure that the cache is initialized.
 if [ ! -d "$SNAP_COMMON/proxy/cache/00" ]; then
-    $SNAP/usr/sbin/squid -z -N -f "$SNAP_DATA/proxy/maas-proxy.conf"
+    $SQUID -z -N -f "$SNAP_DATA/proxy/maas-proxy.conf"
 fi
 
 # Start squid, force kill it when the script is terminated. Squid sometimes
 # (most of the time) just does not want to die.
 trap 'kill -9 $PID; wait $PID' TERM INT
-$SNAP/usr/sbin/squid -N -d 5 -f "$SNAP_DATA/proxy/maas-proxy.conf" &
+export LD_PRELOAD="$SNAP/usr/lib/stub_initgroups.so"
+$SQUID -N -d 5 -f "$SNAP_DATA/proxy/maas-proxy.conf" &
 PID=$!
 wait $PID
