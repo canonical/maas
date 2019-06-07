@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the Interface model."""
@@ -873,7 +873,7 @@ class InterfaceTest(MAASServerTestCase):
         mac = factory.make_MAC()
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL,
-            name=name, node=node, mac_address=mac, disconnected=True)
+            name=name, node=node, mac_address=mac, link_connected=False)
         self.assertThat(interface, MatchesStructure.byEquality(
             name=name, node=node, mac_address=mac,
             type=INTERFACE_TYPE.PHYSICAL, vlan=None))
@@ -884,7 +884,7 @@ class InterfaceTest(MAASServerTestCase):
         mac = factory.make_MAC()
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL,
-            name=name, node=node, mac_address=mac, disconnected=True)
+            name=name, node=node, mac_address=mac, link_connected=False)
         interface.acquired = True
         self.assertRaises(ValueError, interface.save)
 
@@ -1102,6 +1102,27 @@ class InterfaceTest(MAASServerTestCase):
         tag = factory.make_name('tag')
         #: Test is this doesn't raise an exception
         interface.remove_tag(tag)
+
+    def test_save_link_speed_may_not_exceed_interface_speed(self):
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        interface.interface_speed = 100
+        interface.link_speed = 1000
+        self.assertRaises(ValidationError, interface.save)
+
+    def test_save_link_speed_may_exceed_unknown_interface_speed(self):
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        interface.interface_speed = 0
+        interface.link_speed = 1000
+        interface.save()
+        interface = reload_object(interface)
+        self.assertEquals(0, interface.interface_speed)
+        self.assertEquals(1000, interface.link_speed)
+
+    def test_save_if_link_disconnected_set_link_speed_to_zero(self):
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        interface.link_connected = False
+        interface.save()
+        self.assertEquals(0, interface.link_speed)
 
 
 class InterfaceUpdateNeighbourTest(MAASServerTestCase):
@@ -1378,7 +1399,7 @@ class InterfaceMTUTest(MAASServerTestCase):
 
     def test_get_effective_mtu_returns_default_mtu(self):
         nic1 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, disconnected=True)
+            INTERFACE_TYPE.PHYSICAL, link_connected=False)
         self.assertEqual(DEFAULT_MTU, nic1.get_effective_mtu())
 
     def test_get_effective_mtu_returns_interface_mtu(self):
@@ -2380,7 +2401,7 @@ class TestForceAutoOrDHCPLink(MAASServerTestCase):
 
     def test__does_nothing_when_disconnected(self):
         interface = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, disconnected=True)
+            INTERFACE_TYPE.PHYSICAL, link_connected=False)
         self.assertIsNone(interface.force_auto_or_dhcp_link())
 
     def test__sets_to_AUTO_on_subnet(self):
@@ -2412,7 +2433,7 @@ class TestEnsureLinkUp(MAASServerTestCase):
 
     def test__does_nothing_if_no_vlan(self):
         interface = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, disconnected=True)
+            INTERFACE_TYPE.PHYSICAL, link_connected=False)
         interface.ensure_link_up()
         interface = reload_object(interface)
         self.assertEqual(

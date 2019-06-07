@@ -1,4 +1,4 @@
-# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Model for interfaces."""
@@ -28,6 +28,7 @@ from django.db.models import (
     ForeignKey,
     Manager,
     ManyToManyField,
+    PositiveIntegerField,
     PROTECT,
     Q,
     TextField,
@@ -570,6 +571,15 @@ class Interface(CleanSave, TimestampedModel):
     firmware_version = CharField(
         max_length=255, blank=True, null=True,
         help_text="Firmware version of the interface.")
+
+    # Whether or not the Interface is physically connected to an uplink.
+    link_connected = BooleanField(default=True)
+
+    # The speed of the interface in Mbit/s
+    interface_speed = PositiveIntegerField(default=0)
+
+    # The speed of the link in Mbit/s
+    link_speed = PositiveIntegerField(default=0)
 
     def __init__(self, *args, **kwargs):
         type = kwargs.get('type', self.get_type())
@@ -1474,6 +1484,14 @@ class Interface(CleanSave, TimestampedModel):
             'neighbour': self.neighbour_discovery_state,
             'mdns': self.mdns_discovery_state,
         }
+
+    def save(self, *args, **kwargs):
+        if (self.link_speed > self.interface_speed and
+                self.interface_speed != 0):
+            raise ValidationError('link_speed may not exceed interface_speed')
+        if not self.link_connected:
+            self.link_speed = 0
+        return super().save(*args, **kwargs)
 
 
 class InterfaceRelationship(CleanSave, TimestampedModel):

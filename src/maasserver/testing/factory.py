@@ -1,4 +1,4 @@
-# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test object factories."""
@@ -1323,7 +1323,8 @@ class Factory(maastesting.factory.Factory):
             self, iftype=INTERFACE_TYPE.PHYSICAL, node=None, mac_address=None,
             vlan=None, parents=None, name=None, cluster_interface=None,
             ip=None, subnet=None, enabled=True, fabric=None, tags=None,
-            disconnected=False, params=""):
+            link_connected=True, interface_speed=None, link_speed=None,
+            params=""):
         if subnet is None and cluster_interface is not None:
             subnet = cluster_interface.subnet
         if subnet is not None and vlan is None:
@@ -1344,7 +1345,7 @@ class Factory(maastesting.factory.Factory):
             elif iftype == INTERFACE_TYPE.VLAN:
                 # Need to calculate this later based on the VID.
                 name = None
-        if not disconnected:
+        if link_connected:
             if vlan is None:
                 if fabric is not None:
                     if iftype == INTERFACE_TYPE.VLAN:
@@ -1375,9 +1376,21 @@ class Factory(maastesting.factory.Factory):
             node = parents[0].get_node()
         if tags is None:
             tags = [self.make_name('tag') for _ in range(3)]
+        link_speeds = [10, 100, 1000, 10000, 20000, 40000, 50000, 100000]
+        if interface_speed is None:
+            interface_speed = random.choice(link_speeds)
+        if link_speed is None:
+            if not link_connected:
+                link_speed = 0
+            else:
+                link_speed = random.choice([
+                    speed for speed in link_speeds
+                    if speed <= interface_speed])
         interface = Interface(
             node=node, mac_address=mac_address, type=iftype,
-            name=name, vlan=vlan, enabled=enabled, tags=tags, params=params)
+            name=name, vlan=vlan, enabled=enabled, tags=tags,
+            link_connected=link_connected, interface_speed=interface_speed,
+            link_speed=link_speed, params=params)
         interface.save()
         if subnet is None and ip is not None:
             subnet = Subnet.objects.get_best_subnet_for_ip(ip)

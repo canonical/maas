@@ -1,4 +1,4 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 __all__ = [
@@ -75,6 +75,8 @@ def translate_hardware_type(hardware_type):
         return HARDWARE_TYPE.MEMORY
     elif hardware_type in ['storage', 'disk', 'ssd']:
         return HARDWARE_TYPE.STORAGE
+    elif hardware_type in ['network', 'net', 'interface']:
+        return HARDWARE_TYPE.NETWORK
     else:
         raise ValidationError(
             'Hardware type must be node, cpu, memory, or storage')
@@ -181,6 +183,10 @@ class Script(CleanSave, TimestampedModel):
     # Only applicable to commissioning scripts. When true reruns commissioning
     # scripts after receiving the result.
     recommission = BooleanField(default=False)
+
+    # Whether or not maas-run-remote-scripts should apply user configured
+    # network settings before running the Script.
+    apply_configured_networking = BooleanField(default=False)
 
     @property
     def ForHardware(self):

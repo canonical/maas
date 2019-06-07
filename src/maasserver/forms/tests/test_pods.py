@@ -1869,9 +1869,9 @@ class TestGetKnownHostInterfaces(MAASServerTestCase):
         node = factory.make_Machine_with_Interface_on_Subnet()
         node.interface_set.all().delete()
         bridge = factory.make_Interface(
-            iftype=INTERFACE_TYPE.BRIDGE, node=node, disconnected=True)
+            iftype=INTERFACE_TYPE.BRIDGE, node=node, link_connected=False)
         physical = factory.make_Interface(
-            iftype=INTERFACE_TYPE.PHYSICAL, node=node, disconnected=True)
+            iftype=INTERFACE_TYPE.PHYSICAL, node=node, link_connected=False)
         interfaces = get_known_host_interfaces(node)
         self.assertItemsEqual(
             interfaces, [

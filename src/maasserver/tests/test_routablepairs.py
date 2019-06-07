@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.routablepairs`."""
@@ -136,7 +136,7 @@ class TestFindAddressesBetweenNodes(MAASServerTestCase):
         # null space, one in a non-null space.
         origin = factory.make_Node(hostname="origin")
         origin_iface = factory.make_Interface(
-            node=origin, disconnected=True)
+            node=origin, link_connected=False)
         origin_subnet = factory.make_Subnet(
             space=space, cidr=next(networks))
         origin_subnet_null_space = factory.make_Subnet(
@@ -150,14 +150,14 @@ class TestFindAddressesBetweenNodes(MAASServerTestCase):
         node_same_subnet = factory.make_Node(hostname="same-subnet")
         sip_same_subnet = factory.make_StaticIPAddress(
             interface=factory.make_Interface(
-                node=node_same_subnet, disconnected=True),
+                node=node_same_subnet, link_connected=False),
             subnet=origin_subnet)
 
         # Same VLAN, different subnet, different node.
         node_same_vlan = factory.make_Node(hostname="same-vlan")
         sip_same_vlan = factory.make_StaticIPAddress(
             interface=factory.make_Interface(
-                node=node_same_vlan, disconnected=True),
+                node=node_same_vlan, link_connected=False),
             subnet=factory.make_Subnet(
                 space=space, vlan=origin_subnet.vlan,
                 cidr=next(networks)))
@@ -166,7 +166,7 @@ class TestFindAddressesBetweenNodes(MAASServerTestCase):
         node_same_space = factory.make_Node(hostname="same-space")
         sip_same_space = factory.make_StaticIPAddress(
             interface=factory.make_Interface(
-                node=node_same_space, disconnected=True),
+                node=node_same_space, link_connected=False),
             subnet=factory.make_Subnet(
                 space=space, cidr=next(networks)))
 
@@ -174,7 +174,7 @@ class TestFindAddressesBetweenNodes(MAASServerTestCase):
         node_null_space = factory.make_Node(hostname="null-space")
         factory.make_StaticIPAddress(
             interface=factory.make_Interface(
-                node=node_null_space, disconnected=True),
+                node=node_null_space, link_connected=False),
             subnet=factory.make_Subnet(
                 space=None, cidr=next(networks)))
 
@@ -208,7 +208,7 @@ class TestFindAddressesBetweenNodes(MAASServerTestCase):
         # would have obscured the test.
         origin_sip_2 = factory.make_StaticIPAddress(
             interface=factory.make_Interface(
-                node=origin, disconnected=True),
+                node=origin, link_connected=False),
             subnet=factory.make_Subnet(
                 space=space, cidr=next(networks)))
 
@@ -239,7 +239,7 @@ class TestFindAddressesBetweenNodes(MAASServerTestCase):
         # null space, one in a non-null space.
         origin = factory.make_Node(hostname="origin")
         origin_iface = factory.make_Interface(
-            node=origin, disconnected=True)
+            node=origin, link_connected=False)
         origin_subnet_null_space = factory.make_Subnet(
             space=None, cidr=network1)
         factory.make_StaticIPAddress(
@@ -248,7 +248,7 @@ class TestFindAddressesBetweenNodes(MAASServerTestCase):
         # Same subnet, different node.
         node_no_match = factory.make_Node(hostname="no-match")
         no_match_iface = factory.make_Interface(
-            node=node_no_match, disconnected=True)
+            node=node_no_match, link_connected=False)
         no_match_subnet_null_space = factory.make_Subnet(
             space=None, cidr=network2)
         factory.make_StaticIPAddress(

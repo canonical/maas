@@ -1,4 +1,4 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 __all__ = []
@@ -161,6 +161,18 @@ class TestTranslateHardwareType(MAASServerTestCase):
         ('ssd', {
             'value': 'ssd',
             'return_value': HARDWARE_TYPE.STORAGE,
+        }),
+        ('network', {
+            'value': 'network',
+            'return_value': HARDWARE_TYPE.NETWORK,
+        }),
+        ('net', {
+            'value': 'net',
+            'return_value': HARDWARE_TYPE.NETWORK,
+        }),
+        ('interface', {
+            'value': 'interface',
+            'return_value': HARDWARE_TYPE.NETWORK,
         }),
         ('invalid value', {
             'value': factory.make_name('value'),

@@ -24,6 +24,7 @@ from django.db.models import (
 from maasserver.fields import JSONObjectField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.event import Event
+from maasserver.models.interface import Interface
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.timestampedmodel import (
     now,
@@ -72,6 +73,10 @@ class ScriptResult(CleanSave, TimestampedModel):
     physical_blockdevice = ForeignKey(
         PhysicalBlockDevice, editable=False, blank=True, null=True,
         on_delete=CASCADE)
+
+    # If the result is in reference to a particular Interface link it.
+    interface = ForeignKey(
+        Interface, editable=False, blank=True, null=True, on_delete=CASCADE)
 
     script_version = ForeignKey(
         VersionedTextFile, blank=True, null=True, editable=False,
