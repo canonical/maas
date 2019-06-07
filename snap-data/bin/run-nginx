@@ -6,4 +6,5 @@
 mkdir -p "$SNAP_DATA/http/"
 cp -f "$SNAP/usr/share/maas/nginx/nginx.conf" "$SNAP_DATA/http/"
 
+export LD_PRELOAD="$SNAP/usr/lib/stub_initgroups.so"
 exec "$SNAP/usr/sbin/nginx" -c "$SNAP_DATA/http/nginx.conf"
