@@ -77,6 +77,9 @@ DISPLAYED_INTERFACE_FIELDS = (
     'vendor',
     'product',
     'firmware_version',
+    'link_connected',
+    'interface_speed',
+    'link_speed',
 )
 
 INTERFACES_PREFETCH = [
@@ -672,6 +675,16 @@ class InterfaceHandler(OperationsHandler):
 
         @param (string) "autoconf" [required=false] Perform stateless
         autoconfiguration. (IPv6 only)
+
+        @param (boolean) "link_connected" [required=false]
+        (Physical interfaces) Whether or not the interface is physically
+        conntected to an uplink.  (Default: True).
+
+        @param (int) "interface_speed" [required=false] (Physical interfaces)
+        The speed of the interface in Mbit/s. (Default: 0).
+
+        @param (int) "link_speed" [required=false] (Physical interfaces)
+        The speed of the link in Mbit/s. (Default: 0).
 
         @success (http-status-code) "server-success" 200
         @success (json) "success-json" A JSON object containing the new

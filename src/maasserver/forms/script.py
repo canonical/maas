@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Script form."""
@@ -17,6 +17,7 @@ import re
 
 from django.core.exceptions import ValidationError
 from django.forms import (
+    BooleanField,
     CharField,
     DurationField,
     FileField,
@@ -78,6 +79,8 @@ class ScriptForm(ModelForm):
         help_text='Hardware identifiers this script requires to run.',
         initial='')
 
+    apply_configured_networking = BooleanField(required=False)
+
     class Meta:
         model = Script
         fields = (
@@ -95,6 +98,7 @@ class ScriptForm(ModelForm):
             'for_hardware',
             'may_reboot',
             'recommission',
+            'apply_configured_networking',
         )
 
     def __init__(self, instance=None, data=None, edit_default=False, **kwargs):

@@ -940,10 +940,16 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
                 INTERFACE_TYPE.PHYSICAL, node=node)
             new_name = factory.make_name("name")
             new_vlan = factory.make_VLAN()
+            new_link_connected = factory.pick_bool()
+            new_link_speed = random.randint(10, 1000)
+            new_interface_speed = random.randint(new_link_speed, 1000)
             uri = get_interface_uri(interface)
             response = self.client.put(uri, {
                 "name": new_name,
                 "vlan": new_vlan.id,
+                "link_connected": new_link_connected,
+                "link_speed": new_link_speed,
+                "interface_speed": new_interface_speed,
                 })
             self.assertEqual(
                 http.client.OK, response.status_code, response.content)

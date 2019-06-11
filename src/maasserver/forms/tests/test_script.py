@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for Script form."""
@@ -171,6 +171,7 @@ class TestScriptForm(MAASServerTestCase):
         comment = factory.make_name('comment')
         orig_script_content = script.script.data
         may_reboot = factory.pick_bool()
+        apply_configured_networking = factory.pick_bool()
         if script_type == SCRIPT_TYPE.COMMISSIONING:
             for_hardware = [
                 'modalias:%s' % factory.make_name('mod_alias'),
@@ -205,6 +206,7 @@ class TestScriptForm(MAASServerTestCase):
             'may_reboot': may_reboot,
             'for_hardware': ','.join(for_hardware),
             'recommission': recommission,
+            'apply_configured_networking': apply_configured_networking,
         }, instance=script)
         self.assertTrue(form.is_valid(), form.errors)
         script = form.save()
@@ -226,6 +228,8 @@ class TestScriptForm(MAASServerTestCase):
         self.assertEquals(
             orig_script_content, script.script.previous_version.data)
         self.assertEquals(None, script.script.previous_version.comment)
+        self.assertEquals(
+            apply_configured_networking, script.apply_configured_networking)
         self.assertFalse(script.default)
 
     def test__update_no_fields_mandatory(self):

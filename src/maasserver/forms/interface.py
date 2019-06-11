@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Interface Forms."""
@@ -66,6 +66,10 @@ class InterfaceForm(MAASModelForm):
         required=False)
     ip_address = forms.GenericIPAddressField(
         unpack_ipv4=True, required=False)
+
+    link_connected = forms.BooleanField(required=False)
+    interface_speed = forms.IntegerField(min_value=0, required=False)
+    link_speed = forms.IntegerField(min_value=0, required=False)
 
     @staticmethod
     def get_interface_form(type):

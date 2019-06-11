@@ -278,6 +278,7 @@ class TestScriptAPI(APITestCase.ForUser):
             'may_reboot': script.may_reboot,
             'recommission': script.recommission,
             'default': script.default,
+            'apply_configured_networking': script.apply_configured_networking,
             'resource_uri': '/MAAS/api/2.0/scripts/%s' % script.name,
             }, parsed_result)
         self.assertItemsEqual(
@@ -324,6 +325,7 @@ class TestScriptAPI(APITestCase.ForUser):
             'may_reboot': script.may_reboot,
             'recommission': script.recommission,
             'default': script.default,
+            'apply_configured_networking': script.apply_configured_networking,
             'resource_uri': '/MAAS/api/2.0/scripts/%s' % script.name,
             }, parsed_result)
         self.assertItemsEqual(

@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for Interface forms."""
@@ -112,11 +112,17 @@ class DeployedInterfaceFormTest(MAASServerTestCase):
             INTERFACE_TYPE.PHYSICAL, name='eth0')
         new_name = 'eth1'
         new_mac = factory.make_mac_address()
+        new_link_connected = factory.pick_bool()
+        new_link_speed = random.randint(10, 1000)
+        new_interface_speed = random.randint(new_link_speed, 1000)
         form = DeployedInterfaceForm(
             instance=interface,
             data={
                 'name': new_name,
                 'mac_address': new_mac,
+                'link_connected': new_link_connected,
+                'link_speed': new_link_speed,
+                'interface_speed': new_interface_speed,
             })
         self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
