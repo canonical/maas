@@ -8,6 +8,9 @@
  * conflicts with Django templates.
  */
 
+// Load the SCSS.
+import "../../scss/build.scss";
+
 // Run template caches
 import { cacheActionButton } from "./directives/action_button";
 import { cacheCta } from "./directives/call_to_action";

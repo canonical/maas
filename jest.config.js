@@ -3,6 +3,9 @@ const config = {
     '<rootDir>/src/maasserver/static/js/angular/',
     'node_modules'
   ],
+  moduleNameMapper: {
+    '.scss$': '<rootDir>/src/maasserver/static/js/angular/testing/proxy-module.js'
+  },
   setupFiles: [
     '<rootDir>/src/maasserver/static/js/angular/testing/setup-jest.js',
   ],

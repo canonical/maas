@@ -2,7 +2,7 @@
 @import 'settings';
 
 // Import Vanilla framework
-@import '../../../../node_modules/vanilla-framework/scss/vanilla';
+@import 'node_modules/vanilla-framework/scss/vanilla';
 @include vanilla;
 
 @import 'utils';

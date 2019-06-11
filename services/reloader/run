@@ -71,12 +71,12 @@ def handle_python_change(event, *services):
 
 def handle_scss_change(event):
     print("<-- {0.pathname} changed; rebuilding CSS.".format(event))
-    check_call(("make", "-s", "styles"))
+    check_call(("make", "-s", "assets"))
 
 
 def handle_js_change(event):
     print("<-- {0.pathname} changed; rebuilding JavaScript.".format(event))
-    check_call(("make", "-s", "javascript"))
+    check_call(("make", "-s", "assets"))
 
 
 def handle_maas_change(event):

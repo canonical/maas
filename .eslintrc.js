@@ -18,6 +18,7 @@ module.exports = {
         "jasmine": false,
         "jest": false,
         "MAAS_config": false,
+        "module": false,
         "require": false,
         "setTimeout": false,
         "SharedArrayBuffer": "readonly",

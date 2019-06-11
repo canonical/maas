@@ -21,19 +21,15 @@ export http_proxy := broken
 export https_proxy := broken
 endif
 
-# MAAS SASS stylesheets. The first input file (maas-styles.css) imports
-# the others, so is treated specially in the target definitions.
-scss_input := src/maasserver/static/scss/build.scss
-scss_deps := $(wildcard src/maasserver/static/scss/_*.scss)
-scss_output := src/maasserver/static/css/build.css
-
-javascript_deps := \
+asset_deps := \
   $(shell find src -name '*.js' -not -path '*/maasserver/static/js/bundle/*') \
+  $(shell find src -name '*.scss') \
   package.json \
   webpack.config.js \
   yarn.lock
 
-javascript_output := \
+asset_output := \
+  src/maasserver/static/css/build.css \
   src/maasserver/static/js/bundle/maas-min.js \
   src/maasserver/static/js/bundle/maas-min.js.map \
   src/maasserver/static/js/bundle/vendor-min.js \
@@ -118,7 +114,7 @@ bin/test.parallel: \
 
 bin/maas-region bin/regiond: \
     bin/buildout buildout.cfg versions.cfg setup.py \
-    $(scss_output) $(javascript_output)
+    $(asset_output)
 	$(buildout) install region
 	@touch --no-create $@
 
@@ -231,7 +227,6 @@ define node_packages
   react-dom
   react2angular
   vanilla-framework
-  vanilla-framework-react
   webpack
   webpack-cli
   webpack-merge
@@ -258,10 +253,10 @@ test: bin/test.parallel bin/coverage
 	@bin/test.parallel --with-coverage --subprocess-per-core
 	@bin/coverage combine
 
-test-js: javascript
+test-js: assets
 	bin/yarn test
 
-test-js-watch: javascript
+test-js-watch: assets
 	bin/yarn test --watch
 
 test-serial: $(strip $(test-scripts))
@@ -420,43 +415,31 @@ man/%: docs/man/%.rst | bin/sphinx-build
 
 pycharm: .idea
 
-styles: $(scss_output)
+assets: node_modules $(asset_output)
 
-force-styles: clean-styles $(scss_output)
+force-assets: clean-assets node_modules $(asset_output)
 
-$(scss_output): bin/node-sass $(scss_input) $(scss_deps)
-	bin/node-sass --include-path=src/maasserver/static/scss \
-	    --output-style compressed $(scss_input) -o $(dir $@)
+lander-javascript: force-assets
+	git update-index -q --no-assume-unchanged $(strip $(asset_output)) 2> /dev/null || true
+	git add -f $(strip $(asset_output)) 2> /dev/null || true
 
-clean-styles:
-	$(RM) $(scss_output)
-
-javascript: node_modules $(javascript_output)
-
-force-javascript: clean-javascript node_modules $(javascript_output)
-
-lander-javascript: force-javascript
-	git update-index -q --no-assume-unchanged $(strip $(javascript_output)) 2> /dev/null || true
-	git add -f $(strip $(javascript_output)) 2> /dev/null || true
-
-lander-styles: force-styles node_modules $(scss_output)
-	git update-index -q --no-assume-unchanged $(strip $(scss_output)) 2> /dev/null || true
-	git add -f $(strip $(scss_output)) 2> /dev/null || true
+lander-styles: lander-javascript
 
 # The $(subst ...) uses a pattern rule to ensure Webpack runs just once,
 # even if all four output files are out-of-date.
-$(subst .,%,$(javascript_output)): $(javascript_deps)
+$(subst .,%,$(asset_output)): node_modules $(asset_deps)
 	bin/yarn build
-	@touch --no-create $(strip $(javascript_output))
-	@git update-index -q --assume-unchanged $(strip $(javascript_output)) 2> /dev/null || true
+	@touch --no-create $(strip $(asset_output))
+	@git update-index -q --assume-unchanged $(strip $(asset_output)) 2> /dev/null || true
 
-clean-javascript:
+clean-assets:
 	$(RM) -r src/maasserver/static/js/bundle
+	$(RM)  -r src/maasserver/static/css
 
-watch-javascript:
+watch-assets:
 	bin/yarn watch
 
-clean: stop clean-failed
+clean: stop clean-failed clean-assets
 	find . -type f -name '*.py[co]' -print0 | xargs -r0 $(RM)
 	find . -type d -name '__pycache__' -print0 | xargs -r0 $(RM) -r
 	find . -type f -name '*~' -print0 | xargs -r0 $(RM)
@@ -504,21 +487,19 @@ define phony_targets
   clean
   clean+db
   clean-failed
-  clean-javascript
-  clean-styles
+  clean-assets
   configure-buildout
   coverage-report
   dbharness
   distclean
   doc
   doc-browse
-  force-styles
-  force-javascript
+  force-assets
   force-yarn-update
   format
   harness
   install-dependencies
-  javascript
+  assets
   lander-javascript
   lander-styles
   lint
@@ -534,7 +515,6 @@ define phony_targets
   print-%
   sampledata
   smoke
-  styles
   sudoers
   syncdb
   sync-dev-snap
@@ -683,7 +663,7 @@ packaging-orig-targz := $(packaging-dir).orig.tar.gz
 	tail -n +2 debian/changelog >> $(tmp_changelog)
 	mv $(tmp_changelog) $(packaging-build-area)/$(packaging-dir)/debian/changelog
 
-package: javascript -packaging-clean -package-tree
+package: assets -packaging-clean -package-tree
 	(cd $(packaging-build-area)/$(packaging-dir) && debuild -uc -us)
 	@echo Binary packages built, see $(packaging-build-area).
 
@@ -811,7 +791,6 @@ phony := $(sort $(strip $(phony)))
 
 define secondary_binaries
   bin/py bin/buildout
-  bin/node-sass
   bin/sphinx bin/sphinx-build
 endef
 

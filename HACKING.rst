@@ -185,7 +185,7 @@ Frontend development
 
 For faster development, Webpack watch mode can be run with::
 
-    $ make watch-javascript
+    $ make watch-assets
 
 JavaScript debugging
 ^^^^^^^^^^^^^^^^^^^^
