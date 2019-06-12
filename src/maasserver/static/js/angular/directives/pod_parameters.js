@@ -10,11 +10,11 @@ export function cachePodParameters($templateCache) {
   $templateCache.put(
     "directive/templates/pod-parameters.html",
     [
-      '<maas-obj-field type="options" key="type" label="KVM type" ',
-      'placeholder="Select the KVM type" ',
+      '<maas-obj-field type="options" key="type" label="Type" ',
+      'placeholder="Select the type" ',
       'options="type.name as type.description for type in podTypes" ',
       'label-width="2" label-width-tablet="2" ',
-      'input-width="3" input-width-tablet="4" ',
+      'input-width="4" input-width-tablet="3" ',
       'ng-if="!hideType">',
       "</maas-obj-field>",
       "<div pod-fields></div>"

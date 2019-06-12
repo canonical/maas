@@ -285,6 +285,10 @@ describe("NodesListController", function() {
       {
         name: "chassis",
         title: "Chassis"
+      },
+      {
+        name: "rsd",
+        title: "RSD"
       }
     ]);
     expect($scope.addHardwareScope).toBeNull();

@@ -1210,9 +1210,9 @@ class VirshPodDriver(PodDriver):
     description = "Virsh (virtual systems)"
     settings = [
         make_setting_field(
-            'power_address', "Virsh address", required=True),
+            'power_address', "Address", required=True),
         make_setting_field(
-            'power_pass', "Virsh password (optional)",
+            'power_pass', "Password (optional)",
             required=False, field_type='password'),
         make_setting_field(
             'power_id', "Virsh VM ID", scope=SETTING_SCOPE.NODE,

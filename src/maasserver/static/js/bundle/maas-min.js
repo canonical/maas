@@ -37390,6 +37390,12 @@ function configureMaas($interpolateProvider, $routeProvider, $httpProvider, $com
       redirectTo: "/kvm"
     }).when("/pod/:id", {
       redirectTo: "/kvm/:id"
+    }).when("/rsd", {
+      templateUrl: versionedPath("static/partials/pods-list.html"),
+      controller: "PodsListController"
+    }).when("/rsd/:id", {
+      templateUrl: versionedPath("static/partials/pod-details.html"),
+      controller: "PodDetailsController"
     }).when("/images", {
       templateUrl: versionedPath("static/partials/images.html"),
       controller: "ImagesController"
@@ -38401,7 +38407,7 @@ cachePodParameters.$inject = ["$templateCache"];
 /* @ngInject */
 function cachePodParameters($templateCache) {
   // Inject the power-parameters.html into the template cache.
-  $templateCache.put("directive/templates/pod-parameters.html", ['<maas-obj-field type="options" key="type" label="KVM type" ', 'placeholder="Select the KVM type" ', 'options="type.name as type.description for type in podTypes" ', 'label-width="2" label-width-tablet="2" ', 'input-width="3" input-width-tablet="4" ', 'ng-if="!hideType">', "</maas-obj-field>", "<div pod-fields></div>"].join(""));
+  $templateCache.put("directive/templates/pod-parameters.html", ['<maas-obj-field type="options" key="type" label="Type" ', 'placeholder="Select the type" ', 'options="type.name as type.description for type in podTypes" ', 'label-width="2" label-width-tablet="2" ', 'input-width="4" input-width-tablet="3" ', 'ng-if="!hideType">', "</maas-obj-field>", "<div pod-fields></div>"].join(""));
 }
 /* @ngInject */
 
@@ -50339,7 +50345,7 @@ exports.default = void 0;
  * RegionConnection to load the pods, update the pods, and listen for
  * notification events about pods.
  */
-function PodsManager(RegionConnection, Manager) {
+function PodsManager(RegionConnection, Manager, $location, $routeParams) {
   function PodsManager() {
     Manager.call(this);
     this._pk = "id";
@@ -50379,12 +50385,17 @@ function PodsManager(RegionConnection, Manager) {
     } else {
       return total * overcommitRatio - used;
     }
+  }; // Detect if on RSD page
+
+
+  PodsManager.prototype.onRSDSection = function (podID) {
+    return $location.path() === "/rsd" || $location.path() === "/rsd/" + podID;
   };
 
   return new PodsManager();
 }
 
-PodsManager.$inject = ["RegionConnection", "Manager"];
+PodsManager.$inject = ["RegionConnection", "Manager", "$location", "$routeParams"];
 var _default = PodsManager;
 exports.default = _default;
 
@@ -55452,7 +55463,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.default = void 0;
-NodesListController.$inject = ["$q", "$scope", "$interval", "$rootScope", "$routeParams", "$location", "$window", "$log", "MachinesManager", "DevicesManager", "ControllersManager", "GeneralManager", "ManagerHelperService", "SearchService", "ZonesManager", "UsersManager", "ServicesManager", "ScriptsManager", "SwitchesManager", "ResourcePoolsManager", "VLANsManager", "TagsManager", "NotificationsManager"];
+NodesListController.$inject = ["$q", "$scope", "$interval", "$rootScope", "$routeParams", "$route", "$location", "$window", "$log", "MachinesManager", "DevicesManager", "ControllersManager", "GeneralManager", "ManagerHelperService", "SearchService", "ZonesManager", "UsersManager", "ServicesManager", "ScriptsManager", "SwitchesManager", "ResourcePoolsManager", "VLANsManager", "TagsManager", "NotificationsManager"];
 
 /* Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
@@ -55461,7 +55472,7 @@ NodesListController.$inject = ["$q", "$scope", "$interval", "$rootScope", "$rout
  */
 
 /* @ngInject */
-function NodesListController($q, $scope, $interval, $rootScope, $routeParams, $location, $window, $log, MachinesManager, DevicesManager, ControllersManager, GeneralManager, ManagerHelperService, SearchService, ZonesManager, UsersManager, ServicesManager, ScriptsManager, SwitchesManager, ResourcePoolsManager, VLANsManager, TagsManager, NotificationsManager) {
+function NodesListController($q, $scope, $interval, $rootScope, $routeParams, $route, $location, $window, $log, MachinesManager, DevicesManager, ControllersManager, GeneralManager, ManagerHelperService, SearchService, ZonesManager, UsersManager, ServicesManager, ScriptsManager, SwitchesManager, ResourcePoolsManager, VLANsManager, TagsManager, NotificationsManager) {
   // Mapping of device.ip_assignment to viewable text.
   var DEVICE_IP_ASSIGNMENT = {
     external: "External",
@@ -55752,6 +55763,9 @@ function NodesListController($q, $scope, $interval, $rootScope, $routeParams, $l
   }, {
     name: "chassis",
     title: "Chassis"
+  }, {
+    name: "rsd",
+    title: "RSD"
   }]; // This will hold the AddHardwareController once it is initialized.
   // The controller will set this variable as it's always a child of
   // this scope.
@@ -56407,7 +56421,13 @@ function NodesListController($q, $scope, $interval, $rootScope, $routeParams, $l
 
   $scope.addHardwareOptionChanged = function () {
     if ($scope.addHardwareOption) {
-      $scope.addHardwareScope.show($scope.addHardwareOption.name);
+      if ($scope.addHardwareOption.name === "rsd") {
+        $location.path("/rsd");
+        $location.search("addItem", true);
+        $route.reload();
+      } else {
+        $scope.addHardwareScope.show($scope.addHardwareOption.name);
+      }
     }
   }; // Called when the add device button is pressed.
 
@@ -56648,9 +56668,18 @@ PodDetailsController.$inject = ["$scope", "$rootScope", "$location", "$routePara
 
 /* @ngInject */
 function PodDetailsController($scope, $rootScope, $location, $routeParams, $filter, PodsManager, GeneralManager, UsersManager, DomainsManager, ZonesManager, MachinesManager, ManagerHelperService, ErrorService, ResourcePoolsManager, SubnetsManager, VLANsManager, FabricsManager, SpacesManager, ValidationService, $log, $document) {
-  // Set title and page.
+  // Checks if on RSD page
+  $scope.onRSDSection = PodsManager.onRSDSection;
   $rootScope.title = "Loading...";
-  $rootScope.page = "pods"; // Initial values.
+
+  if ($scope.onRSDSection($routeParams.id)) {
+    $rootScope.page = "rsd";
+    $scope.pageType = "RSD";
+  } else {
+    $rootScope.page = "kvm";
+    $scope.pageType = "KVM";
+  } // Initial values.
+
 
   $scope.loaded = false;
   $scope.pod = null;
@@ -56833,7 +56862,11 @@ function PodDetailsController($scope, $rootScope, $location, $routeParams, $filt
     $scope.action.option.operation($scope.pod).then(function () {
       // If the action was delete, then go back to listing.
       if ($scope.action.option.name === "delete") {
-        $location.path("/pods");
+        if ($scope.onRSDSection($routeParams.id)) {
+          $location.path("/rsd");
+        } else {
+          $location.path("/kvm");
+        }
       }
 
       $scope.action.inProgress = false;
@@ -57280,7 +57313,12 @@ function PodDetailsController($scope, $rootScope, $location, $routeParams, $filt
       });
     });
     $scope.$watch("pod.name", function () {
-      $rootScope.title = "Pod " + $scope.pod.name;
+      if ($scope.onRSDSection($scope.pod.id)) {
+        $rootScope.title = "RSD " + $scope.pod.name;
+      } else {
+        $rootScope.title = "Pod " + $scope.pod.name;
+      }
+
       updateName();
     });
     $scope.$watch("pod.capabilities", function () {
@@ -57354,7 +57392,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.default = void 0;
-PodsListController.$inject = ["$scope", "$rootScope", "PodsManager", "UsersManager", "GeneralManager", "ZonesManager", "ManagerHelperService", "ResourcePoolsManager"];
+PodsListController.$inject = ["$scope", "$rootScope", "$location", "PodsManager", "UsersManager", "GeneralManager", "ZonesManager", "ManagerHelperService", "ResourcePoolsManager"];
 
 /* Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
@@ -57363,14 +57401,22 @@ PodsListController.$inject = ["$scope", "$rootScope", "PodsManager", "UsersManag
  */
 
 /* @ngInject */
-function PodsListController($scope, $rootScope, PodsManager, UsersManager, GeneralManager, ZonesManager, ManagerHelperService, ResourcePoolsManager) {
-  // Set title and page.
-  $rootScope.title = "KVM";
-  $rootScope.page = "kvm"; // Set initial values.
+function PodsListController($scope, $rootScope, $location, PodsManager, UsersManager, GeneralManager, ZonesManager, ManagerHelperService, ResourcePoolsManager) {
+  // Checks if on RSD page
+  $scope.onRSDSection = PodsManager.onRSDSection; // Set initial values.
 
   $scope.podManager = PodsManager;
   $scope.pods = PodsManager.getItems();
   $scope.loading = true;
+
+  if ($scope.onRSDSection()) {
+    $rootScope.title = "RSD";
+    $rootScope.page = "rsd";
+  } else {
+    $rootScope.title = "KVM";
+    $rootScope.page = "kvm";
+  }
+
   $scope.filteredItems = [];
   $scope.selectedItems = PodsManager.getSelectedItems();
   $scope.predicate = "name";
@@ -57557,6 +57603,12 @@ function PodsListController($scope, $rootScope, PodsManager, UsersManager, Gener
     $scope.add.obj.default_pool = ResourcePoolsManager.getDefaultPool().id;
     $scope.add.obj.cpu_over_commit_ratio = 1;
     $scope.add.obj.memory_over_commit_ratio = 1;
+
+    if ($scope.onRSDSection()) {
+      $scope.add.obj.type = "rsd";
+    } else {
+      $scope.add.obj.type = "virsh";
+    }
   }; // Called when the cancel add pod button is pressed.
 
 
@@ -57601,10 +57653,43 @@ function PodsListController($scope, $rootScope, PodsManager, UsersManager, Gener
     }
 
     return power_type;
+  }; // Filter pods depending on if page is rsd
+
+
+  $scope.filterPods = function (pods) {
+    return pods.filter(function (pod) {
+      if ($scope.onRSDSection()) {
+        return pod.type === "rsd";
+      } else {
+        return pod.type !== "rsd";
+      }
+    });
+  }; // Get page heading
+
+
+  $scope.getPageHeading = function () {
+    if ($scope.onRSDSection()) {
+      return "RSD";
+    } else {
+      return "KVM";
+    }
+  }; // Get route for details page
+
+
+  $scope.getDetailsRoute = function () {
+    if ($scope.onRSDSection()) {
+      return "rsd";
+    } else {
+      return "kvm";
+    }
   }; // Load the required managers for this controller.
 
 
   ManagerHelperService.loadManagers($scope, [PodsManager, UsersManager, GeneralManager, ZonesManager, ResourcePoolsManager]).then(function () {
+    if ($location.search().addItem) {
+      $scope.addPod();
+    }
+
     $scope.loading = false;
   });
 }

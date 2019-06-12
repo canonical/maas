@@ -8,7 +8,7 @@
  * notification events about pods.
  */
 
-function PodsManager(RegionConnection, Manager) {
+function PodsManager(RegionConnection, Manager, $location, $routeParams) {
   function PodsManager() {
     Manager.call(this);
 
@@ -60,9 +60,19 @@ function PodsManager(RegionConnection, Manager) {
     }
   };
 
+  // Detect if on RSD page
+  PodsManager.prototype.onRSDSection = function(podID) {
+    return $location.path() === "/rsd" || $location.path() === "/rsd/" + podID;
+  };
+
   return new PodsManager();
 }
 
-PodsManager.$inject = ["RegionConnection", "Manager"];
+PodsManager.$inject = [
+  "RegionConnection",
+  "Manager",
+  "$location",
+  "$routeParams"
+];
 
 export default PodsManager;

@@ -28,9 +28,18 @@ function PodDetailsController(
   $log,
   $document
 ) {
-  // Set title and page.
+  // Checks if on RSD page
+  $scope.onRSDSection = PodsManager.onRSDSection;
+
   $rootScope.title = "Loading...";
-  $rootScope.page = "pods";
+
+  if ($scope.onRSDSection($routeParams.id)) {
+    $rootScope.page = "rsd";
+    $scope.pageType = "RSD";
+  } else {
+    $rootScope.page = "kvm";
+    $scope.pageType = "KVM";
+  }
 
   // Initial values.
   $scope.loaded = false;
@@ -226,7 +235,11 @@ function PodDetailsController(
       function() {
         // If the action was delete, then go back to listing.
         if ($scope.action.option.name === "delete") {
-          $location.path("/pods");
+          if ($scope.onRSDSection($routeParams.id)) {
+            $location.path("/rsd");
+          } else {
+            $location.path("/kvm");
+          }
         }
         $scope.action.inProgress = false;
         $scope.action.option = null;
@@ -668,7 +681,11 @@ function PodDetailsController(
       });
     });
     $scope.$watch("pod.name", function() {
-      $rootScope.title = "Pod " + $scope.pod.name;
+      if ($scope.onRSDSection($scope.pod.id)) {
+        $rootScope.title = "RSD " + $scope.pod.name;
+      } else {
+        $rootScope.title = "Pod " + $scope.pod.name;
+      }
       updateName();
     });
     $scope.$watch("pod.capabilities", function() {

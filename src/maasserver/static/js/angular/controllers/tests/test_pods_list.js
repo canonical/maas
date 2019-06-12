@@ -12,12 +12,13 @@ describe("PodsListController", function() {
   beforeEach(angular.mock.module("MAAS"));
 
   // Grab the needed angular pieces.
-  var $controller, $rootScope, $scope, $q;
+  var $controller, $rootScope, $scope, $q, $location;
   beforeEach(inject(function($injector) {
     $controller = $injector.get("$controller");
     $rootScope = $injector.get("$rootScope");
     $scope = $rootScope.$new();
     $q = $injector.get("$q");
+    $location = $injector.get("$location");
   }));
 
   // Load the required managers.
@@ -58,6 +59,7 @@ describe("PodsListController", function() {
     var controller = $controller("PodsListController", {
       $scope: $scope,
       $rootScope: $rootScope,
+      $location: $location,
       PodsManager: PodsManager,
       UsersManager: UsersManager,
       ZonesManager: ZonesManager,
@@ -79,10 +81,19 @@ describe("PodsListController", function() {
     return pod;
   }
 
-  it("sets title and page on $rootScope", function() {
+  it("sets title and page on $rootScope if KVM", function() {
     makeController();
     expect($rootScope.title).toBe("KVM");
     expect($rootScope.page).toBe("kvm");
+  });
+
+  it("sets title and page on $rootScope if RSD", function() {
+    makeController();
+    $location.path("/rsd");
+    $scope.$on("$routeChangeSuccess", function() {
+      expect($rootScope.title).toBe("RSD");
+      expect($rootScope.page).toBe("rsd");
+    });
   });
 
   it("sets initial values on $scope", function() {
@@ -529,6 +540,64 @@ describe("PodsListController", function() {
       makeController();
       $scope.powerTypes = [];
       expect($scope.getPowerTypeTitle("power_type")).toBe("power_type");
+    });
+  });
+
+  describe("onRSDSection", function() {
+    it("returns true if URL is 'rsd'", function() {
+      makeController();
+      $location.path("/rsd");
+      expect($scope.onRSDSection()).toBe(true);
+    });
+
+    it("returns false if URL is 'kvm'", function() {
+      makeController();
+      $location.path("/kvm");
+      expect($scope.onRSDSection()).toBe(false);
+    });
+  });
+
+  describe("filterPods", function() {
+    it("returns only rsd if on rsd page", function() {
+      makeController();
+      $location.path("/rsd");
+      var pods = [{ type: "virsh" }, { type: "rsd" }, { type: "virsh" }];
+      expect($scope.filterPods(pods)).toEqual([{ type: "rsd" }]);
+    });
+
+    it("returns only kvm if on kvm page", function() {
+      makeController();
+      var pods = [{ type: "virsh" }, { type: "rsd" }, { type: "virsh" }];
+      expect($scope.filterPods(pods)).toEqual([
+        { type: "virsh" },
+        { type: "virsh" }
+      ]);
+    });
+  });
+
+  describe("getPageHeading", function() {
+    it("returns RSD if on rsd page", function() {
+      makeController();
+      $location.path("/rsd");
+      expect($scope.getPageHeading()).toBe("RSD");
+    });
+
+    it("returns KVM if on kvm page", function() {
+      makeController();
+      expect($scope.getPageHeading()).toBe("KVM");
+    });
+  });
+
+  describe("getDetailsRoute", function() {
+    it("returns rsd if on rsd page", function() {
+      makeController();
+      $location.path("/rsd");
+      expect($scope.getDetailsRoute()).toBe("rsd");
+    });
+
+    it("returns kvm if on kvm page", function() {
+      makeController();
+      expect($scope.getDetailsRoute()).toBe("kvm");
     });
   });
 });

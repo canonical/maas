@@ -128,10 +128,19 @@ describe("PodDetailsController", function() {
     return controller;
   }
 
-  it("sets title and page on $rootScope", function() {
+  it("sets title and page to kvm on $rootScope if on kvm page", function() {
     makeController();
     expect($rootScope.title).toBe("Loading...");
-    expect($rootScope.page).toBe("pods");
+    expect($rootScope.page).toBe("kvm");
+  });
+
+  it("sets title and page to rsd on $rootScope if on rsd page", function() {
+    makeController();
+    $location.path("/rsd");
+    $scope.$on("$routeChangeSuccess", function() {
+      expect($rootScope.title).toBe("Loading...");
+      expect($rootScope.page).toBe("rsd");
+    });
   });
 
   it("sets initial values on $scope", function() {
@@ -530,7 +539,7 @@ describe("PodDetailsController", function() {
       expect($scope.action.error).toBe(error);
     });
 
-    it("changes path to pods listing on delete", function() {
+    it("changes path to kvm listing on delete", function() {
       makeControllerResolveSetActiveItem();
       var defer = $q.defer();
       var refresh = jasmine.createSpy("refresh");
@@ -544,7 +553,7 @@ describe("PodDetailsController", function() {
       $scope.actionGo();
       defer.resolve();
       $rootScope.$digest();
-      expect($location.path).toHaveBeenCalledWith("/pods");
+      expect($location.path).toHaveBeenCalledWith("/kvm");
     });
   });
 
@@ -983,6 +992,23 @@ describe("PodDetailsController", function() {
       $scope.composeRemoveInterface(deletedIface);
 
       expect($scope.compose.obj.interfaces.indexOf(deletedIface)).toBe(-1);
+    });
+  });
+
+  describe("onRSDSection", function() {
+    it("returns true if URL is 'rsd'", function() {
+      makeControllerResolveSetActiveItem();
+      var pod = makePod();
+      $location.path("/rsd/" + pod.id);
+      $scope.$on("$routeChangeSuccess", function() {
+        expect($scope.onRSDSection()).toBe(true);
+      });
+    });
+
+    it("returns false if URL is 'kvm'", function() {
+      makeControllerResolveSetActiveItem();
+      $location.path("/kvm");
+      expect($scope.onRSDSection()).toBe(false);
     });
   });
 });

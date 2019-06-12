@@ -8,6 +8,7 @@
 function PodsListController(
   $scope,
   $rootScope,
+  $location,
   PodsManager,
   UsersManager,
   GeneralManager,
@@ -15,14 +16,21 @@ function PodsListController(
   ManagerHelperService,
   ResourcePoolsManager
 ) {
-  // Set title and page.
-  $rootScope.title = "KVM";
-  $rootScope.page = "kvm";
+  // Checks if on RSD page
+  $scope.onRSDSection = PodsManager.onRSDSection;
 
   // Set initial values.
   $scope.podManager = PodsManager;
   $scope.pods = PodsManager.getItems();
   $scope.loading = true;
+
+  if ($scope.onRSDSection()) {
+    $rootScope.title = "RSD";
+    $rootScope.page = "rsd";
+  } else {
+    $rootScope.title = "KVM";
+    $rootScope.page = "kvm";
+  }
 
   $scope.filteredItems = [];
   $scope.selectedItems = PodsManager.getSelectedItems();
@@ -216,6 +224,12 @@ function PodsListController(
     $scope.add.obj.default_pool = ResourcePoolsManager.getDefaultPool().id;
     $scope.add.obj.cpu_over_commit_ratio = 1;
     $scope.add.obj.memory_over_commit_ratio = 1;
+
+    if ($scope.onRSDSection()) {
+      $scope.add.obj.type = "rsd";
+    } else {
+      $scope.add.obj.type = "virsh";
+    }
   };
 
   // Called when the cancel add pod button is pressed.
@@ -264,6 +278,35 @@ function PodsListController(
     return power_type;
   };
 
+  // Filter pods depending on if page is rsd
+  $scope.filterPods = function(pods) {
+    return pods.filter(function(pod) {
+      if ($scope.onRSDSection()) {
+        return pod.type === "rsd";
+      } else {
+        return pod.type !== "rsd";
+      }
+    });
+  };
+
+  // Get page heading
+  $scope.getPageHeading = function() {
+    if ($scope.onRSDSection()) {
+      return "RSD";
+    } else {
+      return "KVM";
+    }
+  };
+
+  // Get route for details page
+  $scope.getDetailsRoute = function() {
+    if ($scope.onRSDSection()) {
+      return "rsd";
+    } else {
+      return "kvm";
+    }
+  };
+
   // Load the required managers for this controller.
   ManagerHelperService.loadManagers($scope, [
     PodsManager,
@@ -272,6 +315,9 @@ function PodsListController(
     ZonesManager,
     ResourcePoolsManager
   ]).then(function() {
+    if ($location.search().addItem) {
+      $scope.addPod();
+    }
     $scope.loading = false;
   });
 }

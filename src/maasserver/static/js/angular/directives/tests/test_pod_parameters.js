@@ -107,6 +107,7 @@ describe("maasPodParameters", function() {
     it("sets podTypes", function() {
       var directive = compileDirective("true");
       var scope = directive.isolateScope();
+      podTypes = [powerTypes[0], powerTypes[1]];
       expect(scope.podTypes).toEqual(podTypes);
     });
 
@@ -137,6 +138,23 @@ describe("maasPodParameters", function() {
         $scope.obj.$maasForm.fields.memory_over_commit_ratio
       ).toBeUndefined();
       expect($scope.obj.$maasForm.fields.rsd_address).toBeDefined();
+      expect($scope.obj.$maasForm.fields.rsd_id).toBeUndefined();
+    });
+
+    it("switches fields back when type changed again", function() {
+      compileDirective("false");
+      $scope.obj.$maasForm.updateValue("type", "rsd");
+      $scope.$digest();
+      $scope.obj.$maasForm.updateValue("type", "virsh");
+      $scope.$digest();
+
+      expect($scope.obj.$maasForm.fields.power_address).toBeDefined();
+      expect($scope.obj.$maasForm.fields.power_id).toBeUndefined();
+      expect($scope.obj.$maasForm.fields.cpu_over_commit_ratio).toBeDefined();
+      expect(
+        $scope.obj.$maasForm.fields.memory_over_commit_ratio
+      ).toBeDefined();
+      expect($scope.obj.$maasForm.fields.rsd_address).toBeUndefined();
       expect($scope.obj.$maasForm.fields.rsd_id).toBeUndefined();
     });
 

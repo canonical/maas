@@ -11,6 +11,7 @@ function NodesListController(
   $interval,
   $rootScope,
   $routeParams,
+  $route,
   $location,
   $window,
   $log,
@@ -319,6 +320,10 @@ function NodesListController(
     {
       name: "chassis",
       title: "Chassis"
+    },
+    {
+      name: "rsd",
+      title: "RSD"
     }
   ];
 
@@ -1028,7 +1033,13 @@ function NodesListController(
   // Called to when the addHardwareOption has changed.
   $scope.addHardwareOptionChanged = function() {
     if ($scope.addHardwareOption) {
-      $scope.addHardwareScope.show($scope.addHardwareOption.name);
+      if ($scope.addHardwareOption.name === "rsd") {
+        $location.path("/rsd");
+        $location.search("addItem", true);
+        $route.reload();
+      } else {
+        $scope.addHardwareScope.show($scope.addHardwareOption.name);
+      }
     }
   };
 

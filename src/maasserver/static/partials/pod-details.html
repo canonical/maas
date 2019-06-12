@@ -488,8 +488,8 @@
                         </div>
                         <div data-ng-if="action.option.name === 'refresh'">
                             <p class="u-remove-max-width u-align--left">
-                                Refreshing this KVM will cause MAAS to recalculate usage metrics, update information about storage pools,
-                                and commission any machines present in the KVM that are not yet known to MAAS.
+                                Refreshing this {$ pageType $} will cause MAAS to recalculate usage metrics, update information about storage pools,
+                                and commission any machines present in the {$ pageType $} that are not yet known to MAAS.
                             </p>
                         </div>
                     </div>
@@ -497,8 +497,8 @@
                         <div class="u-align--right">
                             <button class="p-button--base" type="button" data-ng-click="actionCancel()">Cancel</button>
                             <button class="u-no-margin--top u-no-margin--top" data-ng-class="action.option.name === 'delete' ? 'p-button--negative' : 'p-button--positive'" data-ng-click="actionGo()" data-ng-if="!action.error">
-                                <span data-ng-if="action.option.name === 'refresh'">Refresh KVM</span>
-                                <span data-ng-if="action.option.name === 'delete'">Delete KVM</span>
+                                <span data-ng-if="action.option.name === 'refresh'">Refresh {$ pageType $}</span>
+                                <span data-ng-if="action.option.name === 'delete'">Delete {$ pageType $}</span>
                             </button>
                             <button class="p-button--neutral u-no-margin--top" data-ng-click="actionGo()" data-ng-if="action.error">Retry</button>
                         </div>
@@ -666,7 +666,7 @@
     <section class="p-strip" data-ng-if="pod && section.area === 'configuration'">
         <div class="row">
             <div class="col-10">
-                <h2 class="p-heading--four">KVM configuration</h2>
+                <h2 class="p-heading--four">{$ pageType $} configuration</h2>
             </div>
             <div class="col-2">
                 <button class="p-button--neutral u-float--right"
@@ -701,7 +701,7 @@
                     <div class="row">
                         <div class="col-8" data-ng-if="editing">
                             <p maas-obj-hide-saving><maas-obj-errors></maas-obj-errors></p>
-                            <p maas-obj-show-saving><maas-obj-saving><i class="p-icon--spinner u-animation--spin">Loading:</i> Trying to connect and discover KVM</maas-obj-saving></p>
+                            <p maas-obj-show-saving><maas-obj-saving><i class="p-icon--spinner u-animation--spin">Loading:</i> Trying to connect and discover {$ pageType $}</maas-obj-saving></p>
                         </div>
                         <div class="col-4 u-align--right" data-ng-if="editing">
                             <button class="p-button--base" data-ng-click="exitEditPodConfiguration()">Cancel</button>

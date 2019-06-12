@@ -79,6 +79,9 @@
             <li class="p-navigation__link" role="menuitem">
               <a href="{% url 'index' %}#/kvm">KVM</a>
             </li>
+            <li class="p-navigation__link" role="menuitem">
+              <a href="{% url 'index' %}#/rsd">RSD</a>
+            </li>
           </ul>
         </li>
         <li
@@ -125,6 +128,17 @@
             class="{% block nav-active-pod-list %}{% endblock %} p-dropdown__item"
             href="{% url 'index' %}#/kvm"
             >KVM</a
+          >
+        </li>
+        <li
+          class="p-navigation__link u-hide-nav-viewport--medium"
+          role="menuitem"
+          data-ng-class="{ 'is-selected': page === 'rsd' }"
+        >
+          <a
+            class="{% block nav-active-rsd-list %}{% endblock %} p-dropdown__item"
+            href="{% url 'index' %}#/rsd"
+            >RSD</a
           >
         </li>
         <li

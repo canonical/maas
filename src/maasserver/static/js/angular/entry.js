@@ -370,6 +370,14 @@ function configureMaas(
       .when("/pod/:id", {
         redirectTo: "/kvm/:id"
       })
+      .when("/rsd", {
+        templateUrl: versionedPath("static/partials/pods-list.html"),
+        controller: "PodsListController"
+      })
+      .when("/rsd/:id", {
+        templateUrl: versionedPath("static/partials/pod-details.html"),
+        controller: "PodDetailsController"
+      })
       .when("/images", {
         templateUrl: versionedPath("static/partials/images.html"),
         controller: "ImagesController"
