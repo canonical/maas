@@ -940,7 +940,7 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
                 INTERFACE_TYPE.PHYSICAL, node=node)
             new_name = factory.make_name("name")
             new_vlan = factory.make_VLAN()
-            new_link_connected = factory.pick_bool()
+            new_link_connected = True
             new_link_speed = random.randint(10, 1000)
             new_interface_speed = random.randint(new_link_speed, 1000)
             uri = get_interface_uri(interface)
@@ -956,6 +956,12 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
             parsed_interface = json_load_bytes(response.content)
             self.assertEqual(new_name, parsed_interface["name"])
             self.assertEqual(new_vlan.vid, parsed_interface["vlan"]["vid"])
+            self.assertEqual(
+                new_link_connected, parsed_interface["link_connected"])
+            self.assertEqual(
+                new_link_speed, parsed_interface["link_speed"])
+            self.assertEqual(
+                new_interface_speed, parsed_interface["interface_speed"])
 
     def test_update_device_physical_interface(self):
         node = factory.make_Node()

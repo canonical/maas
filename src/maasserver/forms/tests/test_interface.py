@@ -104,15 +104,52 @@ class ControllerInterfaceFormTest(MAASServerTestCase):
             MatchesStructure.byEquality(
                 name=interface.name, vlan=None, enabled=interface.enabled))
 
+    def test__updates_interface_links(self):
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, name='eth0', link_connected=False)
+        new_link_connected = True
+        new_link_speed = random.randint(10, 1000)
+        new_interface_speed = random.randint(new_link_speed, 1000)
+        form = ControllerInterfaceForm(
+            instance=interface,
+            data={
+                'link_connected': new_link_connected,
+                'link_speed': new_link_speed,
+                'interface_speed': new_interface_speed,
+            })
+        self.assertTrue(form.is_valid(), dict(form.errors))
+        interface = form.save()
+        self.assertThat(
+            interface,
+            MatchesStructure.byEquality(
+                link_connected=new_link_connected,
+                link_speed=new_link_speed))
+
+    def test__updates_interface_errors_for_not_link_connected_and_speed(self):
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, name='eth0', link_connected=False)
+        new_mac = factory.make_mac_address()
+        new_link_speed = random.randint(10, interface.interface_speed)
+        form = ControllerInterfaceForm(
+            instance=interface,
+            data={
+                'mac_address': new_mac,
+                'link_speed': new_link_speed,
+            })
+        self.assertFalse(form.is_valid(), dict(form.errors))
+        self.assertEqual(
+            "link_speed cannot be set when link_connected is false.",
+            form.errors['__all__'][0])
+
 
 class DeployedInterfaceFormTest(MAASServerTestCase):
 
     def test__updates_interface(self):
         interface = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, name='eth0')
+            INTERFACE_TYPE.PHYSICAL, name='eth0', link_connected=False)
         new_name = 'eth1'
         new_mac = factory.make_mac_address()
-        new_link_connected = factory.pick_bool()
+        new_link_connected = True
         new_link_speed = random.randint(10, 1000)
         new_interface_speed = random.randint(new_link_speed, 1000)
         form = DeployedInterfaceForm(
@@ -129,10 +166,76 @@ class DeployedInterfaceFormTest(MAASServerTestCase):
         self.assertThat(
             interface,
             MatchesStructure.byEquality(
-                name=new_name, mac_address=new_mac))
+                name=new_name, mac_address=new_mac,
+                link_connected=new_link_connected,
+                link_speed=new_link_speed,
+                interface_speed=new_interface_speed))
+
+    def test__updates_interface_errors_for_not_link_connected_and_speed(self):
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, name='eth0', link_connected=False)
+        new_name = 'eth1'
+        new_mac = factory.make_mac_address()
+        new_link_speed = random.randint(10, interface.interface_speed)
+        form = DeployedInterfaceForm(
+            instance=interface,
+            data={
+                'name': new_name,
+                'mac_address': new_mac,
+                'link_speed': new_link_speed,
+            })
+        self.assertFalse(form.is_valid(), dict(form.errors))
+        self.assertEqual(
+            "link_speed cannot be set when link_connected is false.",
+            form.errors['__all__'][0])
 
 
 class PhysicalInterfaceFormTest(MAASServerTestCase):
+
+    def test__updates_interface(self):
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, name='eth0', link_connected=False)
+        new_name = 'eth1'
+        new_mac = factory.make_mac_address()
+        new_link_connected = True
+        new_link_speed = random.randint(10, 1000)
+        new_interface_speed = random.randint(new_link_speed, 1000)
+        form = PhysicalInterfaceForm(
+            instance=interface,
+            data={
+                'name': new_name,
+                'mac_address': new_mac,
+                'link_connected': new_link_connected,
+                'link_speed': new_link_speed,
+                'interface_speed': new_interface_speed,
+            })
+        self.assertTrue(form.is_valid(), dict(form.errors))
+        interface = form.save()
+        self.assertThat(
+            interface,
+            MatchesStructure.byEquality(
+                name=new_name, mac_address=new_mac,
+                link_connected=new_link_connected,
+                link_speed=new_link_speed,
+                interface_speed=new_interface_speed))
+
+    def test__updates_interface_errors_for_not_link_connected_and_speed(self):
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, name='eth0', link_connected=False)
+        new_name = 'eth1'
+        new_mac = factory.make_mac_address()
+        new_link_speed = random.randint(10, interface.interface_speed)
+        form = PhysicalInterfaceForm(
+            instance=interface,
+            data={
+                'name': new_name,
+                'mac_address': new_mac,
+                'link_speed': new_link_speed,
+            })
+        self.assertFalse(form.is_valid(), dict(form.errors))
+        self.assertEqual(
+            "link_speed cannot be set when link_connected is false.",
+            form.errors['__all__'][0])
 
     def test__creates_physical_interface(self):
         node = factory.make_Node()

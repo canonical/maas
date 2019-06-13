@@ -85,6 +85,9 @@ class InterfaceForm(MAASModelForm):
         fields = (
             'vlan',
             'tags',
+            'link_connected',
+            'interface_speed',
+            'link_speed',
             )
 
     def __init__(self, *args, **kwargs):
@@ -94,6 +97,7 @@ class InterfaceForm(MAASModelForm):
         if instance is not None:
             self.node = instance.get_node()
             self.parents = instance.parents
+            self.link_connected = instance.link_connected
         if self.node is None:
             raise ValueError(
                 "instance or node is required for the InterfaceForm")
@@ -170,11 +174,22 @@ class InterfaceForm(MAASModelForm):
             cleaned_data['ip_address'] = None
         return cleaned_data
 
+    def clean_link_connected_speed(self, cleaned_data):
+        link_connected = cleaned_data.get('link_connected')
+        link_speed = cleaned_data.get('link_speed')
+        obj_link_connected = getattr(self, 'link_connected', None)
+        if (link_connected is not None and not link_connected and
+                obj_link_connected is not None and not obj_link_connected and
+                link_speed is not None and link_speed != 0):
+            raise ValidationError(
+                "link_speed cannot be set when link_connected is false.")
+
     def clean(self):
         cleaned_data = super(InterfaceForm, self).clean()
         self.clean_parents_all_same_node(cleaned_data.get('parents'))
         if self.node.node_type == NODE_TYPE.DEVICE:
             cleaned_data = self.clean_device(cleaned_data)
+        self.clean_link_connected_speed(cleaned_data)
         return cleaned_data
 
     def _set_param(self, interface, key):
@@ -202,11 +217,24 @@ class ControllerInterfaceForm(MAASModelForm):
     type = None
     parents = None
 
+    link_connected = forms.BooleanField(required=False)
+    interface_speed = forms.IntegerField(min_value=0, required=False)
+    link_speed = forms.IntegerField(min_value=0, required=False)
+
     class Meta:
         model = Interface
         fields = (
             'vlan',
+            'link_connected',
+            'interface_speed',
+            'link_speed',
             )
+
+    def __init__(self, *args, **kwargs):
+        super(ControllerInterfaceForm, self).__init__(*args, **kwargs)
+        instance = kwargs.get('instance')
+        if instance is not None:
+            self.link_connected = instance.link_connected
 
     def save(self, *args, **kwargs):
         """Persist the interface into the database."""
@@ -219,16 +247,49 @@ class ControllerInterfaceForm(MAASModelForm):
         interface.save()
         return interface
 
+    def clean(self):
+        link_connected = self.cleaned_data.get('link_connected')
+        link_speed = self.cleaned_data.get('link_speed')
+        if (link_connected is not None and not link_connected and
+                not self.link_connected and link_speed is not None and
+                link_speed != 0):
+            raise ValidationError(
+                "link_speed cannot be set when link_connected is false.")
+        return super().clean()
+
 
 class DeployedInterfaceForm(MAASModelForm):
     """Interface update form for machines when deployed."""
 
+    link_connected = forms.BooleanField(required=False)
+    interface_speed = forms.IntegerField(min_value=0, required=False)
+    link_speed = forms.IntegerField(min_value=0, required=False)
+
     class Meta:
         model = Interface
         fields = (
-            'name',
             'mac_address',
+            'name',
+            'link_connected',
+            'interface_speed',
+            'link_speed',
             )
+
+    def __init__(self, *args, **kwargs):
+        super(DeployedInterfaceForm, self).__init__(*args, **kwargs)
+        instance = kwargs.get('instance')
+        if instance is not None:
+            self.link_connected = instance.link_connected
+
+    def clean(self):
+        link_connected = self.cleaned_data.get('link_connected')
+        link_speed = self.cleaned_data.get('link_speed')
+        if (link_connected is not None and not link_connected and
+                not self.link_connected and link_speed is not None and
+                link_speed != 0):
+            raise ValidationError(
+                "link_speed cannot be set when link_connected is false.")
+        return super().clean()
 
 
 class PhysicalInterfaceForm(InterfaceForm):
