@@ -88,13 +88,9 @@ def normalise_openssh_public_key(keytext):
     2. Checks that keytype is one of “ssh-dss”, “ssh-rsa”, “ssh-ed25519”,
     “ecdsa-sha2-nistp256”, “ecdsa-sha2-nistp384”, or “ecdsa-sha2-nistp521”,
 
-    2. Run through `setsid -w ssh-keygen -e -f $keyfile > $intermediate <&-`.
+    2. Run through `ssh-keygen -e -f $keyfile > $intermediate <&-`.
 
-    3. Run through `setsid -w ssh-keygen -i -f $intermediate > $pubkey <&-`.
-
-    Note: setsid and <&- ensures ssh-keygen doesn't use the caller's TTY. This
-    is Python, and no recourse to a shell is being taken, but it has similar
-    behaviour.
+    3. Run through `ssh-keygen -i -f $intermediate > $pubkey <&-`.
 
     4. $pubkey should contain two fields: keytype, base64-encoded key.
 
@@ -136,7 +132,7 @@ def normalise_openssh_public_key(keytext):
         try:
             with open(os.devnull, "r") as devnull:
                 rfc4716key = check_output(
-                    ("setsid", "-w", "ssh-keygen", "-e", "-f", str(keypath)),
+                    ("ssh-keygen", "-e", "-f", str(keypath)),
                     stdin=devnull, stderr=PIPE, env=env)
         except CalledProcessError:
             raise OpenSSHKeyError(
@@ -146,7 +142,7 @@ def normalise_openssh_public_key(keytext):
         try:
             with open(os.devnull, "r") as devnull:
                 opensshkey = check_output(
-                    ("setsid", "-w", "ssh-keygen", "-i", "-f", str(keypath)),
+                    ("ssh-keygen", "-i", "-f", str(keypath)),
                     stdin=devnull, stderr=PIPE, env=env)
         except CalledProcessError:
             # If this happens it /might/ be an OpenSSH bug. If we've managed
