@@ -8,9 +8,6 @@ grade: stable
 confinement: strict
 base: core18
 epoch: 1*
-passthrough:
-    system-users:
-      - daemon
 
 apps:
   supervisor:

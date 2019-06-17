@@ -50,7 +50,6 @@ def is_pid_in_container(pid, proc_path="/proc"):
 @lru_cache(maxsize=1)
 def running_in_container():
     """Return True if running in an LXC or Docker container."""
-    return True
     try:
         call_and_check(["systemd-detect-virt", "-c"])
     except ExternalProcessError:
@@ -74,19 +73,12 @@ def get_running_pids_with_command(
     pids = []
     for pid in running_pids:
         try:
-            # XXX Previously comm was read instead of cmdline. If we
-            # want to use comm, we need to add it it the system-observe
-            # interface.
             pid_command = read_text_file(
-                os.path.join(proc_path, pid, "cmdline")).strip()
+                os.path.join(proc_path, pid, "comm")).strip()
         except (FileNotFoundError, ProcessLookupError):
             # Process was closed while running.
             pass
         else:
-            if ':' in pid_command:
-                pid_command, _ = pid_command.split(':', 1)
-            if '/' in pid_command:
-                pid_command = pid_command.split('/')[-1]
             if pid_command == command:
                 pids.append(int(pid))
 

@@ -302,9 +302,9 @@ def print_config(
 
 
 def drop_privileges():
-    """Drop privileges to the daemon user."""
-    running_uid = pwd.getpwnam('daemon').pw_uid
-    running_gid = grp.getgrnam('daemon').gr_gid
+    """Drop privileges to 'nobody:nogroup'."""
+    running_uid = pwd.getpwnam('nobody').pw_uid
+    running_gid = grp.getgrnam('nogroup').gr_gid
     os.setgroups([])
     os.setgid(running_gid)
     os.setuid(running_uid)
@@ -412,11 +412,11 @@ def init_db():
     if os.path.exists(db_path):
         shutil.rmtree(db_path)
     os.mkdir(db_path)
-    shutil.chown(db_path, user='daemon', group='daemon')
+    shutil.chown(db_path, user='nobody', group='nogroup')
     log_path = os.path.join(os.environ['SNAP_COMMON'], 'log', 'postgresql.log')
     if not os.path.exists(log_path):
         open(log_path, 'a').close()
-    shutil.chown(log_path, user='daemon', group='daemon')
+    shutil.chown(log_path, user='nobody', group='nogroup')
 
     def _init_db():
         subprocess.check_output([
