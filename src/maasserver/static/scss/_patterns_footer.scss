@@ -1,20 +1,16 @@
 @mixin maas-p-sticky-footer {
-  .p-footer {
-    margin-top: auto;
-
-    &__logo {
-      margin: 0.5rem 0;
-      height: 1rem;
-    }
-  }
-
-  html,
-  body {
+  html {
     height: 100%;
   }
 
-  .has-sticky-footer {
-    display: flex;
-    flex-direction: column;
+  body {
+    min-height: 100%;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+  }
+
+  .p-footer {
+    grid-row-end: span 1;
+    grid-row-start: auto;
   }
 }
