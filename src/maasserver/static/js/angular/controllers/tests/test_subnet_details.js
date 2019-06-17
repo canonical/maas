@@ -695,4 +695,84 @@ describe("SubnetDetailsController", function() {
       expect($scope.actionError).toBeNull();
     });
   });
+
+  describe("DHCPEnabled", function() {
+    it("returns undefined if no arguments provided", function() {
+      makeController();
+      expect($scope.DHCPEnabled()).toBeUndefined();
+    });
+
+    it("returns undefined if no subnet provided", function() {
+      makeController();
+      expect($scope.DHCPEnabled(null, [])).toBeUndefined();
+    });
+
+    it("returns undefined if subnet is not an object", function() {
+      makeController();
+      expect($scope.DHCPEnabled("foo", [])).toBeUndefined();
+    });
+
+    it("returns undefined if no vlans are provided", function() {
+      makeController();
+      expect($scope.DHCPEnabled({}, null)).toBeUndefined();
+    });
+
+    it("returns undefined if vlan is not an array", function() {
+      makeController();
+      expect($scope.DHCPEnabled({}, "foo")).toBeUndefined();
+    });
+
+    it("returns true if DHCP enabled on VLAN", function() {
+      makeController();
+      var subnet = { vlan: 5001 };
+      var vlans = [{ id: 5001, dhcp_on: true }];
+      expect($scope.DHCPEnabled(subnet, vlans)).toBe(true);
+    });
+
+    it("returns false if DHCP is not enabled on VLAN", function() {
+      makeController();
+      var subnet = { vlan: 5001 };
+      var vlans = [{ id: 5001, dhcp_on: false }];
+      expect($scope.DHCPEnabled(subnet, vlans)).toBe(false);
+    });
+  });
+
+  describe("getVLANOnSubnet", function() {
+    it("returns vlan from subnet", function() {
+      makeController();
+      var subnet = { vlan: 5001 };
+      var vlans = [{ id: 5001 }, { id: 5002 }];
+      expect($scope.getVLANOnSubnet(subnet, vlans)).toEqual(vlans[0]);
+    });
+
+    it("returns undefined if no vlan", function() {
+      makeController();
+      var subnet = { vlan: 5001 };
+      var vlans = [{ id: 5002 }];
+      expect($scope.getVLANOnSubnet(subnet, vlans)).toBeUndefined();
+    });
+  });
+
+  describe("hasIPAddresses", function() {
+    it("returns undefined if no argument provided", function() {
+      makeController();
+      expect($scope.hasIPAddresses()).toBeUndefined();
+    });
+
+    it("returns undefined if argument is not an array", function() {
+      makeController();
+      expect($scope.hasIPAddresses("foo")).toBeUndefined();
+    });
+
+    it("returns true if argument has IP addresses", function() {
+      makeController();
+      var IPAddresses = [{ ip: "172.16.4.14" }];
+      expect($scope.hasIPAddresses(IPAddresses)).toBe(true);
+    });
+
+    it("returns false if argument has no IP addresses", function() {
+      makeController();
+      expect($scope.hasIPAddresses([])).toBe(false);
+    });
+  });
 });

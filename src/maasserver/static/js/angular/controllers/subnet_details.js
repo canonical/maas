@@ -338,6 +338,32 @@ export function SubnetDetailsController(
     });
   };
 
+  $scope.getVLANOnSubnet = function(subnet, vlans) {
+    if (!angular.isObject(subnet) && !angular.isArray(vlans)) {
+      return;
+    }
+
+    return vlans.find(function(vlan) {
+      return vlan.id === subnet.vlan;
+    });
+  };
+
+  $scope.DHCPEnabled = function(subnet, vlans) {
+    if (!angular.isObject(subnet) || !angular.isArray(vlans)) {
+      return;
+    }
+    var vlanOnSubnet = $scope.getVLANOnSubnet(subnet, vlans);
+    return vlanOnSubnet.dhcp_on;
+  };
+
+  $scope.hasIPAddresses = function(IPAddresses) {
+    if (!angular.isArray(IPAddresses)) {
+      return;
+    }
+
+    return IPAddresses.length ? true : false;
+  };
+
   // Called when the subnet has been loaded.
   function subnetLoaded(subnet) {
     $scope.subnet = subnet;

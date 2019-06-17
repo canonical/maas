@@ -41,12 +41,28 @@
                 <hr />
                 <div class="row u-equal-height">
                     <div class="col-8 u-vertically-center">
-                        <span><span class="p-icon--warning">Warning:</span> Are you sure you want to delete this subnet and release all IP addresses assigned within its range?</span>
+                        <div class="p-notification--negative is-subtle" data-ng-if="DHCPEnabled(subnet, vlans) && hasIPAddresses(subnet.ip_addresses)">
+                            <p class="p-notification__response">
+                                <span class="p-notification__status">Error:</span> This subnet cannot be removed as there are nodes that have an IP address
+                                obtained through DHCP services on this subnet. Release these nodes in order to proceed.
+                            </p>
+                        </div>
+                        <div class="p-notification--caution is-subtle" data-ng-if="DHCPEnabled(subnet, vlans) && !hasIPAddresses(subnet.ip_addresses)">
+                            <p class="p-notification__response">
+                                <span class="p-notification__status">Warning:</span> Are you sure you want to remove this subnet?
+                            </p>
+                        </div>
+                        <div class="p-notification--caution is-subtle" data-ng-if="!DHCPEnabled(subnet, vlans)">
+                            <p class="p-notification__response">
+                                <span class="p-notification__status">Warning:</span> Are you sure you want to remove this subnet? Beware IP addresses on
+                                devices on this subnet might not be retained.
+                            </p>
+                        </div>
                     </div>
                     <div class="col-4">
                         <div class="u-align--right">
                             <button class="p-button--base" type="button" data-ng-click="cancelAction()">Cancel</button>
-                            <button class="p-button--negative" data-ng-click="actionGo()">Delete subnet</button>
+                            <button class="p-button--negative" data-ng-click="actionGo()" data-ng-if="!DHCPEnabled(subnet, vlans) || DHCPEnabled(subnet, vlans) && !hasIPAddresses(subnet.ip_addresses)">Remove</button>
                         </div>
                     </div>
                 </div>
