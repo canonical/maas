@@ -42,6 +42,7 @@
 @import 'patterns_charts';
 @import 'patterns_option-selector';
 @import 'patterns_slider';
+@import 'patterns_popovers';
 
 // Include local patterns
 @include maas;
@@ -76,3 +77,4 @@
 @include patterns_space-between;
 @include patterns_charts;
 @include patterns_option-selector;
+@include maas-p-popovers;
