@@ -125,6 +125,7 @@ NETWORKING_CONSTRAINT_NAMES = {
     'not_vid',
     'tag',
     'not_tag',
+    'link_speed',
 }
 
 IGNORED_FIELDS = {

@@ -119,6 +119,7 @@ class InterfaceQueriesMixin(MAASQueriesMixin):
             'vlan': (VLAN.objects, 'interface'),
             'vid': self._add_vlan_vid_query,
             'tag': self._add_tag_query,
+            'link_speed': '__link_speed__gte',
         }
         return super(InterfaceQueriesMixin, self).get_specifiers_q(
             specifiers, specifier_types=specifier_types, separator=separator,

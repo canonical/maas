@@ -865,6 +865,7 @@ class Factory(maastesting.factory.Factory):
             unmanaged=False,
             with_dhcp_rack_primary=True, with_dhcp_rack_secondary=False,
             primary_rack=None, secondary_rack=None,
+            link_connected=True, interface_speed=None, link_speed=None,
             **kwargs):
         """Create a Node that has a Interface which is on a Subnet.
 
@@ -897,7 +898,8 @@ class Factory(maastesting.factory.Factory):
             subnet = self.make_Subnet(vlan=vlan, cidr=cidr, version=ip_version)
         boot_interface = self.make_Interface(
             iftype, name=ifname, node=node, vlan=vlan,
-            mac_address=mac_address)
+            mac_address=mac_address, link_connected=link_connected,
+            interface_speed=interface_speed, link_speed=link_speed)
         node.boot_interface = boot_interface
         node.save()
 
@@ -920,7 +922,9 @@ class Factory(maastesting.factory.Factory):
                 ifname = extra_ifnames[0]
                 extra_ifnames = extra_ifnames[1:]
             interface = self.make_Interface(
-                INTERFACE_TYPE.PHYSICAL, name=ifname, node=node, vlan=vlan)
+                INTERFACE_TYPE.PHYSICAL, name=ifname, node=node, vlan=vlan,
+                link_connected=link_connected, interface_speed=interface_speed,
+                link_speed=link_speed)
             self.make_StaticIPAddress(
                 alloc_type=IPADDRESS_TYPE.DISCOVERED, ip="",
                 subnet=subnet, interface=interface)

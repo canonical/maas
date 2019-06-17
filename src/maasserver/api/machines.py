@@ -2181,6 +2181,8 @@ class MachinesHandler(NodesHandler, PowersMixin):
         - ``vlan``: Matches an interface on the specified VLAN.
         - ``vid``: Matches an interface on a VLAN with the specified VID.
         - ``tag``: Matches an interface tagged with the specified tag.
+        - ``link_speed``: Matches an interface with link_speed equal to or
+          greater than the specified speed.
 
         @param (string) "fabrics" [required=false] Set of fabrics that the
         machine must be associated with in order to be acquired. If multiple
