@@ -1,0 +1,47 @@
+// 1. VERTICAL SPACING
+// 1.1 Vertical spacing inside components
+$spv-intra--condensed: $spv-inner--x-small;
+$spv-intra--condensed--scaleable: $spv-inner--x-small--scaleable;
+$spv-intra: $spv-inner--small;
+$spv-intra--scaleable: $spv-inner--scaleable;
+$spv-intra--expanded: $spv-inner--medium;
+
+// 1.2 Vertical spacing outside (between) components
+$spv-inter--condensed: $spv-outer--small;
+$spv-inter--condensed-scaleable: $spv-outer--small-scaleable;
+$spv-inter--regular: $spv-outer--medium;
+$spv-inter--scaleable: $spv-outer--scaleable;
+
+// 1.3 Vertical spacing between a group of components and its wrapper - strips, views, entire page
+$spv-inter--shallow-scaleable: $spv-outer--shallow-scaleable;
+$spv-inter--regular-scaleable: $spv-outer--regular-scaleable;
+$spv-inter--deep-scaleable: $spv-outer--deep-scaleable;
+
+// 2. HORIZONTAL SPACING
+// 2.1 Horizontal spacing inside components
+$sph-intra--condensed: $sph-inner--small;
+$sph-intra: $sph-inner;
+$sph-intra--expanded: $sph-inner--large;
+
+// 2.2 Horizontal spacing outside components
+$sph-inter: $sph-outer;
+$sph-inter--expanded: $sph-outer--large;
+
+$px: 0.0625rem;
+
+// Grid
+@for $i from 1 through $grid-columns-medium {
+  .tablet-col-#{$i} {
+    @extend .#{$grid-col-medium-prefix}#{$i};
+  }
+}
+
+@for $i from 1 through $grid-columns-small {
+  .mobile-col-#{$i} {
+    @extend .#{$grid-small-col-prefix}#{$i};
+  }
+}
+
+$color-warning: $color-caution;
+
+$font-base-size: map-get($base-font-sizes, base);

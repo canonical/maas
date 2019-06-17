@@ -5,6 +5,8 @@
 @import 'node_modules/vanilla-framework/scss/vanilla';
 @include vanilla;
 
+@import '2.0-migration';
+
 @import 'utils';
 // Import local patterns
 @import 'maas';
