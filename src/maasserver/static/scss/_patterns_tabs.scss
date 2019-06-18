@@ -30,13 +30,13 @@
       );
       filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#00ffffff', endColorstr='#ffffff',GradientType=1 );
 
-      padding-left: $sph-intra--expanded;
+      padding-left: $sph-inner--large;
       padding-right: 0;
       right: $grid-margin-width;
       $chevron-font-size: 2rem;
       $chevron-width-at-1rem: 4.4; // in px
       $chevron-rendered-width: $chevron-font-size * $chevron-width-at-1rem / 16; // divide by 16 to account for units (1 rem == 16px)
-      width: $chevron-rendered-width + $sph-intra--expanded; // spacing used in buttons + width of symbol
+      width: $chevron-rendered-width + $sph-inner--large; // spacing used in buttons + width of symbol
       z-index: 1;
     }
 

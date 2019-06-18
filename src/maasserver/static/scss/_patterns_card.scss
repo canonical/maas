@@ -8,7 +8,7 @@
   //XXX: card padding shouldn't be scaleable. can be removed once https://github.com/vanilla-framework/vanilla-framework/pull/1920 is merged
   div[class*="p-card--"],
   .p-card {
-    padding: $spv-inter--regular;
+    padding: $spv-outer--medium;
   }
 
   //XXX 13.08.2018 Lyubomir Popov: Override negative margin on p-card__content, which only works when the heading is an h2, as in the vanilla example; Remove once this has been resolved in vanilla

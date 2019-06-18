@@ -27,7 +27,7 @@
   textarea,
   select {
     table & {
-      margin-bottom: $spv-inter--scaleable + $sp-unit - $spv-nudge * 2;
+      margin-bottom: $spv-outer--scaleable + $sp-unit - $spv-nudge * 2;
       padding-bottom: $spv-nudge - $px;
       padding-top: $spv-nudge - $px;
       min-height: 2.3rem;

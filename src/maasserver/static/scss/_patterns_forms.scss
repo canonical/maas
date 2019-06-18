@@ -59,7 +59,7 @@
 
       &--placeholder {
         display: block;
-        margin-bottom: $spv-inter--scaleable - $spv-nudge * 2 + $sp-unit;
+        margin-bottom: $spv-outer--scaleable - $spv-nudge * 2 + $sp-unit;
         min-height: $form-control-min-height;
         padding-bottom: $input-v-padding-amount;
         padding-top: $input-v-padding-amount;

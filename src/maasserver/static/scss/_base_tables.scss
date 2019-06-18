@@ -42,11 +42,11 @@
       vertical-align: top;
 
       &:first-of-type {
-        padding-left: $sph-intra--condensed;
+        padding-left: $sph-inner--small;
       }
 
       &:not(:last-child) {
-        padding-right: $sph-intra--condensed;
+        padding-right: $sph-inner--small;
       }
     }
 

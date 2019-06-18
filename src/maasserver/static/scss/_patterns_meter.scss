@@ -153,7 +153,7 @@ $color--request-warning: $color-warning;
       float: left;
 
       &:not(:first-child) {
-        margin-left: $sph-intra;
+        margin-left: $sph-inner;
         float: right;
       }
 
@@ -165,7 +165,7 @@ $color--request-warning: $color-warning;
         font-size: 2rem;
         line-height: map-get($line-heights, default-text);
         display: inline-block;
-        margin-right: $sph-intra--condensed;
+        margin-right: $sph-inner--small;
         width: $sp-unit;
       }
 

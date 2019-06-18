@@ -27,9 +27,9 @@
     }
 
     &__toggle {
-      bottom: $spv-inter--scaleable;
+      bottom: $spv-outer--scaleable;
       position: fixed;
-      right: $sph-inter--expanded;
+      right: $sph-outer--large;
       z-index: 101;
     }
   }
@@ -133,7 +133,7 @@
     &::after {
       background: transparent;
     }
-    margin-bottom: $spv-inter--scaleable;
+    margin-bottom: $spv-outer--scaleable;
   }
 
   .p-form__control {

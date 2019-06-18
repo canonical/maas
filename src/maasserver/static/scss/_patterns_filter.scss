@@ -37,7 +37,7 @@
       &::after {
         @extend %p-filter-icon;
         @include vf-icon-chevron($color-mid-dark);
-        right: $sph-intra;
+        right: $sph-inner;
         top: ($spv-nudge - $px) * 2;
       }
 
@@ -69,10 +69,10 @@
     .p-accordion__tab {
       @include vf-focus;
       @include vf-icon-plus($color-mid-dark);
-      background-position: right $sph-intra center;
+      background-position: right $sph-inner center;
       background-size: map-get($icon-sizes, accordion);
       border-bottom: 0 !important;
-      padding: $spv-intra $sph-intra;
+      padding: $spv-inner--small $sph-inner;
 
       &.is-selected {
         @include vf-icon-minus($color-mid-dark);
@@ -105,8 +105,8 @@
         &::after {
           @extend %p-filter-icon;
           @include maas-icon-tick($color-mid-dark);
-          left: $sph-intra;
-          top: $spv-intra--condensed;
+          left: $sph-inner;
+          top: $spv-inner--x-small;
         }
       }
     }

@@ -14,13 +14,13 @@
   }
 
   .p-cta__toggle {
-    margin-bottom: $spv-intra--condensed;
-    padding-right: $sph-intra * 2 + map-get($icon-sizes, default);
+    margin-bottom: $spv-inner--x-small;
+    padding-right: $sph-inner * 2 + map-get($icon-sizes, default);
 
     &::after {
       @extend %p-cta-icon;
       @include vf-icon-chevron($color-mid-dark);
-      right: $sph-intra;
+      right: $sph-inner;
       top: ($spv-nudge - $px) * 2;
     }
 
@@ -51,7 +51,7 @@
     @extend .p-contextual-menu__link;
     display: flex;
     justify-content: space-between;
-    padding: $spv-intra--condensed $sph-intra;
+    padding: $spv-inner--x-small $sph-inner;
     transition-duration: 0s;
 
     &.is-unavailable {
@@ -61,6 +61,6 @@
   }
 
   .p-cta__count {
-    padding-left: $sph-intra;
+    padding-left: $sph-inner;
   }
 }

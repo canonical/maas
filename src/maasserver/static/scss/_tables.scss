@@ -153,7 +153,7 @@ $breakpoint-fourth: 1360px;
   }
 
   $border-thickness: $px;
-  $icon-margin-right: $sph-intra--condensed;
+  $icon-margin-right: $sph-inner--small;
   $icon-button-width: $icon-margin-right + 2 *
     ($border-thickness + $vanilla-2-icon-button-side-padding) +
     map-get($icon-sizes, default);
@@ -424,15 +424,15 @@ $breakpoint-fourth: 1360px;
       .p-table__group-label {
         color: $color-dark;
         font-size: 1rem;
-        padding: $spv-intra 0 $spv-intra $sph-intra--condensed;
+        padding: $spv-inner--small 0 $spv-inner--small $sph-inner--small;
         text-transform: none;
       }
 
       .p-table__group-toggle {
         padding: 0 $sp-x-small;
         position: absolute;
-        right: $spv-intra--expanded;
-        top: $spv-inter--regular;
+        right: $spv-inner--medium;
+        top: $spv-outer--medium;
       }
 
       &.is-open {
@@ -535,7 +535,7 @@ $breakpoint-fourth: 1360px;
     .p-icon--placeholder {
       @extend %icon;
       height: map-get($icon-sizes, default);
-      margin-right: $sph-intra--condensed;
+      margin-right: $sph-inner--small;
       width: map-get($icon-sizes, default);
     }
 
@@ -711,8 +711,8 @@ $breakpoint-fourth: 1360px;
     }
   }
 
-  $checkbox-space: 1rem + $sph-intra;
-  $icon-space: map-get($icon-sizes, default) + $sph-intra--condensed;
+  $checkbox-space: 1rem + $sph-inner;
+  $icon-space: map-get($icon-sizes, default) + $sph-inner--small;
 
   .p-double-row {
     overflow: visible;
@@ -732,12 +732,12 @@ $breakpoint-fourth: 1360px;
 
     .p-double-row__checkbox {
       @extend %p-double-row__icon-container;
-      margin-right: $sph-intra;
+      margin-right: $sph-inner;
     }
 
     .p-double-row__icon-container {
       @extend %p-double-row__icon-container;
-      margin-right: $sph-intra--condensed;
+      margin-right: $sph-inner--small;
     }
 
     .p-double-row__rows-container--icon {
@@ -821,7 +821,7 @@ $breakpoint-fourth: 1360px;
 
     %table-menu-link {
       @extend .p-contextual-menu__link;
-      padding: $spv-intra $sph-intra;
+      padding: $spv-inner--small $sph-inner;
       position: relative;
       transition: 0s;
 
@@ -831,9 +831,9 @@ $breakpoint-fourth: 1360px;
         background-size: map-get($icon-sizes, default);
         content: "";
         height: 17px;
-        left: $sph-intra;
+        left: $sph-inner;
         position: absolute;
-        top: $spv-intra--expanded;
+        top: $spv-inner--medium;
         width: map-get($icon-sizes, default);
       }
     }
@@ -843,7 +843,7 @@ $breakpoint-fourth: 1360px;
       color: $color-mid-dark;
       font-size: 0.75rem;
       font-weight: 400;
-      padding: $spv-intra--condensed $sph-intra;
+      padding: $spv-inner--x-small $sph-inner;
       text-transform: uppercase;
     }
 
@@ -859,7 +859,7 @@ $breakpoint-fourth: 1360px;
     .p-table-menu__footer {
       border-top: 1px solid $color-light-new;
       color: $color-mid-dark;
-      padding: $spv-intra--condensed $sp-xx-large;
+      padding: $spv-inner--x-small $sp-xx-large;
     }
 
     .p-table-menu__toggle {
@@ -878,7 +878,7 @@ $breakpoint-fourth: 1360px;
 
     .p-table-menu__dropdown {
       @extend .p-contextual-menu__dropdown;
-      left: -#{$sph-intra};
+      left: -#{$sph-inner};
       max-width: none;
       min-width: 100%;
       top: $sp-x-large;

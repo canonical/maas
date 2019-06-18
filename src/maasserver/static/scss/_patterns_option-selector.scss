@@ -3,23 +3,23 @@
   // A lot of the styling below clashes with the design of the Storage dropdown.
   // To avoid changing the markup and causing potential merge conflicts,
   // the parent selector is used (.p-table--pod-networking-config) to 'scope' the respective styles.
-  $icon-space: $sph-intra * 2 + map-get($icon-sizes, default);
+  $icon-space: $sph-inner * 2 + map-get($icon-sizes, default);
 
   .p-option-selector {
     position: relative;
 
     &__header {
       @extend %vf-clearfix;
-      padding-top: $spv-intra--condensed;
+      padding-top: $spv-inner--x-small;
 
       .p-button--close {
-        margin-left: $sph-intra--condensed;
+        margin-left: $sph-inner--small;
         float: none;
       }
     }
 
     &__title {
-      padding: $spv-intra--expanded $sph-intra 0;
+      padding: $spv-inner--medium $sph-inner 0;
     }
 
     &__input {
@@ -48,7 +48,7 @@
     }
 
     .p-option-selector__options-key {
-      padding: 0 $sph-intra;
+      padding: 0 $sph-inner;
     }
 
     &__option {
@@ -87,12 +87,12 @@
     @extend %vf-pseudo-border--top;
     background-color: $color-light-new;
     .p-table--pod-networking-config & {
-      left: $sph-intra;
-      right: $sph-intra;
+      left: $sph-inner;
+      right: $sph-inner;
     }
     .p-table--pod-storage-config & {
       left: $icon-space;
-      right: $sph-intra;
+      right: $sph-inner;
     }
   }
 
@@ -101,7 +101,7 @@
       &__options {
         position: absolute;
         top: 2.25rem;
-        padding: $sph-intra 0 0;
+        padding: $sph-inner 0 0;
         border: 1px solid $color-mid-light;
         border-radius: $border-radius;
         box-shadow: $box-shadow;
@@ -121,7 +121,7 @@
       }
 
       &__options-key {
-        padding: 0 $sph-intra;
+        padding: 0 $sph-inner;
       }
 
       &__option-cell {
@@ -237,11 +237,11 @@
       }
 
       &__options-key {
-        padding: 0 $sph-intra;
+        padding: 0 $sph-inner;
       }
 
       &__option-cell {
-        padding: 0 $sph-intra 0 0;
+        padding: 0 $sph-inner 0 0;
 
         &:first-child {
           padding-left: $icon-space;
@@ -294,7 +294,7 @@
     float: left;
     font-size: 2rem;
     line-height: map-get($line-heights, default-text);
-    margin-right: $sph-intra--condensed;
+    margin-right: $sph-inner--small;
     padding-top: map-get($nudges, nudge--p);
     width: $sp-unit;
   }

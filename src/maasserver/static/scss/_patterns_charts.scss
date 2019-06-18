@@ -64,14 +64,14 @@
   %p-key-list-item--common-properties {
     display: flex;
     flex: 1;
-    padding-right: $sph-intra;
+    padding-right: $sph-inner;
 
     &::before {
       content: "•";
       float: left;
       font-size: 2rem;
       line-height: map-get($line-heights, default-text);
-      margin-right: $sph-intra--condensed;
+      margin-right: $sph-inner--small;
       padding-top: map-get($nudges, nudge--p);
       width: $sp-unit;
     }

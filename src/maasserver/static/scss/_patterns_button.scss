@@ -1,4 +1,4 @@
-$vanilla-2-icon-button-side-padding: $sph-intra--condensed * 1.5;
+$vanilla-2-icon-button-side-padding: $sph-inner--small * 1.5;
 @mixin maas-p-buttons {
   // disable override in vanilla that make buttons vertically less padded; this causes issues with alignment with other elements
   table button,
@@ -26,7 +26,7 @@ $vanilla-2-icon-button-side-padding: $sph-intra--condensed * 1.5;
   }
 
   %icon-button-padding {
-    padding: $spv-nudge - $px $sph-intra--condensed;
+    padding: $spv-nudge - $px $sph-inner--small;
   }
 
   .p-button--lock {
@@ -35,11 +35,11 @@ $vanilla-2-icon-button-side-padding: $sph-intra--condensed * 1.5;
 
   .p-button--icon {
     input + & {
-      margin-left: $sph-inter;
+      margin-left: $sph-outer;
     }
 
     @extend %p-button--min-margin-bottom;
-    padding: $spv-intra $sph-intra--condensed;
+    padding: $spv-inner--small $sph-inner--small;
   }
 
   .p-button--close {
@@ -65,11 +65,11 @@ $vanilla-2-icon-button-side-padding: $sph-intra--condensed * 1.5;
     .p-table-expanding__panel & {
       margin-bottom: 2 * $spv-nudge-compensation;
       &:not(.p-button--close) {
-        padding: $spv-nudge - $px $sph-intra;
+        padding: $spv-nudge - $px $sph-inner;
       }
     }
     &.is-small {
-      padding: $spv-nudge - $px $sph-intra;
+      padding: $spv-nudge - $px $sph-inner;
     }
   }
 }
