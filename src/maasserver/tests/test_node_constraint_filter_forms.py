@@ -1,4 +1,4 @@
-# Copyright 2013-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test node constraint forms."""
@@ -642,6 +642,23 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
                     'vlan:%d' % subnet_by_vlan.vlan.vid,
                     ],
             })
+
+    def test_link_speed(self):
+        node1 = factory.make_Node_with_Interface_on_Subnet(
+            interface_speed=1000, link_speed=100)
+        node2 = factory.make_Node_with_Interface_on_Subnet(
+            interface_speed=1000, link_speed=1000)
+        nodes = [node1, node2]
+        self.assertConstrainedNodes(nodes, {'link_speed': '0'})
+        self.assertConstrainedNodes(nodes, {'link_speed': '100'})
+        self.assertConstrainedNodes([node2], {'link_speed': '1000'})
+        self.assertConstrainedNodes([], {'link_speed': '10000'})
+
+    def test_invalid_link_speed(self):
+        form = FilterNodeForm(data={'link_speed': 'invalid'})
+        self.assertEqual(
+            (False, {'link_speed': ["Invalid link speed: number required."]}),
+            (form.is_valid(), form.errors))
 
     def test_zone(self):
         node1 = factory.make_Node()
@@ -1503,6 +1520,7 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
             'not_tags': [factory.make_Tag().name],
             'subnets': [factory.make_Subnet().name],
             'not_subnets': [factory.make_Subnet().name],
+            'link_speed': randint(100, 10000),
             'vlans': ['name:' + factory.make_VLAN(name=RANDOM).name],
             'not_vlans': ['name:' + factory.make_VLAN(name=RANDOM).name],
             'connected_to': [factory.make_mac_address()],
@@ -1622,6 +1640,7 @@ class TestAcquireNodeForm(MAASServerTestCase, FilterConstraintsMixin):
             'not_tags': [factory.make_Tag().name],
             'subnets': [factory.make_Subnet().name],
             'not_subnets': [factory.make_Subnet().name],
+            'link_speed': randint(100, 10000),
             'vlans': ['name:' + factory.make_VLAN(name=RANDOM).name],
             'not_vlans': ['name:' + factory.make_VLAN(name=RANDOM).name],
             'connected_to': [factory.make_mac_address()],

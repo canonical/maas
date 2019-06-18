@@ -718,6 +718,10 @@ class NodesHandler(OperationsHandler):
         @param (string) "not_subnets" [required=false] Only nodes with
         interfaces not in specified subnets will be returned.
 
+        @param (string) "link_speed" [required=false] Only nodes with
+        interfaces with link speeds greater than or equal to link_speed will
+        be returned.
+
         @param (string) "status" [required=false] Only nodes with specified
         status will be returned.
 

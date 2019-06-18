@@ -1,4 +1,4 @@
-# Copyright 2013-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 __all__ = [
@@ -653,6 +653,10 @@ class FilterNodeForm(RenamableFieldsForm):
             "Invalid parameter: list of subnet specifiers required.",
             })
 
+    link_speed = forms.FloatField(
+        label="Link speed", required=False,
+        error_messages={'invalid': "Invalid link speed: number required."})
+
     vlans = ValidatorMultipleChoiceField(
         validator=VLAN.objects.validate_filter_specifiers,
         label="Attached to VLANs",
@@ -918,6 +922,7 @@ class FilterNodeForm(RenamableFieldsForm):
         nodes = self.filter_by_zone(nodes)
         nodes = self.filter_by_pool(nodes)
         nodes = self.filter_by_subnets(nodes)
+        nodes = self.filter_by_link_speed(nodes)
         nodes = self.filter_by_vlans(nodes)
         nodes = self.filter_by_fabrics(nodes)
         nodes = self.filter_by_fabric_classes(nodes)
@@ -1001,6 +1006,13 @@ class FilterNodeForm(RenamableFieldsForm):
             for not_subnet in set(not_subnets):
                 filtered_nodes = filtered_nodes.exclude(
                     interface__ip_addresses__subnet=not_subnet)
+        return filtered_nodes
+
+    def filter_by_link_speed(self, filtered_nodes):
+        link_speed = self.cleaned_data.get(self.get_field_name('link_speed'))
+        if link_speed:
+            filtered_nodes = filtered_nodes.filter(
+                interface__link_speed__gte=link_speed)
         return filtered_nodes
 
     def filter_by_zone(self, filtered_nodes):
@@ -1157,7 +1169,7 @@ class ReadNodesForm(FilterNodeForm):
         required=False)
 
     status = forms.ChoiceField(
-        label="Only inclides nodes with the specified status",
+        label="Only includes nodes with the specified status",
         choices=NODE_STATUS_SHORT_LABEL_CHOICES, required=False)
 
     def _apply_filters(self, nodes):
