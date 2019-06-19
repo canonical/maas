@@ -18,6 +18,7 @@ apps:
         - block-devices # allows writing, but we need only reading.
         - hardware-observe
         - kernel-module-observe
+        - log-observe # for CAP_DAC_OVERRIDE on nginx
         - network
         - network-bind
         - network-observe
