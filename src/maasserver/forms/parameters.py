@@ -8,14 +8,19 @@ __all__ = [
     ]
 
 import copy
+from ipaddress import ip_address
 import os
 
-from django.core.exceptions import ObjectDoesNotExist
+from django.core.exceptions import (
+    ObjectDoesNotExist,
+    ValidationError,
+)
 from django.db.models import Q
 from django.forms import (
     Field,
     Form,
 )
+from maasserver.utils.dns import validate_url
 from maasserver.utils.forms import set_form_error
 
 
@@ -57,6 +62,7 @@ class ParametersForm(Form):
             param_argument_format = fields.get('argument_format')
             param_default = fields.get('default')
             param_required = fields.get('required', True)
+            allow_list = fields.get('allow_list')
 
             # Check param data type.
             if not isinstance(param, str):
@@ -101,15 +107,24 @@ class ParametersForm(Form):
                 set_form_error(
                     self, "parameters",
                     "%s: required must be a boolean" % param_required)
+            if allow_list is not None and not isinstance(allow_list, bool):
+                set_form_error(
+                    self, "parameters",
+                    "%s: allow_list must be a boolean" % allow_list)
+            if allow_list is not None and param_type != 'url':
+                set_form_error(
+                    self, "parameters",
+                    "allow_list only supported with the url type.")
 
             # Check parameter type is supported and required.
-            if (param_type not in ('storage', 'interface', 'runtime') and
+            if (param_type not in (
+                    'storage', 'interface', 'url', 'runtime') and
                     param_required):
                 set_form_error(
                     self, "parameters",
-                    "%s: type must be either storage, interface, or runtime"
-                    % param_type)
-            if param_type in ('storage', 'interface') and (
+                    "%s: type must be either storage, interface, url, or "
+                    "runtime" % param_type)
+            if param_type in ('storage', 'interface', 'url') and (
                     param_min is not None or param_max is not None):
                 set_form_error(
                     self, "parameters", "Type doesn't support min or max")
@@ -201,15 +216,23 @@ class ParametersForm(Form):
                 elif default:
                     multi_result_params[param_name] = copy.deepcopy(param)
                     multi_result_params[param_name]['value'] = default
-            elif (param['type'] == 'runtime' and
-                  param_name not in result_params):
-                default = param.get('default', self._script.timeout.seconds)
-                if (not isinstance(default, int) and
-                        param.get('required', True)):
-                    set_form_error(self, param_name, 'Field is required')
-                elif isinstance(default, int):
-                    result_params[param_name] = copy.deepcopy(param)
-                    result_params[param_name]['value'] = default
+            elif param_name not in result_params:
+                if param['type'] == 'runtime':
+                    default = param.get(
+                        'default', self._script.timeout.seconds)
+                    if (not isinstance(default, int) and
+                            param.get('required', True)):
+                        set_form_error(self, param_name, 'Field is required')
+                    elif isinstance(default, int):
+                        result_params[param_name] = copy.deepcopy(param)
+                        result_params[param_name]['value'] = default
+                else:
+                    default = param.get('default', '')
+                    if not default and param.get('required', False):
+                        set_form_error(self, param_name, 'Field is required')
+                    elif default:
+                        result_params[param_name] = copy.deepcopy(param)
+                        result_params[param_name]['value'] = default
 
         return result_params, multi_result_params
 
@@ -388,6 +411,37 @@ class ParametersForm(Form):
                     interface)
                 ret.append(clean_param)
 
+    def _validate_and_clean_url(self, param_name, param):
+        """Validate and clean URL input."""
+        if param.get('allow_list', False):
+            value = param['value'].split(',')
+        else:
+            value = [param['value']]
+
+        for url in value:
+            # Django's validator requires a protocol but we accept just a
+            # hostname or IP address.
+            try:
+                ip = ip_address(url)
+            except ValueError:
+                if '://' not in url:
+                    url = 'http://%s' % url
+            else:
+                if ip.version == 4:
+                    url = 'http://%s' % url
+                else:
+                    url = 'http://[%s]' % url
+            # Allow all schemes supported by curl(used with the network
+            # validation test) + icmp.
+            try:
+                validate_url(url, schemes=[
+                    'icmp', 'file', 'ftp', 'ftps', 'gopher', 'http', 'https',
+                    'imap', 'imaps', 'ldap', 'ldaps', 'pop3', 'pop3s', 'rtmp',
+                    'rtsp', 'scp', 'sftp', 'smb', 'smbs', 'smtp', 'smtps',
+                    'telnet', 'tftp'])
+            except ValidationError:
+                set_form_error(self, param_name, 'Invalid URL')
+
     def clean_input(self):
         """Validate and clean parameter input.
 
@@ -410,6 +464,8 @@ class ParametersForm(Form):
         for param_name, param in result_params.items():
             if param['type'] == 'runtime':
                 self._validate_and_clean_runtime(param_name, param)
+            elif param['type'] == 'url':
+                self._validate_and_clean_url(param_name, param)
 
         # Validate input for multi ScriptResult params
         for param_name, param in multi_result_params.items():

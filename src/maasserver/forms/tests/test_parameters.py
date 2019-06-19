@@ -15,6 +15,13 @@ from maasserver.testing.testcase import MAASServerTestCase
 
 class TestParametersForm(MAASServerTestCase):
 
+    def pick_scheme(self):
+        return random.choice([
+            'icmp', 'file', 'ftp', 'ftps', 'gopher', 'http', 'https',
+            'imap', 'imaps', 'ldap', 'ldaps', 'pop3', 'pop3s', 'rtmp',
+            'rtsp', 'scp', 'sftp', 'smb', 'smbs', 'smtp', 'smtps',
+            'telnet', 'tftp'])
+
     def test__validates_parameters_is_dict(self):
         form = ParametersForm(data=[
             factory.make_name() for _ in range(3)])
@@ -189,6 +196,37 @@ class TestParametersForm(MAASServerTestCase):
                     "%s: required must be a boolean" % param_required]
             }, form.errors)
 
+    def test__validates_parameter_field_allow_list_is_boolean(self):
+        param_allow_list = factory.make_name('allow_list')
+        form = ParametersForm(data={
+            'url': {
+                'type': 'url',
+                'allow_list': param_allow_list,
+            },
+        })
+        self.assertFalse(form.is_valid())
+        self.assertDictEqual(
+            {
+                'parameters': [
+                    "%s: allow_list must be a boolean" % param_allow_list]
+            }, form.errors)
+
+    def test__validates_parameter_field_allow_list_only_for_url(self):
+        ptype = random.choice(['storage', 'interface', 'runtime'])
+        form = ParametersForm(data={
+            ptype: {
+                'type': ptype,
+                'allow_list': factory.pick_bool(),
+            },
+        })
+        self.assertFalse(form.is_valid())
+        self.assertDictEqual(
+            {
+                'parameters': [
+                    "allow_list only supported with the url type."
+                    ]
+            }, form.errors)
+
     def test__checks_for_supported_parameter_types(self):
         form = ParametersForm(data={
             'storage': {
@@ -196,6 +234,9 @@ class TestParametersForm(MAASServerTestCase):
             },
             'interface': {
                 'type': 'interface'
+            },
+            'url': {
+                'type': 'url'
             },
             'runtime': {
                 'type': 'runtime'
@@ -214,8 +255,8 @@ class TestParametersForm(MAASServerTestCase):
         self.assertDictEqual(
             {
                 'parameters': [
-                    "%s: type must be either storage, interface, or runtime"
-                    % unsupported_type]
+                    "%s: type must be either storage, interface, url, or "
+                    "runtime" % unsupported_type]
             }, form.errors)
 
     def test__validates_unsupported_parameter_types_if_not_required(self):
@@ -711,3 +752,162 @@ class TestParametersForm(MAASServerTestCase):
                 'interface': ['Unknown interface for %s(%s)' % (
                     node.fqdn, node.system_id)],
             }, form.errors)
+
+    def test__input_url_validates_required(self):
+        script = factory.make_Script(parameters={'url': {
+            'type': 'url',
+            'required': True,
+        }})
+        form = ParametersForm(data={}, script=script, node=factory.make_Node())
+        self.assertFalse(form.is_valid())
+        self.assertDictEqual(
+            {
+                'url': ['Field is required'],
+            }, form.errors)
+
+    def test__input_url_defaults_empty_with_no_input(self):
+        script = factory.make_Script(parameters={'url': {
+            'type': 'url',
+        }})
+        form = ParametersForm(data={}, script=script, node=factory.make_Node())
+        self.assertTrue(form.is_valid())
+        self.assertDictEqual({}, form.cleaned_data['input'][0])
+
+    def test__input_url_allows_ipv4(self):
+        script = factory.make_Script(parameters={'url': {
+            'type': 'url',
+        }})
+        input = factory.make_ipv4_address()
+        form = ParametersForm(
+            data={'url': input},
+            script=script, node=factory.make_Node())
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertDictEqual(
+            {'url': {'type': 'url', 'value': input}},
+            form.cleaned_data['input'][0])
+
+    def test__input_url_allows_ipv4_url(self):
+        script = factory.make_Script(parameters={'url': {
+            'type': 'url',
+        }})
+        input = "%s://%s:%d/%s" % (
+            self.pick_scheme(), factory.make_ipv4_address(),
+            random.randint(0, 65535), factory.make_name())
+        form = ParametersForm(
+            data={'url': input},
+            script=script, node=factory.make_Node())
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertDictEqual(
+            {'url': {'type': 'url', 'value': input}},
+            form.cleaned_data['input'][0])
+
+    def test__input_url_allows_ipv6(self):
+        script = factory.make_Script(parameters={'url': {
+            'type': 'url',
+        }})
+        input = factory.make_ipv6_address()
+        form = ParametersForm(
+            data={'url': input},
+            script=script, node=factory.make_Node())
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertDictEqual(
+            {'url': {'type': 'url', 'value': input}},
+            form.cleaned_data['input'][0])
+
+    def test__input_url_allows_ipv6_url(self):
+        script = factory.make_Script(parameters={'url': {
+            'type': 'url',
+        }})
+        input = "%s://[%s]:%d/%s" % (
+            self.pick_scheme(), factory.make_ipv6_address(),
+            random.randint(0, 65535), factory.make_name())
+        form = ParametersForm(
+            data={'url': input},
+            script=script, node=factory.make_Node())
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertDictEqual(
+            {'url': {'type': 'url', 'value': input}},
+            form.cleaned_data['input'][0])
+
+    def test__input_url_allows_hostname(self):
+        script = factory.make_Script(parameters={'url': {
+            'type': 'url',
+        }})
+        input = factory.make_hostname()
+        form = ParametersForm(
+            data={'url': input},
+            script=script, node=factory.make_Node())
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertDictEqual(
+            {'url': {'type': 'url', 'value': input}},
+            form.cleaned_data['input'][0])
+
+    def test__input_url_allows_hostname_url(self):
+        script = factory.make_Script(parameters={'url': {
+            'type': 'url',
+        }})
+        input = factory.make_url(scheme=self.pick_scheme())
+        form = ParametersForm(
+            data={'url': input},
+            script=script, node=factory.make_Node())
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertDictEqual(
+            {'url': {'type': 'url', 'value': input}},
+            form.cleaned_data['input'][0])
+
+    def test__input_url_allows_list(self):
+        script = factory.make_Script(parameters={'url': {
+            'type': 'url',
+            'allow_list': True,
+        }})
+        inputs = ','.join([
+            factory.make_ipv4_address(),
+            "%s://%s:%d/%s" % (
+                self.pick_scheme(), factory.make_ipv4_address(),
+                random.randint(0, 65535), factory.make_name()),
+            factory.make_ipv6_address(),
+            "%s://[%s]:%d/%s" % (
+                self.pick_scheme(), factory.make_ipv6_address(),
+                random.randint(0, 65535), factory.make_name()),
+            factory.make_hostname(),
+            factory.make_url(scheme=self.pick_scheme()),
+        ])
+        form = ParametersForm(
+            data={'url': inputs},
+            script=script, node=factory.make_Node())
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertDictEqual(
+            {'url': {'type': 'url', 'allow_list': True, 'value': inputs}},
+            form.cleaned_data['input'][0])
+
+    def test__input_url_list_requires_allow_list(self):
+        script = factory.make_Script(parameters={'url': {
+            'type': 'url',
+        }})
+        inputs = ','.join([
+            factory.make_ipv4_address(),
+            "%s://%s:%d/%s" % (
+                self.pick_scheme(), factory.make_ipv4_address(),
+                random.randint(0, 65535), factory.make_name()),
+            factory.make_ipv6_address(),
+            "%s://[%s]:%d/%s" % (
+                self.pick_scheme(), factory.make_ipv6_address(),
+                random.randint(0, 65535), factory.make_name()),
+            factory.make_hostname(),
+            factory.make_url(scheme=self.pick_scheme()),
+        ])
+        form = ParametersForm(
+            data={'url': inputs},
+            script=script, node=factory.make_Node())
+        self.assertFalse(form.is_valid())
+        self.assertDictEqual({'url': ['Invalid URL']}, form.errors)
+
+    def test__input_url_list_errors(self):
+        script = factory.make_Script(parameters={'url': {
+            'type': 'url',
+        }})
+        form = ParametersForm(
+            data={'url': factory.make_name('bad!')},
+            script=script, node=factory.make_Node())
+        self.assertFalse(form.is_valid())
+        self.assertDictEqual({'url': ['Invalid URL']}, form.errors)
