@@ -28,6 +28,8 @@ apps:
 
   maas:
     command: bin/maas
+    environment:
+      LD_PRELOAD: $SNAP/usr/lib/stub_initgroups.so
     plugs:
         - network # needed for external authentication
         - network-observe # needed to get default URL
