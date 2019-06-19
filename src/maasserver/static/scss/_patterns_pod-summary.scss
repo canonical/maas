@@ -91,7 +91,7 @@
 
   .p-storage {
     $p-storage-info-width: 5rem;
-    margin-bottom: $px;
+    margin-bottom: 1px;
     padding-top: $spv-inner--small;
 
     @media (max-width: $breakpoint-large - 1px) {

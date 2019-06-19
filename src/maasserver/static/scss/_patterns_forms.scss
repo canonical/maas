@@ -46,9 +46,6 @@
     }
 
     .p-form__control {
-      $input-v-padding-amount: $spv-nudge - $px;
-      $form-control-min-height: map-get($line-heights, default-text) +
-        $input-v-padding-amount * 2 + 2 * $px;
       @extend .tablet-col-4;
       @extend .col-4;
 
@@ -60,9 +57,11 @@
       &--placeholder {
         display: block;
         margin-bottom: $spv-outer--scaleable - $spv-nudge * 2 + $sp-unit;
-        min-height: $form-control-min-height;
-        padding-bottom: $input-v-padding-amount;
-        padding-top: $input-v-padding-amount;
+        min-height: calc(
+          #{map-get($line-heights, default-text) + $spv-nudge * 2}
+        );
+        padding-bottom: calc(#{$spv-nudge} - 1px);
+        padding-top: calc(#{$spv-nudge} - 1px);
       }
     }
   }

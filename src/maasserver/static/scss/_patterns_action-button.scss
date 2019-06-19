@@ -8,7 +8,7 @@
       height: map-get($icon-sizes, default);
       left: $sph-inner;
       position: absolute;
-      top: $spv-inner--x-small + $spv-nudge - $px;
+      top: $spv-inner--x-small + calc(#{$spv-nudge} - 1px);
       width: map-get($icon-sizes, default);
     }
 

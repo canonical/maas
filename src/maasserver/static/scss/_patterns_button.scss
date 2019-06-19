@@ -3,8 +3,8 @@ $vanilla-2-icon-button-side-padding: $sph-inner--small * 1.5;
   // disable override in vanilla that make buttons vertically less padded; this causes issues with alignment with other elements
   table button,
   table [class^="p-button"] {
-    padding-bottom: $spv-nudge - $px;
-    padding-top: $spv-nudge - $px;
+    padding-bottom: calc(#{$spv-nudge} - 1px);
+    padding-top: calc(#{$spv-nudge} - 1px);
   }
 
   .p-button--narrow {
@@ -26,7 +26,7 @@ $vanilla-2-icon-button-side-padding: $sph-inner--small * 1.5;
   }
 
   %icon-button-padding {
-    padding: $spv-nudge - $px $sph-inner--small;
+    padding: calc(#{$spv-nudge} - 1px) $sph-inner--small;
   }
 
   .p-button--lock {
@@ -64,12 +64,14 @@ $vanilla-2-icon-button-side-padding: $sph-inner--small * 1.5;
   *[class*="p-button"] {
     .p-table-expanding__panel & {
       margin-bottom: 2 * $spv-nudge-compensation;
+
       &:not(.p-button--close) {
-        padding: $spv-nudge - $px $sph-inner;
+        padding: calc(#{$spv-nudge} - 1px) $sph-inner;
       }
     }
+
     &.is-small {
-      padding: $spv-nudge - $px $sph-inner;
+      padding: calc(#{$spv-nudge} - 1px) $sph-inner;
     }
   }
 }

@@ -29,23 +29,23 @@ $table-h-indent: $sph-inner--small;
 
 .u-td-outdent {
   // apply a negative margin equal to cell padding;
-  // usefeul for things like buttons, which have white space around them
-  // - $px * 3 is to allow for the accessibility outline, which otherwise gets clipped by overflow: hidden on any of the parents
+  // useful for things like buttons, which have white space around them
+  // - 3px is to allow for the accessibility outline, which otherwise gets clipped by overflow: hidden on any of the parents
 
   &--left {
-    margin-left: -$table-h-indent;
+    margin-left: -#{$table-h-indent};
   }
 
   &--right {
-    margin-right: -$table-h-indent;
+    margin-right: -#{$table-h-indent};
   }
 
   &-focusable--left {
-    margin-left: -$table-h-indent + $px * 3;
+    margin-left: calc(-#{$table-h-indent} + 3px);
   }
 
   &-focusable--right {
-    margin-right: -$table-h-indent + $px * 3;
+    margin-right: calc(-#{$table-h-indent} + 3px);
   }
 }
 

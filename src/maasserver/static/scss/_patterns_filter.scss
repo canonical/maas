@@ -38,7 +38,7 @@
         @extend %p-filter-icon;
         @include vf-icon-chevron($color-mid-dark);
         right: $sph-inner;
-        top: ($spv-nudge - $px) * 2;
+        top: calc(#{2 * $spv-nudge} - 2px);
       }
 
       &.is-selected {

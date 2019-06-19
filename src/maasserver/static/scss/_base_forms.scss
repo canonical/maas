@@ -28,16 +28,16 @@
   select {
     table & {
       margin-bottom: $spv-outer--scaleable + $sp-unit - $spv-nudge * 2;
-      padding-bottom: $spv-nudge - $px;
-      padding-top: $spv-nudge - $px;
+      padding-bottom: calc(#{$spv-nudge} - 1px);
+      padding-top: calc(#{$spv-nudge} - 1px);
       min-height: 2.3rem;
       min-width: auto;
     }
 
     .is-small & {
       margin-bottom: $spv-nudge-compensation;
-      padding-bottom: $spv-nudge - $sp-unit * 0.5 - $px;
-      padding-top: $spv-nudge - $sp-unit * 0.5 - $px;
+      padding-bottom: calc(#{$spv-nudge - $sp-unit * 0.5} - 1px);
+      padding-top: calc(#{$spv-nudge - $sp-unit * 0.5} - 1px);
     }
 
     &.u-min-margin--bottom {

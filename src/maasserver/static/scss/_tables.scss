@@ -152,11 +152,10 @@ $breakpoint-fourth: 1360px;
     }
   }
 
-  $border-thickness: $px;
-  $icon-margin-right: $sph-inner--small;
-  $icon-button-width: $icon-margin-right + 2 *
-    ($border-thickness + $vanilla-2-icon-button-side-padding) +
-    map-get($icon-sizes, default);
+  $icon-button-width: calc(
+    2px + #{$sph-inner--small + $vanilla-2-icon-button-side-padding * 2 +
+      map-get($icon-sizes, default)}
+  );
 
   .p-table--pod-networking-config {
     select {
@@ -454,7 +453,7 @@ $breakpoint-fourth: 1360px;
           position: absolute;
           left: $group-padding-left;
           right: 0;
-          height: $px;
+          height: 1px;
           background-color: $color-light-new;
         }
 
