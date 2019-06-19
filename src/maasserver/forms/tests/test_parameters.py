@@ -1,4 +1,4 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for Parameters form."""
@@ -7,6 +7,7 @@ __all__ = []
 
 import random
 
+from maasserver.enum import INTERFACE_TYPE
 from maasserver.forms.parameters import ParametersForm
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -131,7 +132,22 @@ class TestParametersForm(MAASServerTestCase):
                     "{name}, {path}, {model}, {serial}"]
             }, form.errors)
 
-    def test__validates_parameter_field_argument_format_non_storage_type(self):
+    def test__validates_parameter_field_argument_format_for_interface(self):
+        form = ParametersForm(data={
+            'storage': {
+                'type': 'interface',
+                'argument_format': factory.make_name('argument_format'),
+            },
+        })
+        self.assertFalse(form.is_valid())
+        self.assertDictEqual(
+            {
+                'parameters': [
+                    "interface: argument_format must contain one of {input}, "
+                    "{name}, {mac}, {vendor}, {product}"]
+            }, form.errors)
+
+    def test__validates_parameter_field_argument_format_non_runtime_type(self):
         form = ParametersForm(data={
             'runtime': {
                 'type': 'runtime',
@@ -178,6 +194,9 @@ class TestParametersForm(MAASServerTestCase):
             'storage': {
                 'type': 'storage'
             },
+            'interface': {
+                'type': 'interface'
+            },
             'runtime': {
                 'type': 'runtime'
             },
@@ -195,7 +214,7 @@ class TestParametersForm(MAASServerTestCase):
         self.assertDictEqual(
             {
                 'parameters': [
-                    "%s: type must be either storage or runtime"
+                    "%s: type must be either storage, interface, or runtime"
                     % unsupported_type]
             }, form.errors)
 
@@ -209,17 +228,18 @@ class TestParametersForm(MAASServerTestCase):
         })
         self.assertTrue(form.is_valid())
 
-    def test__validates_storage_type_has_no_min_or_max(self):
+    def test__validates_storage_interface_type_has_no_min_or_max(self):
+        ptype = random.choice(['storage', 'interface'])
         form = ParametersForm(data={
-            'storage': {
-                'type': 'storage',
+            ptype: {
+                'type': ptype,
                 'min': random.randint(0, 1000),
             },
         })
         self.assertFalse(form.is_valid())
         self.assertDictEqual(
             {
-                'parameters': ["storage type doesn't support min or max"]
+                'parameters': ["Type doesn't support min or max"]
             }, form.errors)
 
     def test__validates_runtime_type_min_greater_than_zero(self):
@@ -486,5 +506,208 @@ class TestParametersForm(MAASServerTestCase):
         self.assertDictEqual(
             {
                 'storage': ['Unknown storage device for %s(%s)' % (
+                    node.fqdn, node.system_id)],
+            }, form.errors)
+
+    def test__input_interface_validates_required(self):
+        script = factory.make_Script(parameters={'interface': {
+            'type': 'interface',
+            'required': True,
+            'default': None,
+        }})
+        form = ParametersForm(data={}, script=script, node=factory.make_Node())
+        self.assertFalse(form.is_valid())
+        self.assertDictEqual(
+            {
+                'interface': ['Field is required'],
+            }, form.errors)
+
+    def test__input_interface_defaults_all_with_no_nics(self):
+        script = factory.make_Script(parameters={
+            'interface': {'type': 'interface'},
+        })
+        form = ParametersForm(
+            data={}, script=script,
+            node=factory.make_Node(interface=False))
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEquals(1, len(form.cleaned_data['input']))
+        self.assertDictEqual({
+            'interface': {'type': 'interface', 'value': 'all'},
+            }, form.cleaned_data['input'][0])
+
+    def test__input_interface_all(self):
+        node = factory.make_Node()
+        for _ in range(3):
+            factory.make_Interface(node=node)
+        script = factory.make_Script(parameters={
+            'interface': {'type': 'interface'},
+        })
+        form = ParametersForm(
+            data={'interface': 'all'}, script=script, node=node)
+        self.assertTrue(form.is_valid(), form.errors)
+        input = form.cleaned_data['input']
+        self.assertEquals(node.interface_set.count(), len(input))
+        for interface in node.interface_set.all():
+            for i in input:
+                if (str(interface.mac_address) ==
+                        i['interface']['value']['mac_address']):
+                    break
+            self.assertDictEqual({
+                'name': interface.name,
+                'mac_address': str(interface.mac_address),
+                'vendor': interface.vendor,
+                'product': interface.product,
+                'interface': interface,
+                }, i['interface']['value'])
+
+    def test__input_interface_all_only_includes_children(self):
+        node = factory.make_Node(interface=False)
+        bond = factory.make_Interface(
+            node=node, iftype=INTERFACE_TYPE.BOND, parents=[
+                factory.make_Interface(node=node) for _ in range(2)])
+        script = factory.make_Script(parameters={
+            'interface': {'type': 'interface'},
+        })
+        form = ParametersForm(
+            data={'interface': 'all'}, script=script, node=node)
+        self.assertTrue(form.is_valid(), form.errors)
+        input = form.cleaned_data['input']
+        self.assertEquals(1, len(input))
+        self.assertDictEqual({
+            'name': bond.name,
+            'mac_address': str(bond.mac_address),
+            'vendor': bond.vendor,
+            'product': bond.product,
+            'interface': bond,
+            }, input[0]['interface']['value'])
+
+    def test__input_interface_id(self):
+        node = factory.make_Node()
+        for _ in range(3):
+            factory.make_Interface(node=node)
+        script = factory.make_Script(parameters={
+            'interface': {'type': 'interface'},
+        })
+        interface = random.choice(list(node.interface_set.all()))
+        form = ParametersForm(
+            data={'interface': random.choice(
+                [interface.id, str(interface.id)])},
+            script=script, node=node)
+        self.assertTrue(form.is_valid(), form.errors)
+        input = form.cleaned_data['input']
+        self.assertEquals(1, len(input))
+        self.assertDictEqual({
+            'name': interface.name,
+            'mac_address': str(interface.mac_address),
+            'vendor': interface.vendor,
+            'product': interface.product,
+            'interface': interface,
+            }, input[0]['interface']['value'])
+
+    def test__input_interface_id_errors(self):
+        node = factory.make_Node()
+        for _ in range(3):
+            factory.make_Interface(node=node)
+        script = factory.make_Script(parameters={
+            'interface': {'type': 'interface'},
+        })
+        form = ParametersForm(
+            data={'interface': random.randint(1000, 2000)},
+            script=script, node=node)
+        self.assertFalse(form.is_valid())
+        self.assertDictEqual(
+            {
+                'interface': ['Interface id does not exist'],
+            }, form.errors)
+
+    def test__input_interface_id_errors_on_parent(self):
+        node = factory.make_Node(interface=False)
+        parents = [
+            factory.make_Interface(node=node)
+            for _ in range(2)
+        ]
+        factory.make_Interface(
+            node=node, iftype=INTERFACE_TYPE.BOND, parents=parents)
+        script = factory.make_Script(parameters={
+            'interface': {'type': 'interface'},
+        })
+        form = ParametersForm(
+            data={'interface': random.choice(parents).id},
+            script=script, node=node)
+        self.assertFalse(form.is_valid())
+        self.assertDictEqual(
+            {
+                'interface': ['Interface id does not exist'],
+            }, form.errors)
+
+    def test__input_interface_list(self):
+        node = factory.make_Node()
+        for _ in range(10):
+            factory.make_Interface(node=node)
+        script = factory.make_Script(parameters={
+            'interface': {'type': 'interface'},
+        })
+        nics = list(node.interface_set.all())
+        selected_scripts = {
+            nics[0]: '%s:%s' % (nics[0].vendor, nics[0].product),
+            nics[1]: nics[1].name,
+            nics[2]: nics[2].vendor,
+            nics[3]: nics[3].product,
+            nics[4]: random.choice(nics[4].tags),
+        }
+        form = ParametersForm(
+            data={'interface': ','.join(selected_scripts.values())},
+            script=script, node=node)
+        self.assertTrue(form.is_valid(), form.errors)
+        input = form.cleaned_data['input']
+        self.assertEquals(len(selected_scripts), len(input))
+        for nic in selected_scripts.keys():
+            for i in input:
+                if (str(nic.mac_address) ==
+                        i['interface']['value']['mac_address']):
+                    break
+            self.assertDictEqual({
+                'name': nic.name,
+                'mac_address': str(nic.mac_address),
+                'vendor': nic.vendor,
+                'product': nic.product,
+                'interface': nic,
+                }, i['interface']['value'])
+
+    def test__input_interface_name_errors(self):
+        node = factory.make_Node()
+        for _ in range(3):
+            factory.make_Interface(node=node)
+        script = factory.make_Script(parameters={
+            'interface': {'type': 'interface'},
+        })
+        form = ParametersForm(
+            data={'interface': factory.make_name('bad_name')},
+            script=script, node=node)
+        self.assertFalse(form.is_valid())
+        self.assertDictEqual(
+            {
+                'interface': ['Unknown interface for %s(%s)' % (
+                    node.fqdn, node.system_id)],
+            }, form.errors)
+
+    def test__input_interface_name_errors_on_parent(self):
+        node = factory.make_Node(interface=False)
+        parents = [
+            factory.make_Interface(node=node)
+            for _ in range(2)
+        ]
+        factory.make_Interface(
+            node=node, iftype=INTERFACE_TYPE.BOND, parents=parents)
+        script = factory.make_Script(parameters={
+            'interface': {'type': 'interface'},
+        })
+        form = ParametersForm(
+            data={'interface': random.choice(parents).name},
+            script=script, node=node)
+        self.assertFalse(form.is_valid())
+        self.assertDictEqual(
+            {
+                'interface': ['Unknown interface for %s(%s)' % (
                     node.fqdn, node.system_id)],
             }, form.errors)

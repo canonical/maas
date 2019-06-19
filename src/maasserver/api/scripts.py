@@ -76,7 +76,7 @@ class NodeScriptsHandler(OperationsHandler):
 
         @param (string) "hardware_type" [required=false] The hardware_type
         defines what type of hardware the script is assoicated with. May be
-        CPU, memory, storage, or node.
+        CPU, memory, storage, network, or node.
 
         @param (int) "parallel" [required=false] Whether the script may be
         run in parallel with other scripts. May be disabled to run by itself,
@@ -140,8 +140,8 @@ class NodeScriptsHandler(OperationsHandler):
         showing both.
 
         @param (string) "hardware_type" [required=false] Only return scripts
-        for the given hardware type.  Can be ``node``, ``cpu``, ``memory``, or
-        ``storage``.  Defaults to all.
+        for the given hardware type.  Can be ``cpu``, ``memory``, ``storage``,
+        ``network``, or ``node``.  Defaults to all.
 
         @param (string) "include_script" [required=false] Include the base64-
         encoded script content.
@@ -333,7 +333,7 @@ class NodeScriptHandler(OperationsHandler):
 
         @param (string) "hardware_type" [required=false] The hardware_type
         defines what type of hardware the script is assoicated with. May be
-        ``cpu``, ``memory``, ``storage``, or ``node``.
+        ``cpu``, ``memory``, ``storage``, ``network``, or ``node``.
 
         @param (int) "parallel" [required=false] Whether the script may be
         run in parallel with other scripts. May be disabled to run by itself,

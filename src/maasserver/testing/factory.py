@@ -1330,7 +1330,7 @@ class Factory(maastesting.factory.Factory):
             vlan=None, parents=None, name=None, cluster_interface=None,
             ip=None, subnet=None, enabled=True, fabric=None, tags=None,
             link_connected=True, interface_speed=None, link_speed=None,
-            params=""):
+            vendor=None, product=None, params=""):
         if subnet is None and cluster_interface is not None:
             subnet = cluster_interface.subnet
         if subnet is not None and vlan is None:
@@ -1392,11 +1392,16 @@ class Factory(maastesting.factory.Factory):
                 link_speed = random.choice([
                     speed for speed in link_speeds
                     if speed <= interface_speed])
+        if vendor is None:
+            vendor = factory.make_name('vendor')
+        if product is None:
+            product = factory.make_name('product')
         interface = Interface(
             node=node, mac_address=mac_address, type=iftype,
             name=name, vlan=vlan, enabled=enabled, tags=tags,
             link_connected=link_connected, interface_speed=interface_speed,
-            link_speed=link_speed, params=params)
+            link_speed=link_speed, vendor=vendor, product=product,
+            params=params)
         interface.save()
         if subnet is None and ip is not None:
             subnet = Subnet.objects.get_best_subnet_for_ip(ip)

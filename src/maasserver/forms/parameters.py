@@ -1,4 +1,4 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Parameters form."""
@@ -103,15 +103,16 @@ class ParametersForm(Form):
                     "%s: required must be a boolean" % param_required)
 
             # Check parameter type is supported and required.
-            if param_type not in ('storage', 'runtime') and param_required:
+            if (param_type not in ('storage', 'interface', 'runtime') and
+                    param_required):
                 set_form_error(
                     self, "parameters",
-                    "%s: type must be either storage or runtime" % param_type)
-            if param_type == 'storage' and (
+                    "%s: type must be either storage, interface, or runtime"
+                    % param_type)
+            if param_type in ('storage', 'interface') and (
                     param_min is not None or param_max is not None):
                 set_form_error(
-                    self, "parameters",
-                    "storage type doesn't support min or max")
+                    self, "parameters", "Type doesn't support min or max")
             if param_type == 'runtime' and isinstance(param_min, int):
                 if param_min < 0:
                     set_form_error(
@@ -131,6 +132,15 @@ class ParametersForm(Form):
                             self, "parameters",
                             "%s: argument_format must contain one of {input}, "
                             "{name}, {path}, {model}, {serial}" % param_type)
+                elif param_type == 'interface':
+                    if not any(
+                            format in param_argument_format
+                            for format in ('{input}', '{name}', '{mac}',
+                                           '{vendor}', '{product}')):
+                        set_form_error(
+                            self, "parameters",
+                            "%s: argument_format must contain one of {input}, "
+                            "{name}, {mac}, {vendor}, {product}" % param_type)
                 else:
                     if '{input}' not in param_argument_format:
                         set_form_error(
@@ -143,9 +153,9 @@ class ParametersForm(Form):
     def _setup_input(self):
         """Split input result and multi_result categories and set defaults.
 
-        The users may specify multiple storage devices for the storage
-        parameter. This results in one ScriptResult per storage device to allow
-        each storage device to have its own logs and results. Each ScriptResult
+        Users may specify multiple devices for the storage and interface
+        parameters. This results in one ScriptResult per device to allow each
+        each device to have its own logs and results. Each ScriptResult
         needs to include values for all parameters. The two lists will be
         combined later so each ScriptResult has a complete set of parameters.
 
@@ -172,7 +182,7 @@ class ParametersForm(Form):
                     self, 'input', "Unknown parameter '%s' for %s" % (
                         param_name, self._script.name))
                 continue
-            if parameters[param_name]['type'] == 'storage':
+            if parameters[param_name]['type'] in ('storage', 'interface'):
                 multi_result_params[param_name] = copy.deepcopy(
                     parameters[param_name])
                 multi_result_params[param_name]['value'] = value
@@ -183,7 +193,7 @@ class ParametersForm(Form):
 
         # Check for any paramaters not given which have defaults.
         for param_name, param in parameters.items():
-            if (param['type'] == 'storage' and
+            if (param['type'] in ('storage', 'interface') and
                     param_name not in multi_result_params):
                 default = param.get('default', 'all')
                 if not default and param.get('required', True):
@@ -297,6 +307,87 @@ class ParametersForm(Form):
                     bd)
                 ret.append(clean_param)
 
+    def _interface_to_dict(self, interface):
+        """Convert an interface to a dictionary with limited fields."""
+        return {
+            'name': interface.name,
+            'mac_address': str(interface.mac_address),
+            'vendor': interface.vendor,
+            'product': interface.product,
+            'interface': interface,
+        }
+
+    def _validate_and_clean_interface_all(
+            self, param_name, param, result_params, ret):
+        """Validate and clean interface input when set to all."""
+        if not self._node.interface_set.exists():
+            # Use 'all' as a place holder until the disks get added during
+            # commissioning.
+            clean_param = copy.deepcopy(result_params)
+            clean_param[param_name] = param
+            ret.append(clean_param)
+        else:
+            for interface in self._node.interface_set.filter(
+                    children_relationships=None):
+                clean_param = copy.deepcopy(result_params)
+                clean_param[param_name] = copy.deepcopy(param)
+                clean_param[param_name]['value'] = self._interface_to_dict(
+                    interface)
+                ret.append(clean_param)
+
+    def _validate_and_clean_interface_id(
+            self, param_name, param, result_params, ret):
+        """Validate and clean storage input when id."""
+        try:
+            interface = self._node.interface_set.get(
+                children_relationships=None, id=int(param['value']))
+        except ObjectDoesNotExist:
+            set_form_error(
+                self, param_name, 'Interface id does not exist')
+        else:
+            clean_param = copy.deepcopy(result_params)
+            clean_param[param_name] = copy.deepcopy(param)
+            clean_param[param_name]['value'] = self._interface_to_dict(
+                interface)
+            ret.append(clean_param)
+
+    def _validate_and_clean_interface(
+            self, param_name, param, result_params, ret):
+        """Validate and clean interface input."""
+        value = param['value']
+        for i in value.split(','):
+            if ':' in i:
+                # Allow users to specify a disk using the vendor and product.
+                vendor, product = i.split(':')
+                try:
+                    interface = self._node.interface_set.get(
+                        vendor=vendor, product=product,
+                        children_relationships=None)
+                except ObjectDoesNotExist:
+                    pass
+                else:
+                    clean_param = copy.deepcopy(result_params)
+                    clean_param[param_name] = copy.deepcopy(param)
+                    clean_param[param_name]['value'] = self._interface_to_dict(
+                        interface)
+                    ret.append(clean_param)
+                    continue
+
+            qs = self._node.interface_set.filter(children_relationships=None)
+            qs = qs.filter(
+                Q(name=i) | Q(vendor=i) | Q(product=i) | Q(tags__overlap=[i]))
+            if not qs.exists():
+                set_form_error(
+                    self, param_name, "Unknown interface for %s(%s)" % (
+                        self._node.fqdn, self._node.system_id))
+                continue
+            for interface in qs:
+                clean_param = copy.deepcopy(result_params)
+                clean_param[param_name] = copy.deepcopy(param)
+                clean_param[param_name]['value'] = self._interface_to_dict(
+                    interface)
+                ret.append(clean_param)
+
     def clean_input(self):
         """Validate and clean parameter input.
 
@@ -332,6 +423,16 @@ class ParametersForm(Form):
                         param_name, param, result_params, ret)
                 else:
                     self._validate_and_clean_storage(
+                        param_name, param, result_params, ret)
+            elif param['type'] == 'interface':
+                if value == 'all':
+                    self._validate_and_clean_interface_all(
+                        param_name, param, result_params, ret)
+                elif isinstance(value, int) or value.isdigit():
+                    self._validate_and_clean_interface_id(
+                        param_name, param, result_params, ret)
+                else:
+                    self._validate_and_clean_interface(
                         param_name, param, result_params, ret)
 
         if ret == []:
