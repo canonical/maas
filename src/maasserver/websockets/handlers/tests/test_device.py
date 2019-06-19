@@ -1,4 +1,4 @@
-# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.device`"""
@@ -121,6 +121,9 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
             "links": links,
             "ip_assignment": self.dehydrate_ip_assignment(obj, interface),
             "ip_address": self.dehydrate_ip_address(obj, interface),
+            "interface_speed": interface.interface_speed,
+            "link_connected": interface.link_connected,
+            "link_speed": interface.link_speed,
         }
         return data
 
@@ -210,6 +213,9 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
                 "spaces",
                 "subnets",
                 "tags",
+                "interface_speed",
+                "link_connected",
+                "link_speed",
                 ]
             for key in list(data):
                 if key not in allowed_fields:

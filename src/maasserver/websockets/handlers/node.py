@@ -620,6 +620,9 @@ class NodeHandler(TimestampedModelHandler):
                 for nic in interface.children_relationships.all()
             ],
             "links": links,
+            "interface_speed": interface.interface_speed,
+            "link_connected": interface.link_connected,
+            "link_speed": interface.link_speed,
         }
 
         # When the node is an ephemeral state display the discovered IP address

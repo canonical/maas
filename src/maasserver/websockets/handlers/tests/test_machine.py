@@ -1260,6 +1260,9 @@ class TestMachineHandler(MAASServerTestCase):
                 for nic in interface.children_relationships.all()
             ],
             "links": expected_links,
+            "interface_speed": interface.interface_speed,
+            "link_connected": interface.link_connected,
+            "link_speed": interface.link_speed,
             }, handler.dehydrate_interface(interface, node))
         expected_links = interface2.get_links()
         self.assertEqual({
@@ -1281,6 +1284,9 @@ class TestMachineHandler(MAASServerTestCase):
                 for nic in interface2.children_relationships.all()
             ],
             "links": expected_links,
+            "interface_speed": interface2.interface_speed,
+            "link_connected": interface2.link_connected,
+            "link_speed": interface2.link_speed,
             }, handler.dehydrate_interface(interface2, node))
 
     def test_dehydrate_interface_for_ready_node(self):
@@ -1313,6 +1319,9 @@ class TestMachineHandler(MAASServerTestCase):
                 for nic in interface.children_relationships.all()
             ],
             "links": expected_links,
+            "interface_speed": interface.interface_speed,
+            "link_connected": interface.link_connected,
+            "link_speed": interface.link_speed,
             }, handler.dehydrate_interface(interface, node))
 
     def test_dehydrate_interface_for_commissioning_node(self):
@@ -1354,6 +1363,9 @@ class TestMachineHandler(MAASServerTestCase):
             ],
             "links": expected_links,
             "discovered": expected_discovered,
+            "interface_speed": interface.interface_speed,
+            "link_connected": interface.link_connected,
+            "link_speed": interface.link_speed,
         }, handler.dehydrate_interface(interface, node))
 
     def test_dehydrate_interface_includes_params(self):
@@ -1429,6 +1441,9 @@ class TestMachineHandler(MAASServerTestCase):
             ],
             "links": expected_links,
             "discovered": expected_discovered,
+            "interface_speed": interface.interface_speed,
+            "link_connected": interface.link_connected,
+            "link_speed": interface.link_speed,
         }, handler.dehydrate_interface(interface, node))
 
     def test_dehydrate_interface_for_testing_node(self):
@@ -1470,6 +1485,10 @@ class TestMachineHandler(MAASServerTestCase):
             ],
             "links": expected_links,
             "discovered": expected_discovered,
+            "interface_speed": interface.interface_speed,
+            "link_connected": interface.link_connected,
+            "link_speed": interface.link_speed,
+
         }, handler.dehydrate_interface(interface, node))
 
     def test_dehydrate_interface_for_failed_testing_node(self):
@@ -1513,6 +1532,9 @@ class TestMachineHandler(MAASServerTestCase):
             ],
             "links": expected_links,
             "discovered": expected_discovered,
+            "interface_speed": interface.interface_speed,
+            "link_connected": interface.link_connected,
+            "link_speed": interface.link_speed,
         }, handler.dehydrate_interface(interface, node))
 
     def test_dehydrate_interface_discovered_bond_not_primary(self):
