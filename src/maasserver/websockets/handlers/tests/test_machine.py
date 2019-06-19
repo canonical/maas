@@ -1488,7 +1488,6 @@ class TestMachineHandler(MAASServerTestCase):
             "interface_speed": interface.interface_speed,
             "link_connected": interface.link_connected,
             "link_speed": interface.link_speed,
-
         }, handler.dehydrate_interface(interface, node))
 
     def test_dehydrate_interface_for_failed_testing_node(self):
@@ -3516,6 +3515,9 @@ class TestMachineHandler(MAASServerTestCase):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         new_name = factory.make_name("name")
         new_vlan = factory.make_VLAN()
+        new_interface_speed = random.randint(1000, 10000)
+        new_link_connected = True
+        new_link_speed = random.randint(1000, new_interface_speed)
         handler._script_results = {}
         handler._cache_pks([node])
         handler.update_interface({
@@ -3523,10 +3525,16 @@ class TestMachineHandler(MAASServerTestCase):
             "interface_id": interface.id,
             "name": new_name,
             "vlan": new_vlan.id,
+            "interface_speed": new_interface_speed,
+            "link_connected": new_link_connected,
+            "link_speed": new_link_speed,
             })
         interface = reload_object(interface)
         self.assertEqual(new_name, interface.name)
         self.assertEqual(new_vlan, interface.vlan)
+        self.assertEqual(new_interface_speed, interface.interface_speed)
+        self.assertEqual(new_link_connected, interface.link_connected)
+        self.assertEqual(new_link_speed, interface.link_speed)
 
     def test_update_interface_for_deployed_node(self):
         user = factory.make_admin()
@@ -3534,15 +3542,24 @@ class TestMachineHandler(MAASServerTestCase):
         handler = MachineHandler(user, {}, None)
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         new_name = factory.make_name("name")
+        new_interface_speed = random.randint(1000, 10000)
+        new_link_connected = True
+        new_link_speed = random.randint(1000, new_interface_speed)
         handler._script_results = {}
         handler._cache_pks([node])
         handler.update_interface({
             "system_id": node.system_id,
             "interface_id": interface.id,
             "name": new_name,
+            "interface_speed": new_interface_speed,
+            "link_connected": new_link_connected,
+            "link_speed": new_link_speed,
             })
         interface = reload_object(interface)
         self.assertEqual(new_name, interface.name)
+        self.assertEqual(new_interface_speed, interface.interface_speed)
+        self.assertEqual(new_link_connected, interface.link_connected)
+        self.assertEqual(new_link_speed, interface.link_speed)
 
     def test_update_interface_raises_ValidationError(self):
         user = factory.make_admin()
