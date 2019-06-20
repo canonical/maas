@@ -108,15 +108,6 @@
     padding-top: 0;
   }
 
-  .p-navigation--sidebar {
-    background: $color-x-light;
-
-    .sidebar__content {
-      top: 0;
-      padding: 1rem;
-    }
-  }
-
   .sidebar__content .sidebar__second-level .is-active {
     background-position-y: 0.9rem;
   }
@@ -127,13 +118,6 @@
 
   .u-remove-max-width {
     max-width: none;
-  }
-
-  .p-navigation--sidebar {
-    &::after {
-      background: transparent;
-    }
-    margin-bottom: $spv-outer--scaleable;
   }
 
   .p-form__control {
