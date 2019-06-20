@@ -1,10 +1,10 @@
 <header class="p-strip--light is-shallow u-no-padding--bottom page-header" media-query="min-width: 769px">
     <div class="row">
-        <div class="tablet-col-4 col-8">
+        <div class="col-medium-4 col-8">
             <h1 class="page-header__title">{$ getPageHeading() $}</h1>
             <p class="page-header__status u-no-margin--top" data-ng-show="loading"><span class="u-text--loading"><i class="p-icon--spinner u-animation--spin"></i> Loading...</span></p>
         </div>
-        <div class="tablet-col-2 col-4">
+        <div class="col-medium-2 col-4">
             <div class="page-header__controls">
                 <div data-ng-if="pods.length > 0 && !selectedItems.length">
                     <button class="p-button--neutral" data-ng-click="addPod()" data-ng-if="!add.open && canAddPod()">Add {$ getPageHeading() $}</button>

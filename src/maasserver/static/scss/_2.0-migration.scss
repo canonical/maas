@@ -1,18 +1,5 @@
 $px: 0.0625rem;
 
-// Grid
-@for $i from 1 through $grid-columns-medium {
-  .tablet-col-#{$i} {
-    @extend .#{$grid-col-medium-prefix}#{$i};
-  }
-}
-
-@for $i from 1 through $grid-columns-small {
-  .mobile-col-#{$i} {
-    @extend .#{$grid-small-col-prefix}#{$i};
-  }
-}
-
 $color-warning: $color-caution;
 
 $font-base-size: map-get($base-font-sizes, base);

@@ -3,34 +3,34 @@
         <table class="p-table-expanding" data-ng-if="groupedKeys.length">
             <thead>
                 <tr>
-                    <th class="col-2 tablet-col-2 mobile-col-1">Source</th>
-                    <th class="col-2 tablet-col-2 mobile-col-1">ID</th>
-                    <th class="col-2 tablet-col-1 mobile-col-1"><div class="u-align--right">Number of keys</div></th>
-                    <th class="col-2 tablet-col-1 mobile-col-1"></th>
+                    <th class="col-2 col-medium-2 col-small-1">Source</th>
+                    <th class="col-2 col-medium-2 col-small-1">ID</th>
+                    <th class="col-2 col-medium-1 col-small-1"><div class="u-align--right">Number of keys</div></th>
+                    <th class="col-2 col-medium-1 col-small-1"></th>
                 </tr>
             </thead>
             <tbody>
                 <tr data-ng-repeat="group in groupedKeys | orderBy:['source', 'authId']" data-ng-class="{ 'is-active': group.id === openRow }">
-                    <td aria-label="Source" class="col-2 tablet-col-2 mobile-col-1">{$ sourceTitles[group.source] $}</td>
-                    <td data-ng-if="group.source === 'upload'" data-ng-bind-html="trustAsHtml(group.keys[0].display)" class="col-2 tablet-col-2 mobile-col-1">&nbsp;</td>
-                    <td data-ng-if="group.source !== 'upload'" aria-label="ID" class="col-2 tablet-col-1">{$ group.authId $}</td>
-                    <td data-ng-if="group.source !== 'upload'" aria-label="Number of keys" class="col-2 tablet-col-1 mobile-col-1">
+                    <td aria-label="Source" class="col-2 col-medium-2 col-small-1">{$ sourceTitles[group.source] $}</td>
+                    <td data-ng-if="group.source === 'upload'" data-ng-bind-html="trustAsHtml(group.keys[0].display)" class="col-2 col-medium-2 col-small-1">&nbsp;</td>
+                    <td data-ng-if="group.source !== 'upload'" aria-label="ID" class="col-2 col-medium-1">{$ group.authId $}</td>
+                    <td data-ng-if="group.source !== 'upload'" aria-label="Number of keys" class="col-2 col-medium-1 col-small-1">
                         <div class="u-align--right">{$ group.keys.length $}</div>
                     </td>
-                    <td class="col-2 tablet-col-2 mobile-col-1">
+                    <td class="col-2 col-medium-2 col-small-1">
                         <div class="u-align--right">
                             <a class="p-tooltip p-tooltip--top-center js-delete-link" data-ng-click="open(group, 'delete')" title="delete SSH key source"><i class="p-icon--delete"></i></a>
                             <a class="p-button--base u-no-margin--top" style="min-width: 4.2rem;" data-ng-click="open(group, 'view')" aria-label="Show keys" title="Show keys" data-ng-if="group.source !== 'upload' && (openRow !== group.id || rowMode === 'delete')"><i class="p-icon--chevron u-no-margin--right">Open</i></a>
                             <a class="p-button u-no-margin--top" data-ng-click="close()" aria-label="Hide keys" title="Show keys" data-ng-if="group.source !== 'upload' && openRow === group.id && rowMode === 'view'">Hide</a>
                         </div>
                     </td>
-                    <td class="p-table-expanding__panel u-no-margin--left col-2 tablet-col-1 mobile-col-1" data-ng-class="{ 'u-hide': group.id !== openRow || rowMode !== 'view' }">
+                    <td class="p-table-expanding__panel u-no-margin--left col-2 col-medium-1 col-small-1" data-ng-class="{ 'u-hide': group.id !== openRow || rowMode !== 'view' }">
                         <hr />
                         <ul class="p-list u-no-margin--top">
                             <li data-ng-repeat="key in group.keys" data-ng-bind-html="trustAsHtml(key.display)"></li>
                         </ul>
                     </td>
-                    <td class="p-table-expanding__panel col-2 tablet-col-1 mobile-col-1" data-ng-class="{ 'u-hide': group.id !== openRow || rowMode !== 'delete' }">
+                    <td class="p-table-expanding__panel col-2 col-medium-1 col-small-1" data-ng-class="{ 'u-hide': group.id !== openRow || rowMode !== 'delete' }">
                         <hr />
                         <div class="row u-equal-height">
                             <div class="col-8 u-vertically-center">

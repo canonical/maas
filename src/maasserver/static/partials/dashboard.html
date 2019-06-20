@@ -1,13 +1,13 @@
 <header class="p-strip--light is-shallow u-no-padding--bottom page-header" media-query="min-width: 769px" window-width>
     <div class="row">
-        <div class="tablet-col-3 col-6">
+        <div class="col-medium-3 col-6">
             <h1 class="page-header__title">Network discovery</h1>
             <ul class="p-inline-list page-header__status">
                 <li class="p-inline-list__item">{$ discoveredDevices.length $} items discovered</li>
                 <li class="p-inline-list__item" data-ng-if="!loaded"><i class="p-icon--spinner u-animation--spin"></i> Loading...</li>
             </ul>
         </div>
-        <div class="tablet-col-3 col-6">
+        <div class="col-medium-3 col-6">
             <div class="page-header__controls page-header__controls--discoveries p-form--inline u-align--right">
                 <maas-obj-form obj="networkDiscovery" manager="configManager" inline="true">
                     <maas-obj-field type="onoffswitch" key="value" label="Discovery enabled" on-value="enabled" off-value="disabled" subtle="true" label-info="When enabled, MAAS will use passive techniques, such as listening to&#xa; ARP requests and DNS advertisements, to observe networks attached&#xa; to rack controllers. Active subnet mapping can also be enabled in the&#xa; Network Discovery section of the Settings page."></maas-obj-field>
@@ -83,7 +83,7 @@
     </div>
     <div class="row">
         <aside class="p-filter">
-            <div class="maas-accordion p-filter__dropdown col-3 mobile-col-2">
+            <div class="maas-accordion p-filter__dropdown col-3 col-small-2">
                 <button class="p-filter__dropdown-button maas-accordion-tab">Filters</button>
                 <div class="p-accordion">
                     <ul class="p-accordion__list">
@@ -248,32 +248,32 @@
                                         <div class="row is-active">
                                             <div class="col-6">
                                                 <div class="p-form__group u-clearfix">
-                                                    <label class="p-form__label is-disabled col-2 mobile-col-2 tablet-col-2">Mac</label>
-                                                    <div class="p-form__control col-3 mobile-col-2 tablet-col-3">
+                                                    <label class="p-form__label is-disabled col-2 col-small-2 col-medium-2">Mac</label>
+                                                    <div class="p-form__control col-3 col-small-2 col-medium-3">
                                                         <span class="p-control-text">
                                                             {$ discovery.mac_address $}
                                                         </span>
                                                     </div>
                                                 </div>
                                                 <div class="p-form__group u-clearfix">
-                                                    <label class="p-form__label is-disabled col-2 mobile-col-2 tablet-col-2">IP</label>
-                                                    <div class="p-form__control col-3 mobile-col-2 tablet-col-3">
+                                                    <label class="p-form__label is-disabled col-2 col-small-2 col-medium-2">IP</label>
+                                                    <div class="p-form__control col-3 col-small-2 col-medium-3">
                                                         <span class="p-control-text">
                                                             {$ discovery.ip $}
                                                         </span>
                                                     </div>
                                                 </div>
                                                 <div class="p-form__group u-clearfix">
-                                                    <label class="p-form__label is-disabled col-2 mobile-col-2 tablet-col-2">Rack</label>
-                                                    <div class="p-form__control col-3 mobile-col-2 tablet-col-3">
+                                                    <label class="p-form__label is-disabled col-2 col-small-2 col-medium-2">Rack</label>
+                                                    <div class="p-form__control col-3 col-small-2 col-medium-3">
                                                         <span class="p-control-text">
                                                             {$ discovery.observer_hostname $}
                                                         </span>
                                                     </div>
                                                 </div>
                                                 <div class="p-form__group u-clearfix">
-                                                    <label class="p-form__label is-disabled col-2 mobile-col-2 tablet-col-2">Last seen</label>
-                                                    <div class="p-form__control col-3 mobile-col-2 tablet-col-3">
+                                                    <label class="p-form__label is-disabled col-2 col-small-2 col-medium-2">Last seen</label>
+                                                    <div class="p-form__control col-3 col-small-2 col-medium-3">
                                                         <span class="p-control-text">
                                                             {$ discovery.last_seen $}
                                                         </span>
@@ -282,8 +282,8 @@
                                             </div>
                                             <div class="col-6">
                                                 <div class="p-form__group u-clearfix">
-                                                    <label class="p-form__label is-disabled col-2 mobile-col-2 tablet-col-2">Fabric</label>
-                                                    <div class="p-form__control col-3 mobile-col-2 tablet-col-3">
+                                                    <label class="p-form__label is-disabled col-2 col-small-2 col-medium-2">Fabric</label>
+                                                    <div class="p-form__control col-3 col-small-2 col-medium-3">
                                                         <span class="p-control-text">
                                                             <a href="#/fabric/{$ discovery.fabric $}">
                                                                 {$ discovery.fabric_name $}
@@ -292,8 +292,8 @@
                                                     </div>
                                                 </div>
                                                 <div class="p-form__group u-clearfix">
-                                                    <label class="p-form__label is-disabled col-2 mobile-col-2 tablet-col-2">VLAN</label>
-                                                    <div class="p-form__control col-3 mobile-col-2 tablet-col-3">
+                                                    <label class="p-form__label is-disabled col-2 col-small-2 col-medium-2">VLAN</label>
+                                                    <div class="p-form__control col-3 col-small-2 col-medium-3">
                                                         <span class="p-control-text">
                                                             <a href="#/vlan/{$ discovery.vlan $}">
                                                                 {$ getVLANName(discovery.vlan) $}
@@ -302,8 +302,8 @@
                                                     </div>
                                                 </div>
                                                 <div class="p-form__group u-clearfix">
-                                                    <label class="p-form__label is-disabled col-2 mobile-col-2 tablet-col-2">Subnet</label>
-                                                    <div class="p-form__control col-3 mobile-col-2 tablet-col-3">
+                                                    <label class="p-form__label is-disabled col-2 col-small-2 col-medium-2">Subnet</label>
+                                                    <div class="p-form__control col-3 col-small-2 col-medium-3">
                                                         <a href="#/subnet/{$ discovery.subnet $}" class="p-control-text">{$ getSubnetName(discovery.subnet) $}</a>
                                                     </div>
                                                 </div>
@@ -313,15 +313,15 @@
                                     <div class="row is-active" data-ng-class="{ 'u-disable' : discovery.isBeingRemoved }">
                                         <div class="col-6">
                                             <div data-ng-if="windowWidth < 768" class="u-clearfix">
-                                                <label for="Name" class="p-form__label col-2 tablet-col-2">Name</label>
-                                                <div class="col-3 tablet-col-4">
+                                                <label for="Name" class="p-form__label col-2 col-medium-2">Name</label>
+                                                <div class="col-3 col-medium-4">
                                                     <maas-obj-field type="text" key="hostname"
                                                         disable-label="true" placeholder="Hostname (optional)"></maas-obj-field>
                                                 </div>
                                             </div>
                                             <div class="p-form__group u-clearfix">
-                                                <label class="p-form__label col-2 tablet-col-2">Type</label>
-                                                <div class="p-form__control col-3 tablet-col-4">
+                                                <label class="p-form__label col-2 col-medium-2">Type</label>
+                                                <div class="p-form__control col-3 col-medium-4">
                                                     <select name="type" data-ng-model="convertTo.type">
                                                         <option value="" disabled>Choose type</option>
                                                         <option value="device">Device</option>

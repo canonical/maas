@@ -41,12 +41,12 @@
     }
 
     .p-form__label {
-      @extend .tablet-col-2;
+      @extend .col-medium-2;
       @extend .col-2;
     }
 
     .p-form__control {
-      @extend .tablet-col-4;
+      @extend .col-medium-4;
       @extend .col-4;
 
       & > .p-control-text {

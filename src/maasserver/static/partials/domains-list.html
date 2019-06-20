@@ -1,6 +1,6 @@
 <header class="p-strip--light is-shallow u-no-padding--bottom page-header" media-query="min-width: 769px">
     <div class="row">
-        <div class="tablet-col-4 col-8">
+        <div class="col-medium-4 col-8">
             <h1 class="page-header__title">DNS</h1>
             <p class="page-header__status" data-ng-show="loading">
                 <i class="p-icon--spinner u-animation--spin"></i> Loading...
@@ -9,7 +9,7 @@
                 <ng-pluralize data-ng-hide="loading" count="domains.length"
                     when="{'one': '{$ domains.length $} domain available', 'other': '{$ domains.length $} domains available '}"></ng-pluralize></p>
         </div>
-        <div class="tablet-col-2 col-4">
+        <div class="col-medium-2 col-4">
             <div class="page-header__controls" data-ng-show="isSuperUser()">
                 <button class="p-button--neutral"
                     data-ng-click="addDomain()"

@@ -11,11 +11,11 @@ export function cachePowerParameters($templateCache) {
     "directive/templates/power-parameters.html",
     `<div class="p-form__group u-clearfix">
             <label for="power-type"
-                class="p-form__label col-2 mobile-col-2 tablet-col-2"
+                class="p-form__label col-2 col-small-2 col-medium-2"
                 data-ng-class="{'is-disabled': !ngModel.editing }">
                 Power type
             </label>
-            <div class="p-form__control col-3 mobile-col-2 tablet-col-3">
+            <div class="p-form__control col-3 col-small-2 col-medium-3">
                 <select name="power-type" id="power-type"
                     data-ng-disabled="ngDisabled || ngModel.in_pod"
                     data-ng-class="{ invalid: !ngModel.type }"
@@ -31,13 +31,13 @@ export function cachePowerParameters($templateCache) {
         <div class="p-form__group u-clearfix"
             data-ng-repeat="field in ngModel.type.fields">
             <label for="{$ field.name $}"
-                class="p-form__label col-2 mobile-col-2 tablet-col-2"
+                class="p-form__label col-2 col-small-2 col-medium-2"
                 data-ng-class="{'is-disabled': !ngModel.editing }"
                 data-ng-if="field.name !== 'default_storage_pool' &&
                     (field.scope !== 'bmc' || !ngModel.in_pod)">
                 {$ field.label $}
             </label>
-            <div class="p-form__control col-3 mobile-col-2 tablet-col-3">
+            <div class="p-form__control col-3 col-small-2 col-medium-3">
                 <maas-power-input field="field"
                     data-ng-disabled="ngDisabled ||
                         (field.scope === 'bmc' && ngModel.in_pod)"

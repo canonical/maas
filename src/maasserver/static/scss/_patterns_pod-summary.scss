@@ -80,7 +80,7 @@
 
     &__cpu,
     &__ram {
-      @extend .tablet-col-3;
+      @extend .col-medium-3;
 
       @media (min-width: $breakpoint-large) {
         width: 100%;

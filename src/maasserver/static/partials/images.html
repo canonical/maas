@@ -1,6 +1,6 @@
 <header class="p-strip--light is-shallow u-no-padding--bottom page-header">
     <div class="row">
-        <div class="tablet-col-4 col-8">
+        <div class="col-medium-4 col-8">
             <h1 class="page-header__title">Images</h1>
             <p class="page-header__status" data-ng-show="loading">
                 <span class="u-text--loading">
@@ -10,7 +10,7 @@
             </p>
             <maas-boot-images-status></maas-boot-images-status>
         </div>
-        <div class="tablet-col-2 col-4">
+        <div class="col-medium-2 col-4">
             <div class="page-header__controls p-form--inline u-align--right" data-ng-if="!loading && isSuperUser() && autoImport">
                 <maas-obj-form obj="autoImport" manager="configManager" inline="true">
                     <maas-obj-field type="onoffswitch" key="value" label="Automatically sync images" label-info="Enables automatic image updates (sync). The region controller

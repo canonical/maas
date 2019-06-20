@@ -38524,7 +38524,7 @@ cachePowerParameters.$inject = ["$templateCache"];
 /* @ngInject */
 function cachePowerParameters($templateCache) {
   // Inject the power-parameters.html into the template cache.
-  $templateCache.put("directive/templates/power-parameters.html", "<div class=\"p-form__group u-clearfix\">\n            <label for=\"power-type\"\n                class=\"p-form__label col-2 mobile-col-2 tablet-col-2\"\n                data-ng-class=\"{'is-disabled': !ngModel.editing }\">\n                Power type\n            </label>\n            <div class=\"p-form__control col-3 mobile-col-2 tablet-col-3\">\n                <select name=\"power-type\" id=\"power-type\"\n                    data-ng-disabled=\"ngDisabled || ngModel.in_pod\"\n                    data-ng-class=\"{ invalid: !ngModel.type }\"\n                    data-ng-model=\"ngModel.type\"\n                    data-ng-options=\"type as type.description\n                        for type in maasPowerParameters track by type.name\">\n                    <option value=\"\" disabled selected>\n                        Select your power type\n                    </option>\n                </select>\n            </div>\n        </div>\n        <div class=\"p-form__group u-clearfix\"\n            data-ng-repeat=\"field in ngModel.type.fields\">\n            <label for=\"{$ field.name $}\"\n                class=\"p-form__label col-2 mobile-col-2 tablet-col-2\"\n                data-ng-class=\"{'is-disabled': !ngModel.editing }\"\n                data-ng-if=\"field.name !== 'default_storage_pool' &&\n                    (field.scope !== 'bmc' || !ngModel.in_pod)\">\n                {$ field.label $}\n            </label>\n            <div class=\"p-form__control col-3 mobile-col-2 tablet-col-3\">\n                <maas-power-input field=\"field\"\n                    data-ng-disabled=\"ngDisabled ||\n                        (field.scope === 'bmc' && ngModel.in_pod)\"\n                    data-ng-if=\"field.name !== 'default_storage_pool'\n                        && (field.scope !== 'bmc' || !ngModel.in_pod)\"\n                    data-ng-model=\"ngModel.parameters[field.name]\">\n            </div>\n        </div>");
+  $templateCache.put("directive/templates/power-parameters.html", "<div class=\"p-form__group u-clearfix\">\n            <label for=\"power-type\"\n                class=\"p-form__label col-2 col-small-2 col-medium-2\"\n                data-ng-class=\"{'is-disabled': !ngModel.editing }\">\n                Power type\n            </label>\n            <div class=\"p-form__control col-3 col-small-2 col-medium-3\">\n                <select name=\"power-type\" id=\"power-type\"\n                    data-ng-disabled=\"ngDisabled || ngModel.in_pod\"\n                    data-ng-class=\"{ invalid: !ngModel.type }\"\n                    data-ng-model=\"ngModel.type\"\n                    data-ng-options=\"type as type.description\n                        for type in maasPowerParameters track by type.name\">\n                    <option value=\"\" disabled selected>\n                        Select your power type\n                    </option>\n                </select>\n            </div>\n        </div>\n        <div class=\"p-form__group u-clearfix\"\n            data-ng-repeat=\"field in ngModel.type.fields\">\n            <label for=\"{$ field.name $}\"\n                class=\"p-form__label col-2 col-small-2 col-medium-2\"\n                data-ng-class=\"{'is-disabled': !ngModel.editing }\"\n                data-ng-if=\"field.name !== 'default_storage_pool' &&\n                    (field.scope !== 'bmc' || !ngModel.in_pod)\">\n                {$ field.label $}\n            </label>\n            <div class=\"p-form__control col-3 col-small-2 col-medium-3\">\n                <maas-power-input field=\"field\"\n                    data-ng-disabled=\"ngDisabled ||\n                        (field.scope === 'bmc' && ngModel.in_pod)\"\n                    data-ng-if=\"field.name !== 'default_storage_pool'\n                        && (field.scope !== 'bmc' || !ngModel.in_pod)\"\n                    data-ng-model=\"ngModel.parameters[field.name]\">\n            </div>\n        </div>");
 }
 /* @ngInject */
 
@@ -61438,11 +61438,11 @@ function maasObjField($compile) {
           labelElement.addClass("col-" + attrs.labelWidth);
 
           if (attrs.labelWidthMobile) {
-            labelElement.addClass("mobile-col-" + attrs.labelWidthMobile);
+            labelElement.addClass("col-small-" + attrs.labelWidthMobile);
           }
 
           if (attrs.labelWidthTablet) {
-            labelElement.addClass("tablet-col-" + attrs.labelWidthTablet);
+            labelElement.addClass("col-medium-" + attrs.labelWidthTablet);
           }
         }
 
@@ -61484,11 +61484,11 @@ function maasObjField($compile) {
       inputWrapper.addClass("p-form__control");
 
       if (attrs.inputWidthMobile) {
-        inputWrapper.addClass("mobile-col-" + attrs.inputWidthMobile);
+        inputWrapper.addClass("col-small-" + attrs.inputWidthMobile);
       }
 
       if (attrs.inputWidthTablet) {
-        inputWrapper.addClass("tablet-col-" + attrs.inputWidthTablet);
+        inputWrapper.addClass("col-medium-" + attrs.inputWidthTablet);
       }
 
       if (attrs.inputWidth) {

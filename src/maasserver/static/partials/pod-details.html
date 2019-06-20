@@ -8,7 +8,7 @@
 <div class="ng-hide" data-ng-show="loaded" style="position: relative;" data-window-width>
     <header class="p-strip--light is-shallow page-header u-no-padding--bottom" data-ng-class="{'is-not-sticky': action.option.name === 'compose'}" media-query="min-width: 769px">
         <div class="row">
-            <div class="tablet-col-4 col-8">
+            <div class="col-medium-4 col-8">
                 <h1 class="page-header__title">
                     <span contenteditable="true"
                         data-ng-class="{ editable: canEdit(), 'is-error': editNameInvalid(), editmode: name.editing }"
@@ -26,7 +26,7 @@
                     data-ng-disabled="editNameInvalid()"
                     data-ng-click="saveEditName()">Save</button>
             </div>
-            <div class="tablet-col-2 col-4">
+            <div class="col-medium-2 col-4">
                 <div class="page-header__controls" data-ng-if="canEdit()">
                     <div data-maas-cta="action.options"
                         data-ng-click="updateAvailableActions('pods')"
@@ -48,8 +48,8 @@
                 <div class="row">
                     <div class="col-6">
                         <div class="p-form__group">
-                            <label for="hostname" class="p-form__label col-2 tablet-col-2">Hostname</label>
-                            <div class="p-form__control col-3 tablet-col-4">
+                            <label for="hostname" class="p-form__label col-2 col-medium-2">Hostname</label>
+                            <div class="p-form__control col-3 col-medium-4">
                                 <input type="text" name="hostname" id="hostname" data-ng-model="compose.obj.hostname" placeholder="Hostname (optional)">
                             </div>
                         </div>
@@ -578,14 +578,14 @@
                             <hr>
                         </div>
                         <div class="row">
-                            <div class="mobile-col-2 tablet-col-3 col-4">
+                            <div class="col-small-2 col-medium-3 col-4">
                                 <h3 class="p-heading--four">Storage</h3>
                             </div>
                         </div>
                         <ul class="p-list--divided">
                             <li class="p-list__item u-no-padding" data-ng-repeat="storage in pod.storage_pools">
                                 <div class="p-storage row u-no-padding--top">
-                                    <div class="p-storage__name tablet-col-3 col-4 u-clearfix">
+                                    <div class="p-storage__name col-medium-3 col-4 u-clearfix">
                                         <p class="p-storage__disk-name">
                                         <strong>{$ storage.name $}</strong>
                                         <span class="p-storage__path">
@@ -598,7 +598,7 @@
                                             </p>
                                         </div>
                                     </div>
-                                    <div class="p-storage__meter tablet-col-3 col-4">
+                                    <div class="p-storage__meter col-medium-3 col-4">
                                         <div class="p-meter__container">
                                             <meter class="p-meter p-meter--kvm" max="{$ storage.total $}" value="{$ storage.used $}"
                                                 ng-class="{'is-over': storage.used > storage.total}">
@@ -620,7 +620,7 @@
                             </li>
                         </ul>
                         <div class="row">
-                            <ul class="p-legend mobile-col-2 tablet-col-3 col-4 push-4">
+                            <ul class="p-legend col-small-2 col-medium-3 col-4 push-4">
                                 <li class="p-legend__item p-legend__item--used">
                                     <span class="p-legend__text default-text">
                                         Used
@@ -679,8 +679,8 @@
                 table-form="true" save-on-blur="false" after-save="exitEditPodConfiguration" data-ng-disabled="!editing">
                 <div class="col-6">
                     <div class="p-form__group">
-                        <label for="type" class="p-form__label col-2 tablet-col-2">Type</label>
-                        <div class="p-form__control u-no-margin--top col-4 tablet-col-3">
+                        <label for="type" class="p-form__label col-2 col-medium-2">Type</label>
+                        <div class="p-form__control u-no-margin--top col-4 col-medium-3">
                             <input type="text" id="type" disabled="disabled" value="{$ getPodTypeTitle() $}" />
                         </div>
                     </div>

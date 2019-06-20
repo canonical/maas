@@ -576,10 +576,10 @@ export function maasObjField($compile) {
           labelElement.addClass("col-" + attrs.labelWidth);
 
           if (attrs.labelWidthMobile) {
-            labelElement.addClass("mobile-col-" + attrs.labelWidthMobile);
+            labelElement.addClass("col-small-" + attrs.labelWidthMobile);
           }
           if (attrs.labelWidthTablet) {
-            labelElement.addClass("tablet-col-" + attrs.labelWidthTablet);
+            labelElement.addClass("col-medium-" + attrs.labelWidthTablet);
           }
         }
         if (attrs.labelLeft === "true") {
@@ -623,10 +623,10 @@ export function maasObjField($compile) {
       inputWrapper.addClass("p-form__control");
 
       if (attrs.inputWidthMobile) {
-        inputWrapper.addClass("mobile-col-" + attrs.inputWidthMobile);
+        inputWrapper.addClass("col-small-" + attrs.inputWidthMobile);
       }
       if (attrs.inputWidthTablet) {
-        inputWrapper.addClass("tablet-col-" + attrs.inputWidthTablet);
+        inputWrapper.addClass("col-medium-" + attrs.inputWidthTablet);
       }
       if (attrs.inputWidth) {
         inputWrapper.addClass("col-" + attrs.inputWidth);

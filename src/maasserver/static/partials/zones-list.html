@@ -1,6 +1,6 @@
 <header class="p-strip--light is-shallow u-no-padding--bottom page-header" media-query="min-width: 769px">
     <div class="row">
-        <div class="tablet-col-4 col-8">
+        <div class="col-medium-4 col-8">
             <h1 class="page-header__title">Availability zones</h1>
             <span class="page-header__status p-tooltip p-tooltip--btm-left">
                     <i class="p-icon--help">Help:</i>
@@ -12,7 +12,7 @@
             <p class="page-header__status" data-ng-show="!loading"><ng-pluralize data-ng-hide="loading" count="zones.length"
                         when="{'one': '{$ zones.length $} AZ available', 'other': '{$ zones.length $} AZs available '}"></ng-pluralize></p>
         </div>
-        <div class="tablet-col-2 col-4">
+        <div class="col-medium-2 col-4">
             <div class="page-header__controls" data-ng-show="isSuperUser()">
                 <button class="button--secondary button--inline"
                     data-ng-click="addZone()"

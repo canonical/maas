@@ -8,7 +8,7 @@
 <div data-ng-if="loaded">
     <header class="p-strip--light is-shallow page-header u-no-padding--bottom">
         <div class="row">
-            <div class="tablet-col-4 col-8">
+            <div class="col-medium-4 col-8">
                 <h1 class="page-header__title">
                     <span contenteditable="true"
                         data-ng-class="{ editable: canEdit(), 'is-error': editHeaderInvalid(), editmode: header.editing }"
@@ -50,7 +50,7 @@
                 </ul>
             </div>
 
-            <div class="tablet-col-2 col-4">
+            <div class="col-medium-2 col-4">
                 <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
                 <div class="u-align--right" data-ng-show="!header.editing && action.availableOptions.length">
                     <div data-maas-cta="action.availableOptions"
@@ -532,9 +532,9 @@
                         <div class="p-form__group u-clearfix" data-ng-if="!isDevice && !isController"
                             data-ng-class="{ 'is-error': invalidArchitecture() }">
                             <label for="architecture"
-                                class="p-form__label col-2 mobile-col-2 tablet-col-2"
+                                class="p-form__label col-2 col-small-2 col-medium-2"
                                 data-ng-class="{'is-disabled': !summary.editing }">Architecture</label>
-                            <div class="p-form__control col-3 mobile-col-2 tablet-col-3">
+                            <div class="p-form__control col-3 col-small-2 col-medium-3">
                                 <select name="architecture" id="architecture" class="p-form-validation__input"
                                     data-ng-disabled="!summary.editing"
                                     data-ng-model="summary.architecture.selected"
@@ -545,9 +545,9 @@
                         </div>
                         <div class="p-form__group u-clearfix" data-ng-if="!isDevice && !isController">
                             <label for="min_hwe_kernel"
-                                class="p-form__label col-2 mobile-col-2 tablet-col-2"
+                                class="p-form__label col-2 col-small-2 col-medium-2"
                                 data-ng-class="{'is-disabled': !summary.editing }">Minimum Kernel</label>
-                            <div class="p-form__control col-3 mobile-col-2 tablet-col-3">
+                            <div class="p-form__control col-3 col-small-2 col-medium-3">
                                 <select name="min_hwe_kernel" id="min_hwe_kernel"
                                     data-ng-disabled="!summary.editing"
                                     data-ng-model="summary.min_hwe_kernel.selected"
@@ -558,9 +558,9 @@
                         </div>
                         <div class="p-form__group u-clearfix">
                             <label for="zone"
-                                class="p-form__label col-2 mobile-col-2 tablet-col-2"
+                                class="p-form__label col-2 col-small-2 col-medium-2"
                                 data-ng-class="{'is-disabled': !summary.editing }">Zone</label>
-                            <div class="p-form__control col-3 mobile-col-2 tablet-col-3">
+                            <div class="p-form__control col-3 col-small-2 col-medium-3">
                                 <select name="zone" id="zone"
                                     data-ng-disabled="!summary.editing"
                                     data-ng-model="summary.zone.selected"
@@ -571,9 +571,9 @@
                         </div>
                         <div class="p-form__group u-clearfix" data-ng-if="!isDevice && !isController">
                             <label for="pool"
-                                class="p-form__label col-2 mobile-col-2 tablet-col-2"
+                                class="p-form__label col-2 col-small-2 col-medium-2"
                                 data-ng-class="{'is-disabled': !summary.editing }">Resource pool</label>
-                            <div class="p-form__control col-3 mobile-col-2 tablet-col-3">
+                            <div class="p-form__control col-3 col-small-2 col-medium-3">
                                 <select name="pool" id="pool"
                                     data-ng-disabled="!summary.editing"
                                     data-ng-model="summary.pool.selected"
@@ -584,18 +584,18 @@
                         </div>
                         <div class="p-form__group u-clearfix" data-ng-if="!isDevice && !isController">
                             <label for="pool"
-                                class="p-form__label col-2 mobile-col-2 tablet-col-2"
+                                class="p-form__label col-2 col-small-2 col-medium-2"
                                 data-ng-class="{'is-disabled': !summary.editing }">Note</label>
-                            <div class="p-form__control col-3 mobile-col-2 tablet-col-3">
+                            <div class="p-form__control col-3 col-small-2 col-medium-3">
                                 <input name="note" id="note" type="text"
                                     data-ng-disabled="!summary.editing"
                                     data-ng-model="summary.description" />
                             </div>
                         </div>
                         <div class="p-form__group u-clearfix">
-                            <label class="p-form__label col-2 mobile-col-2 tablet-col-2"
+                            <label class="p-form__label col-2 col-small-2 col-medium-2"
                                 data-ng-class="{'is-disabled': !summary.editing }">Tags</label>
-                            <div class="p-form__control col-3 mobile-col-2 tablet-col-3 tags--inline">
+                            <div class="p-form__control col-3 col-small-2 col-medium-3 tags--inline">
                                 <span data-ng-repeat="tag in node.tags" data-ng-hide="summary.editing">
                                     <a href="#/machines/?query=tags:({$ tag $})">{$ tag $}</a>
                                 </span>
@@ -1534,8 +1534,8 @@
                                                         </div>
                                                     </div>
                                                     <div class="p-form__group u-clearfix" data-ng-if="!isAllNetworkingDisabled(interface)">
-                                                        <label class="p-form__label col-2 mobile-col-2 tablet-col-2">Tags</label>
-                                                        <div class="p-form__control col-3 mobile-col-2 tablet-col-3 tags--inline">
+                                                        <label class="p-form__label col-2 col-small-2 col-medium-2">Tags</label>
+                                                        <div class="p-form__control col-3 col-small-2 col-medium-3 tags--inline">
                                                             <tags-input data-ng-model="interface.tags" allow-tags-pattern="[\w-]+"></tags-input>
                                                         </div>
                                                     </div>

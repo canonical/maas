@@ -1,11 +1,11 @@
 <header class="p-strip--light is-shallow u-no-padding--bottom page-header" media-query="min-width: 769px">
     <div class="row">
-        <div class="tablet-col-4 col-8">
+        <div class="col-medium-4 col-8">
             <h1 class="page-header__title">Subnets</h1>
             <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
             <p class="page-header__status u-no-margin--top" data-ng-show="loading"><span class="u-text--loading"><i class="p-icon--spinner u-animation--spin"></i> Loading...</span></p>
         </div>
-        <div class="tablet-col-2 col-4">
+        <div class="col-medium-2 col-4">
             <!-- Drop-down box -->
             <div class="page-header__controls u-float--right" data-ng-show="actionOptions.length">
                 <div data-maas-cta="actionOptions"
@@ -129,8 +129,8 @@
         <div class="col-4">
             <form class="p-form">
                 <div class="p-form__group row">
-                    <label class="p-form__label col-1 tablet-col-2" for="network-filter">Group by</label>
-                    <select name="network-filter" class="p-form__control col-3 tablet-col-2" id="networks-groupby" data-ng-model="groupBy" data-ng-change="updateGroupBy()">
+                    <label class="p-form__label col-1 col-medium-2" for="network-filter">Group by</label>
+                    <select name="network-filter" class="p-form__control col-3 col-medium-2" id="networks-groupby" data-ng-model="groupBy" data-ng-change="updateGroupBy()">
                         <option value="fabric">Fabrics</option>
                         <option value="space">Spaces</option>
                     </select>

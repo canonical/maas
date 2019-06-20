@@ -277,8 +277,8 @@
                         <div class="row p-form--stacked">
                             <div class="col-8">
                                 <div class="p-form__group u-clearfix">
-                                    <label class="p-form__label col-2 mobile-col-2 tablet-col-2">Tag machines</label>
-                                    <div class="p-form__control col-3 mobile-col-2 tablet-col-3 tags--inline">
+                                    <label class="p-form__label col-2 col-small-2 col-medium-2">Tag machines</label>
+                                    <div class="p-form__control col-3 col-small-2 col-medium-3 tags--inline">
                                         <span data-ng-repeat="tag in node.tags" data-ng-hide="summary.editing">
                                             <a href="#/machines/?query=tags:({$ tag $})">{$ tag $}</a>
                                         </span>
@@ -793,7 +793,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
 <div class="p-strip is-shallow">
     <div class="row" ng-if="currentpage === 'machines' || currentpage === 'devices'">
         <aside class="p-filter">
-            <div class="maas-accordion p-filter__dropdown col-3 mobile-col-2 ng-hide" data-ng-show="currentpage === 'machines'" data-ng-class="{ 'is-disabled': tabs.machines.actionOption }">
+            <div class="maas-accordion p-filter__dropdown ng-hide" data-ng-show="currentpage === 'machines'" data-ng-class="{ 'is-disabled': tabs.machines.actionOption }">
                 <button class="p-filter__dropdown-button maas-accordion-tab">Filters</button>
                 <div class="p-accordion">
                     <ul class="p-accordion__list">
@@ -944,7 +944,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                     </ul>
                 </div>
             </div>
-            <div class="maas-accordion p-filter__dropdown col-3 mobile-col-2 u-no-margin--left ng-hide" data-ng-show="currentpage === 'devices'" data-ng-class="{ 'is-disabled': tabs.devices.actionOption }">
+            <div class="maas-accordion p-filter__dropdown col-3 col-small-2 u-no-margin--left ng-hide" data-ng-show="currentpage === 'devices'" data-ng-class="{ 'is-disabled': tabs.devices.actionOption }">
                 <button class="p-filter__dropdown-button maas-accordion-tab">Filters</button>
                 <div class="p-accordion">
                     <ul class="p-accordion__list">
