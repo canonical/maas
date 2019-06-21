@@ -336,6 +336,17 @@ class MachineHandler(NodeHandler):
             node_script_results)
         data["other_test_status_tooltip"] = other_tooltip
 
+        interface_script_results = [
+            script_result for script_result in
+            self._script_results.get(obj.id, {}).get(HARDWARE_TYPE.NETWORK, [])
+            if script_result.script_set.result_type == RESULT_TYPE.TESTING
+        ]
+        data["interface_test_status"] = get_status_from_qs(
+            interface_script_results)
+        interface_tooltip = self.dehydrate_hardware_status_tooltip(
+            interface_script_results)
+        data["interface_test_status_tooltip"] = interface_tooltip
+
         if obj.status in {NODE_STATUS.TESTING, NODE_STATUS.FAILED_TESTING}:
             # Create a list of all results from all types.
             script_results = []

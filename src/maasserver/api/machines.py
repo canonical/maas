@@ -182,6 +182,8 @@ DISPLAYED_MACHINE_FIELDS = (
     'other_test_status',
     'other_test_status_name',
     'hardware_info',
+    'interface_test_status',
+    'interface_test_status_name',
 )
 
 # Limited set of machine fields exposed on the anonymous API.

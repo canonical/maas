@@ -1,4 +1,4 @@
-# Copyright 2013-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the Node API."""
@@ -221,6 +221,10 @@ class TestNodeAPI(APITestCase.ForUser):
             script=factory.make_Script(
                 script_type=SCRIPT_TYPE.TESTING,
                 hardware_type=HARDWARE_TYPE.NODE))
+        interface_script_result = make_script_result(
+            script=factory.make_Script(
+                script_type=SCRIPT_TYPE.TESTING,
+                hardware_type=HARDWARE_TYPE.NETWORK))
         testing_script_results = (
             machine.get_latest_testing_script_results.exclude(
                 status=SCRIPT_STATUS.ABORTED))
@@ -264,6 +268,12 @@ class TestNodeAPI(APITestCase.ForUser):
         self.assertEquals(
             status_name(node_script_result),
             parsed_result['other_test_status_name'])
+        self.assertEquals(
+            status(interface_script_result),
+            parsed_result['interface_test_status'])
+        self.assertEquals(
+            status_name(interface_script_result),
+            parsed_result['interface_test_status_name'])
 
     def test_hardware_info(self):
         self.become_admin()

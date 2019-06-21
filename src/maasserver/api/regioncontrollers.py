@@ -1,4 +1,4 @@
-# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 __all__ = [
@@ -61,6 +61,8 @@ DISPLAYED_REGION_CONTROLLER_FIELDS = (
     'other_test_status_name',
     'hardware_info',
     'tag_names',
+    'interface_test_status',
+    'interface_test_status_name',
 )
 
 

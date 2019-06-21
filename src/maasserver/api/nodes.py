@@ -416,6 +416,18 @@ class NodeHandler(OperationsHandler):
         return get_script_status_name(handler.other_test_status(node))
 
     @classmethod
+    def interface_test_status(handler, node):
+        get_cached_script_results(node)
+        return get_status_from_qs([
+            script_result for script_result
+            in node._cached_testing_script_results
+            if script_result.script.hardware_type == HARDWARE_TYPE.NETWORK])
+
+    @classmethod
+    def interface_test_status_name(handler, node):
+        return get_script_status_name(handler.interface_test_status(node))
+
+    @classmethod
     def hardware_info(handler, node):
         ret = {
             'system_vendor': 'Unknown',

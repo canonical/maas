@@ -1,4 +1,4 @@
-# Copyright 2013-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for enlistment-related portions of the API."""
@@ -705,6 +705,8 @@ class SimpleUserLoggedInEnlistmentAPITest(APITestCase.ForUser):
                 'other_test_status',
                 'other_test_status_name',
                 'hardware_info',
+                'interface_test_status',
+                'interface_test_status_name',
             ],
             list(parsed_result))
 
@@ -900,6 +902,8 @@ class AdminLoggedInEnlistmentAPITest(APITestCase.ForAdmin):
                 'other_test_status',
                 'other_test_status_name',
                 'hardware_info',
+                'interface_test_status',
+                'interface_test_status_name',
             ],
             list(parsed_result))
 
