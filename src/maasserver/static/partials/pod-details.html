@@ -316,7 +316,7 @@
                                                 data-ng-model="storage.size"
                                                 data-ng-change="updateRequests(storage)"
                                                 ng-class="{'in-warning': !storage.size || storage.size < 8}">
-                                            <span class="p-tooltip p-tooltip--top-left u-float--right"
+                                            <span class="p-tooltip--top-left u-float--right"
                                                 style="position: absolute; top: 8px; right: 8px;"
                                                 aria-describedby="storage-size-warning"
                                                 data-ng-if="(storage.size > 0 && storage.size < 8) || storage.size == 0">
@@ -527,10 +527,10 @@
             <section class="p-strip" ng-if="canEdit()">
                 <div class="p-pod-edit">
                     <label class="p-pod-edit__label" for="virsh">Virsh:</label>
-                    <div class="p-code-snippet-wrapper">
-                        <div class="p-code-snippet">
-                            <input class="p-code-snippet__input" value="{$ pod.power_address $}" readonly="readonly">
-                            <button class="p-code-snippet__action" data-ng-click="copyToClipboard($event)">Copy to clipboard</button>
+                    <div class="p-code-copyable-wrapper">
+                        <div class="p-code-copyable">
+                            <input class="p-code-copyable__input" value="{$ pod.power_address $}" readonly="readonly">
+                            <button class="p-code-copyable__action" data-ng-click="copyToClipboard($event)">Copy to clipboard</button>
                         </div>
                     </div>
                 </div>

@@ -111,7 +111,7 @@
                             <span class="p-domain-name__host">{$ node.hostname $}</span><span class="p-domain-name__tld">.{$ node.domain.name $}</span>
                         </a>
                     </div>
-                    <span class="p-tooltip p-tooltip--bottom-left" aria-describedby="ip-addresses-{$ node.fqdn $}">
+                    <span class="p-tooltip--bottom-left" aria-describedby="ip-addresses-{$ node.fqdn $}">
                         <div data-ng-if="removeDuplicates(node.ip_addresses, 'ip').length" class="p-double-row__muted-row">
                             <span class="u-text-overflow">
                                 <span>{$ getBootIp(node.ip_addresses) || node.ip_addresses[0].ip $}</span><span data-ng-if="getBootIp(node.ip_addresses)"> (PXE)</span>
@@ -204,7 +204,7 @@
                     <div class="p-double-row__icon-container" data-ng-click="!hideActions && toggleMenu(node.system_id + '-status')">
                         <i data-ng-if="showSpinner(node)" class="p-icon--spinner u-animation--spin"></i>
                         <i data-ng-if="showNodeStatus(node)" data-maas-script-status="script-status" data-script-status="node.other_test_status" aria-label="{$ node.other_test_status_tooltip $}"></i>
-                        <span class="p-tooltip p-tooltip--top-left" data-ng-if="showFailedTestWarning(node)">
+                        <span class="p-tooltip--top-left" data-ng-if="showFailedTestWarning(node)">
                             <i class="p-icon--warning" aria-describedby="failed-test-warning-tooltip-{$ node.fqdn $}"></i>
                             <span class="p-tooltip__message" role="tooltip" id="failed-test-warning-tooltip-{$ node.fqdn $}">Machine has failed tests; use with caution!</span>
                         </span>
@@ -221,7 +221,7 @@
                             ></button>
                         </div>
                         <div class="p-double-row__muted-row">
-                            <span class="p-tooltip p-tooltip--btm u-text-overflow" aria-describedby="status-message-tooltip-{$ node.fqdn $}">
+                            <span class="p-tooltip--btm u-text-overflow" aria-describedby="status-message-tooltip-{$ node.fqdn $}">
                                 <span>{$ getStatusMessage(node) $}</span>
                                 <span class="p-tooltip__message" role="tooltip" id="status-message-tooltip-{$ node.fqdn $}">{$ getStatusMessage(node) $}</span>
                             </span>
@@ -358,7 +358,7 @@
                             <span class="u-text-overflow" data-ng-if="node.spaces.length === 1">
                                 {$ node.spaces[0] $}
                             </span>
-                            <span data-ng-if="node.spaces.length > 1" class="p-tooltip p-tooltip--btm-left" aria-described-by="{$ node.hostname $}-spaces" style="overflow: visible">
+                            <span data-ng-if="node.spaces.length > 1" class="p-tooltip--btm-left" aria-described-by="{$ node.hostname $}-spaces" style="overflow: visible">
                                 <span class="u-text-overflow">
                                     {$ node.spaces.length $} spaces
                                 </span>
@@ -400,14 +400,14 @@
             <td class="p-table__col--cores p-table--action-cell u-align--right p-double-row" aria-label="CPU, Architecture">
                 <div class="p-double-row__rows-container">
                     <div class="p-double-row__main-row u-align--right" aria-label="CPU" style="overflow: visible"> <!-- overflow override so tooltip is visible -->
-                        <span class="p-tooltip p-tooltip--left">
+                        <span class="p-tooltip--left">
                             <span data-maas-script-status="script-status" data-script-status="node.cpu_test_status" data-ng-if="node.cpu_test_status !== -1 && node.cpu_test_status !== 2 && !hideFailedTests" aria-describedby="node-cpu-tooltip-{$ node.fqdn $}"></span>
                             <span class="u-text-overflow">{$ node.cpu_count $}</span>
                             <span class="p-tooltip__message" role="tooltip" id="node-cpu-tooltip-{$ node.fqdn $}" data-ng-if="node.cpu_test_status !== -1 && node.cpu_test_status !== 2 && !hideFailedTests">{$ node.cpu_test_status_tooltip $}</span>
                         </span>
                     </div>
                     <div class="p-double-row__muted-row u-align--right" aria-label="Architecture" style="overflow: visible"> <!-- overflow override so tooltip is visible -->
-                        <span class="p-tooltip p-tooltip--left" aria-describedby="node-architecture-tooltip-{$ node.fqdn $}">
+                        <span class="p-tooltip--left" aria-describedby="node-architecture-tooltip-{$ node.fqdn $}">
                             <span class="u-text-overflow">{$ ::getArchitectureText(node.architecture) $}</span>
                             <span class="p-tooltip__message" role="tooltip" id="node-architecture-tooltip-{$ node.fqdn $}" style="left: -60px; transform: translateX(-100%) translateY(-75%);">{$ ::node.architecture $}</span>
                         </span>
@@ -415,7 +415,7 @@
                 </div>
             </td>
             <td class="p-table__col--ram p-table--action-cell u-align--right" aria-label="Memory">
-                <span class="p-tooltip p-tooltip--left">
+                <span class="p-tooltip--left">
                     <span data-maas-script-status="script-status" data-script-status="node.memory_test_status" data-ng-if="node.memory_test_status !== -1 && node.memory_test_status !== 2 && !hideFailedTests" aria-describedby="node-memory-tooltip-{$ node.fqdn $}"></span>
                     <span class="u-text-overflow">
                         <span>{$ formatMemoryUnit(node.memory).value $}</span>
@@ -425,7 +425,7 @@
                 </span>
             </td>
             <td class="p-table__col--disks p-table--action-cell u-align--right" aria-label="Disks">
-                <span class="p-tooltip p-tooltip--left">
+                <span class="p-tooltip--left">
                     <span data-maas-script-status="script-status" data-script-status="node.storage_test_status" data-ng-if="node.storage_test_status !== -1 && node.storage_test_status !== 2 && !hideFailedTests" aria-describedby="disk-count-tooltip-{$ node.fqdn $}">
                     </span>
                     <span class="u-text-overflow">{$ node.physical_disk_count $}</span>

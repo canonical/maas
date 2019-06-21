@@ -1066,7 +1066,7 @@ describe("maasObjForm", function() {
       var tooltipMessage = directive.find(".p-tooltip__message");
       expect(label.text()).toContain("key");
       expect(icon.hasClass("p-icon--information")).toBe(true);
-      expect(tooltip.hasClass("p-tooltip")).toBe(true);
+      expect(tooltip.attr("class")).toContain("p-tooltip--");
       expect(tooltipMessage.text()).toBe("My Info");
     });
 

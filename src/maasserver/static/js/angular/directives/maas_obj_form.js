@@ -591,7 +591,7 @@ export function maasObjField($compile) {
         // Add a label info icon with tooltip.
         if (angular.isString(attrs.labelInfo) && attrs.labelInfo.length > 0) {
           var infoWrapper = angular.element("<span>&nbsp;</span>");
-          infoWrapper.addClass("p-tooltip p-tooltip--btm-right");
+          infoWrapper.addClass("p-tooltip--btm-right");
 
           var infoIcon = angular.element("<i/>");
           if (attrs.labelInfoIcon) {

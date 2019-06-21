@@ -148,12 +148,12 @@
                     <div class="p-form__label is-disabled col-2 col-medium-2">
                         <p>
                             Managed allocation
-                            <span data-ng-if="subnet.managed == false" class="p-tooltip p-tooltip--btm-right">
+                            <span data-ng-if="subnet.managed == false" class="p-tooltip--btm-right">
                                 <i class="p-icon--information">Help:</i>
                                 <span class="p-tooltip__message" role="tooltip">MAAS allocates IP addresses only from&#xa;the reserved ranges on this subnet.</span>
                             </span>
 
-                            <span data-ng-if="subnet.managed == true" class="p-tooltip p-tooltip--btm-right">
+                            <span data-ng-if="subnet.managed == true" class="p-tooltip--btm-right">
                                 <i class="p-icon--information">Help:</i>
                                 <span class="p-tooltip__message" role="tooltip">MAAS allocates IP addresses from&#xa;this subnet, excluding the reserved&#xa;and dynamic ranges.</span>
                             </span>
@@ -168,7 +168,7 @@
                     <div class="p-form__label is-disabled col-2 col-medium-2">
                         <p>
                             Active discovery
-                            <span data-ng-if="subnet.managed == true" class="p-tooltip p-tooltip--btm-right">
+                            <span data-ng-if="subnet.managed == true" class="p-tooltip--btm-right">
                                 <i class="p-icon--information u-no-margin--right">Help:</i>
                                 <span class="p-tooltip__message" role="tooltip">When enabled, MAAS will scan this subnet {$ active_discovery_interval | lowercase $}&#xa;to discover hosts that have not been discovered passively.</span>
                             </span>
@@ -183,12 +183,12 @@
                     <div class="p-form__label is-disabled col-2 col-medium-2">
                         <p>
                             Proxy access
-                            <span data-ng-if="subnet.allow_proxy == false" class="p-tooltip p-tooltip--btm-right">
+                            <span data-ng-if="subnet.allow_proxy == false" class="p-tooltip--btm-right">
                                 <i class="p-icon--information">Help:</i>
                                 <span class="p-tooltip__message" role="tooltip">MAAS will not allow clients from this&#xa;subnet to access the MAAS proxy.</span>
                             </span>
 
-                            <span data-ng-if="subnet.allow_proxy == true" class="p-tooltip p-tooltip--btm-right">
+                            <span data-ng-if="subnet.allow_proxy == true" class="p-tooltip--btm-right">
                                 <i class="p-icon--information">Help:</i>
                                 <span class="p-tooltip__message" role="tooltip">MAAS will allow clients from this&#xa;subnet to access the MAAS proxy.</span>
                             </span>
@@ -203,12 +203,12 @@
                     <div class="p-form__label is-disabled col-2 col-medium-2">
                         <p>
                             Allow DNS resolution
-                            <span data-ng-if="subnet.allow_dns == false" class="p-tooltip p-tooltip--btm-right">
+                            <span data-ng-if="subnet.allow_dns == false" class="p-tooltip--btm-right">
                                 <i class="p-icon--information">Help:</i>
                                 <span class="p-tooltip__message" role="tooltip">MAAS will not allow clients from this&#xa;subnet to use MAAS for DNS resolution.</span>
                             </span>
 
-                            <span data-ng-if="subnet.allow_dns == true" class="p-tooltip p-tooltip--btm-right">
+                            <span data-ng-if="subnet.allow_dns == true" class="p-tooltip--btm-right">
                                 <i class="p-icon--information">Help:</i>
                                 <span class="p-tooltip__message" role="tooltip">MAAS will allow clients from this&#xa;subnet to use MAAS for DNS resolution.</span>
                             </span>
@@ -244,7 +244,7 @@
                             <a data-ng-if="space !== null" href="#/space/{$ space.id $}">{$ space.name $}</a>
                             <span data-ng-if="space === null">
                                 (undefined)
-                                <span class="p-tooltip p-tooltip--top-center">
+                                <span class="p-tooltip--top-center">
                                     <i class="p-icon--warning">Warning:</i>
                                     <span class="p-tooltip__message" role="tooltip">This subnet does not belong to a space.&#xa;MAAS integrations require a space in order to determine the purpose of a network.</span>
                                 </span>
@@ -312,7 +312,7 @@
                                     <a data-ng-if="space !== null" href="#/space/{$ space.id $}">{$ space.name $}</a>
                                     <span data-ng-if="space === null">
                                         (undefined)
-                                        <span class="p-tooltip p-tooltip--top-center">
+                                        <span class="p-tooltip--top-center">
                                             <i class="p-icon--warning">Warning:</i>
                                             <span class="p-tooltip__message" role="tooltip">This subnet does not belong to a space.&#xa;MAAS integrations require a space in order to determine the purpose of a network.</span>
                                         </span>

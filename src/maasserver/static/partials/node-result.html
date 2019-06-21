@@ -83,7 +83,7 @@
         </div>
         <p class="col-12" data-ng-if="result.results.length !== 0">
             <h2 class="p-heading--four">Metrics</h2>
-            <div class="col-6 row u-equal-height u-margin--none p-tooltip p-tooltip--top-center" data-ng-repeat="item in result.results">
+            <div class="col-6 row u-equal-height u-margin--none p-tooltip--top-center" data-ng-repeat="item in result.results">
                 <strong class="col-2 tooltip">{$ item.title $}</strong>
                 <span class="col-4 last-col">{$ item.value $}</span>
                 <span class="p-tooltip__message" role="tooltip">{$ item.description $}</span>

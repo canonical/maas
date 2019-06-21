@@ -135,7 +135,7 @@
                     <tr class="p-table__row" data-ng-repeat="image in ubuntuImages | orderBy:['-title', 'arch']" data-ng-class="{'is-active': canBeRemoved(image) && ubuntuDeleteId === image.resourceId}">
                         <td class="p-table__cell" aria-label="Release" title="{$ image.title $}">
                             <i class="{$ image.icon $}"></i>
-                            {$ image.title $} <span class="p-tooltip__message" role="tooltip" id="tooltip-{$ image.resourceId}" data-ng-if="canBeRemoved(image)"><i class="p-icon--warning p-tooltip p-tooltip--top-right"  aria-describedby="tooltip-{$ image.resourceId}">Image no longer exists at the source.</span></i>
+                            {$ image.title $} <span class="p-tooltip__message" role="tooltip" id="tooltip-{$ image.resourceId}" data-ng-if="canBeRemoved(image)"><i class="p-icon--warning p-tooltip--top-right"  aria-describedby="tooltip-{$ image.resourceId}">Image no longer exists at the source.</span></i>
                         </td>
                         <td class="p-table__cell" aria-label="Architecture" title="{$ image.arch $}">{$ image.arch $}</td>
                         <td class="p-table__cell" aria-label="Size" title="{$ image.size $}">{$ image.size $}</td>

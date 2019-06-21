@@ -905,7 +905,7 @@
             </div>
             <div class="u-align--right">
                 <button class="p-button--neutral u-no-margin--bottom" data-ng-click="closeAddToExistingDatastorePanel()" data-ng-disabled="updatingDatastore">Cancel</button>
-                <span class="p-tooltip p-tooltip--top-right">
+                <span class="p-tooltip--top-right">
                     <button class="p-button--positive u-no-margin--bottom"
                         data-ng-click="addToDatastore()"
                         data-ng-if="!updatingDatastore"
@@ -923,7 +923,7 @@
         </div>
 
         <div>
-            <span class="p-tooltip p-tooltip--top-left">
+            <span class="p-tooltip--top-left">
                 <button class="p-button--neutral"
                     data-ng-disabled="!canCreateRAID() || storageLayout.id === 'vmfs6'"
                     data-ng-hide="isAllStorageDisabled() || !canEdit()"
@@ -935,7 +935,7 @@
                     <span class="p-tooltip__message" role="tooltip" data-ng-if="storageLayout.id === 'vmfs6'">Not supported in the VMFS6 layout</span>
                 </span>
             </span>
-            <span class="p-tooltip p-tooltip--top-center">
+            <span class="p-tooltip--top-center">
                 <button class="p-button--neutral"
                     data-ng-disabled="!canCreateVolumeGroup() || storageLayout.id === 'vmfs6'"
                     data-ng-hide="isAllStorageDisabled() || !canEdit()"
@@ -947,7 +947,7 @@
                     <span class="p-tooltip__message" role="tooltip" data-ng-if="storageLayout.id === 'vmfs6'">Not supported in the VMFS6 layout</span>
                 </span>
             </span>
-            <span class="p-tooltip p-tooltip--top-center">
+            <span class="p-tooltip--top-center">
                 <button class="p-button--neutral"
                     data-ng-disabled="!canCreateCacheSet() || storageLayout.id === 'vmfs6'"
                     data-ng-hide="isAllStorageDisabled() || !canEdit()"
@@ -959,7 +959,7 @@
                     <span class="p-tooltip__message" role="tooltip" data-ng-if="storageLayout.id === 'vmfs6'">Not supported in the VMFS6 layout</span>
                 </span>
             </span>
-            <span class="p-tooltip p-tooltip--top-center">
+            <span class="p-tooltip--top-center">
                 <button class="p-button--neutral"
                     data-ng-class="{ 'p-tooltip': !canCreateBcache() }"
                     data-ng-disabled="!canCreateBcache() || storageLayout.id === 'vmfs6'"
@@ -972,7 +972,7 @@
                     <span class="p-tooltip__message" role="tooltip" data-ng-if="storageLayout.id === 'vmfs6'">Not supported in the VMFS6 layout</span>
                 </span>
             </span>
-            <span class="p-tooltip p-tooltip--top-center">
+            <span class="p-tooltip--top-center">
                 <button class="p-button--neutral"
                     data-ng-click="openNewDatastorePanel()"
                     data-ng-hide="isAllStorageDisabled() || !canEdit()"
@@ -984,7 +984,7 @@
                     <span class="p-tooltip__message" role="tooltip" data-ng-if="storageLayout.id !== 'vmfs6'">Only available in the VMFS6 layout</span>
                 </span>
             </span>
-            <span class="p-tooltip p-tooltip--top-center" data-ng-if="storageLayout.id === 'vmfs6'">
+            <span class="p-tooltip--top-center" data-ng-if="storageLayout.id === 'vmfs6'">
                 <button class="p-button--neutral"
                     data-ng-click="openAddToExistingDatastorePanel()"
                     data-ng-hide="isAllStorageDisabled() || !canEdit()"

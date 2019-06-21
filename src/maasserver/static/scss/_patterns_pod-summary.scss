@@ -172,7 +172,7 @@
       margin-left: $sph-outer;
     }
 
-    & .p-code-snippet-wrapper {
+    & .p-code-copyable-wrapper {
       flex: 1 0 auto;
       @media (max-width: $breakpoint-small) {
         margin-left: 0; // the label is hidden on small, so margin not needed

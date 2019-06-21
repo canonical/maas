@@ -17,11 +17,11 @@
                     <ul class="p-list" data-maas-pref-keys-inject="key_li">
                         {% for token in user.userprofile.get_authorisation_tokens %}
                         <li class="u-equal-height js-bundle" data-maas-pref-key="{{ token.key }}">
-                            <div class="col-8 p-code-snippet">
-                                <input type="text" value="{{ token.consumer.key }}:{{ token.key }}:{{ token.secret }}" class="p-code-snippet__input" readonly />
+                            <div class="col-8 p-code-copyable">
+                                <input type="text" value="{{ token.consumer.key }}:{{ token.key }}:{{ token.secret }}" class="p-code-copyable__input" readonly />
                             </div>
                             <div class="col-1 u-vertically-center">
-                                <a class="p-tooltip p-tooltip--top-center" data-maas-pref-key-delete><i class="p-icon--delete"></i><span class="p-tooltip__message" role="tooltip">Delete API key</span></a>
+                                <a class="p-tooltip--top-center" data-maas-pref-key-delete><i class="p-icon--delete"></i><span class="p-tooltip__message" role="tooltip">Delete API key</span></a>
                             </div>
                         </li>
                         {% endfor %}
@@ -31,11 +31,11 @@
                     </div>
                     <script type="text/ng-template" id="key_li">
                         <li class="u-equal-height js-bundle" data-maas-pref-key="{$ token.key $}">
-                            <div class="col-8 p-code-snippet">
-                                <input type="text" value="{$ token.consumer.key $}:{$ token.key $}:{$ token.secret $}" class="p-code-snippet__input" readonly />
+                            <div class="col-8 p-code-copyable">
+                                <input type="text" value="{$ token.consumer.key $}:{$ token.key $}:{$ token.secret $}" class="p-code-copyable__input" readonly />
                             </div>
                             <div class="col-1 u-vertically-center">
-                                <a class="p-tooltip p-tooltip--top-center" data-maas-pref-key-delete><i class="p-icon--delete"></i><span class="p-tooltip__message" role="tooltip">Delete API key</span></a>
+                                <a class="p-tooltip--top-center" data-maas-pref-key-delete><i class="p-icon--delete"></i><span class="p-tooltip__message" role="tooltip">Delete API key</span></a>
                             </div>
                         </li>
                     </script>
@@ -58,11 +58,11 @@
                     <ul class="p-list">
                         {% for key in user.sslkey_set.all %}
                         <li class="u-equal-height js-bundle row">
-                            <div class="col-8 p-code-snippet">
-                                <input type="text" value="{{ key.display_html }}" class="p-code-snippet__input" />
+                            <div class="col-8 p-code-copyable">
+                                <input type="text" value="{{ key.display_html }}" class="p-code-copyable__input" />
                             </div>
                             <div class="col-1 u-vertically-center">
-                                <a class="p-tooltip p-tooltip--top-center js-delete-link" href="{% url 'prefs-delete-sslkey' key.id %}"><i class="p-icon--delete"></i><span class="p-tooltip__message" role="tooltip">Delete SSL key</span></a>
+                                <a class="p-tooltip--top-center js-delete-link" href="{% url 'prefs-delete-sslkey' key.id %}"><i class="p-icon--delete"></i><span class="p-tooltip__message" role="tooltip">Delete SSL key</span></a>
                             </div>
                         </li>
                         {% empty %} No SSL key configured. {% endfor %}

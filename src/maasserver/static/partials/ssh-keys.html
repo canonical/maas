@@ -19,7 +19,7 @@
                     </td>
                     <td class="col-2 col-medium-2 col-small-1">
                         <div class="u-align--right">
-                            <a class="p-tooltip p-tooltip--top-center js-delete-link" data-ng-click="open(group, 'delete')" title="delete SSH key source"><i class="p-icon--delete"></i></a>
+                            <a class="p-tooltip--top-center js-delete-link" data-ng-click="open(group, 'delete')" title="delete SSH key source"><i class="p-icon--delete"></i></a>
                             <a class="p-button--base u-no-margin--top" style="min-width: 4.2rem;" data-ng-click="open(group, 'view')" aria-label="Show keys" title="Show keys" data-ng-if="group.source !== 'upload' && (openRow !== group.id || rowMode === 'delete')"><i class="p-icon--chevron u-no-margin--right">Open</i></a>
                             <a class="p-button u-no-margin--top" data-ng-click="close()" aria-label="Hide keys" title="Show keys" data-ng-if="group.source !== 'upload' && openRow === group.id && rowMode === 'view'">Hide</a>
                         </div>

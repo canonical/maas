@@ -123,7 +123,7 @@
                 <div class="p-form__group" data-ng-if="vlanDetails.relatedControllers">
                     <div class="p-form__label is-disabled col-2 col-small-2 col-medium-2">
                         <p>{$ vlanDetails.relatedControllers.length === 1 ? 'Rack controller' : 'Rack controllers' $}
-                        <span class="p-tooltip p-tooltip--top-center">
+                        <span class="p-tooltip--top-center">
                             <i class="p-icon--information">Help:</i>
                             <span class="p-tooltip__message" role="tooltip">A rack controller controls hosts and images and runs network services&#xa;like DHCP for connected VLANs.</span>
                         </span></p>
@@ -164,7 +164,7 @@
                         <div class="p-form__group" data-ng-if="vlanDetails.relatedControllers">
                             <div class="p-form__label is-disabled col-2 col-small-2 col-medium-2">
                                 <p>Rack controllers
-                                <span class="p-tooltip p-tooltip--top-center">
+                                <span class="p-tooltip--top-center">
                                     <i class="p-icon--information">Help:</i>
                                     <span class="p-tooltip__message" role="tooltip">A rack controller controls hosts and images and runs network services&#xa;like DHCP for connected VLANs.</span>
                                 </span></p>
@@ -401,7 +401,7 @@
                             </span>
                             {$ vlanDetails.getDHCPPanelTitle() $}
                         </button>
-                        <span class="p-tooltip p-tooltip--top-right" aria-describedby="dhcp-tooltip">
+                        <span class="p-tooltip--top-right" aria-describedby="dhcp-tooltip">
                             <button class="p-button--positive u-no-margin--bottom" data-ng-click="vlanDetails.relayDHCP()" data-ng-if="vlanDetails.relayVLAN && vlanDetails.MAASProvidesDHCP" data-ng-disabled="!vlanDetails.provideDHCPAction.relayVLAN">
                                 <span data-ng-if="vlanDetails.isProvidingDHCP">
                                     <span class="p-icon--spinner u-animation--spin is-light"></span>&nbsp;
@@ -433,7 +433,7 @@
                 <button class="p-button--neutral" data-ng-if="vlanDetails.relatedSubnets.length" data-ng-click="vlanDetails.openDHCPPanel()">
                     {$ vlanDetails.getDHCPButtonText() $}
                 </button>
-                <button class="p-button--neutral p-tooltip p-tooltip--top-right" data-ng-if="!vlanDetails.relatedSubnets.length" disabled>
+                <button class="p-button--neutral p-tooltip--top-right" data-ng-if="!vlanDetails.relatedSubnets.length" disabled>
                     Enable DHCP
                     <span class="p-tooltip__message">No subnets are available on this VLAN. DHCP cannot be enabled.</span>
                 </button>
@@ -463,7 +463,7 @@
                     <div class="p-form__control">
                         <p>
                             {$ vlanDetails.vlan.external_dhcp $}
-                            <span class="p-tooltip p-tooltip--top-center">
+                            <span class="p-tooltip--top-center">
                                 <i class="p-icon--warning">Warning:</i>
                                 <span class="p-tooltip__message" role="tooltip">Another DHCP server has been discovered on this VLAN. Enabling DHCP is not recommended.</span>
                             </span>
@@ -474,7 +474,7 @@
                     <div class="p-form__label is-disabled">
                         <p>
                             {$ vlanDetails.secondaryRack ? 'Primary controller' : 'Rack controller' $}
-                            <span class="p-tooltip p-tooltip--top-center">
+                            <span class="p-tooltip--top-center">
                                 <i class="p-icon--help">Help:</i>
                                 <span class="p-tooltip__message" role="tooltip">The rack controller on which the DHCP service runs.</span>
                             </span>
@@ -488,7 +488,7 @@
                     <div class="p-form__label is-disabled">
                         <p>
                             Secondary controller
-                            <span class="p-tooltip p-tooltip--top-center">
+                            <span class="p-tooltip--top-center">
                                 <i class="p-icon--help">Help:</i>
                                 <span class="p-tooltip__message" role="tooltip">The rack controller that will take over DHCP services if the primary fails.</span>
                             </span>

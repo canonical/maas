@@ -15,7 +15,7 @@
                 <button class="p-button--neutral" data-ng-click="openClearDiscoveriesPanel()" data-ng-if="discoveredDevices.length">
                     Clear all discoveries
                 </button>
-                <button class="p-button--neutral p-tooltip p-tooltip--btm-right" aria-describedby="clear-discoveries" disabled data-ng-if="!discoveredDevices.length">
+                <button class="p-button--neutral p-tooltip--btm-right" aria-describedby="clear-discoveries" disabled data-ng-if="!discoveredDevices.length">
                     Clear all discoveries
                     <span class="p-tooltip__message" role="tooltip" id="clear-discoveries">No items discovered</span>
                 </button>
@@ -187,7 +187,7 @@
                         data-ng-class="{'is-active' : discovery.first_seen === selectedDevice}">
                         <td class="p-table--network-discovery__name" aria-label="Name" data-ng-if="discovery.first_seen !== selectedDevice">
                             {$ getDiscoveryName(discovery) $}
-                            <div class="p-tooltip p-tooltip--top-center" aria-describedby="tp-hdcp">
+                            <div class="p-tooltip--top-center" aria-describedby="tp-hdcp">
                                 <i data-ng-show="discovery.is_external_dhcp === true" class="p-icon--information ng-hide"></i>
                                 <span class="p-tooltip__message" role="tooltip" id="tp-hdcp">This device is providing DHCP</span>
                             </div>
@@ -226,7 +226,7 @@
                                             <i class="p-icon--spinner u-animation--spin"></i>
                                             Deleting discovery&hellip;
                                         </span>
-                                        <button class="p-button--base p-tooltip p-tooltip--btm-right" aria-describedby="remove-{$ discovery.id $}-message" data-ng-click="removeDevice(discovery)" data-ng-if="!discovery.isBeingRemoved">
+                                        <button class="p-button--base p-tooltip--btm-right" aria-describedby="remove-{$ discovery.id $}-message" data-ng-click="removeDevice(discovery)" data-ng-if="!discovery.isBeingRemoved">
                                             <i class="p-icon--delete">Delete network discovery</i>
                                             <span class="p-tooltip__message" role="tooltip" id="remove-{$ discovery.id $}-message">Delete network discovery</span>
                                         </button>

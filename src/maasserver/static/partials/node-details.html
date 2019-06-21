@@ -37,7 +37,7 @@
                 <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
                 <ul class="p-inline-list page-header__status u-no-margin--top" data-ng-if="!isController && !isDevice && !header.editing && !header.editing_domain">
                     <li class="p-inline-list__item">
-                        <span data-ng-if="node.locked" class="p-tooltip p-tooltip--top-left" aria-describedby="header-locked-state">
+                        <span data-ng-if="node.locked" class="p-tooltip--top-left" aria-describedby="header-locked-state">
                             <i class="p-icon--locked">Locked: </i>
                             <span class="p-tooltip__message" role="tooltip" id="header-locked-state">This machine is locked. You have to unlock it to perform any actions.</span>
                         </span>
@@ -887,7 +887,7 @@
                                 configuration cannot be modified unless the
                                 node is New, Ready, Allocated, or Broken.</p>
                         </div>
-                        <div class="p-notification--warning" data-ng-if="!isController && isCustomOS()">
+                        <div class="p-notification--caution" data-ng-if="!isController && isCustomOS()">
                             <p class="p-notification__response">
                                 <span class="p-notification__status">Important:</span> Custom images may require special preparation to support custom network configuration.
                             </p>
@@ -1077,7 +1077,7 @@
                                     <div class="p-form__group u-vertically-center" style="min-height: 2.5rem;">
                                         <label for="stp" class="p-form__label">
                                             STP
-                                            <span class="p-tooltip p-tooltip--right" aria-describedby="stp">
+                                            <span class="p-tooltip--right" aria-describedby="stp">
                                                 <i class="p-icon--question"></i>
                                                 <span class="p-tooltip__message" role="tooltip" id="stp">Controls the participation of this bridge in the spanning tree protocol.</span>
                                             </span>
@@ -1591,7 +1591,7 @@
                                                     <div class="p-form__group u-vertically-center" style="min-height: 2.5rem;">
                                                         <label for="stp" class="p-form__label">
                                                             STP
-                                                            <span class="p-tooltip p-tooltip--right" aria-describedby="stp">
+                                                            <span class="p-tooltip--right" aria-describedby="stp">
                                                                 <i class="p-icon--question"></i>
                                                                 <span class="p-tooltip__message" role="tooltip" id="stp">Controls the participation of this bridge in the spanning tree protocol.</span>
                                                             </span>
@@ -1803,7 +1803,7 @@
                                             <div class="u-float--right">
                                                 <button class="p-button--base u-no-margin--bottom"
                                                     data-ng-click="editCancel()">Cancel</button>
-                                                <span class="p-tooltip p-tooltip--top-right" aria-describedby="save-bond-tooltip"
+                                                <span class="p-tooltip--top-right" aria-describedby="save-bond-tooltip"
                                                     data-ng-if="editInterface.members && editInterface.members.length < 2">
                                                     <button class="p-button--positive u-no-margin--bottom" disabled>Save {$ getInterfaceTypeText(interface).toLowerCase() $}</button>
                                                     <span class="p-tooltip__message" role="tooltip" id="save-bond-tooltip">A bond must have at least two interfaces</span>
@@ -2184,7 +2184,7 @@
                         <div class="row">
                             <div class="col-12 u-align--right">
                                 <button class="p-button--base u-no-margin--bottom" type="button" data-ng-click="cancel()">Cancel</button>
-                                <span class="p-tooltip p-tooltip--top-right" aria-describedby="save-bond-tooltip"
+                                <span class="p-tooltip--top-right" aria-describedby="save-bond-tooltip"
                                     data-ng-if="newBondInterface.parents && newBondInterface.parents.length < 2">
                                     <button class="p-button--positive u-no-margin--bottom" disabled>Save bond</button>
                                     <span class="p-tooltip__message" role="tooltip" id="save-bond-tooltip">A bond must have at least two interfaces</span>
