@@ -1,4 +1,4 @@
-# Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Commission form."""
@@ -6,10 +6,15 @@
 __all__ = [
     "CommissionForm",
 ]
+from datetime import timedelta
+
 from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.forms import (
     BooleanField,
+    CharField,
+    ChoiceField,
+    DurationField,
     Form,
     MultipleChoiceField,
 )
@@ -25,6 +30,77 @@ class TestForm(Form):
     """Test form."""
     enable_ssh = BooleanField(required=False, initial=False)
 
+    def _get_storage_choices(self):
+        choices = [('all', 'all')]
+        for bd in self.instance.physicalblockdevice_set.all():
+            choices.append((bd.id, bd.id))
+            choices.append((bd.name, bd.name))
+            choices.append((bd.model, bd.model))
+            choices.append((bd.serial, bd.serial))
+            model_serial = '%s:%s' % (bd.model, bd.serial)
+            choices.append((model_serial, model_serial))
+            for tag in bd.tags:
+                choices.append((tag, tag))
+        return choices
+
+    def _get_interface_choices(self):
+        choices = [('all', 'all')]
+        for interface in self.instance.interface_set.filter(
+                children_relationships=None):
+            choices.append((interface.id, interface.id))
+            choices.append((interface.name, interface.name))
+            mac = str(interface.mac_address)
+            choices.append((mac, mac))
+            choices.append((interface.vendor, interface.vendor))
+            choices.append((interface.product, interface.product))
+            vendor_product = '%s:%s' % (interface.vendor, interface.product)
+            choices.append((vendor_product, vendor_product))
+            for tag in interface.tags:
+                choices.append((tag, tag))
+        return choices
+
+    def _set_up_parameter_fields(self, scripts):
+        storage_choices = None
+        interface_choices = None
+        for script in scripts:
+            for pname, value in script.parameters.items():
+                if value.get('type') == 'storage':
+                    if storage_choices is None:
+                        storage_choices = self._get_storage_choices()
+                    combined_name = '%s_%s' % (script.name, pname)
+                    self.fields[combined_name] = ChoiceField(
+                        required=False, initial=None,
+                        choices=storage_choices)
+                    if pname not in self.fields:
+                        self.fields[pname] = ChoiceField(
+                            required=False, initial=None,
+                            choices=storage_choices)
+                elif value.get('type') == 'interface':
+                    if interface_choices is None:
+                        interface_choices = self._get_interface_choices()
+                    combined_name = '%s_%s' % (script.name, pname)
+                    self.fields[combined_name] = ChoiceField(
+                        required=False, initial=None,
+                        choices=interface_choices)
+                    if pname not in self.fields:
+                        self.fields[pname] = ChoiceField(
+                            required=False, initial=None,
+                            choices=interface_choices)
+                elif value.get('type') == 'runtime':
+                    combined_name = '%s_%s' % (script.name, pname)
+                    self.fields[combined_name] = DurationField(
+                        required=False, initial=None)
+                    if pname not in self.fields:
+                        self.fields[pname] = DurationField(
+                            required=False, initial=None)
+                elif value.get('type') == 'url':
+                    combined_name = '%s_%s' % (script.name, pname)
+                    self.fields[combined_name] = CharField(
+                        required=False, initial=None)
+                    if pname not in self.fields:
+                        self.fields[pname] = CharField(
+                            required=False, initial=None)
+
     def _set_up_script_fields(self):
         testing_scripts = self.data.get('testing_scripts')
         if testing_scripts is not None and isinstance(testing_scripts, str):
@@ -37,7 +113,8 @@ class TestForm(Form):
                 self.data['testing_scripts'] = testing_scripts.split(',')
 
         choices = []
-        for script in Script.objects.all():
+        scripts = Script.objects.filter(script_type=SCRIPT_TYPE.TESTING)
+        for script in scripts:
             if script.script_type == SCRIPT_TYPE.TESTING:
                 choices.append((script.name, script.name))
                 for tag in script.tags:
@@ -45,15 +122,16 @@ class TestForm(Form):
 
         self.fields['testing_scripts'] = MultipleChoiceField(
             required=False, initial=None, choices=choices)
+        self._set_up_parameter_fields(scripts)
 
     def __init__(self, instance, user, data=None, **kwargs):
         data = {} if data is None else data.copy()
         super().__init__(data=data, **kwargs)
-        self._set_up_script_fields()
         self.instance = instance
         self.user = user
         self._name = 'test'
         self._display = 'Test'
+        self._set_up_script_fields()
 
     def clean(self):
         actions = compile_node_actions(self.instance, self.user)
@@ -82,10 +160,58 @@ class TestForm(Form):
                 valid = False
         return valid
 
+    def _get_script_param_dict(self, scripts):
+        params = {}
+        script_names = []
+        script_ids = []
+        for script in scripts:
+            if script.isdigit():
+                script_ids.append(int(script))
+            else:
+                script_names.append(script)
+        qs = Script.objects.filter(
+            Q(id__in=script_ids) | Q(name__in=script_names))
+        for name, value in self.cleaned_data.items():
+            if name in [
+                    "enable_ssh", "testing_scripts", "commissioning_scripts",
+                    "skip_bmc_config", "skip_networking", "skip_storage"]:
+                continue
+            if not value:
+                continue
+            # Check if the parameter is for a particular script
+            script_param = False
+            for script in qs:
+                if script.name in name:
+                    if script.name not in params:
+                        params[script.name] = {}
+                    param = name.replace(script.name, '').strip('_-')
+                    if isinstance(value, timedelta):
+                        params[script.name][param] = int(
+                            value.total_seconds())
+                    else:
+                        params[script.name][param] = value
+                    script_param = True
+            # If its not for a particular script pass the parameter to all
+            # scripts that support it.
+            if not script_param:
+                for script in qs:
+                    if name in script.parameters and name not in params.get(
+                            script.name, {}):
+                        if script.name not in params:
+                            params[script.name] = {}
+                        if isinstance(value, timedelta):
+                            params[script.name][name] = int(
+                                value.total_seconds())
+                        else:
+                            params[script.name][name] = value
+        return params
+
     def save(self):
         enable_ssh = self.cleaned_data.get("enable_ssh", False)
         testing_scripts = self.cleaned_data.get("testing_scripts")
-        self.instance.start_testing(self.user, enable_ssh, testing_scripts)
+        self.instance.start_testing(
+            self.user, enable_ssh, testing_scripts,
+            self._get_script_param_dict(testing_scripts))
         return self.instance
 
 
@@ -112,7 +238,8 @@ class CommissionForm(TestForm):
             SCRIPT_TYPE.COMMISSIONING: [],
             SCRIPT_TYPE.TESTING: [('none', 'none')],
         }
-        for script in Script.objects.all():
+        scripts = Script.objects.all()
+        for script in scripts:
             for script_type, script_choices in choices.items():
                 if script.script_type == script_type:
                     script_choices.append((script.name, script.name))
@@ -124,6 +251,7 @@ class CommissionForm(TestForm):
             choices=choices[SCRIPT_TYPE.COMMISSIONING])
         self.fields['testing_scripts'] = MultipleChoiceField(
             required=False, initial=None, choices=choices[SCRIPT_TYPE.TESTING])
+        self._set_up_parameter_fields(scripts)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -139,5 +267,7 @@ class CommissionForm(TestForm):
         testing_scripts = self.cleaned_data.get("testing_scripts")
         self.instance.start_commissioning(
             self.user, enable_ssh, skip_bmc_config, skip_networking,
-            skip_storage, commissioning_scripts, testing_scripts)
+            skip_storage, commissioning_scripts, testing_scripts,
+            self._get_script_param_dict(
+                commissioning_scripts + testing_scripts))
         return self.instance

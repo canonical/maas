@@ -694,6 +694,7 @@ class TestParametersForm(MAASServerTestCase):
             nics[1]: nics[1].name,
             nics[2]: nics[2].vendor,
             nics[3]: nics[3].product,
+            nics[4]: str(nics[4].mac_address),
             nics[4]: random.choice(nics[4].tags),
         }
         form = ParametersForm(

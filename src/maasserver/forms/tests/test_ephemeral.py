@@ -1,10 +1,11 @@
-# Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for commission form."""
 
 __all__ = []
 
+import random
 
 from maasserver.enum import (
     NODE_STATUS,
@@ -50,8 +51,7 @@ class TestTestForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form.errors)
         node = form.save()
         self.assertThat(
-            mock_start_testing,
-            MockCalledOnceWith(user, enable_ssh=False, testing_scripts=[]))
+            mock_start_testing, MockCalledOnceWith(user, False, [], {}))
 
     def test__calls_start_testing_with_options(self):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
@@ -71,8 +71,177 @@ class TestTestForm(MAASServerTestCase):
         self.assertIsNotNone(node)
         self.assertThat(
             mock_start_testing,
+            MockCalledOnceWith(user, enable_ssh, testing_scripts, {}))
+
+    def test__class_start_testing_with_storage_param(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYED, with_boot_disk=False)
+        bd = factory.make_PhysicalBlockDevice(node=node)
+        user = factory.make_admin()
+        script = factory.make_Script(
+            script_type=SCRIPT_TYPE.TESTING, parameters={
+                'storage': {'type': 'storage'},
+            })
+        mock_start_testing = self.patch_autospec(node, 'start_testing')
+        input = random.choice([
+            str(bd.id), bd.name, bd.model, bd.serial,
+            '%s:%s' % (bd.model, bd.serial)] + bd.tags)
+        form = TestForm(instance=node, user=user, data={
+            'testing_scripts': script.name,
+            'storage': input,
+            })
+        self.assertTrue(form.is_valid(), form.errors)
+        node = form.save()
+        self.assertIsNotNone(node)
+        self.assertThat(
+            mock_start_testing,
             MockCalledOnceWith(
-                user, enable_ssh=enable_ssh, testing_scripts=testing_scripts))
+                user, False, [script.name],
+                {script.name: {'storage': input}}))
+
+    def test__class_start_testing_with_storage_param_errors(self):
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
+        user = factory.make_admin()
+        script = factory.make_Script(
+            script_type=SCRIPT_TYPE.TESTING, parameters={
+                'storage': {'type': 'storage'},
+            })
+        self.patch_autospec(node, 'start_testing')
+        form = TestForm(instance=node, user=user, data={
+            'testing_scripts': script.name,
+            'storage': factory.make_name('bad'),
+            })
+        self.assertFalse(form.is_valid())
+
+    def test__class_start_testing_with_interface_param(self):
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYED, interface=False)
+        interface = factory.make_Interface(node=node)
+        user = factory.make_admin()
+        script = factory.make_Script(
+            script_type=SCRIPT_TYPE.TESTING, parameters={
+                'interface': {'type': 'interface'},
+            })
+        mock_start_testing = self.patch_autospec(node, 'start_testing')
+        input = random.choice([
+            str(interface.id), interface.name, str(interface.mac_address),
+            interface.vendor, interface.product,
+            '%s:%s' % (interface.vendor, interface.product)] + interface.tags)
+        form = TestForm(instance=node, user=user, data={
+            'testing_scripts': script.name,
+            'interface': input,
+            })
+        self.assertTrue(form.is_valid(), form.errors)
+        node = form.save()
+        self.assertIsNotNone(node)
+        self.assertThat(
+            mock_start_testing,
+            MockCalledOnceWith(
+                user, False, [script.name],
+                {script.name: {'interface': input}}))
+
+    def test__class_start_testing_with_interface_param_errors(self):
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
+        user = factory.make_admin()
+        script = factory.make_Script(
+            script_type=SCRIPT_TYPE.TESTING, parameters={
+                'interface': {'type': 'interface'},
+            })
+        self.patch_autospec(node, 'start_testing')
+        form = TestForm(instance=node, user=user, data={
+            'testing_scripts': script.name,
+            'interface': factory.make_name('bad'),
+            })
+        self.assertFalse(form.is_valid())
+
+    def test__class_start_testing_with_runtime_param(self):
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
+        user = factory.make_admin()
+        script = factory.make_Script(
+            script_type=SCRIPT_TYPE.TESTING, parameters={
+                'runtime': {'type': 'runtime'},
+            })
+        mock_start_testing = self.patch_autospec(node, 'start_testing')
+        input = random.choice(['168:00:00', '10080:00', 604800])
+        form = TestForm(instance=node, user=user, data={
+            'testing_scripts': script.name,
+            'runtime': input,
+            })
+        self.assertTrue(form.is_valid(), form.errors)
+        node = form.save()
+        self.assertIsNotNone(node)
+        self.assertThat(
+            mock_start_testing,
+            MockCalledOnceWith(
+                user, False, [script.name],
+                {script.name: {'runtime': 604800}}))
+
+    def test__class_start_testing_with_runtime_param_errors(self):
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
+        user = factory.make_admin()
+        script = factory.make_Script(
+            script_type=SCRIPT_TYPE.TESTING, parameters={
+                'runtime': {'type': 'runtime'},
+            })
+        self.patch_autospec(node, 'start_testing')
+        form = TestForm(instance=node, user=user, data={
+            'testing_scripts': script.name,
+            'runtime': factory.make_name('bad'),
+            })
+        self.assertFalse(form.is_valid())
+
+    def test__class_start_testing_with_url_param(self):
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
+        user = factory.make_admin()
+        script = factory.make_Script(
+            script_type=SCRIPT_TYPE.TESTING, parameters={
+                'url': {'type': 'url'},
+            })
+        mock_start_testing = self.patch_autospec(node, 'start_testing')
+        input = factory.make_url(scheme='http')
+        form = TestForm(instance=node, user=user, data={
+            'testing_scripts': script.name,
+            'url': input,
+            })
+        self.assertTrue(form.is_valid(), form.errors)
+        node = form.save()
+        self.assertIsNotNone(node)
+        self.assertThat(
+            mock_start_testing,
+            MockCalledOnceWith(
+                user, False, [script.name],
+                {script.name: {'url': input}}))
+
+    def test__class_start_testing_can_override_global_param(self):
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
+        bd = factory.make_PhysicalBlockDevice(node=node)
+        user = factory.make_admin()
+        global_script = factory.make_Script(
+            script_type=SCRIPT_TYPE.TESTING, parameters={
+                'storage': {'type': 'storage'},
+            })
+        script = factory.make_Script(
+            script_type=SCRIPT_TYPE.TESTING, parameters={
+                'storage': {'type': 'storage'},
+            })
+        mock_start_testing = self.patch_autospec(node, 'start_testing')
+        input = random.choice([
+            str(bd.id), bd.name, bd.model, bd.serial,
+            '%s:%s' % (bd.model, bd.serial)] + bd.tags)
+        form = TestForm(instance=node, user=user, data={
+            'testing_scripts': '%s,%s' % (global_script.name, script.name),
+            'storage': 'all',
+            '%s_storage' % global_script.name: input,
+            })
+        self.assertTrue(form.is_valid(), form.errors)
+        node = form.save()
+        self.assertIsNotNone(node)
+        self.assertThat(
+            mock_start_testing,
+            MockCalledOnceWith(
+                user, False, [global_script.name, script.name], {
+                    script.name: {'storage': 'all'},
+                    global_script.name: {'storage': input},
+                }))
 
     def test__validates_testing_scripts(self):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
@@ -148,7 +317,7 @@ class TestCommissionForm(MAASServerTestCase):
             MockCalledOnceWith(
                 user, enable_ssh=False, skip_bmc_config=False,
                 skip_networking=False, skip_storage=False,
-                commissioning_scripts=[], testing_scripts=[]))
+                commissioning_scripts=[], testing_scripts=[], input={}))
 
     def test__calls_start_commissioning_with_options(self):
         node = factory.make_Node(
@@ -181,7 +350,297 @@ class TestCommissionForm(MAASServerTestCase):
                 user, enable_ssh=True, skip_bmc_config=True,
                 skip_networking=True, skip_storage=True,
                 commissioning_scripts=commissioning_scripts,
-                testing_scripts=testing_scripts))
+                testing_scripts=testing_scripts, input={}))
+
+    def test__class_start_commissioning_with_storage_param(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.READY, with_boot_disk=False)
+        commissioning_bd = factory.make_PhysicalBlockDevice(node=node)
+        testing_bd = factory.make_PhysicalBlockDevice(node=node)
+        user = factory.make_admin()
+        commissioning_script = factory.make_Script(
+            script_type=SCRIPT_TYPE.COMMISSIONING, parameters={
+                'storage': {'type': 'storage'},
+            })
+        testing_script = factory.make_Script(
+            script_type=SCRIPT_TYPE.TESTING, parameters={
+                'storage': {'type': 'storage'},
+            })
+        mock_start_commissioning = self.patch_autospec(
+            node, 'start_commissioning')
+        commissioning_input = random.choice([
+            str(commissioning_bd.id), commissioning_bd.name,
+            commissioning_bd.model, commissioning_bd.serial,
+            '%s:%s' % (commissioning_bd.model, commissioning_bd.serial)
+            ] + commissioning_bd.tags)
+        testing_input = random.choice([
+            str(testing_bd.id), testing_bd.name, testing_bd.model,
+            testing_bd.serial, '%s:%s' % (testing_bd.model, testing_bd.serial)
+            ] + testing_bd.tags)
+        form = CommissionForm(instance=node, user=user, data={
+            'commissioning_scripts': commissioning_script.name,
+            'testing_scripts': testing_script.name,
+            '%s_storage' % commissioning_script.name: commissioning_input,
+            '%s_storage' % testing_script.name: testing_input,
+            })
+        self.assertTrue(form.is_valid(), form.errors)
+        node = form.save()
+        self.assertIsNotNone(node)
+        self.assertThat(
+            mock_start_commissioning,
+            MockCalledOnceWith(
+                user, False, False, False, False,
+                [commissioning_script.name], [testing_script.name],
+                {
+                    commissioning_script.name: {
+                        'storage': commissioning_input,
+                    },
+                    testing_script.name: {
+                        'storage': testing_input,
+                    },
+                }))
+
+    def test__class_start_commissioning_with_storage_param_errors(self):
+        node = factory.make_Node(status=NODE_STATUS.READY)
+        user = factory.make_admin()
+        commissioning_script = factory.make_Script(
+            script_type=SCRIPT_TYPE.COMMISSIONING, parameters={
+                'storage': {'type': 'storage'},
+            })
+        testing_script = factory.make_Script(
+            script_type=SCRIPT_TYPE.TESTING, parameters={
+                'storage': {'type': 'storage'},
+            })
+        self.patch_autospec(node, 'start_commissioning')
+        form = CommissionForm(instance=node, user=user, data={
+            'commissioning_scripts': commissioning_script.name,
+            'testing_scripts': testing_script.name,
+            '%s_storage' % commissioning_script.name: factory.make_name('bad'),
+            '%s_storage' % testing_script.name: factory.make_name('bad'),
+            })
+        self.assertFalse(form.is_valid())
+
+    def test__class_start_commissioning_with_interface_param(self):
+        node = factory.make_Node(status=NODE_STATUS.READY, interface=False)
+        commissioning_interface = factory.make_Interface(node=node)
+        testing_interface = factory.make_Interface(node=node)
+        user = factory.make_admin()
+        commissioning_script = factory.make_Script(
+            script_type=SCRIPT_TYPE.COMMISSIONING, parameters={
+                'interface': {'type': 'interface'},
+            })
+        testing_script = factory.make_Script(
+            script_type=SCRIPT_TYPE.TESTING, parameters={
+                'interface': {'type': 'interface'},
+            })
+        mock_start_commissioning = self.patch_autospec(
+            node, 'start_commissioning')
+        commissioning_input = random.choice([
+            str(commissioning_interface.id), commissioning_interface.name,
+            str(commissioning_interface.mac_address),
+            commissioning_interface.vendor, commissioning_interface.product,
+            '%s:%s' % (
+                commissioning_interface.vendor,
+                commissioning_interface.product)] +
+            commissioning_interface.tags)
+        testing_input = random.choice([
+            str(testing_interface.id), testing_interface.name,
+            str(testing_interface.mac_address),
+            testing_interface.vendor, testing_interface.product,
+            '%s:%s' % (
+                testing_interface.vendor,
+                testing_interface.product)] +
+            testing_interface.tags)
+        form = CommissionForm(instance=node, user=user, data={
+            'commissioning_scripts': commissioning_script.name,
+            'testing_scripts': testing_script.name,
+            '%s_interface' % commissioning_script.name: commissioning_input,
+            '%s_interface' % testing_script.name: testing_input,
+            })
+        self.assertTrue(form.is_valid(), form.errors)
+        node = form.save()
+        self.assertIsNotNone(node)
+        self.assertThat(
+            mock_start_commissioning,
+            MockCalledOnceWith(
+                user, False, False, False, False,
+                [commissioning_script.name], [testing_script.name],
+                {
+                    commissioning_script.name: {
+                        'interface': commissioning_input,
+                    },
+                    testing_script.name: {
+                        'interface': testing_input,
+                    },
+                }))
+
+    def test__class_start_commissioning_with_interface_param_errors(self):
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
+        user = factory.make_admin()
+        commissioning_script = factory.make_Script(
+            script_type=SCRIPT_TYPE.COMMISSIONING, parameters={
+                'interface': {'type': 'interface'},
+            })
+        testing_script = factory.make_Script(
+            script_type=SCRIPT_TYPE.TESTING, parameters={
+                'interface': {'type': 'interface'},
+            })
+        self.patch_autospec(node, 'start_commissioning')
+        form = CommissionForm(instance=node, user=user, data={
+            'commissioning_scripts': commissioning_script.name,
+            'testing_scripts': testing_script.name,
+            '%s_interface' % commissioning_script.name: factory.make_name(
+                'bad'),
+            '%s_interface' % testing_script.name: factory.make_name('bad'),
+            })
+        self.assertFalse(form.is_valid())
+
+    def test__class_start_commissioning_with_runtime_param(self):
+        node = factory.make_Node(status=NODE_STATUS.READY)
+        user = factory.make_admin()
+        commissioning_script = factory.make_Script(
+            script_type=SCRIPT_TYPE.COMMISSIONING, parameters={
+                'runtime': {'type': 'runtime'},
+            })
+        testing_script = factory.make_Script(
+            script_type=SCRIPT_TYPE.TESTING, parameters={
+                'runtime': {'type': 'runtime'},
+            })
+        mock_start_commissioning = self.patch_autospec(
+            node, 'start_commissioning')
+        commissioning_input = random.choice(['168:00:00', '10080:00', 604800])
+        testing_input = random.choice(['168:00:00', '10080:00', 604800])
+        form = CommissionForm(instance=node, user=user, data={
+            'commissioning_scripts': commissioning_script.name,
+            'testing_scripts': testing_script.name,
+            '%s_runtime' % commissioning_script.name: commissioning_input,
+            '%s_runtime' % testing_script.name: testing_input,
+            })
+        self.assertTrue(form.is_valid(), form.errors)
+        node = form.save()
+        self.assertIsNotNone(node)
+        self.assertThat(
+            mock_start_commissioning,
+            MockCalledOnceWith(
+                user, False, False, False, False,
+                [commissioning_script.name], [testing_script.name],
+                {
+                    commissioning_script.name: {'runtime': 604800},
+                    testing_script.name: {'runtime': 604800},
+                }))
+
+    def test__class_start_commissioning_with_runtime_param_errors(self):
+        node = factory.make_Node(status=NODE_STATUS.READY)
+        user = factory.make_admin()
+        commissioning_script = factory.make_Script(
+            script_type=SCRIPT_TYPE.COMMISSIONING, parameters={
+                'runtime': {'type': 'runtime'},
+            })
+        testing_script = factory.make_Script(
+            script_type=SCRIPT_TYPE.TESTING, parameters={
+                'runtime': {'type': 'runtime'},
+            })
+        self.patch_autospec(node, 'start_commissioning')
+        form = CommissionForm(instance=node, user=user, data={
+            'commissioning_scripts': commissioning_script.name,
+            'testing_scripts': testing_script.name,
+            '%s_runtime' % commissioning_script.name: factory.make_name('bad'),
+            '%s_runtime' % testing_script.name: factory.make_name('bad'),
+            })
+        self.assertFalse(form.is_valid())
+
+    def test__class_start_commissioning_with_url_param(self):
+        node = factory.make_Node(status=NODE_STATUS.READY)
+        user = factory.make_admin()
+        commissioning_script = factory.make_Script(
+            script_type=SCRIPT_TYPE.COMMISSIONING, parameters={
+                'url': {'type': 'url'},
+            })
+        testing_script = factory.make_Script(
+            script_type=SCRIPT_TYPE.TESTING, parameters={
+                'url': {'type': 'url'},
+            })
+        mock_start_commissioning = self.patch_autospec(
+            node, 'start_commissioning')
+        commissioning_input = factory.make_url(scheme='http')
+        testing_input = factory.make_url(scheme='http')
+        form = CommissionForm(instance=node, user=user, data={
+            'commissioning_scripts': commissioning_script.name,
+            'testing_scripts': testing_script.name,
+            '%s_url' % commissioning_script.name: commissioning_input,
+            '%s_url' % testing_script.name: testing_input,
+            })
+        self.assertTrue(form.is_valid(), form.errors)
+        node = form.save()
+        self.assertIsNotNone(node)
+        self.assertThat(
+            mock_start_commissioning,
+            MockCalledOnceWith(
+                user, False, False, False, False,
+                [commissioning_script.name], [testing_script.name],
+                {
+                    commissioning_script.name: {'url': commissioning_input},
+                    testing_script.name: {'url': testing_input},
+                }))
+
+    def test__class_start_commissioning_can_override_global_param(self):
+        node = factory.make_Node(status=NODE_STATUS.READY)
+        commissioning_bd = factory.make_PhysicalBlockDevice(node=node)
+        testing_bd = factory.make_PhysicalBlockDevice(node=node)
+        user = factory.make_admin()
+        global_commissioning_script = factory.make_Script(
+            script_type=SCRIPT_TYPE.COMMISSIONING, parameters={
+                'storage': {'type': 'storage'},
+            })
+        commissioning_script = factory.make_Script(
+            script_type=SCRIPT_TYPE.COMMISSIONING, parameters={
+                'storage': {'type': 'storage'},
+            })
+        global_testing_script = factory.make_Script(
+            script_type=SCRIPT_TYPE.TESTING, parameters={
+                'storage': {'type': 'storage'},
+            })
+        testing_script = factory.make_Script(
+            script_type=SCRIPT_TYPE.TESTING, parameters={
+                'storage': {'type': 'storage'},
+            })
+        mock_start_commissioning = self.patch_autospec(
+            node, 'start_commissioning')
+        commissioning_input = random.choice([
+            str(commissioning_bd.id), commissioning_bd.name,
+            commissioning_bd.model, commissioning_bd.serial,
+            '%s:%s' % (commissioning_bd.model, commissioning_bd.serial)] +
+            commissioning_bd.tags)
+        testing_input = random.choice([
+            str(testing_bd.id), testing_bd.name,
+            testing_bd.model, testing_bd.serial,
+            '%s:%s' % (testing_bd.model, testing_bd.serial)] +
+            testing_bd.tags)
+        form = CommissionForm(instance=node, user=user, data={
+            'commissioning_scripts': '%s,%s' % (
+                global_commissioning_script.name, commissioning_script.name),
+            'testing_scripts': '%s,%s' % (
+                global_testing_script.name, testing_script.name),
+            'storage': 'all',
+            '%s_storage' % commissioning_script.name: commissioning_input,
+            '%s_storage' % testing_script.name: testing_input,
+            })
+        self.assertTrue(form.is_valid(), form.errors)
+        node = form.save()
+        self.assertIsNotNone(node)
+        self.assertThat(
+            mock_start_commissioning,
+            MockCalledOnceWith(
+                user, False, False, False, False,
+                [global_commissioning_script.name, commissioning_script.name],
+                [global_testing_script.name, testing_script.name],
+                {
+                    global_commissioning_script.name: {'storage': 'all'},
+                    commissioning_script.name: {
+                        'storage': commissioning_input},
+                    global_testing_script.name: {'storage': 'all'},
+                    testing_script.name: {'storage': testing_input},
+                }))
 
     def test__validates_commissioning_scripts(self):
         node = factory.make_Node(
@@ -218,4 +677,5 @@ class TestCommissionForm(MAASServerTestCase):
             MockCalledOnceWith(
                 user, enable_ssh=False, skip_bmc_config=False,
                 skip_networking=False, skip_storage=False,
-                commissioning_scripts=[], testing_scripts=['none']))
+                commissioning_scripts=[], testing_scripts=['none'],
+                input={}))

@@ -1983,7 +1983,7 @@ class Node(CleanSave, TimestampedModel):
     def start_commissioning(
             self, user, enable_ssh=False, skip_bmc_config=False,
             skip_networking=False, skip_storage=False,
-            commissioning_scripts=[], testing_scripts=[]):
+            commissioning_scripts=[], testing_scripts=[], input=None):
         """Install OS and self-test a new node.
 
         :return: a `Deferred` which contains the post-commit tasks that are
@@ -2020,13 +2020,13 @@ class Node(CleanSave, TimestampedModel):
 
         # Create a new ScriptSet for this commissioning run.
         script_set = ScriptSet.objects.create_commissioning_script_set(
-            self, commissioning_scripts)
+            self, commissioning_scripts, input)
         self.current_commissioning_script_set = script_set
 
         # Create a new ScriptSet for any tests to be run after commissioning.
         try:
             script_set = ScriptSet.objects.create_testing_script_set(
-                self, testing_scripts)
+                self, testing_scripts, input)
             self.current_testing_script_set = script_set
         except NoScriptsFound:
             # Commissioning can run without running tests after.
@@ -2123,7 +2123,8 @@ class Node(CleanSave, TimestampedModel):
                 "must be started manually", hostname)
 
     @transactional
-    def start_testing(self, user, enable_ssh=False, testing_scripts=[]):
+    def start_testing(
+            self, user, enable_ssh=False, testing_scripts=[], input=None):
         """Run tests on a node."""
         # Avoid circular imports.
         from metadataserver.models import (
@@ -2154,7 +2155,7 @@ class Node(CleanSave, TimestampedModel):
 
         # Create a new ScriptSet for the tests to be run.
         script_set = ScriptSet.objects.create_testing_script_set(
-            self, testing_scripts)
+            self, testing_scripts, input)
         if NODE_STATUS.DEPLOYED in (self.status, self.previous_status):
             qs = script_set.scriptresult_set.filter(script__destructive=True)
             if qs.exists():

@@ -396,6 +396,32 @@ class TestScriptResult(MAASServerTestCase):
                 'physical_blockdevice_id': physical_blockdevice.id,
             }}}, script_result.parameters)
 
+    def test_save_sets_interface_from_parameters(self):
+        node = factory.make_Machine()
+        script_set = factory.make_ScriptSet(node=node)
+        interface = factory.make_Interface(node=node)
+        script_result = factory.make_ScriptResult(
+            script_set=script_set, parameters={'interface': {
+                'type': 'interface',
+                'value': {
+                    'name': interface.name,
+                    'mac_address': str(interface.mac_address),
+                    'vendor': interface.vendor,
+                    'product': interface.product,
+                    'interface': interface,
+                }}})
+        self.assertEquals(interface, script_result.interface)
+        self.assertIsNone(script_result.physical_blockdevice)
+        self.assertDictEqual({'interface': {
+            'type': 'interface',
+            'value': {
+                'name': interface.name,
+                'mac_address': str(interface.mac_address),
+                'vendor': interface.vendor,
+                'product': interface.product,
+                'interface_id': interface.id,
+            }}}, script_result.parameters)
+
     def test_get_runtime(self):
         runtime_seconds = random.randint(1, 59)
         now = datetime.now()

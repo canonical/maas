@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test MAC utilities."""
@@ -10,7 +10,10 @@ from unittest.mock import MagicMock
 
 from maasserver.testing.factory import factory
 from maasserver.utils import mac
-from maasserver.utils.mac import get_vendor_for_mac
+from maasserver.utils.mac import (
+    get_vendor_for_mac,
+    is_mac,
+)
 from maastesting.matchers import IsNonEmptyString
 from maastesting.testcase import MAASTestCase
 
@@ -50,3 +53,12 @@ class TestGetVendorForMac(MAASTestCase):
         self.assertEqual(
             "Unknown Vendor",
             get_vendor_for_mac(factory.make_mac_address()))
+
+
+class TestIsMac(MAASTestCase):
+
+    def test__true(self):
+        self.assertTrue(is_mac(factory.make_MAC()))
+
+    def test__false(self):
+        self.assertFalse(is_mac(factory.make_name('bad')))

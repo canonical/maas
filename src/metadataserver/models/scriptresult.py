@@ -375,14 +375,16 @@ class ScriptResult(CleanSave, TimestampedModel):
                 if 'update_fields' in kwargs:
                     kwargs['update_fields'].append('started')
 
-        if self.id is None and self.physical_blockdevice is None:
+        if self.id is None:
             for param in self.parameters.values():
-                if ('value' in param and isinstance(param['value'], dict) and
-                        'physical_blockdevice' in param['value']):
-                    physical_blockdevice = param['value'].pop(
-                        'physical_blockdevice')
-                    self.physical_blockdevice = physical_blockdevice
-                    param['value'][
-                        'physical_blockdevice_id'] = physical_blockdevice.id
+                if 'value' in param and isinstance(param['value'], dict):
+                    if 'physical_blockdevice' in param['value']:
+                        self.physical_blockdevice = param['value'].pop(
+                            'physical_blockdevice')
+                        param['value']['physical_blockdevice_id'] = (
+                            self.physical_blockdevice.id)
+                    elif 'interface' in param['value']:
+                        self.interface = param['value'].pop('interface')
+                        param['value']['interface_id'] = self.interface.id
 
         return super().save(*args, **kwargs)

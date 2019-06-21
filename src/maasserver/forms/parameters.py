@@ -22,6 +22,7 @@ from django.forms import (
 )
 from maasserver.utils.dns import validate_url
 from maasserver.utils.forms import set_form_error
+from maasserver.utils.mac import is_mac
 
 
 class ParametersForm(Form):
@@ -397,8 +398,12 @@ class ParametersForm(Form):
                     continue
 
             qs = self._node.interface_set.filter(children_relationships=None)
-            qs = qs.filter(
-                Q(name=i) | Q(vendor=i) | Q(product=i) | Q(tags__overlap=[i]))
+            if is_mac(i):
+                qs = qs.filter(mac_address=i)
+            else:
+                qs = qs.filter(
+                    Q(name=i) | Q(vendor=i) | Q(product=i) |
+                    Q(tags__overlap=[i]))
             if not qs.exists():
                 set_form_error(
                     self, param_name, "Unknown interface for %s(%s)" % (

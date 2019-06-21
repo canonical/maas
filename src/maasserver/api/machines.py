@@ -891,6 +891,11 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         tagged 'commissioning' will be run. Set to 'none' to disable running
         tests.
 
+        @param (string) "parameters" [required=false] Scripts selected to run
+        may define their own parameters. These parameters may be passed using
+        the parameter name. Optionally a parameter may have the script name
+        prepended to have that parameter only apply to that specific script.
+
         @success (http-status-code) "200" 200
         @success (json) "success-json" A JSON object containing information
         about the commissioning machine.

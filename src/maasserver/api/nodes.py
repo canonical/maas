@@ -1054,6 +1054,11 @@ class PowerMixin:
         list of testing script names and tags to be run. By default all tests
         tagged 'commissioning' will be run.
 
+        @param (string) "parameters" [required=false] Scripts selected to run
+        may define their own parameters. These parameters may be passed using
+        the parameter name. Optionally a parameter may have the script name
+        prepended to have that parameter only apply to that specific script.
+
         @success (http-status-code) "204" 204
         @success (json) "success_json" A JSON object containing the node's
         information.
