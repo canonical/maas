@@ -138,7 +138,7 @@
                                     </div>
                                     <div class="row u-no-margin--top">
                                         <div class="col-12">
-                                            <div data-ng-if="windowWidth <= 768">
+                                            <div data-ng-if="windowWidth <= 772">
                                                 <maas-obj-field type="text" key="name" placeholder="Name"
                                                     label="Name"></maas-obj-field>
                                                 <maas-obj-field type="options" key="type" placeholder="Select type"
@@ -241,7 +241,7 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div class="row u-no-margin--top" data-ng-if="windowWidth <= 768">
+                                <div class="row u-no-margin--top" data-ng-if="windowWidth <= 772">
                                     <maas-obj-field type="text" key="name" placeholder="Name"
                                         label="Name"></maas-obj-field>
                                     <maas-obj-field type="options" key="type" placeholder="Select type"
@@ -428,14 +428,14 @@
                                                 Ubuntu extra architectures
                                             </span>
                                         </span>
-                                        <div data-ng-if="windowWidth > 768">
+                                        <div data-ng-if="windowWidth > 772">
                                             <maas-obj-field type="text" key="name" placeholder="Name"
                                                 disable-label="true" input-class="table__input" class="u-margin--none"
                                                 data-ng-if="!isMirror(repository)"></maas-obj-field>
                                         </div>
                                     </div>
                                     <div class="col-5">
-                                        <div data-ng-if="windowWidth > 768">
+                                        <div data-ng-if="windowWidth > 772">
                                             <maas-obj-field type="text" key="url" placeholder="URL"
                                                 disable-label="true" input-class="table__input" class="u-margin--none"
                                                 data-ng-if="editRepository === repository"></maas-obj-field>
@@ -446,12 +446,12 @@
                                     <hr />
                                     <div class="row">
                                         <div class="col-6">
-                                            <div data-ng-if="windowWidth <= 768" data-ng-if="!isMirror(repository)">
+                                            <div data-ng-if="windowWidth <= 772" data-ng-if="!isMirror(repository)">
                                                 <maas-obj-field type="text" key="name" placeholder="Name"
                                                     label="Name" input-class="p-form__control"
                                                     data-ng-if="!isMirror(repository)"></maas-obj-field>
                                             </div>
-                                            <div data-ng-if="windowWidth <= 768" data-ng-if="editRepository === repository">
+                                            <div data-ng-if="windowWidth <= 772" data-ng-if="editRepository === repository">
                                                 <maas-obj-field type="text" key="url" placeholder="URL"
                                                     label="URL" input-class="table__input u-margin--none"
                                                     data-ng-if="editRepository === repository"></maas-obj-field>

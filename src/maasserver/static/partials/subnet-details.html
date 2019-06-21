@@ -378,7 +378,7 @@
                             </div>
                         </td>
                         <td class="p-table-expanding__panel col-12" data-ng-if="isStaticRouteInDeleteMode(staticRoute)">
-                            <div class="u-clearfix" data-ng-if="windowWidth <= 768">
+                            <div class="u-clearfix" data-ng-if="windowWidth <= 772">
                                 <h2 data-ng-click="staticRouteCancelDelete()" class="u-float--left p-heading--four">Remove {$ staticRoute.gateway_ip $}</h2>
                                 <button class="p-button--base is-small u-float--right" style="width: auto;" data-ng-click="staticRouteCancelDelete()">
                                     <i class="p-icon--close u-float--right"></i>
@@ -400,7 +400,7 @@
                         <td class="p-table-expanding__panel col-12" data-ng-if="isStaticRouteInEditMode(staticRoute)">
                             <maas-obj-form obj="staticRoute" manager="staticRoutesManager" table-form="true"
                                 save-on-blur="false" after-save="ipRangeClearEditMode">
-                                <div class="u-clearfix" data-ng-if="windowWidth <= 768">
+                                <div class="u-clearfix" data-ng-if="windowWidth <= 772">
                                     <h2 data-ng-click="staticRouteToggleEditMode(staticRoute)" class="u-float--left p-heading--four">Editing {$ staticRoute.gateway_ip $}</h2>
                                     <button class="p-button--base is-small u-float--right" style="width: auto;" data-ng-click="staticRouteToggleEditMode(staticRoute)">
                                         <i class="p-icon--close"></i>
@@ -444,7 +444,7 @@
                         <td class="p-table-expanding__panel col-12">
                             <maas-obj-form obj="newStaticRoute" manager="staticRoutesManager" manager-method="createItem"
                                 table-form="true" save-on-blur="false" after-save="cancelAddStaticRoute">
-                                <div data-ng-if="windowWidth <= 768">
+                                <div data-ng-if="windowWidth <= 772">
                                     <h2 data-ng-click="cancelAddStaticRoute()" class="u-float--left p-heading--four">Adding static route</h2>
                                     <i data-ng-click="cancelAddStaticRoute()" class="p-icon--close u-float--right"></i>
                                 </div>
@@ -453,7 +453,7 @@
                                         <maas-obj-field type="text" key="gateway_ip" placeholder="Gateway IP" disable-label="true"></maas-obj-field>
                                     </div>
                                     <div class="col-4">
-                                        <div data-ng-if="windowWidth <= 768">
+                                        <div data-ng-if="windowWidth <= 772">
                                             <maas-obj-field type="text" key="gateway_ip" label="Gateway IP" label-width="2" input-width="3" placeholder="Gateway IP"></maas-obj-field>
                                         </div>
                                         <maas-obj-field type="options" key="destination" disable-label="true"

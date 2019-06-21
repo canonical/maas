@@ -155,7 +155,7 @@
     <div class="row">
         <div class="col-12">
             <table class="p-table--network-discovery p-table-expanding p-table--sortable" style="overflow: visible;">
-                <thead data-ng-if="windowWidth >= 768" offset="88" media-query="min-width: 768px">
+                <thead data-ng-if="windowWidth >= 772" offset="88" media-query="min-width: 772px">
                     <tr>
                         <th class="p-table--network-discovery__name" role="columnheader" data-ng-click="sortTable('hostname')" data-ng-class="{'is-sorted': predicate === 'hostname', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Name</th>
                         <th class="p-table--network-discovery__mac" role="columnheader" data-ng-click="sortTable('mac_address')" data-ng-class="{'is-sorted': predicate === 'mac_address', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">MAC address</th>
@@ -194,7 +194,7 @@
                         </td>
                         <td class="p-table--network-discovery__mac" aria-label="MAC" data-ng-if="discovery.first_seen !== selectedDevice">
                             {$ discovery.mac_address $}<br/>
-                            <small data-ng-if="windowWidth >= 768">{$ discovery.mac_organization || 'Unknown' $}</small>
+                            <small data-ng-if="windowWidth >= 772">{$ discovery.mac_organization || 'Unknown' $}</small>
                         </td>
                         <td class="p-table--network-discovery__ip" aria-label="IP Address" data-ng-if="discovery.first_seen !== selectedDevice">
                             {$ discovery.ip $}
@@ -217,7 +217,7 @@
                                 obj="convertTo" manager="proxyManager" pre-process="preProcess"
                                 after-save="afterSave" table-form="true" save-on-blur="false">
                                 <div class="row">
-                                    <div class="u-float--left" data-ng-if="windowWidth >= 768">
+                                    <div class="u-float--left" data-ng-if="windowWidth >= 772">
                                         <maas-obj-field class="u-full-width-input" type="text" key="hostname"
                                             disable-label="true" placeholder="Hostname (optional)" data-ng-disabled="discovery.isBeingRemoved"></maas-obj-field>
                                     </div>
@@ -230,14 +230,14 @@
                                             <i class="p-icon--delete">Delete network discovery</i>
                                             <span class="p-tooltip__message" role="tooltip" id="remove-{$ discovery.id $}-message">Delete network discovery</span>
                                         </button>
-                                        <button class="p-button--close" data-ng-if="windowWidth >= 768"
+                                        <button class="p-button--close" data-ng-if="windowWidth >= 772"
                                             data-ng-click="toggleSelected(discovery.first_seen)">
                                             <i class="p-icon--close">Close panel</i></button>
                                         </button>
                                     </div>
                                 </div>
                                 <div class="row">
-                                    <div data-ng-if="windowWidth < 768" class="u-flex u-clearfix">
+                                    <div data-ng-if="windowWidth < 772" class="u-flex u-clearfix">
                                         <h2 data-ng-click="toggleSelected(selectedDevice)" class="p-heading--four u-float--left">Adding {$ getDiscoveryName(discovery) $}</h2>
                                         <button aria-label="Close editing device" class="p-button--close u-float--right"
                                             data-ng-click="toggleSelected(selectedDevice)">
@@ -312,7 +312,7 @@
                                     </div>
                                     <div class="row is-active" data-ng-class="{ 'u-disable' : discovery.isBeingRemoved }">
                                         <div class="col-6">
-                                            <div data-ng-if="windowWidth < 768" class="u-clearfix">
+                                            <div data-ng-if="windowWidth < 772" class="u-clearfix">
                                                 <label for="Name" class="p-form__label col-2 col-medium-2">Name</label>
                                                 <div class="col-3 col-medium-4">
                                                     <maas-obj-field type="text" key="hostname"

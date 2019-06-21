@@ -63010,7 +63010,7 @@ windowWidth.$inject = ["$window"];
  *
  * Watches the window width and calculates what the inner width of the window.
  * Applying the attribute window-wdith on the parent element and calling
- * data-ng-if="width > 768" you can use this to hide / show elements for mobile
+ * data-ng-if="width > 772" you can use this to hide / show elements for mobile
  * development.
  *
  */

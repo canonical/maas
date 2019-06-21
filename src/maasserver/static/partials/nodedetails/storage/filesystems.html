@@ -44,7 +44,7 @@
                     </div>
                 </td>
                 <td class="p-table-expanding__panel--bordered" data-ng-if="filesystem.$selected && (filesystemMode === 'unmount' || filesystemMode === 'delete')" aria-hidden="!filesystem.$selected && (filesystemMode !== 'unmount' || filesystemMode !== 'delete')">
-                    <div class="row u-flex--no-wrap" data-ng-if="windowWidth <= 768">
+                    <div class="row u-flex--no-wrap" data-ng-if="windowWidth <= 772">
                         <h2 data-ng-click="filesystemCancel()" class="p-heading--four">
                             <span data-ng-if="filesystemMode === 'unmount'">Unmounting {$ filesystem.name $}</span>
                             <span data-ng-if="filesystemMode === 'delete'">Removing {$ filesystem.name $}</span>
@@ -75,7 +75,7 @@
                 <td class="p-table-expanding__panel" data-ng-controller="NodeAddSpecialFilesystemController" data-ng-switch-when="special">
                     <maas-obj-form obj="newFilesystem" manager="machineManager" manager-method="mountSpecialFilesystem" inline="false"
                         save-on-blur="false" after-save="cancel">
-                        <div class="row" data-ng-if="windowWidth <= 768">
+                        <div class="row" data-ng-if="windowWidth <= 772">
                             <div class="u-flex--no-wrap">
                                 <h2 data-ng-click="cancel()" class="u-align--left p-heading--four">Adding filesystem</h2>
                                 <button class="p-button--close" data-ng-click="cancel()" type="button"><i class="p-icon--close">Cancel</i>

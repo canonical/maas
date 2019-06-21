@@ -52,7 +52,7 @@
   }
 
   .nav {
-    @media only screen and (max-width: 768px) {
+    @media only screen and (max-width: 772px) {
       .nav-toggle {
         background-color: $transparent;
       }
@@ -77,7 +77,7 @@
       float: right;
       margin: 0 54px;
 
-      @media only screen and (min-width: 769px) and (max-width: 1024px) {
+      @media only screen and (min-width: 769px) and (max-width: 1036px) {
         display: none;
       }
 
@@ -478,7 +478,7 @@
     align-items: center;
     justify-content: center;
 
-    @media screen and (max-width: 768px) {
+    @media screen and (max-width: 772px) {
       display: block;
     }
 

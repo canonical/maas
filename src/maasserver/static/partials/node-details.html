@@ -2397,7 +2397,7 @@
                                 </td>
                                 <td class="p-table-expanding__panel col-12"  data-ng-if="isInterfaceSelected(interface) && (isShowingAdd() || isEditing(interface) || isShowingDeleteConfirm() || isShowingAdd() && !newInterface.saving)">
                                     <div class="row">
-                                        <div class="u-position-relative u-clearfix" data-ng-if="windowWidth <= 768">
+                                        <div class="u-position-relative u-clearfix" data-ng-if="windowWidth <= 772">
                                             <h2 data-ng-click="cancel()" class="u-float--left p-heading--four">
                                                 <span data-ng-if="canAddAlias(newInterface.parent)">Adding alias</span>
                                                 <span data-ng-if="canAddVLAN(newInterface.parent)">Adding VLAN</span>
@@ -2585,7 +2585,7 @@
                             </tr>
                             <tr class="is-active" data-ng-if="isShowingCreateBond() && !isAllNetworkingDisabled()">
                                 <td>
-                                    <div class="row" data-ng-if="windowWidth > 768">
+                                    <div class="row" data-ng-if="windowWidth > 772">
                                         <table class="u-no-margin--top">
                                             <tr class="u-no-padding">
                                                 <td class="table-col--16">
@@ -2603,7 +2603,7 @@
                                         </table>
                                         <hr>
                                     </div>
-                                    <div class="row" data-ng-if="windowWidth <= 768">
+                                    <div class="row" data-ng-if="windowWidth <= 772">
                                         <h2 class="u-float--left">Create bond</h2>
                                         <button data-ng-click="cancel()" class="p-button--base u-float--right p-button--close">
                                             <i class="p-icon--close">Cancel</i>
@@ -2614,7 +2614,7 @@
                                     <div class="p-form p-form--stacked is-active">
                                         <div class="row">
                                             <div class="col-6">
-                                                <div class="p-form__group" data-ng-if="windowWidth <= 768">
+                                                <div class="p-form__group" data-ng-if="windowWidth <= 772">
                                                     <label for="bond-name" class="p-form__label">Name</label>
                                                     <div class="p-form__control p-form-validation"
                                                         data-ng-class="{ 'is-error': isInterfaceNameInvalid(newBondInterface) }">
@@ -2710,7 +2710,7 @@
                                         </div>
                                     </div>
                                     <hr data-ng-if="!isDevice">
-                                    <div class="row" data-ng-if="windowWidth <= 768">
+                                    <div class="row" data-ng-if="windowWidth <= 772">
                                         <div class="u-flex--no-wrap">
                                             <h2 data-ng-click="cancel()" class="p-heading--four">New interface</h2>
                                             <button class="p-button--close" data-ng-click="cancel()" ><i class="p-icon--close">Cancel</i></button>
@@ -3060,7 +3060,7 @@
                                             </div>
                                         </td>
                                         <td class="p-table-expanding__panel col-12" data-ng-if="cacheset.$selected && cachesetsMode === 'delete'">
-                                            <div class="row" data-ng-if="windowWidth <= 768">
+                                            <div class="row" data-ng-if="windowWidth <= 772">
                                                 <div class="col-8">
                                                     <h2 data-ng-click="filesystemCancel()" class="p-heading--four">
                                                         <span data-ng-if="cachesetsMode === 'delete'">Removing {$ cacheset.name $}</span>

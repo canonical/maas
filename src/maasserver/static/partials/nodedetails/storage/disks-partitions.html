@@ -122,7 +122,7 @@
                     </td>
                     <td class="p-table-expanding__panel col-12"
                         data-ng-if="(availableMode === 'edit' || availableMode === 'format-mount' || availableMode === 'partition' || availableMode === 'logical-volume' || availableMode === 'delete') && item.$selected">
-                        <div class="u-flex--no-wrap" data-ng-if="windowWidth <= 768">
+                        <div class="u-flex--no-wrap" data-ng-if="windowWidth <= 772">
                                 <h2 data-ng-click="availableCancel(item)" class="p-heading--four">
                                     <span data-ng-if="availableMode === 'edit'">Editing {$ item.name $}</span>
                                     <span data-ng-if="availableMode === 'format-mount'">Mount device</span>
@@ -471,7 +471,7 @@
                         </div>
                         <hr>
                         <div class="row">
-                            <div class="u-flex--no-wrap" data-ng-if="windowWidth <= 768">
+                            <div class="u-flex--no-wrap" data-ng-if="windowWidth <= 772">
                                 <h2 data-ng-click="availableCancel()" class="p-heading--four">Creating Bcache</h2>
                                 <button data-ng-click="availableCancel()" class="p-button--close">
                                     <i class="p-icon--close">Cancel</i>
@@ -607,7 +607,7 @@
                             </div>
                         </div>
                         <hr>
-                        <div class="row" data-ng-if="windowWidth <= 768">
+                        <div class="row" data-ng-if="windowWidth <= 772">
                             <div class="u-flex--no-wrap">
                                 <h2 data-ng-click="availableCancel()" class="p-heading--four">Creating RAID</h2>
                                 <button data-ng-click="availableCancel()" class="p-button--close">
@@ -741,7 +741,7 @@
                             </div>
                         </div>
                         <hr>
-                        <div class="row" data-ng-if="windowWidth <= 768">
+                        <div class="row" data-ng-if="windowWidth <= 772">
                             <div class="u-flex--no-wrap">
                                 <h2 data-ng-click="availableCancel()" class="p-heading--four">Creating volume group</h2>
                                 <button data-ng-click="availableCancel()" class="p-button--close">
