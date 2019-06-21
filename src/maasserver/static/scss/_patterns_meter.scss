@@ -2,7 +2,7 @@ $color--used: $color-link;
 $color--free: transparentize($color-link, 0.8);
 $color--request: $color-positive;
 $color--other-request: transparentize($color-positive, 0.33);
-$color--request-warning: $color-warning;
+$color--request-warning: $color-caution;
 
 @mixin maas-meter {
   %align-with-p {

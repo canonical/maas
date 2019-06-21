@@ -57,7 +57,10 @@
     // XXX: 27.06.2018: remove the float as well when the above pr is merged into vanilla
     &__item {
       float: none;
-      font-size: $font-base-size; //XXX (2): restore font-size after removing white-space around inline-block items above
+      font-size: map-get(
+        $base-font-sizes,
+        base
+      ); //XXX (2): restore font-size after removing white-space around inline-block items above
     }
 
     &__link {
