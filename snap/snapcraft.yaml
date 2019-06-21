@@ -40,7 +40,7 @@ parts:
     # that the pypi and deb versions of the same packages won't conflict
     # when building the wheels
     plugin: python
-    source: snap-data/pypi
+    source: snap/local/pypi
     requirements:
       - requirements.txt
     build-packages:
@@ -175,7 +175,7 @@ parts:
 
   stub-initgroups:
     plugin: make
-    source: snap-data/stub_initgroups
+    source: snap/local/stub_initgroups
     artifacts:
         - stub_initgroups.so
     organize:
@@ -193,7 +193,7 @@ parts:
 
   snap:
     plugin: dump
-    source: snap-data
+    source: snap/local
     organize:
       bind: usr/share/maas/bind
       conf/chrony.conf: usr/share/maas/chrony.conf
