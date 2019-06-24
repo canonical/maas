@@ -307,6 +307,63 @@ function PodsListController(
     }
   };
 
+  // Get default pool data
+  $scope.getDefaultPoolData = function(pod) {
+    if (angular.isUndefined(pod) || !angular.isObject(pod)) {
+      return;
+    }
+
+    if (angular.isUndefined(pod.storage_pools)) {
+      return;
+    }
+
+    return pod.storage_pools.find(function(pool) {
+      return pool.id === pod.default_storage_pool;
+    });
+  };
+
+  // Get total network disk size
+  $scope.getTotalNetworkDiskSize = function(pod) {
+    if (angular.isUndefined(pod) || !angular.isObject(pod)) {
+      return;
+    }
+
+    if (angular.isUndefined(pod.storage_pools)) {
+      return;
+    }
+
+    var totalNetworkSize = 0;
+    var networkPools = pod.storage_pools.filter(function(pool) {
+      return pool.id !== pod.default_storage_pool;
+    });
+
+    networkPools.forEach(function(pool) {
+      totalNetworkSize += pool.total;
+    });
+
+    return totalNetworkSize;
+  };
+
+  $scope.getMeterValue = function(total, value) {
+    if (
+      !angular.isNumber(total) ||
+      angular.isUndefined(total) ||
+      !angular.isNumber(value) ||
+      angular.isUndefined(value)
+    ) {
+      return;
+    }
+
+    var minPercentage = 3;
+    var valuePercentage = Math.round((value / total) * 100);
+
+    if (valuePercentage < minPercentage && valuePercentage > 0) {
+      return Math.round((total / 100) * minPercentage);
+    } else {
+      return value;
+    }
+  };
+
   // Load the required managers for this controller.
   ManagerHelperService.loadManagers($scope, [
     PodsManager,
@@ -318,6 +375,9 @@ function PodsListController(
     if ($location.search().addItem) {
       $scope.addPod();
     }
+    $scope.pods.forEach(function(pod) {
+      pod.default_pool_data = $scope.getDefaultPoolData(pod);
+    });
     $scope.loading = false;
   });
 }

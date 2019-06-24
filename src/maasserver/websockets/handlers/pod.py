@@ -113,6 +113,13 @@ class PodHandler(TimestampedModelHandler):
         data["composed_machines_count"] = obj.node_set.filter(
             node_type=NODE_TYPE.MACHINE).count()
         data["hints"] = self.dehydrate_hints(obj.hints)
+        storage_pools = obj.storage_pools.all()
+        if len(storage_pools) > 0:
+            pools_data = []
+            for pool in storage_pools:
+                pools_data.append(self.dehydrate_storage_pool(pool))
+            data["storage_pools"] = pools_data
+            data["default_storage_pool"] = obj.default_storage_pool.pool_id
         if obj.host is not None:
             data["host"] = obj.host.system_id
         else:
@@ -132,13 +139,6 @@ class PodHandler(TimestampedModelHandler):
             else:
                 data["attached_vlans"] = []
                 data["boot_vlans"] = []
-            storage_pools = obj.storage_pools.all()
-            if len(storage_pools) > 0:
-                pools_data = []
-                for pool in storage_pools:
-                    pools_data.append(self.dehydrate_storage_pool(pool))
-                data["storage_pools"] = pools_data
-                data["default_storage_pool"] = obj.default_storage_pool.pool_id
 
         if self.user.has_perm(PodPermission.compose, obj):
             data['permissions'].append('compose')

@@ -1,5 +1,5 @@
 $color--used: $color-link;
-$color--free: transparentize($color-link, 0.8);
+$color--free: #d3e4ed;
 $color--request: $color-positive;
 $color--other-request: transparentize($color-positive, 0.33);
 $color--request-warning: $color-caution;
@@ -132,6 +132,23 @@ $color--request-warning: $color-caution;
     }
   }
 
+  .p-meter--thin {
+    height: 11px;
+    margin-top: $sp-unit;
+    margin-bottom: $sp-unit / 2;
+  }
+
+  .p-meter__table {
+    + .p-meter__table {
+      margin-top: $sp-unit * 2;
+    }
+
+    .p-meter {
+      position: relative;
+      top: $sp-unit / 2;
+    }
+  }
+
   .p-legend {
     @extend %vf-clearfix;
     list-style: none;
@@ -148,7 +165,6 @@ $color--request-warning: $color-caution;
     }
 
     &__item {
-      display: block;
       @extend %vf-clearfix;
       float: left;
 
@@ -159,7 +175,6 @@ $color--request-warning: $color-caution;
 
       &::before {
         content: "•";
-
         padding-top: map-get($nudges, nudge--p);
         float: left;
         font-size: 2rem;
@@ -185,6 +200,57 @@ $color--request-warning: $color-caution;
     &__text {
       float: left;
       margin-bottom: $sp-unit * 2 - map-get($nudges, nudge--p);
+    }
+  }
+
+  .p-legend--table-header {
+    @extend %vf-clearfix;
+    list-style: none;
+    margin: 0;
+    overflow: hidden;
+    padding: 0;
+
+    .p-legend__item {
+      &:not(:first-child) {
+        float: left;
+        margin-left: $sph-inner / 2;
+      }
+
+      &::before {
+        position: relative;
+        top: -1px;
+        padding-top: 0;
+        line-height: 0.5;
+      }
+    }
+
+    .p-legend__text {
+      margin-bottom: 0;
+    }
+  }
+
+  .p-legend--table-row {
+    @extend %vf-clearfix;
+    list-style: none;
+    margin: 0;
+    overflow: hidden;
+    padding: 0;
+
+    .p-legend__item {
+      &:not(:first-child) {
+        float: left;
+        margin-left: $sph-inner / 2;
+      }
+
+      &::before {
+        position: relative;
+        top: 1px;
+      }
+    }
+
+    .p-legend__text {
+      position: relative;
+      top: $sp-unit;
     }
   }
 }

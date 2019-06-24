@@ -600,4 +600,85 @@ describe("PodsListController", function() {
       expect($scope.getDetailsRoute()).toBe("kvm");
     });
   });
+
+  describe("getDefaultPoolData", function() {
+    it("returns data for default pool", function() {
+      makeController();
+
+      $scope.pods = [
+        {
+          default_storage_pool: "foo",
+          storage_pools: [
+            {
+              id: "foo",
+              name: "firstpool"
+            },
+            {
+              id: "bar",
+              name: "secondpool"
+            }
+          ]
+        }
+      ];
+
+      expect($scope.getDefaultPoolData($scope.pods[0])).toEqual(
+        $scope.pods[0].storage_pools[0]
+      );
+    });
+  });
+
+  describe("getTotalNetworkDiskSize", function() {
+    it("returns total network size", function() {
+      makeController();
+
+      $scope.pods = [
+        {
+          default_storage_pool: "foo",
+          storage_pools: [
+            {
+              id: "foo",
+              name: "firstpool",
+              total: 53424
+            },
+            {
+              id: "bar",
+              name: "secondpool",
+              total: 64939
+            },
+            {
+              id: "baz",
+              name: "thirdpool",
+              total: 93829
+            }
+          ]
+        }
+      ];
+
+      expect($scope.getTotalNetworkDiskSize($scope.pods[0])).toEqual(158768);
+    });
+  });
+
+  describe("getMeterValue", function() {
+    it(
+      "returns given value if more than 3% of total and " +
+        "greater than 0% of total",
+      function() {
+        makeController();
+        expect($scope.getMeterValue(679, 598)).toBe(598);
+      }
+    );
+
+    it(
+      "returns 3% of total if value is less than or " + "equal to 3% of total",
+      function() {
+        makeController();
+        expect($scope.getMeterValue(257, 3)).toBe(8);
+      }
+    );
+
+    it("returns 0 if value is 0", function() {
+      makeController();
+      expect($scope.getMeterValue(473, 0)).toBe(0);
+    });
+  });
 });

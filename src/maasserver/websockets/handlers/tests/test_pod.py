@@ -126,6 +126,8 @@ class TestPodHandler(MAASTransactionServerTestCase):
         self.assertThat(result['host'], Equals(None))
         self.assertThat(result['attached_vlans'], Equals([]))
         self.assertThat(result['boot_vlans'], Equals([]))
+        self.assertThat(
+            result['storage_pools'], Equals(expected_data['storage_pools']))
 
     def test_get_with_pod_host(self):
         admin = factory.make_admin()

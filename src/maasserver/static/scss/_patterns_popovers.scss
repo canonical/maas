@@ -13,16 +13,21 @@ $triangle-height: $sp-unit;
       min-width: 280px;
       padding: $sp-small $sp-medium;
       position: absolute;
-      z-index: 5;
+      z-index: 10;
 
       &::before {
         content: "";
-        background-color: $color-x-light;
-        height: $triangle-height;
         position: absolute;
+        width: 0;
+        height: 0;
         top: 50%;
-        transform: rotate(45deg) translateY(-$triangle-height / 2);
-        width: $triangle-height;
+        margin-top: $triangle-height;
+        box-sizing: border-box;
+        border-width: $triangle-height;
+        border-style: solid;
+        border-color: transparent transparent $color-x-light $color-x-light;
+        transform-origin: 0 0;
+        box-shadow: -2px 2px 3px 0 rgba(17, 17, 17, 0.2);
       }
 
       &::after {
@@ -52,8 +57,8 @@ $triangle-height: $sp-unit;
       transform: translateX(14px) translateY(-50%);
 
       &::before {
-        box-shadow: -2px 1px 3px 0 rgba(17, 17, 17, 0.2);
-        left: -$triangle-height;
+        left: 1px;
+        transform: rotate(46deg);
       }
 
       &::after {
@@ -72,9 +77,8 @@ $triangle-height: $sp-unit;
       transform: translateX(-100%) translateY(-50%);
 
       &::before {
-        content: "";
-        box-shadow: 2px -1px 3px 0 rgba(17, 17, 17, 0.2);
-        right: -#{$triangle-height / 3};
+        right: -$triangle-height * 2;
+        transform: rotate(-135deg);
       }
 
       &::after {

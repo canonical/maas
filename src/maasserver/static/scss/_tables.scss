@@ -113,19 +113,19 @@ $breakpoint-fourth: 1360px;
     .p-table__row {
       .p-table__cell {
         &:nth-child(1) {
-          width: 18%;
+          width: 10%;
         }
 
         &:nth-child(2) {
-          width: 9%;
+          width: 10%;
         }
 
         &:nth-child(3) {
-          width: 14%;
+          width: 10%;
         }
 
         &:nth-child(4) {
-          width: 14%;
+          width: 10%;
         }
 
         &:nth-child(5) {
@@ -133,11 +133,15 @@ $breakpoint-fourth: 1360px;
         }
 
         &:nth-child(6) {
-          width: 14%;
+          width: 10%;
         }
 
         &:nth-child(7) {
-          width: 15%;
+          width: 10%;
+        }
+
+        &:nth-child(8) {
+          width: 10%;
         }
       }
     }

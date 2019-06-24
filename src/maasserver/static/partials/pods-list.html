@@ -142,6 +142,7 @@
                         <th class="p-table__cell" role="columnheader" data-ng-click="sortTable('available.cores')" data-ng-class="{'is-sorted': predicate === 'available.cores', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="Cores">Cores</th>
                         <th class="p-table__cell" role="columnheader" data-ng-click="sortTable('available.memory')" data-ng-class="{'is-sorted': predicate === 'available.memory', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="RAM (GiB)">RAM (GiB)</th>
                         <th class="p-table__cell u-align--right" role="columnheader" data-ng-click="sortTable('composed_machines')" data-ng-class="{'is-sorted': predicate === 'composed_machines', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="Composed machines">Composed machines</th>
+                        <th class="p-table__cell" role="columnheader" title="Storage">Storage</th>
                     </tr>
                 </thead>
                 <tbody vs-repeat vs-scroll-parent="window">
@@ -170,6 +171,151 @@
                         </td>
                         <td class="p-table__cell u-align--right" aria-label="Composed machines" title="{$ pod.composed_machines_count $}">
                             {$ pod.composed_machines_count $}
+                        </td>
+                        <td class="p-table__cell p-double-row" aria-label="Storage" style="overflow: visible">
+                            <div class="p-popover--left">
+                                <div class="p-double-rows__container">
+                                    <div class="p-double-row__main-row">
+                                        <meter class="p-meter p-meter--thin" max="{$ pod.total.local_storage $}" value="{$ getMeterValue(pod.total.local_storage, pod.used.local_storage) $}" ng-class="{'is-over': pod.used.local_storage > pod.total.local_storage}">
+                                        </meter>
+                                    </div>
+                                    <div class="p-double-row__muted-row u-align--right">
+                                        {$ pod.used.local_storage | formatBytes $}
+                                    </div>
+                                    <div class="p-popover__content">
+                                        <div class="row">
+                                            <table class="p-meter__table">
+                                                <thead>
+                                                    <tr>
+                                                        <th class="u-no-padding--left u-no-padding--bottom">Local</th>
+                                                        <th class="u-no-padding--bottom u-align--right">
+                                                            <span class="text-base">
+                                                                {$ pod.default_pool_data.total | formatBytes $}
+                                                            </span>
+                                                        </th>
+                                                        <th>
+                                                            <ul class="p-legend--table-header">
+                                                                <li class="p-legend__item p-legend__item--used">
+                                                                    <div class="p-legend__text text-base">
+                                                                        Used
+                                                                    </div>
+                                                                </li>
+                                                                <li class="p-legend__item p-legend__item--free">
+                                                                    <div class="p-legend__text text-base">
+                                                                        Free
+                                                                    </div>
+                                                                </li>
+                                                            </ul>
+                                                        </th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr>
+                                                        <td class="p-double-row u-no-padding--left">
+                                                            <div class="p-double-rows__container">
+                                                                <div class="p-double-row__main-row">
+                                                                    {$ pod.default_pool_data.name $}
+                                                                </div>
+                                                                <div class="p-double-row__muted-row">
+                                                                    {$ pod.default_pool_data.path $}
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td class="p-double-row">
+                                                            <div class="p-double-rows__container">
+                                                                <div class="p-double-row__main-row u-align--right">
+                                                                    {$ pod.default_pool_data.type $}
+                                                                </div>
+                                                                <div class="u-align--right">
+                                                                    {$ pod.default_pool_data.total | formatBytes $}
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td class="p-double-rows__container">
+                                                            <div class="p-double-row__main-row">
+                                                                <meter class="p-meter" max="{$ pod.total.local_storage $}"
+                                                                    value="{$ getMeterValue(pod.total.local_storage, pod.used.local_storage) $}"
+                                                                    ng-class="{'is-over': pod.used.local_storage > pod.total.local_storage}">
+                                                                </meter>
+                                                            </div>
+                                                            <div>
+                                                                <ul class="p-legend--table-row">
+                                                                    <li class="p-legend__item p-legend__item--used">
+                                                                        <div class="p-legend__text">
+                                                                            {$ pod.default_pool_data.used | formatBytes $}
+                                                                        </div>
+                                                                    </li>
+                                                                    <li class="p-legend__item p-legend__item--free">
+                                                                        <div class="p-legend__text">
+                                                                            {$ pod.default_pool_data.available | formatBytes $}
+                                                                        </div>
+                                                                    </li>
+                                                                </ul>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                            <table class="p-meter__table">
+                                                <thead>
+                                                    <tr>
+                                                        <th class="u-no-padding--left">Network</th>
+                                                        <th class="u-align--right">
+                                                            <span class="text-base">{$ getTotalNetworkDiskSize(pod) | formatBytes $}</span>
+                                                        </th>
+                                                        <th>&nbsp;</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr data-ng-repeat="pool in pod.storage_pools" data-ng-if="pool.id !== pod.default_storage_pool">
+                                                        <td class="p-double-row u-no-padding--left">
+                                                            <div class="p-double-rows__container">
+                                                                <div class="p-double-row__main-row">
+                                                                    {$ pool.name $}
+                                                                </div>
+                                                                <div class="p-double-row__muted-row">
+                                                                    {$ pool.path $}
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td class="p-double-row">
+                                                            <div class="p-double-rows__container">
+                                                                <div class="p-double-row__main-row u-align--right">
+                                                                    {$ pool.type $}
+                                                                </div>
+                                                                <div class="u-align--right">
+                                                                    {$ pool.total | formatBytes $}
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td class="p-double-row u-align--right">
+                                                            <div class="p-double-rows__container">
+                                                                <div class="p-double-row__main-row">
+                                                                    <meter class="p-meter" max="{$ pool.total $}" value="{$ getMeterValue(pool.total, pool.used) $}" ng-class="{'is-over': pool.used > pool.total}">
+                                                                </div>
+                                                                <div>
+                                                                    <ul class="p-legend--table-row">
+                                                                        <li class="p-legend__item p-legend__item--used">
+                                                                            <div class="p-legend__text">
+                                                                                {$ pool.used | formatBytes $}
+                                                                            </div>
+                                                                        </li>
+                                                                        <li class="p-legend__item p-legend__item--free">
+                                                                            <div class="p-legend__text">
+                                                                                {$ pool.available | formatBytes $}
+                                                                            </div>
+                                                                        </li>
+                                                                    </ul>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </td>
                         <td class="p-table-expanding__panel col-12" data-ng-if="pod.$selected && pod.action_failed">
                             <div aria-label="label" class="table__data">
