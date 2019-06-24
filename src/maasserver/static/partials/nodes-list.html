@@ -792,7 +792,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
 </div>
 <div class="p-strip is-shallow">
     <div class="row" ng-if="currentpage === 'machines' || currentpage === 'devices'">
-        <aside class="p-filter">
+        <aside class="p-filter col-small-2 col-medium-3 col-3">
             <div class="maas-accordion p-filter__dropdown ng-hide" data-ng-show="currentpage === 'machines'" data-ng-class="{ 'is-disabled': tabs.machines.actionOption }">
                 <button class="p-filter__dropdown-button maas-accordion-tab">Filters</button>
                 <div class="p-accordion">
@@ -944,7 +944,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                     </ul>
                 </div>
             </div>
-            <div class="maas-accordion p-filter__dropdown col-3 col-small-2 u-no-margin--left ng-hide" data-ng-show="currentpage === 'devices'" data-ng-class="{ 'is-disabled': tabs.devices.actionOption }">
+            <div class="maas-accordion p-filter__dropdown" data-ng-if="currentpage === 'devices'" data-ng-class="{ 'is-disabled': tabs.devices.actionOption }">
                 <button class="p-filter__dropdown-button maas-accordion-tab">Filters</button>
                 <div class="p-accordion">
                     <ul class="p-accordion__list">
@@ -988,111 +988,107 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                 </div>
             </div>
         </aside>
-        <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
-        <div class="col-12 ng-hide" data-ng-show="currentpage === 'machines'">
-            <form class="p-space-between">
-                <div id="search-bar" class="p-search-box prefix-3 mobile-prefix-2">
-                    <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
-                    <input
-                        type="search" placeholder="Search" class="p-search-box__input"
-                        data-ng-model="tabs.machines.search" data-ng-change="updateFilters('machines')"
-                        data-ng-class="{ error: !tabs.machines.searchValid }"
-                        data-ng-disabled="tabs.machines.actionOption" />
-                    <button type="reset" class="p-search-box__reset u-no-margin--right" alt="reset"
-                        data-ng-click="clearSearch('machines')"
-                        data-ng-show="tabs.machines.search.length > 0"><i class="p-icon--close"></i></button>
-                    <button type="submit" class="p-search-box__button" alt="search"><i class="p-icon--search"></i></button>
-                </div>
-                <div>
-                    <select data-ng-model="tabs.machines.groupByLabel" ng-init="tabs.machines.groupByLabel='status'">
-                        <option value="status" selected="selected">Group by status</option>
-                        <option value="owner">Group by owner</option>
-                        <option value="none">No Grouping</option>
-                    </select>
-                </div>
-                <div>
-                    <maas-machines-table id="machines-listing"
-                        loading="loading"
-                        search="tabs.machines.search"
-                        group-by-label="tabs.machines.groupByLabel"
-                        action-option="tabs.machines.actionOption"
-                        ng-disabled="hasActionsInProgress('machines')"
-                        machine-has-error="!supportsAction($machine, 'machines')"
-                        on-listing-change="onNodeListingChanged($machines, 'machines')"
-                        on-check-all="toggleCheckAll('machines')"
-                        on-check="toggleChecked($machine, 'machines')"
-                        pools="pools"
-                        zones="zones"
-                        hide-failed-tests="tabs.machines.suppressFailedTestsChecked"
-                        metadata=tabs.machines.metadata>
-                    </maas-machines-table>
-                </div>
-            </form>
-        </div>
-        <div class="col-12" class="ng-hide" data-ng-show="currentpage === 'devices'">
-            <form data-ng-class="{ 'is-error': !tabs.devices.searchValid }">
-                <div id="search-bar" class="p-search-box prefix-3 mobile-prefix-2">
-                    <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
-                    <input
-                        type="search" placeholder="Search" class="p-search-box__input"
-                        data-ng-model="tabs.devices.search" data-ng-change="updateFilters('devices')"
-                        data-ng-class="{ error: !tabs.devices.searchValid }"
-                        data-ng-disabled="tabs.devices.actionOption" />
-                    <button type="reset" class="p-search-box__reset u-no-margin--right" alt="reset"
-                        data-ng-click="clearSearch('devices')"
-                        data-ng-show="tabs.devices.search.length > 0"><i class="p-icon--close"></i></button>
-                    <button type="submit" class="p-search-box__button" alt="search"><i class="p-icon--search"></i></button>
-                </div>
-            </form>
-            <table class="p-table-expanding p-table--sortable p-table--devices">
-                <thead>
-                    <tr class="p-table__row">
-                        <th class="p-table__cell">
-                            <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
-                            <span class="u-float--left">
-                                <input type="checkbox" class="u-float--none" data-ng-click="toggleCheckAll('devices')" data-ng-checked="tabs.devices.allViewableChecked" id="check-all-devices" data-ng-disabled="hasActionsInProgress('devices')" />
-                                <label for="check-all-devices" class="p-form__label"></label>
-                            </span>
-                            <span role="columnheader" data-ng-click="sortTable('fqdn', 'devices')" data-ng-class="{'is-sorted': tabs.devices.predicate === 'fqdn', 'sort-asc': tabs.devices.reverse === false, 'sort-desc': tabs.devices.reverse === true}">
-                                <abbr>FQDN</abbr>
-                            </span>
-                        </th>
-                        <th class="p-table__cell" role="columnheader" data-ng-click="sortTable('primary_mac', 'devices')" data-ng-class="{'is-sorted': tabs.devices.predicate === 'primary_mac', 'sort-asc': tabs.devices.reverse === false, 'sort-desc': tabs.devices.reverse === true}">MAC</th>
-                        <th class="p-table__cell" role="columnheader" data-ng-click="sortTable('ip_assignment', 'devices')" data-ng-class="{'is-sorted': tabs.devices.predicate === 'ip_assignment', 'sort-asc': tabs.devices.reverse === false, 'sort-desc': tabs.devices.reverse === true}" media-query="min-width: 1000px">IP Assignment</th>
-                        <th class="p-table__cell" role="columnheader" data-ng-click="sortTable('ip_address', 'devices')" data-ng-class="{'is-sorted': tabs.devices.predicate === 'ip_address', 'sort-asc': tabs.devices.reverse === false, 'sort-desc': tabs.devices.reverse === true}">IP Address</th>
-                        <th class="p-table__cell" role="columnheader" data-ng-click="sortTable('owner', 'devices')" data-ng-class="{'is-sorted': tabs.devices.predicate === 'owner', 'sort-asc': tabs.devices.reverse === false, 'sort-desc': tabs.devices.reverse === true}">
-                            <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
-                            Owner
-                        </th>
-                    </tr>
-                </thead>
-                <tbody vs-repeat vs-scroll-parent="window">
-                    <!-- XXX rvba 2015-02-25 - Need to add e2e test. This really needs lots of tests. -->
-                    <tr class="p-table__row"
-                        data-ng-repeat="device in tabs.devices.filtered_items = (devices | nodesFilter:tabs.devices.search | orderBy:tabs.devices.predicate:tabs.devices.reverse) track by device.system_id"
-                        data-ng-class="{ 'table--error': !supportsAction(device, 'devices'), 'is-active': device.$selected }">
-                        <td class="p-table__cell" aria-label="FQDN">
-                            <span class="u-float--left">
-                                <input type="checkbox" class="u-float--none" data-ng-click="toggleChecked(device, 'devices')" data-ng-checked="device.$selected" id="{$ device.fqdn $}" data-ng-disabled="hasActionsInProgress('devices')"/>
-                                <label for="{$ device.fqdn $}" class="p-form__label"></label>
-                            </span>
-                            <a class="p-domain-name" href="#/{$ device.link_type $}/{$ device.system_id $}" title="{$ device.fqdn $}">
-                                <span class="p-domain-name__host">{$ device.hostname $}</span><span class="p-domain-name__tld">.{$ device.domain.name $}</span>
-                            </a>
-                        </td>
-                        <td class="p-table__cell" aria-label="MAC" title="{$ device.primary_mac $}">
-                            {$ device.primary_mac $}
-                            <span class="extra-macs" data-ng-show="device.extra_macs.length">(+{$ device.extra_macs.length $})</span>
-                        </td>
-                        <td class="p-table__cell" aria-label="IP Assignment" title="{$ getDeviceIPAssignment(device.ip_assignment) $}">{$ getDeviceIPAssignment(device.ip_assignment) $}</td>
-                        <td class="p-table__cell" aria-label="IP Address" title="{$ device.ip_address $}">{$ device.ip_address $}</td>
-                        <td class="p-table__cell" aria-label="Owner" title="{$ device.owner $}">{$ device.owner $}</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
     </div>
-    <div class="row ng-hide"  data-ng-show="currentpage === 'pools'">
+    <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
+    <form class="row" data-ng-if="currentpage === 'machines'">
+        <div id="search-bar" class="p-search-box col-small-2 col-medium-3 col-6 col-start-small-3 col-start-medium-4 col-start-large-4">
+            <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
+            <input
+                type="search" placeholder="Search" class="p-search-box__input"
+                data-ng-model="tabs.machines.search" data-ng-change="updateFilters('machines')"
+                data-ng-class="{ error: !tabs.machines.searchValid }"
+                data-ng-disabled="tabs.machines.actionOption" />
+            <button type="reset" class="p-search-box__reset u-no-margin--right" alt="reset"
+                data-ng-click="clearSearch('machines')"
+                data-ng-show="tabs.machines.search.length > 0"><i class="p-icon--close"></i></button>
+            <button type="submit" class="p-search-box__button" alt="search"><i class="p-icon--search"></i></button>
+        </div>
+        <div class="col-small-2 col-medium-3 col-3">
+            <select data-ng-model="tabs.machines.groupByLabel" ng-init="tabs.machines.groupByLabel='status'">
+                <option value="status" selected="selected">Group by status</option>
+                <option value="owner">Group by owner</option>
+                <option value="none">No Grouping</option>
+            </select>
+        </div>
+        <maas-machines-table id="machines-listing"
+            loading="loading"
+            search="tabs.machines.search"
+            group-by-label="tabs.machines.groupByLabel"
+            action-option="tabs.machines.actionOption"
+            ng-disabled="hasActionsInProgress('machines')"
+            machine-has-error="!supportsAction($machine, 'machines')"
+            on-listing-change="onNodeListingChanged($machines, 'machines')"
+            on-check-all="toggleCheckAll('machines')"
+            on-check="toggleChecked($machine, 'machines')"
+            pools="pools"
+            zones="zones"
+            hide-failed-tests="tabs.machines.suppressFailedTestsChecked"
+            metadata=tabs.machines.metadata>
+        </maas-machines-table>
+    </form>
+    <form class="row" data-ng-if="currentpage === 'devices'" data-ng-class="{ 'is-error': !tabs.devices.searchValid }">
+        <div id="search-bar" class="p-search-box col-start-small-3 col-small-2 col-start-medium-4 col-medium-3 col-start-large-4 col-9">
+            <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
+            <input
+                type="search" placeholder="Search" class="p-search-box__input"
+                data-ng-model="tabs.devices.search" data-ng-change="updateFilters('devices')"
+                data-ng-class="{ error: !tabs.devices.searchValid }"
+                data-ng-disabled="tabs.devices.actionOption" />
+            <button type="reset" class="p-search-box__reset u-no-margin--right" alt="reset"
+                data-ng-click="clearSearch('devices')"
+                data-ng-show="tabs.devices.search.length > 0"><i class="p-icon--close"></i></button>
+            <button type="submit" class="p-search-box__button" alt="search"><i class="p-icon--search"></i></button>
+        </div>
+    </form>
+    <div class="row">
+        <table class="p-table-expanding p-table--sortable p-table--devices">
+            <thead>
+                <tr class="p-table__row">
+                    <th class="p-table__cell">
+                        <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
+                        <span class="u-float--left">
+                            <input type="checkbox" class="u-float--none" data-ng-click="toggleCheckAll('devices')" data-ng-checked="tabs.devices.allViewableChecked" id="check-all-devices" data-ng-disabled="hasActionsInProgress('devices')" />
+                            <label for="check-all-devices" class="p-form__label"></label>
+                        </span>
+                        <span role="columnheader" data-ng-click="sortTable('fqdn', 'devices')" data-ng-class="{'is-sorted': tabs.devices.predicate === 'fqdn', 'sort-asc': tabs.devices.reverse === false, 'sort-desc': tabs.devices.reverse === true}">
+                            <abbr>FQDN</abbr>
+                        </span>
+                    </th>
+                    <th class="p-table__cell" role="columnheader" data-ng-click="sortTable('primary_mac', 'devices')" data-ng-class="{'is-sorted': tabs.devices.predicate === 'primary_mac', 'sort-asc': tabs.devices.reverse === false, 'sort-desc': tabs.devices.reverse === true}">MAC</th>
+                    <th class="p-table__cell" role="columnheader" data-ng-click="sortTable('ip_assignment', 'devices')" data-ng-class="{'is-sorted': tabs.devices.predicate === 'ip_assignment', 'sort-asc': tabs.devices.reverse === false, 'sort-desc': tabs.devices.reverse === true}" media-query="min-width: 1000px">IP Assignment</th>
+                    <th class="p-table__cell" role="columnheader" data-ng-click="sortTable('ip_address', 'devices')" data-ng-class="{'is-sorted': tabs.devices.predicate === 'ip_address', 'sort-asc': tabs.devices.reverse === false, 'sort-desc': tabs.devices.reverse === true}">IP Address</th>
+                    <th class="p-table__cell" role="columnheader" data-ng-click="sortTable('owner', 'devices')" data-ng-class="{'is-sorted': tabs.devices.predicate === 'owner', 'sort-asc': tabs.devices.reverse === false, 'sort-desc': tabs.devices.reverse === true}">
+                        <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
+                        Owner
+                    </th>
+                </tr>
+            </thead>
+            <tbody vs-repeat vs-scroll-parent="window">
+                <!-- XXX rvba 2015-02-25 - Need to add e2e test. This really needs lots of tests. -->
+                <tr class="p-table__row"
+                    data-ng-repeat="device in tabs.devices.filtered_items = (devices | nodesFilter:tabs.devices.search | orderBy:tabs.devices.predicate:tabs.devices.reverse) track by device.system_id"
+                    data-ng-class="{ 'table--error': !supportsAction(device, 'devices'), 'is-active': device.$selected }">
+                    <td class="p-table__cell" aria-label="FQDN">
+                        <span class="u-float--left">
+                            <input type="checkbox" class="u-float--none" data-ng-click="toggleChecked(device, 'devices')" data-ng-checked="device.$selected" id="{$ device.fqdn $}" data-ng-disabled="hasActionsInProgress('devices')"/>
+                            <label for="{$ device.fqdn $}" class="p-form__label"></label>
+                        </span>
+                        <a class="p-domain-name" href="#/{$ device.link_type $}/{$ device.system_id $}" title="{$ device.fqdn $}">
+                            <span class="p-domain-name__host">{$ device.hostname $}</span><span class="p-domain-name__tld">.{$ device.domain.name $}</span>
+                        </a>
+                    </td>
+                    <td class="p-table__cell" aria-label="MAC" title="{$ device.primary_mac $}">
+                        {$ device.primary_mac $}
+                        <span class="extra-macs" data-ng-show="device.extra_macs.length">(+{$ device.extra_macs.length $})</span>
+                    </td>
+                    <td class="p-table__cell" aria-label="IP Assignment" title="{$ getDeviceIPAssignment(device.ip_assignment) $}">{$ getDeviceIPAssignment(device.ip_assignment) $}</td>
+                    <td class="p-table__cell" aria-label="IP Address" title="{$ device.ip_address $}">{$ device.ip_address $}</td>
+                    <td class="p-table__cell" aria-label="Owner" title="{$ device.owner $}">{$ device.owner $}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="row" data-ng-if="currentpage === 'pools'">
         <div class="p-table__wrapper row">
           <maas-obj-form obj="tabs.pools.editingPool" manager="tabs.pools.manager"
                          manager-method="updateItem" after-save="tabs.pools.actionConfirmEditPool"
@@ -1186,7 +1182,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
           </maas-obj-form>
         </div>
     </div>
-    <div class="row ng-hide"  data-ng-show="currentpage === 'controllers'">
+    <div class="row"  data-ng-if="currentpage === 'controllers'">
         <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
         <div class="p-form-validation" data-ng-class="{ 'is-error': !tabs.controllers.searchValid }">
                 <div class="p-search-box">
@@ -1264,7 +1260,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
             </table>
         </div>
     </div>
-    <div class="row ng-hide" data-ng-show="currentpage === 'switches'">
+    <div class="row" data-ng-if="currentpage === 'switches'">
         <form class="p-search-box">
             <div class="p-form-validation"
                 data-ng-class="{ 'is-error': !tabs.switches.searchValid }">

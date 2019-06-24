@@ -2933,35 +2933,33 @@
     <section class="p-strip u-no-padding--bottom" data-ng-if="section.area === 'storage'" data-ng-controller="NodeStorageController">
         <form>
             <div data-ng-if="canEdit() && (node.status_code === 4 || node.status_code === 10)">
-                <div class="row" data-ng-if="!confirmStorageLayout">
-                    <div class="col-12 prefix-9 u-sv3">
-                        <div class="p-form__group u-align--right">
-                            <div data-ng-if="storageLayoutIsDisabled(osFamily.layouts) && storageLayoutIsDisabled(osFamily.layouts)">
-                                <button class="p-button--neutral" disabled>Change storage layout</button>
-                            </div>
-                            <div data-ng-if="!(storageLayoutIsDisabled(osFamily.layouts) && storageLayoutIsDisabled(osFamily.layouts))">
-                                <div class="p-contextual-menu" toggle-ctrl>
-                                    <button class="p-button--neutral p-contextual-menu__toggle u-no-margin--bottom" data-ng-click="toggleMenu()">
-                                        <span data-ng-if="!updatingStorageLayout">
-                                            Change storage layout&nbsp;
-                                            <i class="p-icon--chevron" data-ng-class="{'u-rotate':isToggled}"></i>
-                                        </span>
+                <div class="u-fixed-width" data-ng-if="!confirmStorageLayout">
+                    <div class="p-form__group u-align--right">
+                        <div data-ng-if="storageLayoutIsDisabled(osFamily.layouts) && storageLayoutIsDisabled(osFamily.layouts)">
+                            <button class="p-button--neutral" disabled>Change storage layout</button>
+                        </div>
+                        <div data-ng-if="!(storageLayoutIsDisabled(osFamily.layouts) && storageLayoutIsDisabled(osFamily.layouts))">
+                            <div class="p-contextual-menu" toggle-ctrl>
+                                <button class="p-button--neutral p-contextual-menu__toggle u-no-margin--bottom" data-ng-click="toggleMenu()">
+                                    <span data-ng-if="!updatingStorageLayout">
+                                        Change storage layout&nbsp;
+                                        <i class="p-icon--chevron" data-ng-class="{'u-rotate':isToggled}"></i>
+                                    </span>
 
-                                        <span data-ng-if="updatingStorageLayout">
-                                            <i class="p-icon--spinner u-animation--spin"></i>
-                                            &nbsp;
-                                            Updating storage layout&hellip;
-                                        </span>
-                                    </button>
-                                    <div class="p-contextual-menu__dropdown" role="menu" data-ng-show="isToggled">
-                                        <button class="p-contextual-menu__link" data-ng-click="toggleMenu(); openStorageLayoutConfirm('flat')">Flat</button>
-                                        <button class="p-contextual-menu__link" data-ng-click="toggleMenu(); openStorageLayoutConfirm('lvm')">LVM</button>
-                                        <button class="p-contextual-menu__link" data-ng-click="toggleMenu(); openStorageLayoutConfirm('bcache')">bcache</button>
-                                        <hr class="u-no-margin--bottom"/>
-                                        <button class="p-contextual-menu__link" data-ng-click="toggleMenu(); openStorageLayoutConfirm('vmfs6')">VMFS6 (VMware ESXi)</button>
-                                        <hr class="u-no-margin--bottom"/>
-                                        <button class="p-contextual-menu__link" data-ng-click="toggleMenu(); openStorageLayoutConfirm('blank')">No storage (blank) layout</button>
-                                    </div>
+                                    <span data-ng-if="updatingStorageLayout">
+                                        <i class="p-icon--spinner u-animation--spin"></i>
+                                        &nbsp;
+                                        Updating storage layout&hellip;
+                                    </span>
+                                </button>
+                                <div class="p-contextual-menu__dropdown" role="menu" data-ng-show="isToggled">
+                                    <button class="p-contextual-menu__link" data-ng-click="toggleMenu(); openStorageLayoutConfirm('flat')">Flat</button>
+                                    <button class="p-contextual-menu__link" data-ng-click="toggleMenu(); openStorageLayoutConfirm('lvm')">LVM</button>
+                                    <button class="p-contextual-menu__link" data-ng-click="toggleMenu(); openStorageLayoutConfirm('bcache')">bcache</button>
+                                    <hr class="u-no-margin--bottom"/>
+                                    <button class="p-contextual-menu__link" data-ng-click="toggleMenu(); openStorageLayoutConfirm('vmfs6')">VMFS6 (VMware ESXi)</button>
+                                    <hr class="u-no-margin--bottom"/>
+                                    <button class="p-contextual-menu__link" data-ng-click="toggleMenu(); openStorageLayoutConfirm('blank')">No storage (blank) layout</button>
                                 </div>
                             </div>
                         </div>
