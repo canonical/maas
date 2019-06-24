@@ -52,6 +52,9 @@
         "links": [],
         "id": 69,
         "parents": [],
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/d8n3re/interfaces/69/"
       },
       {
@@ -92,6 +95,9 @@
         "links": [],
         "id": 70,
         "parents": [],
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/d8n3re/interfaces/70/"
       },
       {
@@ -132,6 +138,9 @@
         "links": [],
         "id": 71,
         "parents": [],
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/d8n3re/interfaces/71/"
       },
       {
@@ -174,6 +183,9 @@
           "eth-D6eWMG",
           "eth-jazQFg"
         ],
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/d8n3re/interfaces/72/"
       }
     ],
@@ -429,6 +441,9 @@
       "links": [],
       "id": 69,
       "parents": [],
+      "link_connected": true,
+      "interface_speed": 1000,
+      "link_speed": 1000,
       "resource_uri": "/MAAS/api/2.0/nodes/d8n3re/interfaces/69/"
     },
     "default_gateways": {
@@ -449,6 +464,8 @@
     "hostname": "newname",
     "description": "Optional description for the machine.",
     "testing_status_name": "Failed",
+    "interface_test_status_name": "Unknown",
+    "interface_test_status": -1,
     "resource_uri": "/MAAS/api/2.0/machines/d8n3re/"
   },
   "machines-deploy": {
@@ -501,6 +518,9 @@
         "links": [],
         "id": 69,
         "parents": [],
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/d8n3re/interfaces/69/"
       },
       {
@@ -541,6 +561,9 @@
         "links": [],
         "id": 70,
         "parents": [],
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/d8n3re/interfaces/70/"
       },
       {
@@ -581,6 +604,9 @@
         "links": [],
         "id": 71,
         "parents": [],
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/d8n3re/interfaces/71/"
       },
       {
@@ -623,6 +649,9 @@
           "eth-D6eWMG",
           "eth-jazQFg"
         ],
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/d8n3re/interfaces/72/"
       }
     ],
@@ -878,6 +907,9 @@
       "links": [],
       "id": 69,
       "parents": [],
+      "link_connected": true,
+      "interface_speed": 1000,
+      "link_speed": 1000,
       "resource_uri": "/MAAS/api/2.0/nodes/d8n3re/interfaces/69/"
     },
     "default_gateways": {
@@ -898,6 +930,8 @@
     "hostname": "newname",
     "description": "Optional description for the machine.",
     "testing_status_name": "Failed",
+    "interface_test_status_name": "Unknown",
+    "interface_test_status": -1,
     "resource_uri": "/MAAS/api/2.0/machines/d8n3re/"
   },
   "machines-release": {
@@ -1044,6 +1078,9 @@
         "tag-VOqx2b"
       ],
       "type": "physical",
+      "link_connected": true,
+      "interface_speed": 1000,
+      "link_speed": 1000,
       "resource_uri": "/MAAS/api/2.0/nodes/thr3am/interfaces/37/"
     },
     "hardware_info": {
@@ -1178,6 +1215,9 @@
           "tag-VOqx2b"
         ],
         "type": "physical",
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/thr3am/interfaces/37/"
       },
       {
@@ -1256,6 +1296,9 @@
           "tag-RwynT2"
         ],
         "type": "physical",
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/thr3am/interfaces/38/"
       },
       {
@@ -1334,6 +1377,9 @@
           "tag-PnEfvN"
         ],
         "type": "physical",
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/thr3am/interfaces/39/"
       },
       {
@@ -1411,6 +1457,9 @@
           "tag-QK7j09"
         ],
         "type": "vlan",
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/thr3am/interfaces/40/"
       },
       {
@@ -1489,6 +1538,9 @@
           "tag-GsPX3m"
         ],
         "type": "vlan",
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/thr3am/interfaces/41/"
       },
       {
@@ -1567,6 +1619,9 @@
           "tag-xhApes"
         ],
         "type": "vlan",
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/thr3am/interfaces/42/"
       }
     ],
@@ -1803,6 +1858,8 @@
     "owner": null,
     "address_ttl": null,
     "swap_size": null,
+    "interface_test_status_name": "Unknown",
+    "interface_test_status": -1,
     "resource_uri": "/MAAS/api/2.0/machines/thr3am/"
   },
   "machines-commission": {
@@ -1932,6 +1989,9 @@
       "tags": [],
       "parents": [],
       "system_id": "8bk8nn",
+      "link_connected": true,
+      "interface_speed": 1000,
+      "link_speed": 1000,
       "resource_uri": "/MAAS/api/2.0/nodes/8bk8nn/interfaces/4/"
     },
     "interface_set": [
@@ -1967,6 +2027,9 @@
         "tags": [],
         "parents": [],
         "system_id": "8bk8nn",
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/8bk8nn/interfaces/4/"
       }
     ],
@@ -2055,6 +2118,8 @@
       "system_id": "8bk8nn",
       "resource_uri": "/MAAS/api/2.0/nodes/8bk8nn/blockdevices/1/"
     },
+    "interface_test_status_name": "Unknown",
+    "interface_test_status": -1,
     "resource_uri": "/MAAS/api/2.0/machines/8bk8nn/"
   },
   "machines-set-storage": {
@@ -2184,6 +2249,9 @@
       "tags": [],
       "parents": [],
       "system_id": "8bk8nn",
+      "link_connected": true,
+      "interface_speed": 1000,
+      "link_speed": 1000,
       "resource_uri": "/MAAS/api/2.0/nodes/8bk8nn/interfaces/4/"
     },
     "interface_set": [
@@ -2219,6 +2287,9 @@
         "tags": [],
         "parents": [],
         "system_id": "8bk8nn",
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/8bk8nn/interfaces/4/"
       }
     ],
@@ -2307,6 +2378,8 @@
       "system_id": "8bk8nn",
       "resource_uri": "/MAAS/api/2.0/nodes/8bk8nn/blockdevices/1/"
     },
+    "interface_test_status_name": "Unknown",
+    "interface_test_status": -1,
     "resource_uri": "/MAAS/api/2.0/machines/8bk8nn/"
   },
   "machines-mount-special": {
@@ -2500,6 +2573,9 @@
         "product": null,
         "id": 37,
         "type": "physical",
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/thr3am/interfaces/37/"
       },
       {
@@ -2578,6 +2654,9 @@
         "product": null,
         "id": 38,
         "type": "physical",
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/thr3am/interfaces/38/"
       },
       {
@@ -2656,6 +2735,9 @@
         "product": null,
         "id": 39,
         "type": "physical",
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/thr3am/interfaces/39/"
       },
       {
@@ -2733,6 +2815,9 @@
         "product": null,
         "id": 40,
         "type": "vlan",
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/thr3am/interfaces/40/"
       },
       {
@@ -2811,6 +2896,9 @@
         "product": null,
         "id": 41,
         "type": "vlan",
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/thr3am/interfaces/41/"
       },
       {
@@ -2889,6 +2977,9 @@
         "product": null,
         "id": 42,
         "type": "vlan",
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/thr3am/interfaces/42/"
       }
     ],
@@ -3036,6 +3127,9 @@
       "product": null,
       "id": 37,
       "type": "physical",
+      "link_connected": true,
+      "interface_speed": 1000,
+      "link_speed": 1000,
       "resource_uri": "/MAAS/api/2.0/nodes/thr3am/interfaces/37/"
     },
     "raids": [],
@@ -3220,6 +3314,8 @@
     "power_state": "on",
     "hostname": "above-robin",
     "description": "Optional description for the machine.",
+    "interface_test_status_name": "Unknown",
+    "interface_test_status": -1,
     "resource_uri": "/MAAS/api/2.0/machines/thr3am/"
   },
   "machines-unmount-special": {
@@ -3413,6 +3509,9 @@
         "product": null,
         "id": 37,
         "type": "physical",
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/thr3am/interfaces/37/"
       },
       {
@@ -3491,6 +3590,9 @@
         "product": null,
         "id": 38,
         "type": "physical",
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/thr3am/interfaces/38/"
       },
       {
@@ -3569,6 +3671,9 @@
         "product": null,
         "id": 39,
         "type": "physical",
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/thr3am/interfaces/39/"
       },
       {
@@ -3646,6 +3751,9 @@
         "product": null,
         "id": 40,
         "type": "vlan",
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/thr3am/interfaces/40/"
       },
       {
@@ -3724,6 +3832,9 @@
         "product": null,
         "id": 41,
         "type": "vlan",
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/thr3am/interfaces/41/"
       },
       {
@@ -3802,6 +3913,9 @@
         "product": null,
         "id": 42,
         "type": "vlan",
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/thr3am/interfaces/42/"
       }
     ],
@@ -3949,6 +4063,9 @@
       "product": null,
       "id": 37,
       "type": "physical",
+      "link_connected": true,
+      "interface_speed": 1000,
+      "link_speed": 1000,
       "resource_uri": "/MAAS/api/2.0/nodes/thr3am/interfaces/37/"
     },
     "raids": [],
@@ -4133,6 +4250,8 @@
     "power_state": "on",
     "hostname": "above-robin",
     "description": "Optional description for the machine.",
+    "interface_test_status_name": "Unknown",
+    "interface_test_status": -1,
     "resource_uri": "/MAAS/api/2.0/machines/thr3am/"
   },
   "machines-clear-gateways": {
@@ -4215,6 +4334,9 @@
       ],
       "mac_address": "cb:93:ac:d1:ed:65",
       "effective_mtu": 1500,
+      "link_connected": true,
+      "interface_speed": 1000,
+      "link_speed": 1000,
       "resource_uri": "/MAAS/api/2.0/nodes/thr3am/interfaces/37/"
     },
     "locked": false,
@@ -4436,6 +4558,9 @@
         ],
         "mac_address": "cb:93:ac:d1:ed:65",
         "effective_mtu": 1500,
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/thr3am/interfaces/37/"
       },
       {
@@ -4514,6 +4639,9 @@
         ],
         "mac_address": "bc:d3:d5:28:88:dc",
         "effective_mtu": 1500,
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/thr3am/interfaces/38/"
       },
       {
@@ -4592,6 +4720,9 @@
         ],
         "mac_address": "ad:5a:3e:a3:68:13",
         "effective_mtu": 1500,
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/thr3am/interfaces/39/"
       },
       {
@@ -4669,6 +4800,9 @@
         ],
         "mac_address": "cb:93:ac:d1:ed:65",
         "effective_mtu": 1500,
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/thr3am/interfaces/40/"
       },
       {
@@ -4747,6 +4881,9 @@
         ],
         "mac_address": "bc:d3:d5:28:88:dc",
         "effective_mtu": 1500,
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/thr3am/interfaces/41/"
       },
       {
@@ -4825,6 +4962,9 @@
         ],
         "mac_address": "ad:5a:3e:a3:68:13",
         "effective_mtu": 1500,
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/thr3am/interfaces/42/"
       }
     ],
@@ -5038,6 +5178,8 @@
       "mainboard_firmware_version": "Unknown",
       "mainboard_firmware_date": "Unknown"
     },
+    "interface_test_status_name": "Unknown",
+    "interface_test_status": -1,
     "resource_uri": "/MAAS/api/2.0/machines/thr3am/"
   },
   "machines-restore-networking": {
@@ -5395,6 +5537,8 @@
     "other_test_status": 2,
     "storage_test_status_name": "Passed",
     "cpu_count": 3,
+    "interface_test_status_name": "Unknown",
+    "interface_test_status": -1,
     "resource_uri": "/MAAS/api/2.0/machines/thr3am/"
   },
   "machines-restore-storage": {
@@ -5752,6 +5896,8 @@
     "commissioning_status_name": "Passed",
     "locked": false,
     "virtualblockdevice_set": [],
+    "interface_test_status_name": "Unknown",
+    "interface_test_status": -1,
     "resource_uri": "/MAAS/api/2.0/machines/thr3am/"
   },
   "machines-restore-default": {
@@ -6109,6 +6255,8 @@
         "resource_uri": "/MAAS/api/2.0/nodes/thr3am/blockdevices/20/"
       }
     ],
+    "interface_test_status_name": "Unknown",
+    "interface_test_status": -1,
     "resource_uri": "/MAAS/api/2.0/machines/thr3am/"
   },
   "machines-mark-broken": {
@@ -6466,6 +6614,8 @@
     "other_test_status": 2,
     "boot_interface": null,
     "virtualblockdevice_set": [],
+    "interface_test_status_name": "Unknown",
+    "interface_test_status": -1,
     "resource_uri": "/MAAS/api/2.0/machines/thr3am/"
   },
   "machines-mark-fixed": {
@@ -6823,6 +6973,8 @@
     "netboot": true,
     "status_name": "Ready",
     "iscsiblockdevice_set": [],
+    "interface_test_status_name": "Unknown",
+    "interface_test_status": -1,
     "resource_uri": "/MAAS/api/2.0/machines/thr3am/"
   },
   "machines-rescue-mode": {
@@ -6952,6 +7104,9 @@
       "tags": [],
       "parents": [],
       "system_id": "a8m7sr",
+      "link_connected": true,
+      "interface_speed": 1000,
+      "link_speed": 1000,
       "resource_uri": "/MAAS/api/2.0/nodes/a8m7sr/interfaces/6/"
     },
     "interface_set": [
@@ -6987,6 +7142,9 @@
         "tags": [],
         "parents": [],
         "system_id": "a8m7sr",
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/a8m7sr/interfaces/6/"
       }
     ],
@@ -7075,6 +7233,8 @@
       "system_id": "a8m7sr",
       "resource_uri": "/MAAS/api/2.0/nodes/a8m7sr/blockdevices/3/"
     },
+    "interface_test_status_name": "Unknown",
+    "interface_test_status": -1,
     "resource_uri": "/MAAS/api/2.0/machines/a8m7sr/"
   },
   "machines-exit-rescue-mode": {
@@ -7204,6 +7364,9 @@
       "tags": [],
       "parents": [],
       "system_id": "a8m7sr",
+      "link_connected": true,
+      "interface_speed": 1000,
+      "link_speed": 1000,
       "resource_uri": "/MAAS/api/2.0/nodes/a8m7sr/interfaces/6/"
     },
     "interface_set": [
@@ -7239,6 +7402,9 @@
         "tags": [],
         "parents": [],
         "system_id": "a8m7sr",
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/a8m7sr/interfaces/6/"
       }
     ],
@@ -7327,6 +7493,8 @@
       "system_id": "a8m7sr",
       "resource_uri": "/MAAS/api/2.0/nodes/a8m7sr/blockdevices/3/"
     },
+    "interface_test_status_name": "Unknown",
+    "interface_test_status": -1,
     "resource_uri": "/MAAS/api/2.0/machines/a8m7sr/"
   },
   "machines-lock": {
@@ -7451,6 +7619,9 @@
         "discovered": null,
         "vendor": null,
         "id": 46,
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/recrwg/interfaces/46/"
       },
       {
@@ -7528,6 +7699,9 @@
         "discovered": null,
         "vendor": null,
         "id": 47,
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/recrwg/interfaces/47/"
       },
       {
@@ -7605,6 +7779,9 @@
         "discovered": null,
         "vendor": null,
         "id": 48,
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/recrwg/interfaces/48/"
       },
       {
@@ -7684,6 +7861,9 @@
         "discovered": null,
         "vendor": null,
         "id": 49,
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/recrwg/interfaces/49/"
       },
       {
@@ -7763,6 +7943,9 @@
         "discovered": null,
         "vendor": null,
         "id": 50,
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/recrwg/interfaces/50/"
       },
       {
@@ -7842,6 +8025,9 @@
         "discovered": null,
         "vendor": null,
         "id": 51,
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/recrwg/interfaces/51/"
       }
     ],
@@ -7921,6 +8107,9 @@
       "discovered": null,
       "vendor": null,
       "id": 46,
+      "link_connected": true,
+      "interface_speed": 1000,
+      "link_speed": 1000,
       "resource_uri": "/MAAS/api/2.0/nodes/recrwg/interfaces/46/"
     },
     "status_message": "(admin)",
@@ -8246,6 +8435,8 @@
         "resource_uri": "/MAAS/api/2.0/nodes/recrwg/blockdevices/24/"
       }
     ],
+    "interface_test_status_name": "Unknown",
+    "interface_test_status": -1,
     "resource_uri": "/MAAS/api/2.0/machines/recrwg/"
   },
   "machines-unlock": {
@@ -8523,6 +8714,9 @@
         "name": "eth-xMPy44",
         "vendor": null,
         "system_id": "recrwg",
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/recrwg/interfaces/46/"
       },
       {
@@ -8600,6 +8794,9 @@
         "name": "eth-y3Syjk",
         "vendor": null,
         "system_id": "recrwg",
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/recrwg/interfaces/47/"
       },
       {
@@ -8677,6 +8874,9 @@
         "name": "eth-mrQO2Y",
         "vendor": null,
         "system_id": "recrwg",
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/recrwg/interfaces/48/"
       },
       {
@@ -8756,6 +8956,9 @@
         "name": "eth-xMPy44.10",
         "vendor": null,
         "system_id": "recrwg",
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/recrwg/interfaces/49/"
       },
       {
@@ -8835,6 +9038,9 @@
         "name": "eth-y3Syjk.10",
         "vendor": null,
         "system_id": "recrwg",
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/recrwg/interfaces/50/"
       },
       {
@@ -8914,6 +9120,9 @@
         "name": "eth-mrQO2Y.10",
         "vendor": null,
         "system_id": "recrwg",
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/recrwg/interfaces/51/"
       }
     ],
@@ -9117,6 +9326,9 @@
       "name": "eth-xMPy44",
       "vendor": null,
       "system_id": "recrwg",
+      "link_connected": true,
+      "interface_speed": 1000,
+      "link_speed": 1000,
       "resource_uri": "/MAAS/api/2.0/nodes/recrwg/interfaces/46/"
     },
     "distro_series": "",
@@ -9165,6 +9377,8 @@
       "resource_uri": "/MAAS/api/2.0/resourcepool/0/"
     },
     "power_type": "virsh",
+    "interface_test_status_name": "Unknown",
+    "interface_test_status": -1,
     "resource_uri": "/MAAS/api/2.0/machines/recrwg/"
   },
   "machines-create": {
@@ -9206,6 +9420,9 @@
       "enabled": true,
       "firmware_version": null,
       "name": "eth0",
+      "link_connected": true,
+      "interface_speed": 1000,
+      "link_speed": 1000,
       "resource_uri": "/MAAS/api/2.0/nodes/p37gqk/interfaces/137/"
     },
     "cache_sets": [],
@@ -9239,6 +9456,9 @@
         "enabled": true,
         "firmware_version": null,
         "name": "eth0",
+        "link_connected": false,
+        "interface_speed": 0,
+        "link_speed": 0,
         "resource_uri": "/MAAS/api/2.0/nodes/p37gqk/interfaces/137/"
       }
     ],
@@ -9308,6 +9528,8 @@
     "memory_test_status": -1,
     "raids": [],
     "hwe_kernel": null,
+    "interface_test_status_name": "Unknown",
+    "interface_test_status": -1,
     "resource_uri": "/MAAS/api/2.0/machines/p37gqk/"
   },
   "machines-allocate": {
@@ -9580,6 +9802,9 @@
       "id": 37,
       "params": "",
       "name": "eth-lKRYAa",
+      "link_connected": true,
+      "interface_speed": 1000,
+      "link_speed": 1000,
       "resource_uri": "/MAAS/api/2.0/nodes/thr3am/interfaces/37/"
     },
     "osystem": "",
@@ -9777,6 +10002,9 @@
         "id": 37,
         "params": "",
         "name": "eth-lKRYAa",
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/thr3am/interfaces/37/"
       },
       {
@@ -9855,6 +10083,9 @@
         "id": 38,
         "params": "",
         "name": "eth-3ookc5",
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/thr3am/interfaces/38/"
       },
       {
@@ -9933,6 +10164,9 @@
         "id": 39,
         "params": "",
         "name": "eth-W8E8f0",
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/thr3am/interfaces/39/"
       },
       {
@@ -10010,6 +10244,9 @@
         "id": 40,
         "params": "",
         "name": "eth-lKRYAa.42",
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/thr3am/interfaces/40/"
       },
       {
@@ -10088,6 +10325,9 @@
         "id": 41,
         "params": "",
         "name": "eth-3ookc5.42",
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/thr3am/interfaces/41/"
       },
       {
@@ -10166,6 +10406,9 @@
         "id": 42,
         "params": "",
         "name": "eth-W8E8f0.42",
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/thr3am/interfaces/42/"
       }
     ],
@@ -10214,6 +10457,8 @@
     "cpu_speed": 0,
     "cache_sets": [],
     "owner_data": {},
+    "interface_test_status_name": "Unknown",
+    "interface_test_status": -1,
     "resource_uri": "/MAAS/api/2.0/machines/thr3am/"
   }
 }

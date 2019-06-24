@@ -38,6 +38,9 @@
       "links": [],
       "effective_mtu": 1500,
       "product": null,
+      "link_connected": true,
+      "interface_speed": 1000,
+      "link_speed": 1000,
       "resource_uri": "/MAAS/api/2.0/nodes/g8xyqs/interfaces/112/"
     },
     "memory": 8192,
@@ -224,6 +227,9 @@
         "links": [],
         "effective_mtu": 1500,
         "product": null,
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/g8xyqs/interfaces/112/"
       },
       {
@@ -264,6 +270,9 @@
         "links": [],
         "effective_mtu": 1500,
         "product": null,
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/g8xyqs/interfaces/113/"
       },
       {
@@ -304,6 +313,9 @@
         "links": [],
         "effective_mtu": 1500,
         "product": null,
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/g8xyqs/interfaces/114/"
       },
       {
@@ -346,6 +358,9 @@
         "links": [],
         "effective_mtu": 1500,
         "product": null,
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/g8xyqs/interfaces/115/"
       }
     ],
@@ -440,6 +455,8 @@
     "other_test_status_name": "Passed",
     "virtualblockdevice_set": [],
     "cpu_speed": 0,
+    "interface_test_status_name": "Unknown",
+    "interface_test_status": -1,
     "resource_uri": "/MAAS/api/2.0/machines/g8xyqs/"
   },
   "details": {
@@ -630,6 +647,9 @@
               }
             }
           ],
+          "link_connected": true,
+          "interface_speed": 1000,
+          "link_speed": 1000,
           "resource_uri": "/MAAS/api/2.0/nodes/6gsym8/interfaces/1/"
         },
         {
@@ -699,6 +719,9 @@
               }
             }
           ],
+          "link_connected": true,
+          "interface_speed": 1000,
+          "link_speed": 1000,
           "resource_uri": "/MAAS/api/2.0/nodes/6gsym8/interfaces/17/"
         }
       ],
@@ -731,6 +754,8 @@
       "storage_test_status_name": "Unknown",
       "architecture": "amd64/generic",
       "cpu_test_status_name": "Unknown",
+      "interface_test_status_name": "Unknown",
+      "interface_test_status": -1,
       "resource_uri": "/MAAS/api/2.0/rackcontrollers/6gsym8/"
     }
   ],
@@ -811,6 +836,9 @@
         }
       ],
       "discovered": null,
+      "link_connected": true,
+      "interface_speed": 1000,
+      "link_speed": 1000,
       "resource_uri": "/MAAS/api/2.0/nodes/q46awd/interfaces/100/"
     },
     "swap_size": null,
@@ -942,6 +970,9 @@
           }
         ],
         "discovered": null,
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/q46awd/interfaces/100/"
       },
       {
@@ -1016,6 +1047,9 @@
           }
         ],
         "discovered": null,
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/q46awd/interfaces/101/"
       },
       {
@@ -1091,6 +1125,9 @@
           }
         ],
         "discovered": null,
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/q46awd/interfaces/102/"
       }
     ],
@@ -1429,6 +1466,8 @@
     "ip_addresses": [
       "172.16.1.252"
     ],
+    "interface_test_status_name": "Unknown",
+    "interface_test_status": -1,
     "resource_uri": "/MAAS/api/2.0/machines/q46awd/"
   },
   "query-power-state": {
@@ -1513,6 +1552,9 @@
       "tags": [],
       "type": "physical",
       "params": "",
+      "link_connected": true,
+      "interface_speed": 1000,
+      "link_speed": 1000,
       "resource_uri": "/MAAS/api/2.0/nodes/e8xa8m/interfaces/5/"
     },
     "boot_disk": {
@@ -1734,6 +1776,9 @@
         "tags": [],
         "type": "physical",
         "params": "",
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/e8xa8m/interfaces/5/"
       }
     ],
@@ -1820,6 +1865,8 @@
     "status_name": "Deployed",
     "storage_test_status_name": "Passed",
     "owner": "admin",
+    "interface_test_status_name": "Unknown",
+    "interface_test_status": -1,
     "resource_uri": "/MAAS/api/2.0/machines/e8xa8m/"
   },
   "power-off": {
@@ -1901,6 +1948,9 @@
       "tags": [],
       "type": "physical",
       "params": "",
+      "link_connected": true,
+      "interface_speed": 1000,
+      "link_speed": 1000,
       "resource_uri": "/MAAS/api/2.0/nodes/e8xa8m/interfaces/5/"
     },
     "boot_disk": {
@@ -2122,6 +2172,9 @@
         "tags": [],
         "type": "physical",
         "params": "",
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/e8xa8m/interfaces/5/"
       }
     ],
@@ -2208,6 +2261,8 @@
     "status_name": "Deployed",
     "storage_test_status_name": "Passed",
     "owner": "admin",
+    "interface_test_status_name": "Unknown",
+    "interface_test_status": -1,
     "resource_uri": "/MAAS/api/2.0/machines/e8xa8m/"
   },
   "test": {
@@ -2365,6 +2420,9 @@
       "system_id": "e8xa8m",
       "enabled": true,
       "name": "ens4",
+      "link_connected": true,
+      "interface_speed": 1000,
+      "link_speed": 1000,
       "resource_uri": "/MAAS/api/2.0/nodes/e8xa8m/interfaces/5/"
     },
     "pod": {
@@ -2592,10 +2650,15 @@
         "system_id": "e8xa8m",
         "enabled": true,
         "name": "ens4",
+        "link_connected": true,
+        "interface_speed": 1000,
+        "link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/e8xa8m/interfaces/5/"
       }
     ],
     "commissioning_status_name": "Passed",
+    "interface_test_status_name": "Unknown",
+    "interface_test_status": -1,
     "resource_uri": "/MAAS/api/2.0/machines/e8xa8m/"
   },
   "get-power-params": {

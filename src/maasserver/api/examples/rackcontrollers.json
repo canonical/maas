@@ -43,6 +43,9 @@
                     "params": "",
                     "vendor": null,
                     "type": "physical",
+		    "link_connected": true,
+		    "interface_speed": 1000,
+		    "link_speed": 1000,
                     "resource_uri": "/MAAS/api/2.0/nodes/fcka3t/interfaces/6/"
                 },
                 {
@@ -83,6 +86,9 @@
                     "params": "",
                     "vendor": null,
                     "type": "physical",
+		    "link_connected": true,
+		    "interface_speed": 1000,
+		    "link_speed": 1000,
                     "resource_uri": "/MAAS/api/2.0/nodes/fcka3t/interfaces/7/"
                 },
                 {
@@ -160,6 +166,9 @@
                     "params": "",
                     "vendor": null,
                     "type": "physical",
+		    "link_connected": true,
+		    "interface_speed": 1000,
+		    "link_speed": 1000,
                     "resource_uri": "/MAAS/api/2.0/nodes/fcka3t/interfaces/8/"
                 },
                 {
@@ -240,6 +249,9 @@
                     "params": "",
                     "vendor": null,
                     "type": "bond",
+		    "link_connected": true,
+		    "interface_speed": 1000,
+		    "link_speed": 1000,
                     "resource_uri": "/MAAS/api/2.0/nodes/fcka3t/interfaces/9/"
                 },
                 {
@@ -319,6 +331,9 @@
                     "params": "",
                     "vendor": null,
                     "type": "vlan",
+		    "link_connected": true,
+		    "interface_speed": 1000,
+		    "link_speed": 1000,
                     "resource_uri": "/MAAS/api/2.0/nodes/fcka3t/interfaces/10/"
                 }
             ],
@@ -541,6 +556,9 @@
                 "mac_address": "f9:d6:ff:1b:a9:64",
                 "system_id": "fcka3t",
                 "effective_mtu": 1500,
+		"link_connected": true,
+		"interface_speed": 1000,
+		"link_speed": 1000,
                 "resource_uri": "/MAAS/api/2.0/nodes/fcka3t/interfaces/6/"
             },
             {
@@ -581,6 +599,9 @@
                 "mac_address": "4f:e6:e6:df:61:ec",
                 "system_id": "fcka3t",
                 "effective_mtu": 1500,
+		"link_connected": true,
+		"interface_speed": 1000,
+		"link_speed": 1000,
                 "resource_uri": "/MAAS/api/2.0/nodes/fcka3t/interfaces/7/"
             },
             {
@@ -658,6 +679,9 @@
                 "mac_address": "ac:8e:44:fc:d0:97",
                 "system_id": "fcka3t",
                 "effective_mtu": 1500,
+		"link_connected": true,
+		"interface_speed": 1000,
+		"link_speed": 1000,
                 "resource_uri": "/MAAS/api/2.0/nodes/fcka3t/interfaces/8/"
             },
             {
@@ -738,6 +762,9 @@
                 "mac_address": "b6:b4:a9:23:a9:af",
                 "system_id": "fcka3t",
                 "effective_mtu": 1500,
+		"link_connected": true,
+		"interface_speed": 1000,
+		"link_speed": 1000,
                 "resource_uri": "/MAAS/api/2.0/nodes/fcka3t/interfaces/9/"
             },
             {
@@ -817,6 +844,9 @@
                 "mac_address": "b6:b4:a9:23:a9:af",
                 "system_id": "fcka3t",
                 "effective_mtu": 1500,
+		"link_connected": true,
+		"interface_speed": 1000,
+		"link_speed": 1000,
                 "resource_uri": "/MAAS/api/2.0/nodes/fcka3t/interfaces/10/"
             }
         ],
@@ -916,6 +946,8 @@
         },
         "cpu_count": 0,
         "commissioning_status_name": "Unknown",
+	"interface_test_status_name": "Unknown",
+	"interface_test_status": -1,
         "resource_uri": "/MAAS/api/2.0/rackcontrollers/fcka3t/"
     }
 }

@@ -102,6 +102,9 @@
         },
         "system_id": "ccfqya",
         "children": [],
+	"link_connected": true,
+	"interface_speed": 1000,
+	"link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/ccfqya/interfaces/1/"
       },
       {
@@ -138,6 +141,9 @@
         "children": [
           "br0"
         ],
+	"link_connected": true,
+	"interface_speed": 1000,
+	"link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/ccfqya/interfaces/2/"
       },
       {
@@ -209,6 +215,9 @@
         },
         "system_id": "ccfqya",
         "children": [],
+	"link_connected": true,
+	"interface_speed": 1000,
+	"link_speed": 1000,
         "resource_uri": "/MAAS/api/2.0/nodes/ccfqya/interfaces/3/"
       }
     ],
@@ -243,6 +252,8 @@
     "other_test_status": -1,
     "cpu_test_status_name": "Unknown",
     "system_id": "ccfqya",
+    "interface_test_status_name": "Unknown",
+    "interface_test_status": -1,
     "resource_uri": "/MAAS/api/2.0/rackcontrollers/ccfqya/"
   }
 }
