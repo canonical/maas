@@ -10,6 +10,7 @@ __all__ = [
     'IndexHandler',
     'MAASScriptsHandler',
     'MetaDataHandler',
+    'NETPLAN_TAR_PATH',
     'UserDataHandler',
     'VersionIndexHandler',
 ]
@@ -71,8 +72,10 @@ from maasserver.populate_tags import populate_tags_for_single_node
 from maasserver.preseed import (
     get_curtin_userdata,
     get_enlist_preseed,
+    get_network_yaml_settings,
     get_preseed,
 )
+from maasserver.preseed_network import NodeNetworkConfiguration
 from maasserver.utils import find_rack_controller
 from maasserver.utils.orm import (
     get_one,
@@ -111,6 +114,11 @@ import yaml
 
 
 log = LegacyLogger()
+
+
+# Where the netplan configuration file should be stored in the Scripts tar.
+# ../ is added to keep config outside of the scripts directory.
+NETPLAN_TAR_PATH = "../config/netplan.yaml"
 
 
 class UnknownMetadataVersion(MAASAPINotFound):
@@ -1032,6 +1040,8 @@ class MAASScriptsHandler(OperationsHandler):
                             'hardware_type', HARDWARE_TYPE.NODE),
                         'packages': script.get('packages', {}),
                         'for_hardware': script.get('for_hardware', []),
+                        'apply_configured_networking': script.get(
+                            'apply_configured_networking', False),
                     }
                 else:
                     # Script was deleted by the user and it is not a builtin
@@ -1052,6 +1062,8 @@ class MAASScriptsHandler(OperationsHandler):
                     'parameters': script_result.parameters,
                     'packages': script_result.script.packages,
                     'for_hardware': script_result.script.for_hardware,
+                    'apply_configured_networking': (
+                        script_result.script.apply_configured_networking),
                 }
             if script_result.status == SCRIPT_STATUS.PENDING:
                 md_item['has_started'] = False
@@ -1069,7 +1081,25 @@ class MAASScriptsHandler(OperationsHandler):
                     tar, '%s.err' % out_path, script_result.stderr, mtime)
                 add_file_to_tar(
                     tar, '%s.yaml' % out_path, script_result.result, mtime)
+
+            # Only generate and add network configuration if the Script needs
+            # it and it hasn't already been added.
+            if (md_item['apply_configured_networking'] and
+                    NETPLAN_TAR_PATH not in tar.getnames()):
+                node = script_result.script_set.node
+                network_yaml_settings = get_network_yaml_settings(
+                    node.get_osystem(), node.get_distro_series())
+                network_config = NodeNetworkConfiguration(
+                    node, version=network_yaml_settings.version,
+                    source_routing=network_yaml_settings.source_routing)
+                network_config_yaml = yaml.safe_dump(
+                    network_config.config, default_flow_style=False)
+                add_file_to_tar(
+                    tar, NETPLAN_TAR_PATH,
+                    network_config_yaml.encode(), mtime, 0o644)
+
             meta_data.append(md_item)
+
         return meta_data
 
     def read(self, request, version, mac=None):
@@ -1137,6 +1167,7 @@ class MAASScriptsHandler(OperationsHandler):
             add_file_to_tar(
                 tar, 'index.json', json.dumps({'1.0': tar_meta_data}).encode(),
                 mtime, 0o644)
+
         return HttpResponse(
             binary.getvalue(), content_type='application/x-tar')
 

@@ -53,6 +53,8 @@ from maasserver.models import (
     Tag,
     VersionedTextFile,
 )
+from maasserver.preseed import get_network_yaml_settings
+from maasserver.preseed_network import NodeNetworkConfiguration
 from maasserver.models.node import Node
 from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.rpc.testing.mixins import PreseedRPCMixin
@@ -75,6 +77,7 @@ from metadataserver.api import (
     add_event_to_node_event_log,
     check_version,
     get_node_for_mac,
+    NETPLAN_TAR_PATH,
     get_node_for_request,
     get_queried_node,
     make_list_response,
@@ -1170,16 +1173,17 @@ class TestInstallingAPI(MAASServerTestCase):
 class TestMAASScripts(MAASServerTestCase):
 
     def extract_and_validate_file(
-            self, tar, path, start_time, end_time, content):
+            self, tar, path, start_time, end_time, content, mode=0o755):
         member = tar.getmember(path)
         self.assertGreaterEqual(member.mtime, start_time)
         self.assertLessEqual(member.mtime, end_time)
-        self.assertEqual(0o755, member.mode)
+        self.assertEqual(mode, member.mode)
         self.assertEqual(content, tar.extractfile(path).read())
 
     def validate_scripts(
             self, script_set, path_name, tar, start_time, end_time):
         meta_data = []
+        contains_network_config = False
         for script_result in script_set:
             script_path = os.path.join(path_name, script_result.name)
             md_item = {
@@ -1197,6 +1201,8 @@ class TestMAASScripts(MAASServerTestCase):
                     'hardware_type', HARDWARE_TYPE.NODE)
                 md_item['packages'] = script.get('packages', {})
                 md_item['for_hardware'] = script.get('for_hardware', [])
+                md_item['apply_configured_networking'] = script.get(
+                    'apply_configured_networking', False)
             else:
                 content = script_result.script.script.data.encode()
                 md_item['script_version_id'] = script_result.script.script.id
@@ -1207,6 +1213,9 @@ class TestMAASScripts(MAASServerTestCase):
                 md_item['parameters'] = script_result.parameters
                 md_item['packages'] = script_result.script.packages
                 md_item['for_hardware'] = script_result.script.for_hardware
+                md_item['apply_configured_networking'] = (
+                    script_result.script.apply_configured_networking)
+
             if script_result.status == SCRIPT_STATUS.PENDING:
                 md_item['has_started'] = False
             else:
@@ -1224,9 +1233,28 @@ class TestMAASScripts(MAASServerTestCase):
                 self.extract_and_validate_file(
                     tar, '%s.yaml' % out_path, start_time, end_time,
                     script_result.result)
+
+            if md_item['apply_configured_networking']:
+                contains_network_config = True
+
             self.extract_and_validate_file(
                 tar, script_path, start_time, end_time, content)
             meta_data.append(md_item)
+
+        if contains_network_config:
+            node = script_result.script_set.node
+            network_yaml_settings = get_network_yaml_settings(
+                node.get_osystem(), node.get_distro_series())
+            network_config = NodeNetworkConfiguration(
+                node, version=network_yaml_settings.version,
+                source_routing=network_yaml_settings.source_routing)
+            network_config_yaml = yaml.safe_dump(
+                network_config.config, default_flow_style=False)
+            self.extract_and_validate_file(
+                tar, NETPLAN_TAR_PATH, start_time, end_time,
+                network_config_yaml.encode(), 0o644)
+        else:
+            self.assertNotIn(NETPLAN_TAR_PATH, tar.getnames())
         return meta_data
 
     def test__returns_all_scripts_when_commissioning(self):
@@ -1450,6 +1478,8 @@ class TestMAASScripts(MAASServerTestCase):
                 'parameters': script_result.parameters,
                 'packages': script_result.script.packages,
                 'for_hardware': script_result.script.for_hardware,
+                'apply_configured_networking': (
+                    script_result.script.apply_configured_networking),
                 'has_started': False,
                 }]}}, meta_data)
 
@@ -1529,6 +1559,41 @@ class TestMAASScripts(MAASServerTestCase):
         # index.json + one script + combined, stdout, stderr, and result
         # output.
         self.assertEquals(6, len(tar.getmembers()))
+
+        testing_meta_data = self.validate_scripts(
+            node.current_testing_script_set, 'testing',
+            tar, start_time, end_time)
+
+        meta_data = json.loads(
+            tar.extractfile('index.json').read().decode('utf-8'))
+        self.assertDictEqual(
+            {'1.0': {
+                'testing_scripts': sorted(
+                    testing_meta_data, key=itemgetter(
+                        'name', 'script_result_id')),
+            }}, meta_data)
+
+    def test__contains_netplan_yaml_with_apply_config_networking(self):
+        start_time = floor(time.time())
+        node = factory.make_Node(status=NODE_STATUS.TESTING)
+        script_set = factory.make_ScriptSet(result_type=RESULT_TYPE.TESTING)
+        node.current_testing_script_set = script_set
+        node.save()
+        script = factory.make_Script(apply_configured_networking=True)
+        factory.make_ScriptResult(
+            script=script, script_set=script_set, status=SCRIPT_STATUS.PENDING)
+
+        response = make_node_client(node=node).get(
+            reverse('maas-scripts', args=['latest']))
+        self.assertEqual(
+            http.client.OK, response.status_code,
+            "Unexpected response %d: %s"
+            % (response.status_code, response.content))
+        self.assertEquals('application/x-tar', response['Content-Type'])
+        tar = tarfile.open(mode='r', fileobj=BytesIO(response.content))
+        end_time = ceil(time.time())
+        # index.json + one script + netplan.yaml
+        self.assertEquals(3, len(tar.getmembers()))
 
         testing_meta_data = self.validate_scripts(
             node.current_testing_script_set, 'testing',
