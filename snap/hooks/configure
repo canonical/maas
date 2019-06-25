@@ -7,7 +7,8 @@ set -e
 # Create the required directories for services to run.
 mkdir -p "$SNAP_COMMON/log/"{proxy,http}
 mkdir -p "$SNAP_COMMON/proxy/"{cache,spool}
-chown -R nobody:nogroup "$SNAP_COMMON/log/proxy"
+chown -R nobody:root "$SNAP_COMMON/log"
+chmod 775 "$SNAP_COMMON/log"
 chown -R nobody:nogroup "$SNAP_COMMON/proxy/"{cache,spool}
 mkdir -p "$SNAP_DATA/preseeds"
 mkdir -p "$SNAP_DATA/bind"

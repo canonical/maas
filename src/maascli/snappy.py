@@ -318,7 +318,11 @@ def run_with_drop_privileges(cmd, *args, **kwargs):
         cmd(*args, **kwargs)
         sys.exit(0)
     else:
-        os.waitpid(pid, 0)
+        _, code = os.waitpid(pid, 0)
+        if code:
+            # fail if the child process failed (the error will be reported
+            # there)
+            sys.exit(1)
 
 
 def run_sql(sql):
@@ -352,7 +356,8 @@ def start_postgres():
     subprocess.check_output([
         os.path.join(os.environ['SNAP'], 'bin', 'pg_ctl'),
         'start', '-w', '-D', os.path.join(os.environ['SNAP_COMMON'], 'db'),
-        '-l', os.path.join(os.environ['SNAP_COMMON'], 'log', 'postgresql.log'),
+        '-l',
+        os.path.join(os.environ['SNAP_COMMON'], 'log', 'postgresql-init.log'),
         '-o', '-k "%s" -h ""' % os.path.join(os.environ['SNAP_COMMON'], 'db')],
         stderr=subprocess.STDOUT)
     wait_for_postgresql()

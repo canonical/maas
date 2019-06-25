@@ -14,4 +14,4 @@ export LD_PRELOAD="$SNAP/usr/lib/stub_initgroups.so"
 "$SNAP/snap/command-chain/snapcraft-runner" "$SNAP/command-maas.wrapper" config --render
 
 # Run the supervisor for the snap.
-exec "$SNAP/bin/supervisord" -d "$SNAP_DATA/supervisord" -c "$SNAP_DATA/supervisord/supervisord.conf" -n > "$SNAP_COMMON/log/supervisor.log" 2>&1
+exec "$SNAP/bin/supervisord" -d "$SNAP_DATA/supervisord" -c "$SNAP_DATA/supervisord/supervisord.conf" -n > "$SNAP_COMMON/log/supervisor-run.log" 2>&1
