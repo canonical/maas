@@ -21,6 +21,7 @@ import { cacheErrorOverlay } from "./directives/error_overlay";
 import { cacheNotifications } from "./directives/notifications";
 import { cacheOsSelect } from "./directives/os_select";
 import { cachePodParameters } from "./directives/pod_parameters";
+import { cacheCoresChart } from "./directives/cores_chart";
 import { cachePowerParameters } from "./directives/power_parameters";
 import { cacheReleaseOptions } from "./directives/release_options";
 import { cacheScriptRuntime } from "./directives/script_runtime";
@@ -196,6 +197,7 @@ import { maasNotifications } from "./directives/notifications";
 import { maasOsSelect } from "./directives/os_select";
 import ngPlaceholder from "./directives/placeholder";
 import { maasPodParameters } from "./directives/pod_parameters";
+import { maasCoresChart } from "./directives/cores_chart";
 import {
   maasPowerInput,
   maasPowerParameters
@@ -501,6 +503,7 @@ angular
   .run(cacheNotifications)
   .run(cacheOsSelect)
   .run(cachePodParameters)
+  .run(cacheCoresChart)
   .run(cachePowerParameters)
   .run(cacheReleaseOptions)
   .run(cacheScriptRuntime)
@@ -651,6 +654,7 @@ angular
   .directive("maasOsSelect", maasOsSelect)
   .directive("ngPlaceholder", ngPlaceholder)
   .directive("maasPodParameters", maasPodParameters)
+  .directive("maasCoresChart", maasCoresChart)
   .directive("maasPowerInput", maasPowerInput)
   .directive("maasPowerParameters", maasPowerParameters)
   .directive("maasPrefKeys", maasPrefKeys)

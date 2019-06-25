@@ -281,3 +281,10 @@
   font-size: map-get($base-font-sizes, base);
   text-transform: initial;
 }
+
+// Default styles for maas elements e.g. <maas-obj...
+%maas-element {
+  display: block;
+  position: relative;
+  width: 100%;
+}
