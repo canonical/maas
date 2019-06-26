@@ -418,7 +418,8 @@ def init_db():
         shutil.rmtree(db_path)
     os.mkdir(db_path)
     shutil.chown(db_path, user='nobody', group='nogroup')
-    log_path = os.path.join(os.environ['SNAP_COMMON'], 'log', 'postgresql.log')
+    log_path = os.path.join(
+        os.environ['SNAP_COMMON'], 'log', 'postgresql-init.log')
     if not os.path.exists(log_path):
         open(log_path, 'a').close()
     shutil.chown(log_path, user='nobody', group='nogroup')
