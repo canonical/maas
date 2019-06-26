@@ -5,7 +5,7 @@
 #
 # Author: Lee Trager <lee.trager@canonical.com>
 #
-# Copyright (C) 2017-2018 Canonical
+# Copyright (C) 2017-2019 Canonical
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
@@ -316,15 +316,39 @@ def get_block_devices():
         return _block_devices
 
 
+# Cache the interfaces so we only have to query once.
+_interfaces = None
+_interfaces_lock = Lock()
+
+
+def get_interfaces():
+    """If needed, query /sys for all known interfaces and store."""
+    global _interfaces
+    global _interfaces_lock
+    # Grab lock if cache is blank and double check we really need to fill
+    # cache once we get the lock.
+    if _interfaces is None:
+        _interfaces_lock.acquire()
+    if _interfaces is None:
+        interfaces = {}
+        for dev in os.listdir('/sys/class/net'):
+            address_path = os.path.join('/sys/class/net', dev, 'address')
+            if os.path.isfile(address_path):
+                with open(address_path, 'r') as f:
+                    interfaces[f.read().strip()] = dev
+        _interfaces = interfaces
+
+    if _interfaces_lock.locked():
+        _interfaces_lock.release()
+    return _interfaces
+
+
 def parse_parameters(script, scripts_dir):
     """Return a list containg script path and parameters to be passed to it."""
     ret = [os.path.join(scripts_dir, script['path'])]
     for param in script.get('parameters', {}).values():
         param_type = param.get('type')
-        if param_type == 'runtime':
-            argument_format = param.get('argument_format', '--runtime={input}')
-            ret += argument_format.format(input=param['value']).split()
-        elif param_type == 'storage':
+        if param_type == 'storage':
             value = param['value']
             if value == 'all':
                 raise KeyError(
@@ -357,6 +381,32 @@ def parse_parameters(script, scripts_dir):
                     "Please re-commission this node to re-discover the "
                     "storage devices, or delete this device manually."
                     % (model, serial))
+        elif param_type == 'interface':
+            value = param['value']
+            if value == 'all':
+                raise KeyError(
+                    "MAAS did not detect any interfaces during commissioning!")
+            try:
+                value['input'] = value['name'] = get_interfaces()[
+                    value['mac_address']]
+                argument_format = param.get(
+                    'argument_format', '--interface={name}')
+                ret += argument_format.format(**value).split()
+            except KeyError:
+                raise KeyError(
+                    "Interface device %s (vendor: %s product: %s) with MAC "
+                    "address %s has not been found!\n\n"
+                    "This indicates the interface has been removed or the OS "
+                    "is unable to find it due to a hardware failure. Please "
+                    "re-commision this node to re-discover the interfaces or "
+                    "delete this interface manually." % (
+                        value['name'], value['vendor'], value['product'],
+                        value['mac_address']))
+        else:
+            argument_format = param.get(
+                'argument_format', '--%s={input}' % param_type)
+            ret += argument_format.format(input=param['value']).split()
+
     return ret
 
 
@@ -395,6 +445,7 @@ def run_script(script, scripts_dir, send_result=True):
                 get_block_devices())
         except KeyError:
             pass
+        output += 'Discovered interfaces:\n%s\n' % str(get_interfaces())
 
         output = output.encode()
         args['files'] = {
@@ -520,8 +571,9 @@ def run_scripts(url, creds, scripts_dir, out_dir, scripts, send_result=True):
     # available which is why they are hard coded here.
     fail_count = 0
     scripts_ran = []
-    # Run CPU(1), memory(2), storage(3), and finally node(0). Because node is
-    # hardware_type 0 use 99 when ordering so it always runs last.
+    # Run CPU(1), memory(2), storage(3), network(4) and finally node(0).
+    # Because node is hardware_type 0 use 99 when ordering so it always runs
+    # last.
     for script in sorted(scripts, key=lambda i: (
             99 if i['hardware_type'] == 0 else i['hardware_type'], i['name'])):
         # Don't run scripts which have already run.

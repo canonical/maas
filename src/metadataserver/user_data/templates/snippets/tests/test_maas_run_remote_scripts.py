@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for maas_run_remote_scripts.py."""
@@ -25,6 +25,8 @@ from unittest.mock import (
     ANY,
     call,
     MagicMock,
+    mock_open,
+    patch,
 )
 from zipfile import ZipFile
 
@@ -41,6 +43,7 @@ from snippets import maas_run_remote_scripts
 from snippets.maas_run_remote_scripts import (
     download_and_extract_tar,
     get_block_devices,
+    get_interfaces,
     install_dependencies,
     parse_parameters,
     run_and_check,
@@ -613,6 +616,24 @@ class TestParseParameters(MAASTestCase):
 
         self.assertRaises(KeyError, get_block_devices)
 
+    def test_get_interfaces(self):
+        eth0_mac = factory.make_mac_address()
+        mock_listdir = self.patch(maas_run_remote_scripts.os, 'listdir')
+        mock_listdir.return_value = ['eth0']
+        self.patch(
+            maas_run_remote_scripts.os.path, 'isfile').return_value = True
+
+        with patch('builtins.open', mock_open(read_data=eth0_mac)):
+            self.assertDictEqual({eth0_mac: 'eth0'}, get_interfaces())
+
+    def test_get_interfaces_cached(self):
+        interfaces = {factory.make_mac_address(): factory.make_name('dev')}
+        maas_run_remote_scripts._interfaces = interfaces
+        mock_listdir = self.patch(maas_run_remote_scripts.os, 'listdir')
+
+        self.assertDictEqual(interfaces, get_interfaces())
+        self.assertThat(mock_listdir, MockNotCalled())
+
     def test_parse_parameters(self):
         scripts_dir = factory.make_name('scripts_dir')
         script = {
@@ -621,6 +642,10 @@ class TestParseParameters(MAASTestCase):
                 'runtime': {
                     'type': 'runtime',
                     'value': random.randint(0, 1000),
+                },
+                'url': {
+                    'type': 'url',
+                    'value': factory.make_url(),
                 },
                 'storage_virtio': {
                     'type': 'storage',
@@ -640,6 +665,24 @@ class TestParseParameters(MAASTestCase):
                         'id_path': '/dev/%s' % factory.make_name('id_path'),
                     },
                 },
+                'interface_virtio': {
+                    'type': 'interface',
+                    'value': {
+                        'name': factory.make_name('name'),
+                        'mac_address': factory.make_mac_address(),
+                        'vendor': factory.make_name('vendor'),
+                        'product': factory.make_name('product'),
+                    },
+                },
+                'interface': {
+                    'type': 'interface',
+                    'value': {
+                        'name': factory.make_name('name'),
+                        'mac_address': factory.make_mac_address(),
+                        'vendor': factory.make_name('vendor'),
+                        'product': factory.make_name('product'),
+                    },
+                },
             },
         }
         mock_check_output = self.patch(maas_run_remote_scripts, 'check_output')
@@ -649,15 +692,25 @@ class TestParseParameters(MAASTestCase):
             for param_name, param in script['parameters'].items()
             if 'storage' in param_name]).encode()
         maas_run_remote_scripts._block_devices = None
+        maas_run_remote_scripts._interfaces = {
+            param['value']['mac_address']: param['value']['name']
+            for param in script['parameters'].values()
+            if param['type'] == 'interface'
+        }
 
         self.assertItemsEqual(
             [
                 os.path.join(scripts_dir, script['path']),
                 '--runtime=%s' % script['parameters']['runtime']['value'],
+                '--url=%s' % script['parameters']['url']['value'],
                 '--storage=%s' % script['parameters']['storage_virtio'][
                     'value']['id_path'],
                 '--storage=/dev/%s' % script['parameters']['storage']['value'][
                     'name'],
+                '--interface=%s' % script['parameters']['interface_virtio'][
+                    'value']['name'],
+                '--interface=%s' % script['parameters']['interface'][
+                    'value']['name'],
             ], parse_parameters(script, scripts_dir))
 
     def test_parse_parameters_argument_format(self):
@@ -670,6 +723,11 @@ class TestParseParameters(MAASTestCase):
                     'value': random.randint(0, 1000),
                     'argument_format': '--foo --timeout {input}',
                 },
+                'url': {
+                    'type': 'url',
+                    'value': factory.make_url(),
+                    'argument_format': '--blah {input}',
+                },
                 'storage': {
                     'type': 'storage',
                     'value': {
@@ -681,6 +739,17 @@ class TestParseParameters(MAASTestCase):
                     'argument_format': (
                         '--bar {name} {model} {serial} {path} {input}'),
                 },
+                'interface': {
+                    'type': 'interface',
+                    'value': {
+                        'name': factory.make_name('name'),
+                        'mac_address': factory.make_mac_address(),
+                        'vendor': factory.make_name('vendor'),
+                        'product': factory.make_name('product'),
+                    },
+                    'argument_format': (
+                        '--blah {name} {mac_address} {vendor} {product}'),
+                },
             },
         }
         mock_check_output = self.patch(maas_run_remote_scripts, 'check_output')
@@ -690,17 +759,27 @@ class TestParseParameters(MAASTestCase):
             for param_name, param in script['parameters'].items()
             if 'storage' in param_name]).encode()
         maas_run_remote_scripts._block_devices = None
+        maas_run_remote_scripts._interfaces = {
+            param['value']['mac_address']: param['value']['name']
+            for param in script['parameters'].values()
+            if param['type'] == 'interface'
+        }
 
         self.assertItemsEqual(
             [
                 os.path.join(scripts_dir, script['path']),
                 '--foo', '--timeout',
                 str(script['parameters']['runtime']['value']),
+                '--blah', script['parameters']['url']['value'],
                 '--bar', script['parameters']['storage']['value']['name'],
                 script['parameters']['storage']['value']['model'],
                 script['parameters']['storage']['value']['serial'],
                 '/dev/%s' % script['parameters']['storage']['value']['name'],
                 '/dev/%s' % script['parameters']['storage']['value']['name'],
+                '--blah', script['parameters']['interface']['value']['name'],
+                script['parameters']['interface']['value']['mac_address'],
+                script['parameters']['interface']['value']['vendor'],
+                script['parameters']['interface']['value']['product'],
             ], parse_parameters(script, scripts_dir))
 
     def test_parse_parameters_storage_value_all_raises_keyerror(self):
@@ -710,6 +789,20 @@ class TestParseParameters(MAASTestCase):
             'parameters': {
                 'storage': {
                     'type': 'storage',
+                    'value': 'all',
+                },
+            },
+        }
+
+        self.assertRaises(KeyError, parse_parameters, script, scripts_dir)
+
+    def test_parse_parameters_interface_value_all_raises_keyerror(self):
+        scripts_dir = factory.make_name('scripts_dir')
+        script = {
+            'path': os.path.join('path_to', factory.make_name('script_name')),
+            'parameters': {
+                'interface': {
+                    'type': 'interface',
                     'value': 'all',
                 },
             },
@@ -824,8 +917,15 @@ class TestRunScript(MAASTestCase):
             'SERIAL': factory.make_name('serial'),
             } for _ in range(3)
         ]
+        fake_interfaces = [{
+            factory.make_mac_address(): 'eth%s' % i
+            for i in range(3)
+        }]
         mock_get_block_devices = self.patch(
             maas_run_remote_scripts, 'get_block_devices')
+        mock_get_interfaces = self.patch(
+            maas_run_remote_scripts, 'get_interfaces')
+        mock_get_interfaces.return_value = fake_interfaces
         mock_get_block_devices.return_value = fake_block_devices
         testing_block_device_model = factory.make_name('model')
         testing_block_device_serial = factory.make_name('serial')
@@ -850,10 +950,12 @@ class TestRunScript(MAASTestCase):
             "Please re-commission this node to re-discover the "
             "storage devices, or delete this device manually.\n\n"
             'Given parameters:\n%s\n\n'
-            'Discovered storage devices:\n%s\n' % (
+            'Discovered storage devices:\n%s\n'
+            'Discovered interfaces:\n%s\n' % (
                 script['name'],
                 testing_block_device_model, testing_block_device_serial,
-                str(script['parameters']), str(fake_block_devices))
+                str(script['parameters']), str(fake_block_devices),
+                str(fake_interfaces))
         )
         expected_output = expected_output.encode()
         self.assertThat(self.mock_output_and_send, MockCallsMatch(
