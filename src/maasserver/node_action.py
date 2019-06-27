@@ -313,7 +313,7 @@ class Commission(NodeAction):
     def _execute(
             self, enable_ssh=False, skip_bmc_config=False,
             skip_networking=False, skip_storage=False,
-            commissioning_scripts=[], testing_scripts=[]):
+            commissioning_scripts=[], testing_scripts=[], script_input=None):
         """See `NodeAction.execute`."""
         try:
             self.node.start_commissioning(
@@ -323,7 +323,7 @@ class Commission(NodeAction):
                 skip_networking=skip_networking,
                 skip_storage=skip_storage,
                 commissioning_scripts=commissioning_scripts,
-                testing_scripts=testing_scripts)
+                testing_scripts=testing_scripts, script_input=script_input)
         except RPC_EXCEPTIONS + (ExternalProcessError, ValidationError) as e:
             raise NodeActionError(e)
 
@@ -360,11 +360,12 @@ class Test(NodeAction):
         """Retrieve the node action audit description."""
         return self.audit_description % action.node.hostname
 
-    def _execute(self, enable_ssh=False, testing_scripts=[]):
+    def _execute(
+            self, enable_ssh=False, testing_scripts=[], script_input=None):
         try:
             self.node.start_testing(
                 self.user, enable_ssh=enable_ssh,
-                testing_scripts=testing_scripts)
+                testing_scripts=testing_scripts, script_input=script_input)
         except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
             raise NodeActionError(exception)
 

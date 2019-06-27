@@ -114,7 +114,8 @@ def translate_result_type(result_type):
 
 class ScriptSetManager(Manager):
 
-    def create_commissioning_script_set(self, node, scripts=None, input=None):
+    def create_commissioning_script_set(
+            self, node, scripts=None, script_input=None):
         """Create a new commissioning ScriptSet with ScriptResults
 
         ScriptResults will be created for all builtin commissioning scripts.
@@ -153,14 +154,14 @@ class ScriptSetManager(Manager):
             qs = Script.objects.filter(
                 script_type=SCRIPT_TYPE.COMMISSIONING, for_hardware=[])
             for script in qs:
-                script_set.add_pending_script(script, input)
+                script_set.add_pending_script(script, script_input)
         else:
-            self._add_user_selected_scripts(script_set, scripts, input)
+            self._add_user_selected_scripts(script_set, scripts, script_input)
 
         self._clean_old(node, RESULT_TYPE.COMMISSIONING, script_set)
         return script_set
 
-    def create_testing_script_set(self, node, scripts=None, input=None):
+    def create_testing_script_set(self, node, scripts=None, script_input=None):
         """Create a new testing ScriptSet with ScriptResults.
 
         Optionally a list of user scripts and tags can be given to create
@@ -176,7 +177,7 @@ class ScriptSetManager(Manager):
             power_state_before_transition=node.power_state,
             requested_scripts=scripts)
 
-        self._add_user_selected_scripts(script_set, scripts, input)
+        self._add_user_selected_scripts(script_set, scripts, script_input)
 
         # A ScriptSet should never be empty. If an empty script set is set as a
         # node's current_testing_script_set the UI will show an empty table and
@@ -205,12 +206,13 @@ class ScriptSetManager(Manager):
         self._clean_old(node, RESULT_TYPE.INSTALLATION, script_set)
         return script_set
 
-    def _add_user_selected_scripts(self, script_set, scripts=None, input=None):
+    def _add_user_selected_scripts(
+            self, script_set, scripts=None, script_input=None):
         """Add user selected scripts to the ScriptSet."""
         if scripts is None:
             scripts = []
-        if input is None:
-            input = {}
+        if script_input is None:
+            script_input = {}
         ids = [
             int(id)
             for id in scripts
@@ -249,7 +251,7 @@ class ScriptSetManager(Manager):
                 if len(matches) == 0 and not found_hw_match:
                     continue
             try:
-                script_set.add_pending_script(script, input)
+                script_set.add_pending_script(script, script_input)
             except ValidationError:
                 script_set.delete()
                 raise
@@ -397,7 +399,7 @@ class ScriptSet(CleanSave, Model):
                     return script_result
         return None
 
-    def add_pending_script(self, script, input=None):
+    def add_pending_script(self, script, script_input=None):
         """Create and add a new ScriptResult for the given Script.
 
         Creates a new ScriptResult for the given script and assoicates it with
@@ -406,10 +408,11 @@ class ScriptSet(CleanSave, Model):
         """
         # Avoid circular dependencies.
         from metadataserver.models import ScriptResult
-        if input is None:
-            input = {}
+        if script_input is None:
+            script_input = {}
         form = ParametersForm(
-            data=input.get(script.name, {}), script=script, node=self.node)
+            data=script_input.get(
+                script.name, {}), script=script, node=self.node)
         if not form.is_valid():
             raise ValidationError(form.errors)
         for param in form.cleaned_data['input']:

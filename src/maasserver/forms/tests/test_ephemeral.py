@@ -317,7 +317,7 @@ class TestCommissionForm(MAASServerTestCase):
             MockCalledOnceWith(
                 user, enable_ssh=False, skip_bmc_config=False,
                 skip_networking=False, skip_storage=False,
-                commissioning_scripts=[], testing_scripts=[], input={}))
+                commissioning_scripts=[], testing_scripts=[], script_input={}))
 
     def test__calls_start_commissioning_with_options(self):
         node = factory.make_Node(
@@ -350,7 +350,7 @@ class TestCommissionForm(MAASServerTestCase):
                 user, enable_ssh=True, skip_bmc_config=True,
                 skip_networking=True, skip_storage=True,
                 commissioning_scripts=commissioning_scripts,
-                testing_scripts=testing_scripts, input={}))
+                testing_scripts=testing_scripts, script_input={}))
 
     def test__class_start_commissioning_with_storage_param(self):
         node = factory.make_Node(
@@ -678,4 +678,4 @@ class TestCommissionForm(MAASServerTestCase):
                 user, enable_ssh=False, skip_bmc_config=False,
                 skip_networking=False, skip_storage=False,
                 commissioning_scripts=[], testing_scripts=['none'],
-                input={}))
+                script_input={}))

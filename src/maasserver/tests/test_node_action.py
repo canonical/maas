@@ -85,6 +85,7 @@ from metadataserver.enum import (
     SCRIPT_STATUS,
     SCRIPT_TYPE,
 )
+from metadataserver.models import ScriptSet
 from netaddr import IPNetwork
 from provisioningserver.events import AUDIT
 from provisioningserver.utils.shell import ExternalProcessError
@@ -348,6 +349,13 @@ class TestCommissionAction(MAASServerTestCase):
         node = factory.make_Node(
             interface=True, status=self.status,
             power_type='manual', power_state=POWER_STATE.OFF)
+        testing_scripts = [
+            factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
+            for _ in range(3)
+        ]
+        script_input = {
+            'smartctl-validate': {'storage': 'sda'},
+            'badblocks': {'storage': 'sdb'}}
         node_start = self.patch(node, '_start')
         node_start.side_effect = lambda *args, **kwargs: post_commit()
         admin = factory.make_admin()
@@ -355,7 +363,15 @@ class TestCommissionAction(MAASServerTestCase):
         request.user = admin
         action = Commission(node, admin, request)
         with post_commit_hooks:
-            action.execute()
+            action.execute(
+                testing_scripts=testing_scripts, script_input=script_input)
+        script_sets = ScriptSet.objects.all()
+        node = reload_object(node)
+        self.assertEquals(2, len(script_sets))
+        self.assertEquals(
+            node.current_commissioning_script_set_id, script_sets[0].id)
+        self.assertEquals(
+            node.current_testing_script_set_id, script_sets[1].id)
         self.assertEqual(NODE_STATUS.COMMISSIONING, node.status)
         self.assertThat(node_start, MockCalledOnceWith(
             admin, ANY, ANY, allow_power_cycle=True, config=ANY))
