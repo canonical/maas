@@ -1040,7 +1040,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
             <button type="submit" class="p-search-box__button" alt="search"><i class="p-icon--search"></i></button>
         </div>
     </form>
-    <div class="row">
+    <div class="row" data-ng-if="currentpage === 'devices'">
         <table class="p-table-expanding p-table--sortable p-table--devices">
             <thead>
                 <tr class="p-table__row">
