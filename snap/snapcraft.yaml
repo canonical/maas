@@ -266,6 +266,9 @@ parts:
       make install-world DESTDIR=$SNAPCRAFT_PART_INSTALL
 
 hooks:
-  configure:
+  install:
+    plugs:
+      - network  # needed to connect to the db for running upgrades
+  post-refresh:
     plugs:
       - network  # needed to connect to the db for running upgrades
