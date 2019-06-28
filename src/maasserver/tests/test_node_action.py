@@ -1301,7 +1301,7 @@ class TestMarkFixedAction(MAASServerTestCase):
 
     def test_changes_status(self):
         node = factory.make_Node(
-            status=NODE_STATUS.BROKEN, power_state=POWER_STATE.OFF)
+            status=NODE_STATUS.BROKEN, power_state=POWER_STATE.ON)
         self.make_commissioning_data(node)
         user = factory.make_admin()
         request = factory.make_fake_request('/')

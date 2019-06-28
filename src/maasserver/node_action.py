@@ -670,9 +670,6 @@ class MarkFixed(NodeAction):
 
     def _execute(self):
         """See `NodeAction.execute`."""
-        if self.node.power_state == POWER_STATE.ON:
-            raise NodeActionError(
-                "Unable to be mark fixed because the power is currently on.")
         if not self.has_commissioning_data():
             raise NodeActionError(
                 "Unable to be mark fixed because it has not been commissioned "
