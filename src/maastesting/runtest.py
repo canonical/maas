@@ -320,7 +320,7 @@ class MAASCrochetRunTest(MAASRunTest):
         else:
             # Despite waiting a long time the pool will not go quiet. The
             # validity of subsequent tests is compromised. Die immediately.
-            print("Threadpool", repr(pool), "is NOT quiet.", file=sys.stderr)
+            print("ThreadPool", repr(pool), "is NOT quiet.", file=sys.stderr)
             os._exit(3)
 
     def _isThreadpoolQuiet(self, pool):

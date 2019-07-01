@@ -409,7 +409,7 @@
                                 Relay DHCP
                             </button>
                             <span class="p-tooltip__message" id="dhcp-tooltip" data-ng-if="!vlanDetails.provideDHCPAction.relayVLAN && vlanDetails.getAvailableVLANS()">You must select a target VLAN to enable DHCP relay</span>
-                            <span class="p-tooltip__message" id="dhcp-tooltip" data-ng-if="!vlanDetais.provideDHCPAction.relayVLAN && !vlanDetails.getAvailableVLANS()">No DHCP enabled on any VLAN</span>
+                            <span class="p-tooltip__message" id="dhcp-tooltip" data-ng-if="!vlanDetails.provideDHCPAction.relayVLAN && !vlanDetails.getAvailableVLANS()">No DHCP enabled on any VLAN</span>
                         </span>
                         <button class="p-button--positive u-no-margin--bottom" data-ng-click="vlanDetails.disableDHCP()" data-ng-if="!vlanDetails.MAASProvidesDHCP">
                             <span data-ng-if="vlanDetails.isProvidingDHCP">

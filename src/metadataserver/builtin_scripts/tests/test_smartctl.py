@@ -82,7 +82,7 @@ class TestRunStorCLI(MAASTestCase):
         self.assertThat(self.mock_print, MockNotCalled())
 
     def test__using_alt_path(self):
-        self.patch(smartctl.os.path, 'exists').retrun_value = True
+        self.patch(smartctl.os.path, 'exists').return_value = True
         self.assertEquals(self.output, smartctl.run_storcli(self.args))
         self.assertThat(self.mock_check_output, MockCalledOnceWith(
             ['sudo', '-n', '/opt/MegaRAID/storcli/storcli64'] + self.args,

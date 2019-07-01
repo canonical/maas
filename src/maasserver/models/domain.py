@@ -422,9 +422,7 @@ class Domain(CleanSave, TimestampedModel):
                 if (info.user_id is None or
                     user is None or
                     user.is_superuser or
-                    (info.user_id is not None and
-                        user is not None and
-                        info.user_id == user.id))
+                    (info.user_id is not None and info.user_id == user.id))
             ]
             if as_dict is True:
                 existing = result.get(hostname, [])

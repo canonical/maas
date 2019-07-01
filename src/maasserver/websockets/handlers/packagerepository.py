@@ -57,12 +57,6 @@ class PackageRepositoryHandler(TimestampedModelHandler):
         else:
             raise HandlerValidationError(form.errors)
 
-        # Create by updating the fields on the object.
-        obj = self._meta.object_class()
-        obj = self.full_hydrate(obj, params)
-        obj.save()
-        return self.full_dehydrate(obj)
-
     def update(self, params):
         """Update the object from params iff admin."""
         if not self.user.is_superuser:

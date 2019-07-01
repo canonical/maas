@@ -1,10 +1,10 @@
 /* Copyright 2015 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
- * Unit tests for accodion directive.
+ * Unit tests for accordion directive.
  */
 
-describe("maasAccodion", function() {
+describe("maasAccordion", function() {
   // Load the MAAS module.
   beforeEach(angular.mock.module("MAAS"));
 
