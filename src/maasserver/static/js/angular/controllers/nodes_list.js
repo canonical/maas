@@ -127,6 +127,19 @@ function NodesListController(
   $scope.tabs.machines.failedTests = [];
   $scope.tabs.machines.loadingFailedTests = false;
   $scope.tabs.machines.suppressFailedTestsChecked = false;
+  $scope.tabs.machines.filterOrder = [
+    "status",
+    "owner",
+    "pool",
+    "architecture",
+    "release",
+    "tags",
+    "storage_tags",
+    "pod",
+    "subnets",
+    "fabrics",
+    "zone"
+  ];
 
   // Pools tab.
   $scope.tabs.pools = {};
@@ -223,6 +236,7 @@ function NodesListController(
   $scope.tabs.devices.poolSelection = null;
   $scope.tabs.devices.poolAction = "select-pool";
   $scope.tabs.devices.newPool = {};
+  $scope.tabs.devices.filterOrder = ["owner", "tags", "zone"];
 
   // Controller tab.
   $scope.tabs.controllers = {};

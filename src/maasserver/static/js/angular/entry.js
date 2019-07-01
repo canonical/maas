@@ -160,6 +160,7 @@ import storageFilesystems from "./directives/nodedetails/storage_filesystems";
 import storageDatastores from "./directives/nodedetails/storage_datastores";
 import maasMachinesTable from "./directives/machines_table";
 import addMachine from "./directives/nodelist/add_machine";
+import nodesListFilter from "./directives/nodelist/nodes_list_filter";
 import maasAccordion from "./directives/accordion";
 import { maasActionButton } from "./directives/action_button";
 import { maasBootImages, maasBootImagesStatus } from "./directives/boot_images";
@@ -620,6 +621,7 @@ angular
   .directive("storageFilesystems", storageFilesystems)
   .directive("storageDatastores", storageDatastores)
   .directive("addMachine", addMachine)
+  .directive("nodesListFilter", nodesListFilter)
   .directive("maasAccordion", maasAccordion)
   .directive("maasActionButton", maasActionButton)
   .directive("maasBootImagesStatus", maasBootImagesStatus)

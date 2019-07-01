@@ -22,12 +22,13 @@
   }
 
   .p-filter {
+    margin-bottom: $spv-outer--scaleable + 2 * $spv-nudge-compensation;
     position: relative;
 
     .p-filter__dropdown {
       @extend %vf-bg--x-light;
+      top: 100%;
       position: absolute;
-      top: 0;
       width: 100%;
       z-index: 2;
     }
@@ -42,11 +43,7 @@
         top: calc(#{2 * $spv-nudge} - 2px);
       }
 
-      &.is-selected {
-        + .p-accordion {
-          display: block;
-        }
-
+      &.is-open {
         &::after {
           transform: rotate(180deg);
         }
@@ -58,7 +55,6 @@
       @extend %vf-has-round-corners;
       @extend %vf-is-bordered;
       border-top: 0;
-      display: none;
       max-height: 66vh;
       overflow-y: auto;
     }
@@ -75,18 +71,13 @@
       border-bottom: 0 !important;
       padding: $spv-inner--small $sph-inner;
 
-      &.is-selected {
+      &.is-open {
         @include vf-icon-minus($color-mid-dark);
-
-        + .p-accordion__panel {
-          display: block;
-        }
       }
     }
 
     .p-accordion__panel {
       border: 0;
-      display: none;
       padding: 0;
     }
 

@@ -1,0 +1,46 @@
+<div class="p-filter">
+  <button
+    class="p-filter__dropdown-button"
+    ng-disabled="isDisabled"
+    ng-class="{ 'is-open': openFilter }"
+    ng-click="toggleOpenFilter()"
+  >
+    Filters
+  </button>
+  <div class="p-filter__dropdown" ng-if="openFilter">
+    <div class="p-accordion">
+      <ul class="p-accordion__list">
+        <li
+          class="p-accordion__group"
+          ng-repeat="option in orderedOptions"
+          ng-if="option.entries.length"
+        >
+          <button
+            class="p-accordion__tab"
+            ng-class="{ 'is-open': openOption === option.name }"
+            ng-click="toggleOpenOption(option.name)"
+          >
+            {{ option.displayName }}
+          </button>
+          <div class="p-accordion__panel" ng-if="openOption === option.name">
+            <ul class="p-list">
+              <li
+                class="p-list__item"
+                ng-repeat="entry in option.entries | orderBy: 'name'"
+              >
+                <button
+                  class="p-button--base"
+                  ng-disabled="isDisabled"
+                  ng-click="toggleFilter(option.name, entry.name, currentPage)"
+                  ng-class="{ 'is-active': isFilterActive(option.name, entry.name, currentPage) }"
+                >
+                  {{ entry.name }} ({{ entry.count }})
+                </a>
+              </li>
+            </ul>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </div>
+</div>

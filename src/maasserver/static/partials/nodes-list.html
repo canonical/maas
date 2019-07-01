@@ -790,227 +790,42 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
         <maas-notifications></maas-notifications>
     </div>
 </div>
-<div class="p-strip is-shallow">
-    <div class="row" ng-if="currentpage === 'machines' || currentpage === 'devices'">
-        <aside class="p-filter col-small-2 col-medium-3 col-3">
-            <div class="maas-accordion p-filter__dropdown ng-hide" data-ng-show="currentpage === 'machines'" data-ng-class="{ 'is-disabled': tabs.machines.actionOption }">
-                <button class="p-filter__dropdown-button maas-accordion-tab">Filters</button>
-                <div class="p-accordion">
-                    <ul class="p-accordion__list">
-                        <li class="p-accordion__group ng-hide" data-ng-show="tabs.machines.metadata.status.length">
-                            <button class="maas-accordion-tab p-accordion__tab">Status</button>
-                            <div class="p-accordion__panel">
-                                <ul class="p-list">
-                                    <li class="p-list__item"  data-ng-repeat="status in tabs.machines.metadata.status | orderBy:['name', '-count']">
-                                        <a class="p-button--base" href="javascript:;" data-ng-click="toggleFilter('status', status.name, 'machines')" data-ng-class="{ 'is-active': isFilterActive('status', status.name, 'machines') }">
-                                            {$ status.name $} ({$ status.count $})
-                                        </a>
-                                    </li>
-                                </ul>
-                            </div>
-                        </li>
-                        <li class="p-accordion__group ng-hide" data-ng-show="tabs.machines.metadata.owner.length">
-                            <button class="maas-accordion-tab p-accordion__tab">Owner</button>
-                            <div class="p-accordion__panel">
-                                <ul class="p-list">
-                                    <li class="p-list__item"  data-ng-repeat="owner in tabs.machines.metadata.owner | orderBy:['name', '-count']">
-                                        <a class="p-button--base" href="javascript:;" data-ng-click="toggleFilter('owner', owner.name, 'machines')" data-ng-class="{ 'is-active': isFilterActive('owner', owner.name, 'machines') }">
-                                            {$ owner.name $} ({$ owner.count $})
-                                        </a>
-                                    </li>
-                                </ul>
-                            </div>
-                        </li>
-                        <li class="p-accordion__group ng-hide" data-ng-show="tabs.machines.metadata.pool.length">
-                            <button class="maas-accordion-tab p-accordion__tab">Resource pools</button>
-                            <div class="p-accordion__panel">
-                                <ul class="p-list">
-                                    <li class="p-list__item"  data-ng-repeat="pool in tabs.machines.metadata.pool | orderBy:['name', '-count']">
-                                        <a class="p-button--base" href="javascript:;" data-ng-click="toggleFilter('pool', pool.name, 'machines')" data-ng-class="{ 'is-active': isFilterActive('pool', pool.name, 'machines') }">
-                                            {$ pool.name $} ({$ pool.count $})
-                                        </a>
-                                    </li>
-                                </ul>
-                            </div>
-                        </li>
-                        <li class="p-accordion__group ng-hide" data-ng-show="tabs.machines.metadata.architecture.length">
-                            <button class="maas-accordion-tab p-accordion__tab">Architectures</button>
-                            <div class="p-accordion__panel">
-                                <ul class="p-list">
-                                    <li class="p-list__item"  data-ng-repeat="architecture in tabs.machines.metadata.architecture | orderBy:['name', '-count']">
-                                        <a class="p-button--base" href="javascript:;" data-ng-click="toggleFilter('architecture', architecture.name, 'machines')" data-ng-class="{ 'is-active': isFilterActive('architecture', architecture.name, 'machines') }">
-                                            {$ architecture.name $} ({$ architecture.count $})
-                                        </a>
-                                    </li>
-                                </ul>
-                            </div>
-                        </li>
-                        <li class="p-accordion__group ng-hide" data-ng-show="tabs.machines.metadata.release.length">
-                            <button class="maas-accordion-tab p-accordion__tab">OS/Release</button>
-                            <div class="p-accordion__panel">
-                                <ul class="p-list">
-                                    <li class="p-list__item"  data-ng-repeat="release in tabs.machines.metadata.release | orderBy:['name', '-count']">
-                                        <a class="p-button--base" href="javascript:;" data-ng-click="toggleFilter('release', release.name, 'machines')" data-ng-class="{ 'is-active': isFilterActive('release', release.name, 'machines') }">
-                                            {$ release.name $} ({$ release.count $})
-                                        </a>
-                                    </li>
-                                </ul>
-                            </div>
-                        </li>
-                        <li class="p-accordion__group ng-hide" data-ng-show="tabs.machines.metadata.tags.length">
-                            <button class="maas-accordion-tab p-accordion__tab">Tags</button>
-                            <div class="p-accordion__panel">
-                                <ul class="p-list">
-                                    <li class="p-list__item"  data-ng-repeat="tag in tabs.machines.metadata.tags | orderBy:['name', '-count']">
-                                        <a class="p-button--base" href="javascript:;" data-ng-click="toggleFilter('tags', tag.name, 'machines')" data-ng-class="{ 'is-active': isFilterActive('tags', tag.name, 'machines') }">
-                                            {$ tag.name $} ({$ tag.count $})
-                                        </a>
-                                    </li>
-                                </ul>
-                            </div>
-                        </li>
-                        <li class="p-accordion__group ng-hide" data-ng-show="tabs.machines.metadata.storage_tags.length">
-                            <button class="maas-accordion-tab p-accordion__tab">Storage tags</button>
-                            <div class="p-accordion__panel">
-                                <ul class="p-list">
-                                    <li class="p-list__item"  data-ng-repeat="tag in tabs.machines.metadata.storage_tags | orderBy:['name', '-count']">
-                                        <a class="p-button--base" href="javascript:;" data-ng-click="toggleFilter('storage_tags', tag.name, 'machines')" data-ng-class="{ 'is-active': isFilterActive('storage_tags', tag.name, 'machines') }">
-                                            {$ tag.name $} ({$ tag.count $})
-                                        </a>
-                                    </li>
-                                </ul>
-                            </div>
-                        </li>
-                        <li class="p-accordion__group ng-hide" data-ng-show="tabs.machines.metadata.pod.length">
-                            <button class="maas-accordion-tab p-accordion__tab">KVM</button>
-                            <div class="p-accordion__panel">
-                                <ul class="p-list">
-                                    <li class="p-list__item"  data-ng-repeat="pod in tabs.machines.metadata.pod | orderBy:['name', '-count']">
-                                        <a class="p-button--base" href="javascript:;" data-ng-click="toggleFilter('pod', pod.name, 'machines')" data-ng-class="{ 'is-active': isFilterActive('pod', pod.name, 'machines') }">
-                                            {$ pod.name $} ({$ pod.count $})
-                                        </a>
-                                    </li>
-                                </ul>
-                            </div>
-                        </li>
-                        <li class="p-accordion__group ng-hide" data-ng-show="tabs.machines.metadata.subnets.length">
-                            <button class="maas-accordion-tab p-accordion__tab">Subnets</button>
-                            <div class="p-accordion__panel">
-                                <ul class="p-list">
-                                    <li class="p-list__item"  data-ng-repeat="subnet in tabs.machines.metadata.subnets | orderBy:['name', '-count']">
-                                        <a class="p-button--base" href="javascript:;" data-ng-click="toggleFilter('subnets', subnet.name, 'machines')" data-ng-class="{ 'is-active': isFilterActive('subnets', subnet.name, 'machines') }">
-                                            {$ subnet.name $} ({$ subnet.count $})
-                                        </a>
-                                    </li>
-                                </ul>
-                            </div>
-                        </li>
-                        <li class="p-accordion__group ng-hide" data-ng-show="tabs.machines.metadata.fabrics.length">
-                            <button class="maas-accordion-tab p-accordion__tab">Fabrics</button>
-                            <div class="p-accordion__panel">
-                                <ul class="p-list">
-                                    <li class="p-list__item"  data-ng-repeat="fabric in tabs.machines.metadata.fabrics | orderBy:['name', '-count']">
-                                        <a class="p-button--base" href="javascript:;" data-ng-click="toggleFilter('fabrics', fabric.name, 'machines')" data-ng-class="{ 'is-active': isFilterActive('fabrics', fabric.name, 'machines') }">
-                                            {$ fabric.name $} ({$ fabric.count $})
-                                        </a>
-                                    </li>
-                                </ul>
-                            </div>
-                        </li>
-                        <li class="p-accordion__group ng-hide" data-ng-show="tabs.machines.metadata.spaces.length">
-                            <button class="maas-accordion-tab p-accordion__tab">Spaces</button>
-                            <div class="p-accordion__panel">
-                                <ul class="p-list">
-                                    <li class="p-list__item"  data-ng-repeat="space in tabs.machines.metadata.spaces | orderBy:['name', '-count']">
-                                        <a class="p-button--base" href="javascript:;" data-ng-click="toggleFilter('spaces', space.name, 'machines')" data-ng-class="{ 'is-active': isFilterActive('spaces', space.name, 'machines') }">
-                                            {$ space.name $} ({$ space.count $})
-                                        </a>
-                                    </li>
-                                </ul>
-                            </div>
-                        </li>
-                        <li class="p-accordion__group ng-hide" data-ng-show="tabs.machines.metadata.zone.length">
-                            <button class="maas-accordion-tab p-accordion__tab">Zones</button>
-                            <div class="p-accordion__panel">
-                                <ul class="p-list">
-                                    <li class="p-list__item"  data-ng-repeat="zone in tabs.machines.metadata.zone | orderBy:['name', '-count']">
-                                        <a class="p-button--base" href="javascript:;" data-ng-click="toggleFilter('zone', zone.name, 'machines')" data-ng-class="{ 'is-active': isFilterActive('zone', zone.name, 'machines') }">
-                                            {$ zone.name $} ({$ zone.count $})
-                                        </a>
-                                    </li>
-                                </ul>
-                            </div>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-            <div class="maas-accordion p-filter__dropdown" data-ng-if="currentpage === 'devices'" data-ng-class="{ 'is-disabled': tabs.devices.actionOption }">
-                <button class="p-filter__dropdown-button maas-accordion-tab">Filters</button>
-                <div class="p-accordion">
-                    <ul class="p-accordion__list">
-                        <li class="p-accordion__group ng-hide" data-ng-show="tabs.devices.metadata.owner.length">
-                            <button class="maas-accordion-tab p-accordion__tab">Owner</button>
-                            <div class="p-accordion__panel">
-                                <ul class="p-list">
-                                    <li class="p-list__item"  data-ng-repeat="owner in tabs.devices.metadata.owner | orderBy:['name', '-count']">
-                                        <a class="p-button--base" href="javascript:;" data-ng-click="toggleFilter('owner', owner.name, 'devices')" data-ng-class="{ 'is-active': isFilterActive('owner', owner.name, 'devices') }">
-                                            {$ owner.name $} ({$ owner.count $})
-                                        </a>
-                                    </li>
-                                </ul>
-                            </div>
-                        </li>
-                        <li class="p-accordion__group ng-hide" data-ng-show="tabs.devices.metadata.tags.length">
-                            <button class="maas-accordion-tab p-accordion__tab">Tags</button>
-                            <div class="p-accordion__panel">
-                                <ul class="p-list">
-                                    <li class="p-list__item"  data-ng-repeat="tag in tabs.devices.metadata.tags | orderBy:['name', '-count']">
-                                        <a class="p-button--base" href="javascript:;" data-ng-click="toggleFilter('tags', tag.name, 'devices')" data-ng-class="{ 'is-active': isFilterActive('tags', tag.name, 'devices') }">
-                                            {$ tag.name $} ({$ tag.count $})
-                                        </a>
-                                    </li>
-                                </ul>
-                            </div>
-                        </li>
-                        <li class="p-accordion__group ng-hide" data-ng-show="tabs.devices.metadata.zone.length">
-                            <button class="maas-accordion-tab p-accordion__tab">Zones</button>
-                            <div class="p-accordion__panel">
-                                <ul class="p-list">
-                                    <li class="p-list__item"  data-ng-repeat="zone in tabs.devices.metadata.zone | orderBy:['name', '-count']">
-                                        <a class="p-button--base" href="javascript:;" data-ng-click="toggleFilter('zone', zone.name, 'devices')" data-ng-class="{ 'is-active': isFilterActive('zone', zone.name, 'devices') }">
-                                            {$ zone.name $} ({$ zone.count $})
-                                        </a>
-                                    </li>
-                                </ul>
-                            </div>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-        </aside>
-    </div>
-    <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
-    <form class="row" data-ng-if="currentpage === 'machines'">
-        <div id="search-bar" class="p-search-box col-small-2 col-medium-3 col-6 col-start-small-3 col-start-medium-4 col-start-large-4">
-            <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
-            <input
-                type="search" placeholder="Search" class="p-search-box__input"
-                data-ng-model="tabs.machines.search" data-ng-change="updateFilters('machines')"
-                data-ng-class="{ error: !tabs.machines.searchValid }"
-                data-ng-disabled="tabs.machines.actionOption" />
-            <button type="reset" class="p-search-box__reset u-no-margin--right" alt="reset"
-                data-ng-click="clearSearch('machines')"
-                data-ng-show="tabs.machines.search.length > 0"><i class="p-icon--close"></i></button>
-            <button type="submit" class="p-search-box__button" alt="search"><i class="p-icon--search"></i></button>
+
+<div class="p-strip is-shallow" data-ng-if="currentpage === 'machines'">
+    <div class="row">
+        <div class="col-small-4 col-medium-3 col-3">
+            <nodes-list-filter
+                current-page="currentpage"
+                options="tabs.machines.metadata"
+                order="tabs.machines.filterOrder"
+                is-disabled="hasActionsInProgress('machines')"
+                toggle-filter="toggleFilter"
+                is-filter-active="isFilterActive"
+            />
         </div>
-        <div class="col-small-2 col-medium-3 col-3">
+        <div class="col-small-4 col-medium-3 col-6">
+            <div class="p-search-box">
+                <input
+                    type="search" placeholder="Search" class="p-search-box__input"
+                    data-ng-model="tabs.machines.search" data-ng-change="updateFilters('machines')"
+                    data-ng-class="{ error: !tabs.machines.searchValid }"
+                    data-ng-disabled="tabs.machines.actionOption" />
+                <button type="reset" class="p-search-box__reset u-no-margin--right" alt="reset"
+                    data-ng-click="clearSearch('machines')"
+                    data-ng-show="tabs.machines.search.length > 0"><i class="p-icon--close"></i></button>
+                <button type="submit" class="p-search-box__button" alt="search"><i class="p-icon--search"></i></button>
+            </div>
+        </div>
+        <div class="col-small-4 col-medium-3 col-3">
             <select data-ng-model="tabs.machines.groupByLabel" ng-init="tabs.machines.groupByLabel='status'">
                 <option value="status" selected="selected">Group by status</option>
                 <option value="owner">Group by owner</option>
-                <option value="none">No Grouping</option>
+                <option value="none">No grouping</option>
             </select>
         </div>
-        <maas-machines-table id="machines-listing"
+    </div>
+    <div class="row">
+        <maas-machines-table
             loading="loading"
             search="tabs.machines.search"
             group-by-label="tabs.machines.groupByLabel"
@@ -1023,24 +838,38 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
             pools="pools"
             zones="zones"
             hide-failed-tests="tabs.machines.suppressFailedTestsChecked"
-            metadata=tabs.machines.metadata>
-        </maas-machines-table>
-    </form>
-    <form class="row" data-ng-if="currentpage === 'devices'" data-ng-class="{ 'is-error': !tabs.devices.searchValid }">
-        <div id="search-bar" class="p-search-box col-start-small-3 col-small-2 col-start-medium-4 col-medium-3 col-start-large-4 col-9">
-            <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
-            <input
-                type="search" placeholder="Search" class="p-search-box__input"
-                data-ng-model="tabs.devices.search" data-ng-change="updateFilters('devices')"
-                data-ng-class="{ error: !tabs.devices.searchValid }"
-                data-ng-disabled="tabs.devices.actionOption" />
-            <button type="reset" class="p-search-box__reset u-no-margin--right" alt="reset"
-                data-ng-click="clearSearch('devices')"
-                data-ng-show="tabs.devices.search.length > 0"><i class="p-icon--close"></i></button>
-            <button type="submit" class="p-search-box__button" alt="search"><i class="p-icon--search"></i></button>
+            metadata=tabs.machines.metadata
+        />
+    </div>
+</div>
+
+<div class="p-strip is-shallow" data-ng-if="currentpage === 'devices'">
+    <div class="row" data-ng-class="{ 'is-error': !tabs.devices.searchValid }">
+        <div class="col-small-4 col-medium-3 col-3">
+            <nodes-list-filter
+                current-page="currentpage"
+                options="tabs.devices.metadata"
+                order="tabs.devices.filterOrder"
+                is-disabled="tabs.devices.actionOption"
+                toggle-filter="toggleFilter"
+                is-filter-active="isFilterActive"
+            />
         </div>
-    </form>
-    <div class="row" data-ng-if="currentpage === 'devices'">
+        <div class="col-small-2 col-medium-3 col-9">
+            <div class="p-search-box">
+                <input
+                    type="search" placeholder="Search" class="p-search-box__input"
+                    data-ng-model="tabs.devices.search" data-ng-change="updateFilters('devices')"
+                    data-ng-class="{ error: !tabs.devices.searchValid }"
+                    data-ng-disabled="tabs.devices.actionOption" />
+                <button type="reset" class="p-search-box__reset u-no-margin--right" alt="reset"
+                    data-ng-click="clearSearch('devices')"
+                    data-ng-show="tabs.devices.search.length > 0"><i class="p-icon--close"></i></button>
+                <button type="submit" class="p-search-box__button" alt="search"><i class="p-icon--search"></i></button>
+            </div>
+        </div>
+    </div>
+    <div class="row">
         <table class="p-table-expanding p-table--sortable p-table--devices">
             <thead>
                 <tr class="p-table__row">
@@ -1088,106 +917,109 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
             </tbody>
         </table>
     </div>
-    <div class="row" data-ng-if="currentpage === 'pools'">
-        <div class="p-table__wrapper row">
-          <maas-obj-form obj="tabs.pools.editingPool" manager="tabs.pools.manager"
-                         manager-method="updateItem" after-save="tabs.pools.actionConfirmEditPool"
-                         inline="false" save-on-blur="false">
-            <table class="p-table--sortable p-table-expanding p-table--pools">
-                <thead>
-                    <tr class="p-table__row">
-                        <th class="p-table__cell col-3" role="columnheader" data-ng-click="sortTable('name', 'pools')" data-ng-class="{'is-sorted': tabs.pools.predicate === 'name', 'sort-asc': tabs.pools.reverse === false, 'sort-desc': tabs.pools.reverse === true}">Name</th>
-                        <th class="p-table__cell col-2" role="columnheader" data-ng-click="sortTable('machine_total_count', 'pools')" data-ng-class="{'is-sorted': tabs.pools.predicate === 'name', 'sort-asc': tabs.pools.reverse === false, 'sort-desc': tabs.pools.reverse === true}">Machines</th>
-                        <th class="p-table__cell col-5" role="columnheader" data-ng-click="sortTable('description', 'pools')" data-ng-class="{'is-sorted': tabs.pools.predicate === 'description', 'sort-asc': tabs.pools.reverse === false, 'sort-desc': tabs.pools.reverse === true}">Description</th>
-                        <th class="p-table__cell col-2 u-align--right" data-ng-show="showResourcePoolActions()">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr class="p-table__row"
-                        data-ng-repeat="pool in tabs.pools.filtered_items = (pools | orderBy:tabs.pools.predicate:tabs.pools.reverse) track by pool.name"
-                        data-ng-class="{'is-active': tabs.pools.isPoolAction(pool)}">
-                        <td class="p-table__cell col-3" aria-label="Name">
-                          <span ng-if="!tabs.pools.isPoolAction(pool, 'edit')">
-                            {$ pool.name $} <span ng-if="pool.is_default">(default)</span>
-                          </span>
-                          <maas-obj-field
-                            ng-if="tabs.pools.isPoolAction(pool, 'edit')"
-                            type="text" key="name" disable-label="true" subtle="false"
-                            placeholder="Name (required)">
-                        </td>
-                        <td data-ng-switch on="pool.machine_total_count" class="p-table__cell col-2" aria-label="Machine count">
-                        <span data-ng-switch-when="0"> Empty pool</span>
-                        <a data-ng-switch-default data-ng-click="tabs.pools.goToPoolMachines(pool)">
-                          {$ pool.machine_ready_count == 0 ? 'Zero' : pool.machine_ready_count $} of {$ pool.machine_total_count $} ready
-                        </a>
-                        </td>
-                        <td class="p-table__cell col-5" aria-label="Description">
-                          <span ng-if="!tabs.pools.isPoolAction(pool, 'edit')">{$ pool.description $}</span>
-                        </td>
-                        <td class="p-table__cell col-2 u-align--right" aria-label="Actions" data-ng-show="showResourcePoolActions()">
-                          <span data-ng-hide="tabs.pools.isPoolAction(pool)">
-                            <button class="p-button--base is-small u-no-margin--right" data-ng-if="canEditResourcePool(pool)" data-ng-click="tabs.pools.initiatePoolAction(pool, 'edit')">
-                              <i class="p-icon--edit">Edit</i>
-                            </button>
-                            <button class="p-button--base is-small" data-ng-hide="tabs.pools.isDefaultPool(pool)" data-ng-if="canDeleteResourcePool()" data-ng-click="tabs.pools.initiatePoolAction(pool, 'delete')">
-                              <i class="p-icon--delete">Delete</i>
-                            </button>
-                          </span>
-                        </td>
-                        <td class="is-active p-table-expanding__panel col-12" col-span="4"
-                            data-ng-if="tabs.pools.isPoolAction(pool)">
-                          <div class="row" data-ng-if="tabs.pools.isPoolAction(pool, 'edit')">
-                            <div class="col-6">
-                              <div class="p-form-group">
-                                <maas-obj-field
-                                  type="textarea" key="description" label="Description" inline="true"
-                                  subtle="false" input-width="12" class="u-no-margin--left field-description">
-                                </maas-obj-field>
-                              </div>
+</div>
+
+<div class="p-strip is-shallow" data-ng-if="currentpage === 'pools'">
+    <div class="row">
+        <maas-obj-form obj="tabs.pools.editingPool" manager="tabs.pools.manager"
+                       manager-method="updateItem" after-save="tabs.pools.actionConfirmEditPool"
+                       inline="false" save-on-blur="false">
+          <table class="p-table--sortable p-table-expanding p-table--pools">
+              <thead>
+                  <tr class="p-table__row">
+                      <th class="p-table__cell col-3" role="columnheader" data-ng-click="sortTable('name', 'pools')" data-ng-class="{'is-sorted': tabs.pools.predicate === 'name', 'sort-asc': tabs.pools.reverse === false, 'sort-desc': tabs.pools.reverse === true}">Name</th>
+                      <th class="p-table__cell col-2" role="columnheader" data-ng-click="sortTable('machine_total_count', 'pools')" data-ng-class="{'is-sorted': tabs.pools.predicate === 'name', 'sort-asc': tabs.pools.reverse === false, 'sort-desc': tabs.pools.reverse === true}">Machines</th>
+                      <th class="p-table__cell col-5" role="columnheader" data-ng-click="sortTable('description', 'pools')" data-ng-class="{'is-sorted': tabs.pools.predicate === 'description', 'sort-asc': tabs.pools.reverse === false, 'sort-desc': tabs.pools.reverse === true}">Description</th>
+                      <th class="p-table__cell col-2 u-align--right" data-ng-show="showResourcePoolActions()">Actions</th>
+                  </tr>
+              </thead>
+              <tbody>
+                  <tr class="p-table__row"
+                      data-ng-repeat="pool in tabs.pools.filtered_items = (pools | orderBy:tabs.pools.predicate:tabs.pools.reverse) track by pool.name"
+                      data-ng-class="{'is-active': tabs.pools.isPoolAction(pool)}">
+                      <td class="p-table__cell col-3" aria-label="Name">
+                        <span ng-if="!tabs.pools.isPoolAction(pool, 'edit')">
+                          {$ pool.name $} <span ng-if="pool.is_default">(default)</span>
+                        </span>
+                        <maas-obj-field
+                          ng-if="tabs.pools.isPoolAction(pool, 'edit')"
+                          type="text" key="name" disable-label="true" subtle="false"
+                          placeholder="Name (required)">
+                      </td>
+                      <td data-ng-switch on="pool.machine_total_count" class="p-table__cell col-2" aria-label="Machine count">
+                      <span data-ng-switch-when="0"> Empty pool</span>
+                      <a data-ng-switch-default data-ng-click="tabs.pools.goToPoolMachines(pool)">
+                        {$ pool.machine_ready_count == 0 ? 'Zero' : pool.machine_ready_count $} of {$ pool.machine_total_count $} ready
+                      </a>
+                      </td>
+                      <td class="p-table__cell col-5" aria-label="Description">
+                        <span ng-if="!tabs.pools.isPoolAction(pool, 'edit')">{$ pool.description $}</span>
+                      </td>
+                      <td class="p-table__cell col-2 u-align--right" aria-label="Actions" data-ng-show="showResourcePoolActions()">
+                        <span data-ng-hide="tabs.pools.isPoolAction(pool)">
+                          <button class="p-button--base is-small u-no-margin--right" data-ng-if="canEditResourcePool(pool)" data-ng-click="tabs.pools.initiatePoolAction(pool, 'edit')">
+                            <i class="p-icon--edit">Edit</i>
+                          </button>
+                          <button class="p-button--base is-small" data-ng-hide="tabs.pools.isDefaultPool(pool)" data-ng-if="canDeleteResourcePool()" data-ng-click="tabs.pools.initiatePoolAction(pool, 'delete')">
+                            <i class="p-icon--delete">Delete</i>
+                          </button>
+                        </span>
+                      </td>
+                      <td class="is-active p-table-expanding__panel col-12" col-span="4"
+                          data-ng-if="tabs.pools.isPoolAction(pool)">
+                        <div class="row" data-ng-if="tabs.pools.isPoolAction(pool, 'edit')">
+                          <div class="col-6">
+                            <div class="p-form-group">
+                              <maas-obj-field
+                                type="textarea" key="description" label="Description" inline="true"
+                                subtle="false" input-width="12" class="u-no-margin--left field-description">
+                              </maas-obj-field>
                             </div>
                           </div>
-                          <hr />
-                          <div class="row u-no-margin--top">
-                            <div class="col-6">
-                              <p data-ng-if="tabs.pools.actionErrorMessage">
-                                <span class="p-icon--warning">Warning:</span> {$ tabs.pools.actionErrorMessage $}
-                              </p>
-                              <p data-ng-if="!tabs.pools.actionErrorMessage && tabs.pools.isPoolAction(pool, 'delete')">
-                                Are you sure you want to remove this resource pool?
-                              </p>
-                            </div>
-                            <div class="col-6">
-                              <span class="u-float--right">
-                                <button class="p-button--base" type="button"
-                                        data-ng-click="tabs.pools.cancelPoolAction()">
-                                  Cancel
-                                </button>
-                                <button class="p-button--positive" type="button"
-                                        data-ng-if="tabs.pools.isPoolAction(pool, 'edit')"
-                                        maas-obj-save>
-                                  Save
-                                </button>
-                                <button class="p-button--negative" type="button"
-                                        data-ng-if="tabs.pools.isPoolAction(pool, 'delete')"
-                                        data-ng-click="tabs.pools.actionConfirmDeletePool()">
-                                  Remove
-                                </button>
-                              </span>
-                            </div>
+                        </div>
+                        <hr />
+                        <div class="row u-no-margin--top">
+                          <div class="col-6">
+                            <p data-ng-if="tabs.pools.actionErrorMessage">
+                              <span class="p-icon--warning">Warning:</span> {$ tabs.pools.actionErrorMessage $}
+                            </p>
+                            <p data-ng-if="!tabs.pools.actionErrorMessage && tabs.pools.isPoolAction(pool, 'delete')">
+                              Are you sure you want to remove this resource pool?
+                            </p>
                           </div>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-          </maas-obj-form>
-        </div>
+                          <div class="col-6">
+                            <span class="u-float--right">
+                              <button class="p-button--base" type="button"
+                                      data-ng-click="tabs.pools.cancelPoolAction()">
+                                Cancel
+                              </button>
+                              <button class="p-button--positive" type="button"
+                                      data-ng-if="tabs.pools.isPoolAction(pool, 'edit')"
+                                      maas-obj-save>
+                                Save
+                              </button>
+                              <button class="p-button--negative" type="button"
+                                      data-ng-if="tabs.pools.isPoolAction(pool, 'delete')"
+                                      data-ng-click="tabs.pools.actionConfirmDeletePool()">
+                                Remove
+                              </button>
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+                  </tr>
+              </tbody>
+          </table>
+        </maas-obj-form>
     </div>
-    <div class="row"  data-ng-if="currentpage === 'controllers'">
-        <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
+</div>
+
+<div class="p-strip is-shallow" data-ng-if="currentpage === 'controllers'">
+    <div class="row">
         <div class="p-form-validation" data-ng-class="{ 'is-error': !tabs.controllers.searchValid }">
                 <div class="p-search-box">
                 <input
-                    type="search" placeholder="Search controllers" class="p-search-box__input p-form-validation__input"
+                    type="search" placeholder="Search" class="p-search-box__input p-form-validation__input"
                     data-ng-model="tabs.controllers.search" data-ng-change="updateFilters('controllers')"
                     data-ng-disabled="tabs.controllers.actionOption" />
                 <button type="reset" class="p-search-box__reset u-no-margin--right" alt="reset"
@@ -1260,7 +1092,10 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
             </table>
         </div>
     </div>
-    <div class="row" data-ng-if="currentpage === 'switches'">
+</div>
+
+<div class="p-strip is-shallow" data-ng-if="currentpage === 'switches'">
+    <div class="row">
         <form class="p-search-box">
             <div class="p-form-validation"
                 data-ng-class="{ 'is-error': !tabs.switches.searchValid }">
