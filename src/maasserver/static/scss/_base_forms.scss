@@ -51,22 +51,6 @@
 
   // fix checkbox so it doesn't get misaligned when next to a label with a different padding-top than the default label
   input[type="checkbox"] {
-    & + label {
-      &::after {
-        top: 13px;
-      }
-    }
-
-    th:not(.p-table__group-label) & + label {
-      &::before {
-        top: 0.65em;
-      }
-
-      &::after {
-        top: 11px;
-      }
-    }
-
     .p-inline-list__item & + label {
       &::before {
         top: 0.5rem;

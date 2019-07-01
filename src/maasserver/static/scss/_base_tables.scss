@@ -53,6 +53,35 @@
     p {
       @extend %ellipse-text;
     }
+
+    label {
+      &:empty {
+        display: inline;
+        margin-right: $sph-inner;
+        padding-right: $sph-inner;
+      }
+    }
+
+    input[type="checkbox"] {
+      &:focus + label {
+        outline: 0;
+
+        &::before {
+          outline: 2px solid $color-focus;
+          transition: 0s;
+        }
+      }
+
+      + label {
+        &::before {
+          top: 0;
+        }
+
+        &::after {
+          top: $spv-inner--x-small;
+        }
+      }
+    }
   }
 
   tr {

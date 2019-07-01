@@ -129,12 +129,12 @@
             <table class="p-table-expanding p-table--sortable p-table--pods" data-ng-if="pods.length > 0">
                 <thead data-ng-if="windowWidth >= 772" offset="88" media-query="min-width: 772px">
                     <tr class="p-table__row">
-                        <th class="p-table__cell" role="columnheader" data-ng-click="sortTable('name')" data-ng-class="{'is-sorted': predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="Name">
-                            <div data-ng-if="showActions()" class="u-float--left">
+                        <th class="p-table__cell">
+                            <div data-ng-if="showActions()">
                                 <input type="checkbox" class="checkbox" data-ng-click="toggleCheckAll()" data-ng-checked="allViewableChecked" id="check-all-pods" data-ng-disabled="add.open || hasActionsInProgress()" />
                                 <label for="check-all-pods" class="checkbox-label"></label>
+                                <span role="columnheader" data-ng-click="sortTable('name')" data-ng-class="{'is-sorted': predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="Name">Name</span>
                             </div>
-                            Name
                         </th>
                         <th class="p-table__cell" role="columnheader" data-ng-click="sortTable('type')" data-ng-class="{'is-sorted': predicate === 'type', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="Type">Type</th>
                         <th class="p-table__cell" role="columnheader" data-ng-click="sortTable('available.local_storage')" data-ng-class="{'is-sorted': predicate === 'available.local_storage', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="Local storage (GiB)">Local storage (GiB)</th>
@@ -151,8 +151,8 @@
                             <div class="u-float--left" data-ng-if="showActions()">
                                 <input type="checkbox" class="checkbox" data-ng-click="toggleChecked(pod)" data-ng-checked="pod.$selected" id="{$ pod.id $}" data-ng-disabled="add.open || hasActionsInProgress()"/>
                                 <label for="{$ pod.id $}" class="checkbox-label"></label>
+                                <a href="#/{$ getDetailsRoute() $}/{$ pod.id $}"><strong>{$ pod.name $}</strong></a>
                             </div>
-                            <a href="#/{$ getDetailsRoute() $}/{$ pod.id $}"><strong>{$ pod.name $}</strong></a>
                         </td>
                         <td class="p-table__cell" aria-label="Type" title="{$ getPowerTypeTitle(pod.type) $}">
                             {$ getPowerTypeTitle(pod.type) $}

@@ -67,7 +67,13 @@
         >
             <th class="p-table__group-label p-table__col--name p-double-row u-align--left">
                 <input type="checkbox" id="{$ group.label $}" data-ng-click="toggleCheckGroup(group.label)" data-ng-checked="getGroupSelectedState(group.label)" />
-                <label class="p-checkbox--action u-no-margin--bottom" for="{$ group.label $}">{$ group.label $}</label>
+                <label
+                    for="{$ group.label $}"
+                    class="p-checkbox--action u-no-padding--top"
+                    data-ng-class="{'u-no-margin--bottom' : group.label === 'none'}"
+                >
+                    {$ group.label $}
+                </label>
                 <div class="p-muted-text">{$ getGroupCountString(group.label) $}</div>
             </th>
             <th class="p-table__col--power" role="columnheader">
@@ -96,7 +102,9 @@
             data-ng-class="{ 'table--error': machineHasError({ $machine: node }),
                              'is-active': node.$selected,
                              'is-grouped': group.label !== 'none'
-                            }">
+                            }"
+            tabindex="0"
+        >
             <td class="p-table__col--name p-double-row" aria-label="FQDN" data-ng-if="table.column === 'fqdn' || table.column === 'ip_address'">
                 <div class="p-double-row__checkbox" data-ng-if="!hideActions">
                     <input type="checkbox" data-ng-click="toggleChecked(node)" data-ng-checked="node.$selected" id="{$ node.fqdn $}" data-ng-disabled="ngDisable()" />
@@ -111,7 +119,7 @@
                             <span class="p-domain-name__host">{$ node.hostname $}</span><span class="p-domain-name__tld">.{$ node.domain.name $}</span>
                         </a>
                     </div>
-                    <span class="p-tooltip--bottom-left" aria-describedby="ip-addresses-{$ node.fqdn $}">
+                    <span class="p-tooltip" aria-describedby="ip-addresses-{$ node.fqdn $}">
                         <div data-ng-if="removeDuplicates(node.ip_addresses, 'ip').length" class="p-double-row__muted-row">
                             <span class="u-text-overflow">
                                 <span>{$ getBootIp(node.ip_addresses) || node.ip_addresses[0].ip $}</span><span data-ng-if="getBootIp(node.ip_addresses)"> (PXE)</span>
@@ -358,7 +366,7 @@
                             <span class="u-text-overflow" data-ng-if="node.spaces.length === 1">
                                 {$ node.spaces[0] $}
                             </span>
-                            <span data-ng-if="node.spaces.length > 1" class="p-tooltip--btm-left" aria-described-by="{$ node.hostname $}-spaces" style="overflow: visible">
+                            <span data-ng-if="node.spaces.length > 1" class="p-tooltip" aria-described-by="{$ node.hostname $}-spaces" style="overflow: visible">
                                 <span class="u-text-overflow">
                                     {$ node.spaces.length $} spaces
                                 </span>

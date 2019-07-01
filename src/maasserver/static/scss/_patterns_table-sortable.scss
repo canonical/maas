@@ -3,12 +3,21 @@
     [role="columnheader"] {
       @extend th[role="columnheader"][aria-sort];
 
+      &::after {
+        @extend %icon;
+        @include vf-icon-chevron;
+        @include vf-icon-size(1em);
+        background-size: auto;
+        margin-left: $sph-inner--small;
+      }
+
       &.is-sorted.sort-asc::after {
-        @extend th[role="columnheader"][aria-sort="ascending"]::after;
+        content: "";
       }
 
       &.is-sorted.sort-desc::after {
-        @extend th[role="columnheader"][aria-sort="descending"]::after;
+        content: "";
+        transform: rotate(180deg);
       }
     }
   }

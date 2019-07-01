@@ -53,7 +53,13 @@ $breakpoint-fourth: 1360px;
 
 @mixin maas-table-widths {
   .p-table__row {
-    .p-table--machines tbody &:hover {
+    .p-table--machines tbody &:focus,
+    .p-table--machines tbody &:focus-within {
+      outline: 0;
+    }
+
+    .p-table--machines tbody &:hover,
+    .p-table--machines tbody &:focus-within {
       background-color: $color-x-light;
       box-shadow: 0 1px 3px 0 transparentize($color-dark, 0.8);
 
@@ -474,7 +480,8 @@ $breakpoint-fourth: 1360px;
         @include breakpoint-widths(46%, 30%, 22%, 20%, 17%);
         position: relative;
 
-        .p-tooltip {
+        .p-tooltip,
+        [class^="p-tooltip--"] {
           position: static;
         }
       }
@@ -487,7 +494,8 @@ $breakpoint-fourth: 1360px;
         @include breakpoint-widths(46%, 44%, 22%, 22%, 18%);
         position: relative;
 
-        .p-tooltip {
+        .p-tooltip,
+        [class^="p-tooltip--"] {
           position: static;
         }
       }
@@ -537,9 +545,13 @@ $breakpoint-fourth: 1360px;
 
     .p-icon--placeholder {
       @extend %icon;
-      height: map-get($icon-sizes, default);
-      margin-right: $sph-inner--small;
-      width: map-get($icon-sizes, default);
+      height: 1em;
+      margin-right: 1em;
+      width: 1em;
+    }
+
+    .p-tooltip__message {
+      line-height: 1.5;
     }
 
     .p-tooltip__message--latest-event {
@@ -866,15 +878,16 @@ $breakpoint-fourth: 1360px;
     }
 
     .p-table-menu__toggle {
-      background-color: transparentize($color-x-light, 0.25);
+      @extend %icon;
+      @include vf-icon-chevron;
       border: 0;
-      cursor: pointer;
       display: none;
       left: $sp-x-small;
       opacity: 0.25;
       top: 1px;
 
-      td:hover & {
+      td:hover &,
+      td:focus-within & {
         opacity: 1;
       }
     }
