@@ -59392,7 +59392,10 @@ nodesListFilter.$inject = ["$document"];
  * Directive for nodes list filter dropdown.
  *
  */
-var metadataMap = new Map([["architecture", "Architecture"], ["fabrics", "Fabric"], ["owner", "Owner"], ["pod", "KVM"], ["pool", "Resource pool"], ["release", "OS/Release"], ["spaces", "Space"], ["status", "Status"], ["storage_tags", "Storage tags"], ["subnets", "Subnet"], ["tags", "Tags"], ["zone", "Zone"]]);
+// Map of names displayed in the UI for each metadata option
+var displayNames = new Map([["architecture", "Architecture"], ["fabric", "Fabric"], ["fabrics", "Fabric"], ["owner", "Owner"], ["pod", "KVM"], ["pool", "Resource pool"], ["rack", "Rack"], ["release", "OS/Release"], ["spaces", "Space"], ["status", "Status"], ["storage_tags", "Storage tags"], ["subnet", "Subnet"], ["subnets", "Subnet"], ["tags", "Tags"], ["vlan", "VLAN"], ["zone", "Zone"]]); // Map of metadata names that use a different name for filtering
+
+var metadataNames = new Map([["fabric", "fabric_name"], ["rack", "observer_hostname"], ["subnet", "subnet_cidr"]]);
 /* @ngInject */
 
 function nodesListFilter($document) {
@@ -59450,8 +59453,8 @@ function NodesListFilterController($scope) {
 
     return order.map(function (key) {
       return {
-        name: key,
-        displayName: metadataMap.get(key),
+        name: metadataNames.get(key) || key,
+        displayName: displayNames.get(key) || key,
         entries: options[key] || []
       };
     });

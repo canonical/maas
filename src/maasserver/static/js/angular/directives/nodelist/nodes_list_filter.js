@@ -5,19 +5,31 @@
  *
  */
 
-const metadataMap = new Map([
+// Map of names displayed in the UI for each metadata option
+const displayNames = new Map([
   ["architecture", "Architecture"],
+  ["fabric", "Fabric"],
   ["fabrics", "Fabric"],
   ["owner", "Owner"],
   ["pod", "KVM"],
   ["pool", "Resource pool"],
+  ["rack", "Rack"],
   ["release", "OS/Release"],
   ["spaces", "Space"],
   ["status", "Status"],
   ["storage_tags", "Storage tags"],
+  ["subnet", "Subnet"],
   ["subnets", "Subnet"],
   ["tags", "Tags"],
+  ["vlan", "VLAN"],
   ["zone", "Zone"]
+]);
+
+// Map of metadata names that use a different name for filtering
+const metadataNames = new Map([
+  ["fabric", "fabric_name"],
+  ["rack", "observer_hostname"],
+  ["subnet", "subnet_cidr"]
 ]);
 
 /* @ngInject */
@@ -68,8 +80,8 @@ function NodesListFilterController($scope) {
     const { options, order } = $scope;
     // Convert metadata object into array and order
     return order.map(key => ({
-      name: key,
-      displayName: metadataMap.get(key),
+      name: metadataNames.get(key) || key,
+      displayName: displayNames.get(key) || key,
       entries: options[key] || []
     }));
   };

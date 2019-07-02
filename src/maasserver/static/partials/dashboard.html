@@ -82,74 +82,39 @@
         </div>
     </div>
     <div class="row">
-        <aside class="p-filter col-small-2 col-medium-3 col-3">
-            <div class="maas-accordion p-filter__dropdown">
-                <button class="p-filter__dropdown-button maas-accordion-tab">Filters</button>
-                <div class="p-accordion">
-                    <ul class="p-accordion__list">
-                        <li class="p-accordion__group ng-hide" data-ng-show="metadata.fabric.length">
-                            <button class="maas-accordion-tab p-accordion__tab">Fabric</button>
-                            <div class="p-accordion__panel">
-                                <ul class="p-list">
-                                    <li class="p-list__item" data-ng-repeat="fabric in metadata.fabric track by fabric.name">
-                                        <button class="p-button--base" data-ng-click="toggleFilter('fabric_name', fabric.name)" data-ng-class="{'is-active': isFilterActive('fabric_name', fabric.name)}">
-                                            {$ fabric.name $} ({$ fabric.count $})
-                                        </button>
-                                    </li>
-                                </ul>
-                            </div>
-                        </li>
-                        <li class="p-accordion__group ng-hide" data-ng-show="metadata.vlan.length">
-                            <button class="maas-accordion-tab p-accordion__tab">VLAN</button>
-                            <div class="p-accordion__panel">
-                                <ul class="p-list">
-                                    <li class="p-list__item" data-ng-repeat="vlan in metadata.vlan track by vlan.name">
-                                        <button class="p-button--base" data-ng-click="toggleFilter('vlan', vlan.name)" data-ng-class="{'is-active': isFilterActive('vlan', vlan.name)}">
-                                            {$ vlan.name $} ({$ vlan.count $})
-                                        </button>
-                                    </li>
-                                </ul>
-                            </div>
-                        </li>
-                        <li class="p-accordion__group ng-hide" data-ng-show="metadata.rack.length">
-                            <button class="maas-accordion-tab p-accordion__tab">Rack</button>
-                            <div class="p-accordion__panel">
-                                <ul class="p-list">
-                                    <li class="p-list__item" data-ng-repeat="rack in metadata.rack track by rack.name">
-                                        <button class="p-button--base" data-ng-click="toggleFilter('observer_hostname', rack.name)" data-ng-class="{'is-active': isFilterActive('observer_hostname', rack.name)}">
-                                            {$ rack.name $} ({$ rack.count $})
-                                        </button>
-                                    </li>
-                                </ul>
-                            </div>
-                        </li>
-                        <li class="p-accordion__group ng-hide" data-ng-show="metadata.subnet.length">
-                            <button class="maas-accordion-tab p-accordion__tab">Subnet</button>
-                            <div class="p-accordion__panel">
-                                <ul class="p-list">
-                                    <li class="p-list__item" data-ng-repeat="subnet in metadata.subnet track by subnet.name">
-                                        <button class="p-button--base" data-ng-click="toggleFilter('subnet_cidr', subnet.name)" data-ng-class="{'is-active': isFilterActive('subnet_cidr', subnet.name)}">
-                                            {$ subnet.name $} ({$ subnet.count $})
-                                        </button>
-                                    </li>
-                                </ul>
-                            </div>
-                        </li>
-                    </ul>
-                </div>
+        <div class="col-small-2 col-medium-3 col-3">
+            <nodes-list-filter
+                current-page="dashboard"
+                options="metadata"
+                order="['fabric', 'vlan', 'rack', 'subnet']"
+                is-disabled="false"
+                toggle-filter="toggleFilter"
+                is-filter-active="isFilterActive"
+            />
+        </div>
+        <div class="col-small-2 col-medium-3 col-9">
+            <div class="p-search-box">
+                <input
+                    type="search"
+                    placeholder="Search"
+                    class="p-search-box__input"
+                    data-ng-model="search"
+                    data-ng-change="updateFilters()"
+                    data-ng-class="{ error: !searchValid }"
+                    data-ng-disabled="actionOption"
+                />
+                <button
+                    type="reset"
+                    alt="reset"
+                    class="p-search-box__reset u-no-margin--right"
+                    data-ng-click="clearSearch()"
+                    data-ng-show="search.length > 0">
+                    <i class="p-icon--close"></i>
+                </button>
+                <button type="submit" class="p-search-box__button" alt="search">
+                    <i class="p-icon--search"></i>
+                </button>
             </div>
-        </aside>
-    </div>
-    <div class="row">
-        <div id="search-bar" class="p-search-box col-start-small-3 col-small-2 col-start-medium-4 col-medium-3 col-start-large-4 col-9">
-            <input type="search" placeholder="Search" class="p-search-box__input" data-ng-model="search"
-                data-ng-change="updateFilters()" data-ng-class="{ error: !searchValid }"
-                data-ng-disabled="actionOption" />
-            <button type="reset" class="p-search-box__reset u-no-margin--right" alt="reset"
-                data-ng-click="clearSearch()" data-ng-show="search.length > 0"><i
-                    class="p-icon--close"></i></button>
-            <button type="submit" class="p-search-box__button" alt="search"><i class="p-icon--search"></i></button>
-
         </div>
     </div>
     <div class="row">
