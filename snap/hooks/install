@@ -94,5 +94,8 @@ if [ -d "$SNAP_COMMON/postgres/data" ] && [ -e "$SNAP_COMMON/postgres/data/PG_VE
     fi
 fi
 
+# ensure that services are running as migration needs running postgres
+snapctl start "${SNAP_INSTANCE_NAME}.supervisor"
+
 # Perform migrations. Does nothing in 'rack' or 'none' mode.
 exec "$SNAP/snap/command-chain/snapcraft-runner" "$SNAP/command-maas.wrapper" migrate --configure
