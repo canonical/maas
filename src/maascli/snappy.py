@@ -168,6 +168,11 @@ def get_current_mode():
         return "none"
 
 
+def get_base_db_dir():
+    """Return the base dir for postgres."""
+    return os.path.join(os.environ['SNAP_COMMON'], 'postgres')
+
+
 def set_current_mode(mode):
     """Set the current mode of the snap."""
     with open(get_mode_filepath(), "w") as fp:
@@ -329,7 +334,7 @@ def run_sql(sql):
     """Run sql command through `psql`."""
     subprocess.check_output([
         os.path.join(os.environ['SNAP'], 'bin', 'psql'),
-        '-h', os.path.join(os.environ['SNAP_COMMON'], 'db'),
+        '-h', os.path.join(get_base_db_dir(), 'sockets'),
         '-d', 'postgres', '-U', 'postgres', '-c', sql],
         stderr=subprocess.STDOUT)
 
@@ -353,12 +358,14 @@ def wait_for_postgresql(timeout=60):
 
 def start_postgres():
     """Start postgresql."""
+    base_db_dir = get_base_db_dir()
     subprocess.check_output([
         os.path.join(os.environ['SNAP'], 'bin', 'pg_ctl'),
-        'start', '-w', '-D', os.path.join(os.environ['SNAP_COMMON'], 'db'),
+        'start', '-w', '-D', os.path.join(base_db_dir, 'data'),
         '-l',
-        os.path.join(os.environ['SNAP_COMMON'], 'log', 'postgresql-init.log'),
-        '-o', '-k "%s" -h ""' % os.path.join(os.environ['SNAP_COMMON'], 'db')],
+        os.path.join(
+            os.environ['SNAP_COMMON'], 'log', 'postgresql-init.log'),
+        '-o', '-k "%s" -h ""' % os.path.join(base_db_dir, 'sockets')],
         stderr=subprocess.STDOUT)
     wait_for_postgresql()
 
@@ -367,7 +374,7 @@ def stop_postgres():
     """Stop postgresql."""
     subprocess.check_output([
         os.path.join(os.environ['SNAP'], 'bin', 'pg_ctl'),
-        'stop', '-w', '-D', os.path.join(os.environ['SNAP_COMMON'], 'db')],
+        'stop', '-w', '-D', os.path.join(get_base_db_dir(), 'data')],
         stderr=subprocess.STDOUT)
 
 
@@ -413,9 +420,16 @@ def migrate_db(capture=False):
 def init_db():
     """Initialize the database."""
     config_data = MAASConfiguration().get()
-    db_path = os.path.join(os.environ['SNAP_COMMON'], 'db')
+    base_db_dir = get_base_db_dir()
+    db_path = os.path.join(base_db_dir, 'data')
+    if not os.path.exists(base_db_dir):
+        os.mkdir(base_db_dir)
+        # allow both root and non-root user to create/delete directories under
+        # this one
+        shutil.chown(base_db_dir, group='nogroup')
+        os.chmod(base_db_dir, 0o770)
     if os.path.exists(db_path):
-        shutil.rmtree(db_path)
+        run_with_drop_privileges(shutil.rmtree, db_path)
     os.mkdir(db_path)
     shutil.chown(db_path, user='nobody', group='nogroup')
     log_path = os.path.join(
@@ -423,11 +437,16 @@ def init_db():
     if not os.path.exists(log_path):
         open(log_path, 'a').close()
     shutil.chown(log_path, user='nobody', group='nogroup')
+    socket_path = os.path.join(get_base_db_dir(), 'sockets')
+    if not os.path.exists(socket_path):
+        os.mkdir(socket_path)
+        os.chmod(socket_path, 0o775)
+        shutil.chown(socket_path, user='nobody')  # keep root as group
 
     def _init_db():
         subprocess.check_output([
             os.path.join(os.environ['SNAP'], 'bin', 'initdb'),
-            '-D', os.path.join(os.environ['SNAP_COMMON'], 'db'),
+            '-D', os.path.join(get_base_db_dir(), 'data'),
             '-U', 'postgres', '-E', 'UTF8', '--locale=C'],
             stderr=subprocess.STDOUT)
         with with_postgresql():
@@ -609,7 +628,7 @@ class cmd_init(SnappyCommand):
         database_user = database_pass = None
         rpc_secret = None
         if mode == 'all':
-            database_host = os.path.join(os.environ['SNAP_COMMON'], 'db')
+            database_host = os.path.join(get_base_db_dir(), 'sockets')
             database_name = 'maasdb'
             database_user = 'maas'
             database_pass = ''.join(
@@ -884,7 +903,7 @@ class cmd_config(SnappyCommand):
 
                     # Configure the new database settings.
                     options.database_host = os.path.join(
-                        os.environ['SNAP_COMMON'], 'db')
+                        get_base_db_dir(), 'sockets')
                     options.database_name = 'maasdb'
                     options.database_user = 'maas'
                     options.database_pass = ''.join(

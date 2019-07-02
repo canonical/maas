@@ -1,8 +1,6 @@
-#!/bin/bash
+#!/bin/bash -e
 # Copyright 2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
-set -e
 
 # Create the required directories for services to run.
 mkdir -p "$SNAP_COMMON/log/"{proxy,http}
@@ -26,16 +24,45 @@ cp "$SNAP/etc/maas/preseeds/curtin_userdata_centos" "$SNAP_DATA/preseeds/curtin_
 cp "$SNAP/etc/maas/preseeds/curtin_userdata_custom" "$SNAP_DATA/preseeds/curtin_userdata_custom.sample"
 cp "$SNAP/etc/maas/preseeds/curtin_userdata_windows" "$SNAP_DATA/preseeds/curtin_userdata_windows.sample"
 
+# Upgrade to the new database dirs layout
+if [ ! -e "$SNAP_COMMON/postgres" ]; then
+    mkdir -m 770 "$SNAP_COMMON/postgres"
+    mkdir "$SNAP_COMMON/postgres/sockets"
+    # fix database paths in config
+    if [ -f "$SNAP_DATA/supervisord/supervisord.conf" ]; then
+        sed -i '/bin\/postgres/ { s|/db|/postgres/data|; s|/db|/postgres/sockets|}' "$SNAP_DATA/supervisord/supervisord.conf"
+    fi
+    if [ -f "$SNAP_DATA/regiond.conf" ]; then
+        sed -i 's|common/db|common/postgres/sockets|' "$SNAP_DATA/regiond.conf"
+    fi
+fi
+
+if [ -d "$SNAP_COMMON/db" ]; then
+    if  [ -d "$SNAP_COMMON/postgres/data" ]; then
+        echo "Failed to upgrage PostgreSQL layout: $SNAP_COMMON/postgres/data already exists."
+        exit 1
+    fi
+    mv "$SNAP_COMMON/db" "$SNAP_COMMON/postgres/data"
+fi
+
+chgrp nogroup "$SNAP_COMMON/postgres"
+if [ -d "$SNAP_COMMON/postgres/sockets" ]; then
+    chown nobody.nogroup "$SNAP_COMMON/postgres/sockets"
+fi
+if [ -d "$SNAP_COMMON/postgres/data" ]; then
+    chown -R nobody.nogroup "$SNAP_COMMON/postgres/data"
+fi
+
 # Upgrade from PostgreSQL 9.5 to 10.
-if [ -d "$SNAP_COMMON/db" ] && [ -e "$SNAP_COMMON/db/PG_VERSION" ]; then
-    PG_VERSION=$(cat "$SNAP_COMMON/db/PG_VERSION")
+if [ -d "$SNAP_COMMON/postgres/data" ] && [ -e "$SNAP_COMMON/postgres/data/PG_VERSION" ]; then
+    PG_VERSION=$(cat "$SNAP_COMMON/postgres/data/PG_VERSION")
     if [ "$PG_VERSION" = "9.5" ]; then
         echo "Upgrading from PostgreSQL 9.5 to 10."
 
-        # Move copy of 9.5 database to db-9.5. On successful upgrade 'db' will
+        # Move copy of 9.5 database to data-9.5. On successful upgrade 'data' will
         # now be a PostgreSQL 10 database.
         ORIG_DIR=$PWD
-        mv "$SNAP_COMMON/db" "$SNAP_COMMON/db-9.5"
+        mv "$SNAP_COMMON/postgres/data" "$SNAP_COMMON/postgres/data-9.5"
 
         # Make an upgrade folder so upgrade logs can be stored.
         mkdir "$SNAP_COMMON/pg_upgrade"
@@ -43,24 +70,24 @@ if [ -d "$SNAP_COMMON/db" ] && [ -e "$SNAP_COMMON/db/PG_VERSION" ]; then
         cd "$SNAP_COMMON/pg_upgrade"
 
         # Initialize the new PostgreSQL 10 database.
-        rm -rf "$SNAP_COMMON/db-10"
-        mkdir "$SNAP_COMMON/db-10"
-        chown nobody:nogroup "$SNAP_COMMON/db-10"
+        rm -rf "$SNAP_COMMON/postgres/data-10"
+        mkdir "$SNAP_COMMON/postgres/data-10"
+        chown nobody:nogroup "$SNAP_COMMON/postgres/data-10"
         sudo -u nobody -E "$SNAP/snap/command-chain/snapcraft-runner" "$SNAP/usr/lib/postgresql/10/bin/initdb" \
-            -D "$SNAP_COMMON/db-10" -U postgres -E UTF8 --locale=C
+            -D "$SNAP_COMMON/postgres/data-10" -U postgres -E UTF8 --locale=C
 
         # Perform the actual upgrade.
         sudo -u nobody -E "$SNAP/snap/command-chain/snapcraft-runner" "$SNAP/usr/lib/postgresql/10/bin/pg_upgrade" \
             --old-bindir "$SNAP/usr/postgresql-9.5/bin" \
-            --old-datadir "$SNAP_COMMON/db-9.5" \
+            --old-datadir "$SNAP_COMMON/postgres/data-9.5" \
             --new-bindir "$SNAP/usr/lib/postgresql/10/bin" \
-            --new-datadir "$SNAP_COMMON/db-10" \
+            --new-datadir "$SNAP_COMMON/postgres/data-10" \
             -U postgres
 
         # Change back to previous directory and cleanup.
         cd "$ORIG_DIR"
         rm -rf "$SNAP_COMMON/pg_upgrade"
-        mv "$SNAP_COMMON/db-10" "$SNAP_COMMON/db"
+        mv "$SNAP_COMMON/postgres/data-10" "$SNAP_COMMON/postgres/data"
     elif [ "$PG_VERSION" != "10" ]; then
         echo "Failed to upgrage PostgreSQL from $PG_VERSION; unknown version."
         exit 1

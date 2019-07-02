@@ -21,7 +21,7 @@ password=maas
 {{if postgresql}}
 [program:postgresql]
 process_name=postgresql
-command=%(ENV_SNAP)s/bin/postgres -D %(ENV_SNAP_COMMON)s/db -k %(ENV_SNAP_COMMON)s/db -h ""
+command=%(ENV_SNAP)s/bin/postgres -D %(ENV_SNAP_COMMON)s/postgres/data -k %(ENV_SNAP_COMMON)s/postgres/sockets -h ""
 user=nobody
 stopasgroup=true
 killasgroup=true
