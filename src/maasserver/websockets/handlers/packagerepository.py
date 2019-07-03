@@ -77,11 +77,6 @@ class PackageRepositoryHandler(TimestampedModelHandler):
         else:
             raise HandlerValidationError(form.errors)
 
-        # Update by updating the fields on the object.
-        obj = self.full_hydrate(obj, params)
-        obj.save()
-        return self.full_dehydrate(obj)
-
     def delete(self, params):
         """Delete the object from params iff admin."""
         if not self.user.is_superuser:
