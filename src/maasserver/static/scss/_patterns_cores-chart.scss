@@ -1,6 +1,7 @@
 $chart-bg-light: #d3e4ed;
 $core-size: 5px;
 $chart-height: 15px;
+$chart-height-small: 9px;
 $bar-height: 11px;
 
 @mixin maas-p-cores-chart {
@@ -9,9 +10,8 @@ $bar-height: 11px;
   }
 
   .p-cores-chart {
+    position: relative;
     display: inline-block;
-    border: 1px solid $color-link;
-    border-radius: 1rem;
     width: 100%;
   }
 
@@ -19,15 +19,52 @@ $bar-height: 11px;
     position: relative;
     overflow: hidden;
     height: $chart-height;
-    border: 2px solid $color-x-light;
+    border: 2px solid transparent;
     border-radius: 1rem;
+
+    .p-cores-chart--undercommit & {
+      border-radius: 1rem 0 0 1rem;
+    }
+  }
+
+  %chart-border {
+    position: absolute;
+    top: 0;
+    height: $chart-height;
+    border-width: 1px;
+    border-color: $color-link;
+
+    .p-cores-chart--single-row & {
+      height: $chart-height-small;
+    }
+  }
+
+  .p-cores-chart__border {
+    @extend %chart-border;
+    left: 0;
+    width: 100%;
+    border-style: solid;
+    border-radius: 1rem;
+
+    .p-cores-chart--overcommit & {
+      border-radius: 1rem 0 0 1rem;
+      border-right-width: 0;
+    }
+  }
+
+  .p-cores-chart__border--overcommit {
+    @extend %chart-border;
+    right: 0;
+    border-style: dashed;
+    border-radius: 0 1rem 1rem 0;
+    border-left-width: 0;
   }
 
   .p-cores-chart--single-row {
     width: auto;
 
     .p-cores-chart__inner {
-      height: 9px;
+      height: $chart-height-small;
     }
   }
 
@@ -55,36 +92,46 @@ $bar-height: 11px;
     overflow: hidden;
   }
 
-  .p-cores-row + .p-cores-row {
+  .p-cores-row--used {
+    height: $core-size;
+  }
+
+  .p-cores-row + .p-cores-row,
+  .p-cores-row--used + .p-cores-row--used {
     margin-top: 1px;
   }
 
-  .p-cores-row--used {
+  .p-used-cores__wrapper {
     position: absolute;
     top: 0;
     left: 0;
   }
 
-  .p-cores-row--used + .p-cores-row--used {
-    top: 6px;
+  .p-total-cores__wrapper,
+  .p-used-cores__wrapper {
+    width: 100%;
+  }
+
+  %chart-bar {
+    height: $bar-height;
+    background-repeat: repeat no-repeat;
+    margin: 1px;
   }
 
   .p-cores-chart__total-bar {
+    @extend %chart-bar;
     min-width: 100%;
     width: 100%;
-    height: $bar-height;
-    background-image: url(https://assets.ubuntu.com/v1/60e7f9e0-kvm-graph-tex-filler-light.svg);
-    background-repeat: repeat no-repeat;
+    background-image: url(../assets/images/kvm-graph-tex-filler-light.svg);
     background-position: top left;
   }
 
   .p-cores-chart__used-bar {
+    @extend %chart-bar;
     position: absolute;
     top: 0;
     left: 0;
-    height: $bar-height;
-    background-image: url(https://assets.ubuntu.com/v1/ed4566c3-kvm-graph-tex-filler.svg);
-    background-repeat: repeat no-repeat;
+    background-image: url(../assets/images/kvm-graph-tex-filler.svg);
     background-position: center left;
   }
 }

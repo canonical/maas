@@ -4,35 +4,44 @@
  * Cores chart directive.
  */
 
+/**
+ *
+ * @param {string} type
+ * @param {array} classList
+ */
 function createElement(type, classList) {
-  var el = document.createElement(type);
+  let el = document.createElement(type);
 
   if (classList) {
-    // Could use the spread operator here to avoid this
-    // loop but can't be bothered to setup babel here
-    // e.g. classList.add(...classList)
-    classList.forEach(function(cls) {
-      el.classList.add(cls);
-    });
+    el.classList.add(...classList);
   }
 
   return el;
 }
 
+/**
+ *
+ * @param {number} n
+ */
 function isOddNumber(n) {
   return n % 2 === 0;
 }
 
+/**
+ *
+ * @param {object} coresData
+ * @param {object} classList
+ */
 function buildRows(coresData, classList) {
-  var firstCoresRow = createElement("div", classList.row);
-  var secondCoresRow = createElement("div", classList.row);
-  var rows = [];
+  let firstCoresRow = createElement("div", classList.row);
+  let secondCoresRow = createElement("div", classList.row);
+  let rows = [];
 
   if (coresData.totalCores <= coresData.maxCores) {
-    for (var i = 0, ii = coresData.cores; i < ii; i++) {
-      var core = createElement("span", classList.core);
+    for (let i = 0, ii = coresData.cores; i < ii; i++) {
+      let core = createElement("span", classList.core);
 
-      if (coresData.totalCores <= coresData.coresPerRow) {
+      if (coresData.totalCores <= coresData.maxCoresPerRow) {
         if (i < coresData.totalCores) {
           firstCoresRow.appendChild(core);
         }
@@ -51,11 +60,11 @@ function buildRows(coresData, classList) {
 
     rows.push(firstCoresRow);
 
-    if (coresData.totalCores > coresData.coresPerRow) {
+    if (coresData.totalCores > coresData.maxCoresPerRow) {
       rows.push(secondCoresRow);
     }
   } else {
-    var bar = createElement("div", classList.bar);
+    let bar = createElement("div", classList.bar);
     bar.style.width = (coresData.cores / coresData.totalCores) * 100 + "%";
     rows = [bar];
   }
@@ -63,53 +72,65 @@ function buildRows(coresData, classList) {
   return rows;
 }
 
-function createChart(total, used) {
-  var chart = createElement("div", ["p-cores-chart"]);
-  var chartInner = createElement("div", ["p-cores-chart__inner"]);
-  var maxCores = 32;
-  var coresPerRow = 16;
+/**
+ *
+ * @param {number} totalCores
+ * @param {number} usedCores
+ * @param {number} overcommitRatio
+ */
+function createChart(totalCores, usedCores, overcommitRatio) {
+  const maxCores = 32;
+  const maxCoresPerRow = 16;
+  const overcommittedCores = totalCores * overcommitRatio;
 
-  var totalCoresClasses = {
+  let coresDisplayCount = overcommitRatio < 1 ? totalCores : overcommittedCores;
+
+  let chart = createElement("div", ["p-cores-chart"]);
+  let chartInner = createElement("div", ["p-cores-chart__inner"]);
+  let totalCoresWrapper = createElement("div", ["p-total-cores__wrapper"]);
+  let usedCoresWrapper = createElement("div", ["p-used-cores__wrapper"]);
+
+  let totalCoresClasses = {
     row: ["p-cores-row"],
-    core: ["p-core"],
+    core: ["p-core", "p-core--total"],
     bar: ["p-cores-chart__total-bar"]
   };
 
-  var usedCoresClasses = {
+  let usedCoresClasses = {
     row: ["p-cores-row--used"],
     core: ["p-core", "p-core--used"],
     bar: ["p-cores-chart__used-bar"]
   };
 
-  var totalCoresRows = buildRows(
+  let totalCoresRows = buildRows(
     {
-      cores: total,
-      totalCores: total,
+      cores: coresDisplayCount,
+      totalCores: coresDisplayCount,
       maxCores: maxCores,
-      coresPerRow: coresPerRow
+      maxCoresPerRow: maxCoresPerRow
     },
     totalCoresClasses
   );
 
-  var usedCoresRows = buildRows(
+  let usedCoresRows = buildRows(
     {
-      cores: used,
-      totalCores: total,
+      cores: usedCores,
+      totalCores: coresDisplayCount,
       maxCores: maxCores,
-      coresPerRow: coresPerRow
+      maxCoresPerRow: maxCoresPerRow
     },
     usedCoresClasses
   );
 
-  totalCoresRows.forEach(function(row) {
-    chartInner.appendChild(row);
+  totalCoresRows.forEach(row => {
+    totalCoresWrapper.appendChild(row);
   });
 
-  usedCoresRows.forEach(function(row) {
-    chartInner.appendChild(row);
+  usedCoresRows.forEach(row => {
+    usedCoresWrapper.appendChild(row);
   });
 
-  if (totalCoresRows.length === 1 && total <= coresPerRow) {
+  if (totalCoresRows.length === 1 && coresDisplayCount <= maxCoresPerRow) {
     chart.classList.add("p-cores-chart--single-row");
   }
 
@@ -117,7 +138,32 @@ function createChart(total, used) {
     chart.classList.add("p-cores-chart--double-row");
   }
 
+  chartInner.appendChild(totalCoresWrapper);
+  chartInner.appendChild(usedCoresWrapper);
+
+  let chartBorder = createElement("div", ["p-cores-chart__border"]);
+
+  if (overcommitRatio < 1) {
+    chartBorder.style.width = (overcommittedCores / totalCores) * 100 + "%";
+    chartBorder.classList.add("p-cores-chart__border--undercommit");
+    chart.classList.add("p-cores-chart--undercommit");
+  }
+
+  if (overcommitRatio > 1) {
+    let chartBorderOvercommit = createElement("div", [
+      "p-cores-chart__border--overcommit"
+    ]);
+
+    chartBorderOvercommit.style.width =
+      100 - (totalCores / overcommittedCores) * 100 + "%";
+    chartBorder.style.width = (totalCores / overcommittedCores) * 100 + "%";
+
+    chart.classList.add("p-cores-chart--overcommit");
+    chart.appendChild(chartBorderOvercommit);
+  }
+
   chart.appendChild(chartInner);
+  chart.appendChild(chartBorder);
 
   return chart;
 }
@@ -137,10 +183,11 @@ export function maasCoresChart() {
     templateUrl: "directive/templates/cores-chart.html",
     scope: {
       total: "=",
-      used: "="
+      used: "=",
+      overcommit: "="
     },
     link: function(scope, element) {
-      var el = createChart(scope.total, scope.used);
+      let el = createChart(scope.total, scope.used, scope.overcommit);
       element.html(el);
     }
   };

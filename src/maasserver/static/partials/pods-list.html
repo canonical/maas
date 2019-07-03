@@ -163,10 +163,10 @@
                         <td class="p-table__cell" aria-label="iSCSI storage (GiB)" title="{$ pod.available.iscsi_storage_gb || '0' $} free of {$ pod.total.iscsi_storage_gb || '0' $}">
                             {$ pod.available.iscsi_storage_gb || '0' $} free of {$ pod.total.iscsi_storage_gb || '0' $}
                         </td>
-                        <td class="p-table__cell p-double-row" aria-label="Cores" title="{$ availableWithOvercommit(pod.total.cores, pod.used.cores, pod.cpu_over_commit_ratio, 1) $} CPU cores {$ pod.cpu_over_commit_ratio !== 1 ? 'x ' + pod.total.cores + ' overcommit' : '' $} available">
+                        <td class="p-table__cell p-double-row" aria-label="Cores" title="{$ availableWithOvercommit(pod.total.cores, pod.used.cores, pod.cpu_over_commit_ratio, 1) $} CPU cores {$ pod.cpu_over_commit_ratio !== 1 ? 'x ' + pod.cpu_over_commit_ratio + ' overcommit' : '' $} available">
                             <div class="p-double-rows__container">
                                 <div class="p-double-row__main-row">
-                                    <maas-cores-chart used="pod.used.cores" total="pod.total.cores"></maas-cores-chart>
+                                    <maas-cores-chart used="pod.used.cores" total="pod.total.cores" overcommit="pod.cpu_over_commit_ratio"></maas-cores-chart>
                                 </div>
                                 <div class="p-double-row__muted-row u-align--right">
                                     {$ pod.total.cores * pod.cpu_over_commit_ratio $}
