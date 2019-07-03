@@ -301,14 +301,14 @@ def describe_resource(resource):
     if authenticate:
         if resource.anonymous is None:
             anon = None
-            auth = describe_handler(resource.handler)
         else:
             anon = describe_handler(resource.anonymous)
-            auth = describe_handler(resource.handler)
+        auth = describe_handler(resource.handler)
+        name = auth["name"]
     else:
         anon = describe_handler(resource.handler)
         auth = None
-    name = anon["name"] if auth is None else auth["name"]
+        name = anon["name"]
     return {"anon": anon, "auth": auth, "name": name}
 
 

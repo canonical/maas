@@ -1288,7 +1288,7 @@ class Node(CleanSave, TimestampedModel):
                     power_type=self.bmc.power_type,
                     power_parameters=bmc_params)
                 # Point all nodes using old BMC at the new one.
-                if self.bmc is not None and self.bmc_id != bmc.id:
+                if self.bmc_id != bmc.id:
                     for node in self.bmc.node_set.exclude(id=self.id):
                         node.bmc = bmc
                         node.save()

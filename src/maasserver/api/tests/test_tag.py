@@ -660,6 +660,24 @@ class TestTagAPI(APITestCase.ForUser):
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
         self.assertItemsEqual([], tag.node_set.all())
 
+    def test_POST_update_nodes_refuses_no_token(self):
+        tag = factory.make_Tag()
+        rack_controller = factory.make_RackController()
+        node = factory.make_Node()
+        # create a token for a different user
+        token = create_auth_token(factory.make_User())
+        token.save()
+        creds = convert_tuple_to_string(get_creds_tuple(token))
+        response = self.client.post(
+            self.get_tag_uri(tag), {
+                'op': 'update_nodes',
+                'add': [node.system_id],
+                'rack_controller': rack_controller.system_id,
+                'credentials': creds,
+            })
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
+        self.assertItemsEqual([], tag.node_set.all())
+
     def test_POST_update_nodes_ignores_incorrect_definition(self):
         tag = factory.make_Tag()
         orig_def = tag.definition

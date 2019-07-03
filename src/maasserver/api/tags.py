@@ -62,12 +62,9 @@ def check_rack_controller_access(request, rack_controller):
         raise PermissionDenied(str(e))
 
     tokens = list(get_auth_tokens(rack_controller.owner))
-    if len(tokens) > 0:
-        # Use the latest token.
-        token = tokens[-1]
-    else:
-        token = None
-    if key != token.key:
+    # Use the latest token if available
+    token = tokens[-1] if tokens else None
+    if token is None or key != token.key:
         raise PermissionDenied(
             "Only allowed for the %r rack controller." % (
                 rack_controller.hostname))

@@ -330,6 +330,8 @@ class TestFormatModernEvent(MAASTestCase):
             1 / 0
         except ZeroDivisionError:
             failure = Failure()
+        else:
+            raise RuntimeError("should have raised ZeroDivisionError")
         log_system = factory.make_name("system")
         log_time = pick_log_time()
         self.assertThat(

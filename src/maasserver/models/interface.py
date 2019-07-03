@@ -273,8 +273,8 @@ class InterfaceQueriesMixin(MAASQueriesMixin):
                 # Cache each interface's set of immediate parents, for later
                 # comparison to the set of resolved interfaces.
                 iface.parent_set = set(
-                    iface.parent_id
-                    for iface in iface.parent_relationships.all()
+                    interface.parent_id
+                    for interface in iface.parent_relationships.all()
                 )
                 child_interfaces[iface.id] = iface
         resolved = set()

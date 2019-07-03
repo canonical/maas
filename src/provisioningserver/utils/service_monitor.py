@@ -609,7 +609,7 @@ class ServiceMonitor:
             expected_states = [SERVICE_STATE.OFF, SERVICE_STATE.DEAD]
         elif expected_state == SERVICE_STATE.ANY:
             # This service is (temporarily) not being monitored.
-            returnValue(ServiceState(SERVICE_STATE.UNKNOWN))
+            return ServiceState(SERVICE_STATE.UNKNOWN)
         else:
             expected_states = [expected_state]
 
@@ -658,4 +658,4 @@ class ServiceMonitor:
                 maaslog.info(
                     "Service '%s' has been %s and is '%s'.",
                     service.service_name, log_action, state.process_state)
-        returnValue(state)
+        return state

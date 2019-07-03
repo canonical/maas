@@ -33,7 +33,10 @@ __all__ = [
     'with_connection',
     ]
 
-from collections import deque
+from collections import (
+    defaultdict,
+    deque,
+)
 from contextlib import (
     contextmanager,
     ExitStack,
@@ -1251,23 +1254,17 @@ class MAASQueriesMixin(object):
         # attached nodes.
         matches = matches.order_by(query)
         matches = matches.values_list('id', query)
-        foreign_object_map = {}
+        foreign_object_map = defaultdict(list)
         object_ids = set()
         object_id = None
-        foreign_object_matches = None
         for foreign_id, current_id in matches:
             if foreign_id is None:
                 # Skip objects that do not have a corresponding foreign key.
                 continue
             if current_id != object_id:
-                # Encountered a new foreign ID in the list, so create an empty
-                # list and add it to the map. (and add it to the set of matched
-                # nodes)
-                foreign_object_matches = []
-                foreign_object_map[current_id] = foreign_object_matches
                 object_ids.add(current_id)
                 object_id = current_id
-            foreign_object_matches.append(foreign_id)
+            foreign_object_map[current_id].append(foreign_id)
         return object_ids, foreign_object_map
 
     def get_object_by_specifiers_or_raise(self, specifiers, **kwargs):

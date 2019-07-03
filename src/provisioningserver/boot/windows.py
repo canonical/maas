@@ -37,7 +37,6 @@ from provisioningserver.utils.twisted import (
 from tftp.backend import FilesystemReader
 from twisted.internet.defer import (
     inlineCallbacks,
-    returnValue,
     succeed,
 )
 from twisted.python.filepath import FilePath
@@ -227,13 +226,13 @@ class WindowsPXEBootMethod(BootMethod):
         if path in ['pxelinux.0', 'lpxelinux.0']:
             data = yield self.get_node_info()
             if data is None:
-                returnValue(None)
+                return None
 
             # Only provide the Windows bootloader when installing
             # PXELINUX chainloading will work for the rest of the time.
             purpose = data.get('purpose')
             if purpose != 'install':
-                returnValue(None)
+                return None
 
             osystem = data.get('osystem')
             if osystem == 'windows':
@@ -241,19 +240,18 @@ class WindowsPXEBootMethod(BootMethod):
                 if get_hivex_module() is None:
                     raise BootMethodError('python-hivex package is missing.')
 
-                returnValue({
+                return {
                     'mac': data.get('mac'),
                     'path': self.bootloader_path,
                     'local_host': local_host,
-                    })
+                }
         # Fix the paths for the other static files, Windows requests.
         elif path.lower() in STATIC_FILES:
-            returnValue({
+            return {
                 'mac': get_remote_mac(),
                 'path': self.clean_path(path),
                 'local_host': local_host,
-                })
-        returnValue(None)
+            }
 
     def get_reader(self, backend, kernel_params, **extra):
         """Render a configuration file as a unicode string.
