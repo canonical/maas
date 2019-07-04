@@ -252,6 +252,7 @@ test: bin/test.parallel bin/coverage
 	@$(RM) .coverage .coverage.*
 	@bin/test.parallel --with-coverage --subprocess-per-core
 	@bin/coverage combine
+	$(MAKE) test-js
 
 test-js: assets
 	bin/yarn test
