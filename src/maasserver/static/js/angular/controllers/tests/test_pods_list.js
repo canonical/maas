@@ -316,8 +316,21 @@ describe("PodsListController", function() {
     });
   });
 
-  describe("actionGo", function() {
-    it("sets action.progress.total to the number of selectedItems", function() {
+  describe("actionGo and performAction", () => {
+    it("calls performAction", () => {
+      makeController();
+      let spy = spyOn($scope, "performAction");
+      $scope.podToAction = makePod();
+      $scope.action.option = {
+        name: "refresh",
+        operation: () => false,
+        isSingle: true
+      };
+      $scope.actionGo();
+      expect(spy).toHaveBeenCalled();
+    });
+
+    it("sets action.progress.total to the number of selectedItems", () => {
       makeController();
       makePod();
       $scope.action.option = { name: "refresh" };
@@ -326,10 +339,10 @@ describe("PodsListController", function() {
       expect($scope.action.progress.total).toBe($scope.selectedItems.length);
     });
 
-    it("calls operation for selected action", function() {
+    it("calls operation for selected action", () => {
       makeController();
-      var pod = makePod();
-      var spy = spyOn(PodsManager, "refresh").and.returnValue(
+      let pod = makePod();
+      let spy = spyOn(PodsManager, "refresh").and.returnValue(
         $q.defer().promise
       );
       $scope.action.option = { name: "refresh", operation: spy };
@@ -338,14 +351,14 @@ describe("PodsListController", function() {
       expect(spy).toHaveBeenCalledWith(pod);
     });
 
-    it("calls unselectItem after failed action", function() {
+    it("calls unselectItem after failed action", () => {
       makeController();
-      var pod = makePod();
+      let pod = makePod();
       pod.action_failed = false;
       spyOn($scope, "hasActionsFailed").and.returnValue(true);
-      var defer = $q.defer();
-      var refresh = jasmine.createSpy("refresh").and.returnValue(defer.promise);
-      var spy = spyOn(PodsManager, "unselectItem");
+      let defer = $q.defer();
+      let refresh = jasmine.createSpy("refresh").and.returnValue(defer.promise);
+      let spy = spyOn(PodsManager, "unselectItem");
       $scope.action.option = {
         name: "refresh",
         operation: refresh
@@ -357,13 +370,13 @@ describe("PodsListController", function() {
       expect(spy).toHaveBeenCalled();
     });
 
-    it("keeps items selected after success", function() {
+    it("keeps items selected after success", () => {
       makeController();
-      var pod = makePod();
+      let pod = makePod();
       spyOn($scope, "hasActionsFailed").and.returnValue(false);
       spyOn($scope, "hasActionsInProgress").and.returnValue(false);
-      var defer = $q.defer();
-      var refresh = jasmine.createSpy("refresh").and.returnValue(defer.promise);
+      let defer = $q.defer();
+      let refresh = jasmine.createSpy("refresh").and.returnValue(defer.promise);
       $scope.action.option = { name: "refresh", operation: refresh };
       $scope.selectedItems = [pod];
       $scope.actionGo();
@@ -373,11 +386,11 @@ describe("PodsListController", function() {
     });
 
     it(`increments action.progress.completed
-        after action complete`, function() {
+        after action complete`, () => {
       makeController();
-      var pod = makePod();
-      var defer = $q.defer();
-      var refresh = jasmine.createSpy("refresh").and.returnValue(defer.promise);
+      let pod = makePod();
+      let defer = $q.defer();
+      let refresh = jasmine.createSpy("refresh").and.returnValue(defer.promise);
       spyOn($scope, "hasActionsFailed").and.returnValue(true);
       $scope.action.option = { name: "start", operation: refresh };
       $scope.selectedItems = [pod];
@@ -387,11 +400,11 @@ describe("PodsListController", function() {
       expect($scope.action.progress.completed).toBe(1);
     });
 
-    it("clears action option when complete", function() {
+    it("clears action option when complete", () => {
       makeController();
-      var pod = makePod();
-      var defer = $q.defer();
-      var refresh = jasmine.createSpy("refresh").and.returnValue(defer.promise);
+      let pod = makePod();
+      let defer = $q.defer();
+      let refresh = jasmine.createSpy("refresh").and.returnValue(defer.promise);
       spyOn($scope, "hasActionsFailed").and.returnValue(true);
       spyOn($scope, "hasActionsInProgress").and.returnValue(false);
       PodsManager._items.push(pod);
@@ -403,11 +416,11 @@ describe("PodsListController", function() {
       expect($scope.action.option).toBeNull();
     });
 
-    it("increments action.progress.errors after action error", function() {
+    it("increments action.progress.errors after action error", () => {
       makeController();
-      var pod = makePod();
-      var defer = $q.defer();
-      var refresh = jasmine.createSpy("refresh").and.returnValue(defer.promise);
+      let pod = makePod();
+      let defer = $q.defer();
+      let refresh = jasmine.createSpy("refresh").and.returnValue(defer.promise);
       $scope.action.option = { name: "refresh", operation: refresh };
       $scope.selectedItems = [pod];
       $scope.actionGo();
@@ -416,15 +429,15 @@ describe("PodsListController", function() {
       expect($scope.action.progress.errors).toBe(1);
     });
 
-    it("adds error to action.progress.errors on action error", function() {
+    it("adds error to action.progress.errors on action error", () => {
       makeController();
-      var pod = makePod();
-      var defer = $q.defer();
-      var refresh = jasmine.createSpy("refresh").and.returnValue(defer.promise);
+      let pod = makePod();
+      let defer = $q.defer();
+      let refresh = jasmine.createSpy("refresh").and.returnValue(defer.promise);
       $scope.action.option = { name: "refresh", operation: refresh };
       $scope.selectedItems = [pod];
       $scope.actionGo();
-      var error = makeName("error");
+      let error = makeName("error");
       defer.reject(error);
       $scope.$digest();
       expect(pod.action_error).toBe(error);
@@ -679,6 +692,23 @@ describe("PodsListController", function() {
     it("returns 0 if value is 0", function() {
       makeController();
       expect($scope.getMeterValue(473, 0)).toBe(0);
+    });
+  });
+
+  describe("handleMachineAction", () => {
+    it("sets action name to same as action argument", () => {
+      makeController();
+      $scope.action.option = { name: "foo" };
+      $scope.handleMachineAction({}, "refresh");
+      expect($scope.action.option.name).toBe("refresh");
+    });
+
+    it("adds a isSingle property to action", () => {
+      makeController();
+      $scope.action.option = { name: "foo" };
+      $scope.handleMachineAction({}, "refresh");
+      expect($scope.action.option.isSingle).toBeDefined();
+      expect($scope.action.option.isSingle).toBe(true);
     });
   });
 });

@@ -57795,26 +57795,41 @@ function PodsListController($scope, $rootScope, $location, PodsManager, UsersMan
   }; // Calculate the available cores with overcommit applied
 
 
-  $scope.availableWithOvercommit = PodsManager.availableWithOvercommit; // Perform the action on all pods.
+  $scope.availableWithOvercommit = PodsManager.availableWithOvercommit; // Perform the action on selected pods
+
+  $scope.performAction = function (pod, operation) {
+    operation(pod).then(function () {
+      $scope.action.progress.completed += 1;
+      pod.action_failed = false;
+      updateSelectedItems();
+    }).catch(function (error) {
+      $scope.action.progress.errors += 1;
+      pod.action_error = error;
+      pod.action_failed = true;
+      updateSelectedItems();
+    });
+  }; // Setup the action on selected pods
+
 
   $scope.actionGo = function () {
-    // Setup actionProgress.
-    resetActionProgress();
-    $scope.action.progress.total = $scope.selectedItems.length; // Perform the action on all selected items.
+    var podToAction;
 
+    if ($scope.action.option.isSingle) {
+      podToAction = $scope.podToAction;
+    } // Setup actionProgress.
+
+
+    resetActionProgress();
+    $scope.action.progress.total = $scope.selectedItems.length;
     var operation = $scope.action.option.operation;
-    angular.forEach($scope.selectedItems, function (pod) {
-      operation(pod).then(function () {
-        $scope.action.progress.completed += 1;
-        pod.action_failed = false;
-        updateSelectedItems();
-      }, function (error) {
-        $scope.action.progress.errors += 1;
-        pod.action_error = error;
-        pod.action_failed = true;
-        updateSelectedItems();
+
+    if (podToAction) {
+      $scope.performAction(podToAction, operation);
+    } else {
+      $scope.selectedItems.forEach(function (pod) {
+        $scope.performAction(pod, operation);
       });
-    });
+    }
   }; // Returns true when actions are being performed.
 
 
@@ -57965,6 +57980,19 @@ function PodsListController($scope, $rootScope, $location, PodsManager, UsersMan
     } else {
       return value;
     }
+  };
+
+  $scope.handleMachineAction = function (pod, type) {
+    if (angular.isUndefined(pod) || angular.isUndefined(type) || !angular.isObject(pod) || !angular.isString(type)) {
+      return;
+    }
+
+    var action = $scope.action.options.find(function (option) {
+      return option.name === type;
+    });
+    action.isSingle = true;
+    $scope.podToAction = pod;
+    $scope.action.option = action;
   }; // Load the required managers for this controller.
 
 

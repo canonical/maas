@@ -177,29 +177,43 @@ function PodsListController(
   // Calculate the available cores with overcommit applied
   $scope.availableWithOvercommit = PodsManager.availableWithOvercommit;
 
-  // Perform the action on all pods.
-  $scope.actionGo = function() {
+  // Perform the action on selected pods
+  $scope.performAction = (pod, operation) => {
+    operation(pod)
+      .then(() => {
+        $scope.action.progress.completed += 1;
+        pod.action_failed = false;
+        updateSelectedItems();
+      })
+      .catch(error => {
+        $scope.action.progress.errors += 1;
+        pod.action_error = error;
+        pod.action_failed = true;
+        updateSelectedItems();
+      });
+  };
+
+  // Setup the action on selected pods
+  $scope.actionGo = () => {
+    let podToAction;
+
+    if ($scope.action.option.isSingle) {
+      podToAction = $scope.podToAction;
+    }
+
     // Setup actionProgress.
     resetActionProgress();
     $scope.action.progress.total = $scope.selectedItems.length;
 
-    // Perform the action on all selected items.
-    var operation = $scope.action.option.operation;
-    angular.forEach($scope.selectedItems, function(pod) {
-      operation(pod).then(
-        function() {
-          $scope.action.progress.completed += 1;
-          pod.action_failed = false;
-          updateSelectedItems();
-        },
-        function(error) {
-          $scope.action.progress.errors += 1;
-          pod.action_error = error;
-          pod.action_failed = true;
-          updateSelectedItems();
-        }
-      );
-    });
+    let operation = $scope.action.option.operation;
+
+    if (podToAction) {
+      $scope.performAction(podToAction, operation);
+    } else {
+      $scope.selectedItems.forEach(pod => {
+        $scope.performAction(pod, operation);
+      });
+    }
   };
 
   // Returns true when actions are being performed.
@@ -362,6 +376,24 @@ function PodsListController(
     } else {
       return value;
     }
+  };
+
+  $scope.handleMachineAction = (pod, type) => {
+    if (
+      angular.isUndefined(pod) ||
+      angular.isUndefined(type) ||
+      !angular.isObject(pod) ||
+      !angular.isString(type)
+    ) {
+      return;
+    }
+
+    let action = $scope.action.options.find(option => option.name === type);
+    action.isSingle = true;
+
+    $scope.podToAction = pod;
+
+    $scope.action.option = action;
   };
 
   // Load the required managers for this controller.
