@@ -162,6 +162,10 @@ function NodeResultsController(
           break;
         }
       }
+      if (result === null) {
+        $scope.logOutput = "BUG: No installation result found.";
+        return;
+      }
       switch (result.status) {
         case 0:
           $scope.logOutput = "System is booting...";

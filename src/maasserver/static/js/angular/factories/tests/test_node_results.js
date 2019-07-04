@@ -126,7 +126,7 @@ describe("NodeResultsManagerFactory", function() {
               showing_history: false,
               $selected: false
             };
-            var results;
+            var results = [];
             var i;
             for (i = 0; i < manager.results.length; i++) {
               if (
@@ -162,7 +162,7 @@ describe("NodeResultsManagerFactory", function() {
               showing_history: makeBoolean(),
               $selected: makeBoolean()
             };
-            var results;
+            var results = [];
             var i;
             for (i = 0; i < manager.results.length; i++) {
               if (
@@ -247,7 +247,7 @@ describe("NodeResultsManagerFactory", function() {
           ", Serial: " +
           node.disks[0].serial +
           ")";
-        var results;
+        var results = [];
         var i;
         for (i = 0; i < manager.results.length; i++) {
           if (manager.results[i].hardware_type === 3) {
@@ -294,7 +294,7 @@ describe("NodeResultsManagerFactory", function() {
           ", Serial: " +
           node.disks[0].serial +
           ")";
-        var results;
+        var results = [];
         var i;
         for (i = 0; i < manager.results.length; i++) {
           if (manager.results[i].hardware_type === 3) {

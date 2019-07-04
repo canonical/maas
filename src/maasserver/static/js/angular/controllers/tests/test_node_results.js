@@ -461,6 +461,16 @@ describe("NodeResultsController", function() {
       );
     });
 
+    it("sets no installation log", function() {
+      makeController();
+      $scope.installation_results = [];
+      $scope.node = node;
+      $scope.logs = { option: { id: 123 } };
+
+      $scope.updateLogOutput();
+      expect($scope.logOutput).toEqual("BUG: No installation result found.");
+    });
+
     it("sets install id to ScriptResult /tmp/install.log", function() {
       var defer = $q.defer();
       var loadItems_defer = $q.defer();
