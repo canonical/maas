@@ -5,6 +5,7 @@
  */
 
 import { makeInteger, makeName } from "testing/utils";
+import MockWebSocket from "testing/websocket";
 
 // Make a fake user.
 var userId = 0;
@@ -447,7 +448,7 @@ describe("NodesListController", function() {
         if (tab === "controllers") {
           registerUrl = makeName("url");
           registerSecret = makeName("secret");
-          MAAS_config = {
+          window.MAAS_config = {
             register_url: registerUrl,
             register_secret: registerSecret
           };
@@ -748,7 +749,7 @@ describe("NodesListController", function() {
 
         it(`sets allViewableChecked to false when
            not all objects selected`, function() {
-          var object2 = makeObject(tab);
+          makeObject(tab);
           $scope.toggleChecked(object, tab);
           expect(tabObj.allViewableChecked).toBe(false);
         });
@@ -1317,7 +1318,6 @@ describe("NodesListController", function() {
           spyOn($scope.tabs[tab].manager, "performAction").and.returnValue(
             defer.promise
           );
-          var spy = spyOn($scope.tabs[tab].manager, "unselectItem");
           $scope.tabs[tab].actionOption = { name: "start" };
           $scope.tabs[tab].selectedItems = [object];
           $scope.actionGo(tab);

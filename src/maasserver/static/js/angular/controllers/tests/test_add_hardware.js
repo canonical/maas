@@ -5,6 +5,7 @@
  */
 
 import { makeName } from "testing/utils";
+import MockWebSocket from "testing/websocket";
 
 describe("AddHardwareController", function() {
   // Load the MAAS module.

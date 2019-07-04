@@ -221,7 +221,7 @@ function SettingsController(
     DHCPSnippetsManager.updateItem(snippet).then(null, function(error) {
       // Revert state change and clear toggling.
       snippet.enabled = !snippet.enabled;
-      console.log(error);
+      console.log(error); // eslint-disable-line no-console
     });
   };
 

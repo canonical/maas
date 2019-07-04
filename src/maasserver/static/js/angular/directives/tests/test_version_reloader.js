@@ -5,6 +5,7 @@
  */
 
 import { makeName } from "testing/utils";
+import MockWebSocket from "testing/websocket";
 
 describe("maasVersionReloader", function() {
   // Load the MAAS module.
@@ -58,14 +59,14 @@ describe("maasVersionReloader", function() {
   }
 
   it("sets version from GeneralManager", function() {
-    var directive = compileDirective();
+    compileDirective();
     expect($scope.version).toBe(GeneralManager.getData("version"));
   });
 
   it("watches version.test onces ManagerHelperService resolves", function() {
     var defer = $q.defer();
     spyOn(ManagerHelperService, "loadManager").and.returnValue(defer.promise);
-    var directive = compileDirective();
+    compileDirective();
     spyOn($scope, "$watch");
 
     defer.resolve();
@@ -78,7 +79,7 @@ describe("maasVersionReloader", function() {
     var defer = $q.defer();
     spyOn(ManagerHelperService, "loadManager").and.returnValue(defer.promise);
 
-    var directive = compileDirective();
+    compileDirective();
     spyOn($scope, "reloadPage");
     defer.resolve();
     $scope.$digest();

@@ -9,10 +9,9 @@ describe("pScriptExpander", function() {
   beforeEach(angular.mock.module("MAAS"));
 
   // Get required angular pieces and create a new scope before each test.
-  var $scope, $timeout;
+  var $scope;
   beforeEach(inject(function($rootScope, $injector) {
     $scope = $rootScope.$new();
-    $timeout = $injector.get("$timeout");
   }));
 
   // Return the compiled directive.

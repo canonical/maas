@@ -71,7 +71,6 @@ build: \
   bin/test.region \
   bin/test.region.legacy \
   bin/test.testing \
-  bin/test.js \
   bin/test.e2e \
   bin/test.parallel \
   bin/py bin/ipy \
@@ -142,10 +141,6 @@ bin/test.cli: bin/buildout buildout.cfg versions.cfg setup.py bin/maas
 	$(buildout) install cli-test
 	@touch --no-create $@
 
-bin/test.js: bin/karma bin/buildout buildout.cfg versions.cfg setup.py
-	$(buildout) install js-test
-	@touch --no-create $@
-
 bin/test.e2e: \
     bin/protractor bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install e2e-test
@@ -208,7 +203,6 @@ node_modules: include/nodejs/bin/node bin/yarn
 	@touch --no-create $@
 
 define js_bins
-  bin/karma
   bin/protractor
   bin/node-sass
   bin/webpack
@@ -229,24 +223,13 @@ define node_packages
   babel-loader@^8.0.0-beta.0
   glob
   jasmine-core@=2.99.1
-  karma
-  karma-chrome-launcher
-  karma-failed-reporter
-  karma-firefox-launcher
-  karma-jasmine
-  karma-ng-html2js-preprocessor
-  karma-opera-launcher
-  karma-phantomjs-launcher
-  karma-sourcemap-loader
   macaroon-bakery
   node-sass
-  phantomjs-prebuilt
   prop-types
   protractor
   react
   react-dom
   react2angular
-  uglifyjs-webpack-plugin
   vanilla-framework
   vanilla-framework-react
   webpack
@@ -264,7 +247,6 @@ define test-scripts
   bin/test.region
   bin/test.region.legacy
   bin/test.testing
-  bin/test.js
 endef
 
 lxd:
@@ -275,9 +257,13 @@ test: bin/test.parallel bin/coverage
 	@$(RM) .coverage .coverage.*
 	@bin/test.parallel --with-coverage --subprocess-per-core
 	@bin/coverage combine
+	$(MAKE) test-js
 
-test-js: bin/test.js javascript
-	@bin/test.js
+test-js: javascript
+	bin/yarn test
+
+test-js-watch: javascript
+	bin/yarn test --watch
 
 test-serial: $(strip $(test-scripts))
 	@bin/maas-region makemigrations --dry-run --exit && exit 1 ||:
@@ -393,6 +379,7 @@ lint-js:
 		-not -path '*-min.js' -a \
 	    '(' -name '*.html' -o -name '*.js' ')' -print0 \
 		| xargs -r0 -n20 -P4 $(pocketlint)
+		bin/yarn lint
 		bin/yarn prettier-check
 
 # Apply automated formatting to all Python, Sass and Javascript files.

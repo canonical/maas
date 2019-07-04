@@ -47,7 +47,7 @@ describe("maasReleaseOptions", function() {
     };
     spyOn(GeneralManager, "getData").and.returnValue(managerOptions);
 
-    var directive = compileDirective();
+    compileDirective();
     expect(options).toEqual({
       erase: true,
       secureErase: true,
@@ -68,7 +68,7 @@ describe("maasReleaseOptions", function() {
 
     // Since erase is false all other options should be false so the
     // checkboxes are not selected.
-    var directive = compileDirective();
+    compileDirective();
     expect(options).toEqual({
       erase: false,
       secureErase: false,

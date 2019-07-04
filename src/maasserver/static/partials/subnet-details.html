@@ -556,7 +556,7 @@
                         </th>
                     </tr>
                 </thead>
-                <tbody vs-repeat vs-scroll-parent="window">
+                <tbody>
                     <tr data-ng-repeat="ip in subnet.ip_addresses | orderBy:predicate:reverse track by ip.ip">
                         <td aria-label="IP Address">{$ ip.ip $}</td>
                         <td aria-label="Type">{$ getAllocType(ip.alloc_type) $}</td>

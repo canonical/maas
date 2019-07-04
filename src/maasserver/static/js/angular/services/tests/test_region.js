@@ -5,6 +5,7 @@
  */
 
 import { makeName } from "testing/utils";
+import MockWebSocket from "testing/websocket";
 
 describe("RegionConnection", function() {
   // Load the MAAS module to test.
@@ -376,7 +377,7 @@ describe("RegionConnection", function() {
           ":" +
           $window.location.port +
           $window.location.pathname +
-          "/ws"
+          "ws"
       );
     });
 
@@ -388,7 +389,7 @@ describe("RegionConnection", function() {
           ":" +
           $window.location.port +
           $window.location.pathname +
-          "/ws"
+          "ws"
       );
     });
 
@@ -438,7 +439,7 @@ describe("RegionConnection", function() {
           ":" +
           port +
           $window.location.pathname +
-          "/ws"
+          "ws"
       );
 
       // Reset angular.element so the test will complete successfully as
@@ -457,14 +458,11 @@ describe("RegionConnection", function() {
             ":" +
             $window.location.port +
             $window.location.pathname +
-            "/ws"
+            "ws"
         );
       } else {
         expect(RegionConnection._buildUrl()).toBe(
-          "ws://" +
-            $window.location.hostname +
-            $window.location.pathname +
-            "/ws"
+          "ws://" + $window.location.hostname + $window.location.pathname + "ws"
         );
       }
     });
@@ -484,7 +482,7 @@ describe("RegionConnection", function() {
           ":" +
           $window.location.port +
           $window.location.pathname +
-          "/ws" +
+          "ws" +
           "?csrftoken=" +
           csrftoken
       );

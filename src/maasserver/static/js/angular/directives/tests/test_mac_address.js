@@ -10,13 +10,8 @@ describe("maasmacAddress", function() {
 
   // Create a new scope before each test.
   var $scope;
-  var $window;
-  var $document;
-  var ngModelCtrl;
 
   beforeEach(inject(function($rootScope, _$window_, _$document_) {
-    $window = _$window_;
-    $document = _$document_;
     $scope = $rootScope.$new();
   }));
 
@@ -50,7 +45,7 @@ describe("maasmacAddress", function() {
   }
 
   it("MAC address formatting to be valid", function() {
-    var directive = compileDirective();
+    compileDirective();
     // set an invalid value
     $scope.TestForm.mac.$setViewValue("00:00:00:00:00:00");
     $scope.$digest();
@@ -58,7 +53,7 @@ describe("maasmacAddress", function() {
   });
 
   it("MAC address formatting to be invalid", function() {
-    var directive = compileDirective();
+    compileDirective();
     // set an invalid value
     $scope.TestForm.mac.$setViewValue('!"#$%^&*(!"#")"');
     $scope.$digest();

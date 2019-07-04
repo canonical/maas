@@ -305,7 +305,7 @@ export function maasObjForm(JSONService) {
                 self.errorScope.setErrors(value);
               } else {
                 // No error scope, just log to console.
-                console.log(value);
+                console.log(value); // eslint-disable-line no-console
               }
             }
           });
@@ -315,7 +315,7 @@ export function maasObjForm(JSONService) {
             self.errorScope.setErrors([error]);
           } else {
             // No error scope, just log to console.
-            console.log(error);
+            console.log(error); // eslint-disable-line no-console
           }
         }
         self.scope.saving = false;
@@ -681,7 +681,6 @@ export function maasObjField($compile) {
         }
 
         // Revert value on esc.
-        var self = this;
         inputElement.bind("keydown keypress", function(evt) {
           if (evt.which === 27) {
             inputElement.val(controller.scope.obj[attrs.key]);

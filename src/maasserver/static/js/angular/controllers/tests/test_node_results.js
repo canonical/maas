@@ -10,6 +10,7 @@ import {
   makeName,
   pickItem
 } from "testing/utils";
+import MockWebSocket from "testing/websocket";
 
 // 2019-04-30 Caleb - Syntax error `import { ScriptStatus }from "../../enum"`;
 // TODO - Fix es module imports in test files
@@ -270,7 +271,6 @@ describe("NodeResultsController", function() {
       var defer = $q.defer();
       makeController(defer);
       MachinesManager._activeItem = node;
-      var manager = NodeResultsManagerFactory.getManager(node);
       var loadDefer = $q.defer();
 
       defer.resolve();
@@ -286,8 +286,6 @@ describe("NodeResultsController", function() {
       $scope.section = { area: "logs" };
       MachinesManager._activeItem = node;
       webSocket.returnData.push(makeFakeResponse([]));
-      var manager = NodeResultsManagerFactory.getManager(node);
-
       defer.resolve();
       $rootScope.$digest();
       var expectFunc;
@@ -482,7 +480,17 @@ describe("NodeResultsController", function() {
       defer.resolve();
       loadItems_defer.resolve();
       $rootScope.$digest();
-      expect($scope.logs.availableOptions[0].id, installation_result.id);
+      var expectFunc;
+      expectFunc = function() {
+        if ($scope.resultsLoaded) {
+          expect($scope.logs.availableOptions[0].id).toBe(
+            installation_result.id
+          );
+        } else {
+          setTimeout(expectFunc);
+        }
+      };
+      setTimeout(expectFunc);
     });
   });
 

@@ -10,11 +10,9 @@ describe("maastoggleCtrl", function() {
 
   // Create a new scope before each test.
   var $scope;
-  var $window;
   var $document;
 
   beforeEach(inject(function($rootScope, _$window_, _$document_) {
-    $window = _$window_;
     $document = _$document_;
     $scope = $rootScope.$new();
   }));

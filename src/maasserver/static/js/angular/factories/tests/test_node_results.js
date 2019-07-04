@@ -11,6 +11,7 @@ import {
   makeName,
   pickItem
 } from "testing/utils";
+import MockWebSocket from "testing/websocket";
 
 describe("NodeResultsManagerFactory", function() {
   // Load the MAAS module.

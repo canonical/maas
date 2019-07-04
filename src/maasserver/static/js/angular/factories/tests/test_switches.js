@@ -5,6 +5,7 @@
  */
 
 import { makeFakeResponse, makeName } from "testing/utils";
+import MockWebSocket from "testing/websocket";
 
 describe("SwitchesManager", function() {
   // Load the MAAS module.

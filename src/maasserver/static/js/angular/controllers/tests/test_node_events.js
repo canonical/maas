@@ -5,6 +5,7 @@
  */
 
 import { makeName } from "testing/utils";
+import MockWebSocket from "testing/websocket";
 
 describe("NodeEventsController", function() {
   // Load the MAAS module.

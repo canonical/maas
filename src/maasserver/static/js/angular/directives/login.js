@@ -4,7 +4,7 @@
  * Login button for external authentication.
  */
 
-const bakery = require("macaroon-bakery");
+import bakery from "macaroon-bakery";
 
 export function getBakery() {
   return function(visitPage) {

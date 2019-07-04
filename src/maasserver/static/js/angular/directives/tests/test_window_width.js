@@ -34,13 +34,13 @@ describe("maasWindowWidth", function() {
 
   it("windowWidth set to initial value", function() {
     $window.innerWidth = 1026;
-    var directive = compileDirective();
+    compileDirective();
     expect($scope.windowWidth).toEqual($window.innerWidth);
   });
 
   it("windowWidth set on resize", function() {
     $window.innerWidth = 1026;
-    var directive = compileDirective();
+    compileDirective();
     $window.innerWidth = 800;
     angular.element($window).triggerHandler("resize");
     expect($scope.windowWidth).toEqual($window.innerWidth);

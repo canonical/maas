@@ -5,6 +5,7 @@
  */
 
 import { makeInteger, makeName } from "testing/utils";
+import MockWebSocket from "testing/websocket";
 
 describe("removeAvailableByNew", function() {
   // Load the MAAS module.
@@ -4016,8 +4017,7 @@ describe("NodeStorageController", function() {
             devices.push({});
           }
           $scope.availableNew.devices = devices;
-          expect(
-            $scope.getTotalNumberOfAvailableSpares(),
+          expect($scope.getTotalNumberOfAvailableSpares()).toBe(
             count - mode.min_disks
           );
         }

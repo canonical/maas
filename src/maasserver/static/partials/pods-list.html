@@ -144,7 +144,7 @@
                         <th class="p-table__cell u-align--right" role="columnheader" data-ng-click="sortTable('composed_machines')" data-ng-class="{'is-sorted': predicate === 'composed_machines', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="Composed machines">Composed machines</th>
                     </tr>
                 </thead>
-                <tbody vs-repeat vs-scroll-parent="window">
+                <tbody>
                     <tr class="p-table__row" data-ng-repeat="pod in filteredItems = (pods | nodesFilter:search | orderBy:predicate:reverse) track by pod.id" data-ng-class="{ selected: pod.$selected, 'is-active': pod.$selected && pod.action_failed }">
                         <td class="p-table__cell" aria-label="Name" title="{$ pod.name $}">
                             <div class="u-float--left" data-ng-if="showActions()">

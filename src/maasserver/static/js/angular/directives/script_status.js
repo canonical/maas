@@ -36,7 +36,7 @@ export function maasScriptStatus() {
         // SCRIPT_STATUS.RUNNING
         case 1:
         // SCRIPT_STATUS.INSTALLING
-        case 7:
+        case 7: // eslint-disable-line no-fallthrough
           $scope.icon = "p-icon--running";
           break;
         // SCRIPT_STATUS.PASSED
@@ -46,11 +46,11 @@ export function maasScriptStatus() {
         // SCRIPT_STATUS.FAILED
         case 3:
         // SCRIPT_STATUS.ABORTED
-        case 5:
+        case 5: // eslint-disable-line no-fallthrough
         // SCRIPT_STATUS.DEGRADED
-        case 6:
+        case 6: // eslint-disable-line no-fallthrough
         // SCRIPT_STATUS.FAILED_INSTALLING
-        case 8:
+        case 8: // eslint-disable-line no-fallthrough
           $scope.icon = "p-icon--error";
           break;
         // SCRIPT_STATUS.TIMEDOUT

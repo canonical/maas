@@ -56,8 +56,8 @@ class TestSelectorArguments(MAASTestCase):
         sysexit = self.assertRaises(SystemExit, parallel.main, [])
         self.assertThat(sysexit.code, Equals(0))
         self.assertScriptsMatch(
-            MatchesUnselectableScript("js"),
-            MatchesUnselectableScript("region.legacy"),
+            MatchesUnselectableScript("test-js"),
+            MatchesUnselectableScript("bin/test.region.legacy"),
             MatchesSelectableScript("cli"),
             MatchesSelectableScript("rack"),
             MatchesSelectableScript("region"),
@@ -110,7 +110,7 @@ class TestSelectorArguments(MAASTestCase):
 def MatchesUnselectableScript(what, *selectors):
     return MatchesAll(
         IsInstance(parallel.TestScriptUnselectable),
-        MatchesStructure.byEquality(script="bin/test.%s" % what),
+        MatchesStructure.byEquality(script=what),
         first_only=True)
 
 

@@ -20,7 +20,7 @@ describe("ZonesListController", function() {
 
   // Load the managers and services.
   var ZonesManager, UsersManager;
-  var ManagerHelperService, RegionConnection;
+  var ManagerHelperService;
   beforeEach(inject(function($injector) {
     ZonesManager = $injector.get("ZonesManager");
     UsersManager = $injector.get("UsersManager");
@@ -97,21 +97,4 @@ describe("ZonesListController", function() {
       expect($scope.action.obj).not.toBe(obj);
     });
   });
-
-  setupController = function(zones) {
-    var defer = $q.defer();
-    var controller = makeController(defer);
-    $scope.zones = zones;
-    ZonesManager._items = zones;
-    defer.resolve();
-    $rootScope.$digest();
-    return controller;
-  };
-
-  testUpdates = function(controller, zones, expectedZonesData) {
-    $scope.zones = zones;
-    ZonesManager._items = zones;
-    $rootScope.$digest();
-    expect($scope.data).toEqual(expectedZonesData);
-  };
 });

@@ -9,10 +9,9 @@ describe("ConfigsManager", function() {
   beforeEach(angular.mock.module("MAAS"));
 
   // Load the ConfigsManager.
-  var ConfigsManager, RegionConnection;
+  var ConfigsManager;
   beforeEach(inject(function($injector) {
     ConfigsManager = $injector.get("ConfigsManager");
-    RegionConnection = $injector.get("RegionConnection");
   }));
 
   it("set requires attributes", function() {

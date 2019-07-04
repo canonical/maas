@@ -1148,7 +1148,7 @@ function NodesListController(
       var machinesText = "";
 
       if (selectedItemsCount === 1) {
-        var singular = true;
+        singular = true;
       }
 
       if (singular) {

@@ -169,18 +169,15 @@ results to a different file descriptor, to ensure a clean stream.
 Running JavaScript tests
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-The JavaScript tests are run using Karma_. Chromium and PhantomJS are the
-default browser but any browser supported by Karma can be used to run the
-tests.::
+The JavaScript tests are run using Jest_.::
 
     $ make test-js
 
-If you want to run the JavaScript tests in debug mode so you can inspect the
-code inside of a running browser you can launch Karma_ manually.::
+Jest tests can be run on change with:::
 
-    $ ./bin/karma start src/maastesting/karma.conf.js --browsers Chrome --no-single-run
+    $ make test-js-watch
 
-.. _Karma: http://karma-runner.github.io/
+.. _Jest: https://jestjs.io/
 
 
 Frontend development

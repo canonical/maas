@@ -59,7 +59,7 @@
                     <th role="columnheader" data-ng-click="predicate='controllers'; reverse = !reverse" data-ng-class="{'is-sorted': predicate === 'controllers', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" class="col-2 u-align--right">Controllers</th>
                 </tr>
             </thead>
-            <tbody vs-repeat vs-scroll-parent="window">
+            <tbody>
                 <tr role="row" data-ng-repeat="zone in zones | orderBy:predicate:reverse track by $index">
                     <td aria-label="Name" title="{$ zone.name $}" class="col-3">
                         <a href="#/zone/{$ zone.id $}">{$ zone.name $}</a>

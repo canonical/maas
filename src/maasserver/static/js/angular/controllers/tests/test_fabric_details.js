@@ -103,21 +103,6 @@ describe("FabricDetailsController", function() {
     expect($rootScope.page).toBe("networks");
   });
 
-  it(
-    "calls loadManagers with correct managers" +
-      function() {
-        makeController();
-        expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith($scope, [
-          FabricsManager,
-          VLANsManager,
-          SubnetsManager,
-          SpacesManager,
-          ControllersManager,
-          UsersManager
-        ]);
-      }
-  );
-
   it("raises error if fabric identifier is invalid", function() {
     spyOn(FabricsManager, "setActiveItem").and.returnValue($q.defer().promise);
     spyOn(ErrorService, "raiseError").and.returnValue($q.defer().promise);

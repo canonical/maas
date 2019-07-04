@@ -5,6 +5,7 @@
  */
 
 import { makeFakeResponse, makeName } from "testing/utils";
+import MockWebSocket from "testing/websocket";
 
 describe("Manager", function() {
   // Load the MAAS module.
@@ -145,11 +146,11 @@ describe("Manager", function() {
 
     it("loads items list without replacing it", function(done) {
       var fakeNode = makeNode();
-      var nodes = NodesManager.getItems();
+      var existingNodes = NodesManager.getItems();
       webSocket.returnData.push(makeFakeResponse([fakeNode]));
       NodesManager.loadItems().then(function(nodes) {
         expect(nodes).toEqual([addSelected(fakeNode, false)]);
-        expect(nodes).toBe(nodes);
+        expect(nodes).toBe(existingNodes);
         done();
       });
     });
@@ -1256,7 +1257,6 @@ describe("Manager", function() {
       var node = makeNode();
       NodesManager._updateMetadata(node, "create");
       NodesManager._items.push(node);
-      var oldTags = angular.copy(node.tags);
       var updatedNode = angular.copy(node);
       updatedNode.tags = [makeName("tag"), makeName("tag")];
       NodesManager._updateMetadata(updatedNode, "update");

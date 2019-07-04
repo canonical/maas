@@ -94,17 +94,6 @@ describe("ZoneDetailsController", function() {
     expect($rootScope.page).toBe("zones");
   });
 
-  it(
-    "calls loadManagers with [ZonesManager, UsersManager]" +
-      function() {
-        makeController();
-        expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith($scope, [
-          ZonesManager,
-          UsersManager
-        ]);
-      }
-  );
-
   it("raises error if zone identifier is invalid", function() {
     spyOn(ZonesManager, "setActiveItem").and.returnValue($q.defer().promise);
     spyOn(ErrorService, "raiseError").and.returnValue($q.defer().promise);

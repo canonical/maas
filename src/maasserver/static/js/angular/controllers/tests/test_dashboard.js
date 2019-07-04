@@ -38,11 +38,11 @@ describe("DashboardController", function() {
 
   // Makes the DashboardController
   function makeController(loadManagerDefer) {
-    var loadManagers = spyOn(ManagerHelperService, "loadManagers");
+    var loadManagers = jest.spyOn(ManagerHelperService, "loadManagers");
     if (angular.isObject(loadManagerDefer)) {
-      loadManagers.and.returnValue(loadManagerDefer.promise);
+      loadManagers.mockReturnValue(loadManagerDefer.promise);
     } else {
-      loadManagers.and.returnValue($q.defer().promise);
+      loadManagers.mockReturnValue($q.defer().promise);
     }
 
     // Create the controller.

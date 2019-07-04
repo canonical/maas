@@ -26,13 +26,14 @@ import testtools
 class TestScriptBase(metaclass=abc.ABCMeta):
     """A test-like object that wraps one of the `bin/test.*` scripts."""
 
-    def __init__(self, lock, script, with_subunit=True):
+    def __init__(self, lock, script, with_subunit=True, has_script=True):
         super(TestScriptBase, self).__init__()
         self.lock = lock
         assert isinstance(script, str)
         self.script = script
         self.with_subunit = with_subunit
         self.with_coverage = False
+        self.has_script = has_script
 
     @abc.abstractmethod
     def id(self):
@@ -85,6 +86,10 @@ class TestScriptBase(metaclass=abc.ABCMeta):
             subprocess.check_call(
                 ("make", "--quiet", "bin/coverage", self.script),
                 stdout=log, stderr=log)
+
+        if not self.has_script:
+            # If there is no script to run, then everything is OK.
+            return True
         # Run the script in a subprocess, capturing subunit output if
         # with_subunit is set.
         pread, pwrite = os.pipe()
@@ -372,7 +377,7 @@ def main(args=None):
         # Run the monolithic tests first. These will each consume a worker
         # thread (spawned by ConcurrentTestSuite) for a prolonged duration.
         # Putting divisible tests afterwards evens out the spread of work.
-        TestScriptMonolithic(lock, "bin/test.js", with_subunit=False),
+        TestScriptMonolithic(lock, "test-js", has_script=False),
         TestScriptMonolithic(lock, "bin/test.region.legacy"),
         # The divisible test scripts will each be executed multiple times,
         # each time to work on a distinct "bucket" of tests.

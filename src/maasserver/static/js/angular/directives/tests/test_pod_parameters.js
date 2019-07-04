@@ -4,16 +4,16 @@
  * Unit tests for pod parameters directive.
  */
 
+import MockWebSocket from "testing/websocket";
+
 describe("maasPodParameters", function() {
   // Load the MAAS module.
   beforeEach(angular.mock.module("MAAS"));
 
   // Get managers before the test.
-  var PodsManager, GeneralManager, ManagerHelperService;
+  var GeneralManager;
   beforeEach(inject(function($injector) {
-    PodsManager = $injector.get("PodsManager");
     GeneralManager = $injector.get("GeneralManager");
-    ManagerHelperService = $injector.get("ManagerHelperService");
     // Mock buildSocket so an actual connection is not made.
     let RegionConnection = $injector.get("RegionConnection");
     let webSocket = new MockWebSocket();
@@ -51,7 +51,7 @@ describe("maasPodParameters", function() {
   }
 
   it("add type field to maasForm", function() {
-    var directive = compileDirective("true");
+    compileDirective("true");
     expect($scope.obj.$maasForm.fields.type).toBeDefined();
   });
 
@@ -111,7 +111,7 @@ describe("maasPodParameters", function() {
     });
 
     it("renders fields when type set", function() {
-      var directive = compileDirective("false");
+      compileDirective("false");
       $scope.obj.$maasForm.updateValue("type", "virsh");
       $scope.$digest();
 
@@ -124,7 +124,7 @@ describe("maasPodParameters", function() {
     });
 
     it("switches fields when type changed", function() {
-      var directive = compileDirective("false");
+      compileDirective("false");
       $scope.obj.$maasForm.updateValue("type", "virsh");
       $scope.$digest();
       $scope.obj.$maasForm.updateValue("type", "rsd");

@@ -5,6 +5,7 @@
  */
 
 import { makeName } from "testing/utils";
+import MockWebSocket from "testing/websocket";
 
 describe("GeneralManager", function() {
   // Load the MAAS module.
@@ -587,6 +588,7 @@ describe("GeneralManager", function() {
       GeneralManager._poll(GeneralManager._data.machine_actions);
       defer.reject(error);
       $rootScope.$digest();
+      // eslint-disable-next-line no-console
       expect(console.log).toHaveBeenCalledWith(error);
       expect(GeneralManager._pollAgain).toHaveBeenCalledWith(
         GeneralManager._data.machine_actions,

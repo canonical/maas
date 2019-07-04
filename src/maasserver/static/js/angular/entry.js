@@ -227,11 +227,11 @@ function configureMaas(
   $compileProvider,
   tagsInputConfigProvider
 ) {
-  // Disable debugInfo unless in a karma context.
+  // Disable debugInfo unless in a Jest context.
   // Re-enable debugInfo in development by running
   // angular.reloadWithDebugInfo(); in the console.
   // See: https://docs.angularjs.org/guide/production#disabling-debug-data
-  $compileProvider.debugInfoEnabled(!!window.__karma__);
+  $compileProvider.debugInfoEnabled(!!window.DEBUG);
 
   $interpolateProvider.startSymbol("{$");
   $interpolateProvider.endSymbol("$}");
@@ -265,6 +265,7 @@ function configureMaas(
     path += "/";
   }
   if (path === href) {
+    // eslint-disable-next-line no-unused-vars
     var routes = $routeProvider
       .when("/intro", {
         templateUrl: versionedPath("static/partials/intro.html"),
@@ -464,13 +465,7 @@ function setupGA($rootScope, $window) {
 }
 
 angular
-  .module("MAAS", [
-    "ngRoute",
-    "ngCookies",
-    "ngSanitize",
-    "ngTagsInput",
-    "vs-repeat"
-  ])
+  .module("MAAS", ["ngRoute", "ngCookies", "ngSanitize", "ngTagsInput"])
   .config(configureMaas)
   .run(introRedirect)
   .run(setupGA)

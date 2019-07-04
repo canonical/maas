@@ -529,6 +529,7 @@ function Manager($q, $rootScope, $timeout, RegionConnection) {
   Manager.prototype.selectItem = function(pk_value) {
     var idx = this._getIndexOfItem(this._items, pk_value);
     if (idx === -1) {
+      // eslint-disable-next-line no-console
       console.log(
         "WARN: selection of " +
           this._handler +
@@ -552,6 +553,7 @@ function Manager($q, $rootScope, $timeout, RegionConnection) {
   Manager.prototype.unselectItem = function(pk_value) {
     var idx = this._getIndexOfItem(this._items, pk_value);
     if (idx === -1) {
+      // eslint-disable-next-line no-console
       console.log(
         "WARN: de-selection of " +
           this._handler +
@@ -576,6 +578,7 @@ function Manager($q, $rootScope, $timeout, RegionConnection) {
   Manager.prototype.isSelected = function(pk_value) {
     var idx = this._getIndexOfItem(this._items, pk_value);
     if (idx === -1) {
+      // eslint-disable-next-line no-console
       console.log(
         "WARN: unable to determine if " +
           this._handler +
