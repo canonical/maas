@@ -6,7 +6,7 @@
       &::after {
         @extend %icon;
         @include vf-icon-chevron;
-        @include vf-icon-size(1em);
+        @include vf-icon-size(0.75rem);
         background-size: auto;
         margin-left: $sph-inner--small;
       }

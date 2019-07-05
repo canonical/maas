@@ -139,37 +139,53 @@
             <table class="p-table-expanding p-table--sortable p-table--pods" data-ng-if="pods.length > 0">
                 <thead data-ng-if="windowWidth >= 772" offset="88" media-query="min-width: 772px">
                     <tr class="p-table__row">
-                        <th class="p-table__cell p-double-row" role="columnheader" data-ng-click="sortTable('name')" data-ng-class="{'is-sorted': predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">
-                            <div data-ng-if="showActions()">
-                                <input type="checkbox" class="checkbox" data-ng-click="toggleCheckAll()" data-ng-checked="allViewableChecked" id="check-all-pods" data-ng-disabled="add.open || hasActionsInProgress()" />
-                                <label for="check-all-pods" class="checkbox-label"></label>
-                                <span>FQDN</span>
+                        <th class="p-table__cell p-double-row">
+                            <input data-ng-if="showActions()" type="checkbox" class="checkbox" data-ng-click="toggleCheckAll()" data-ng-checked="allViewableChecked" id="check-all-pods" data-ng-disabled="add.open || hasActionsInProgress()" />
+                            <label data-ng-if="showActions()" for="check-all-pods" class="checkbox-label"></label>
+                            <span role="columnheader" data-ng-click="sortTable('name')" data-ng-class="{'is-sorted': predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">
+                                FQDN
+                            </span>
+                        </th>
+                        <th class="p-table__cell" title="Power">
+                            Power
+                        </th>
+                        <th class="p-table__cell p-double-row">
+                            <div role="columnheader" data-ng-click="sortTable('type')" data-ng-class="{'is-sorted': predicate === 'type', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="KVM host type">
+                                KVM host type
+                            </div>
+                            <div>Virsh</div>
+                        </th>
+                        <th class="p-table__cell p-double-row">
+                            <div role="columnheader" data-ng-click="sortTable('composed_machines')" data-ng-class="{'is-sorted': predicate === 'composed_machines', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="VMs">
+                                VM<span style="text-transform: lowercase;">s</span>
+                            </div>
+                            <div>Owners</div>
+                        </th>
+                        <th class="p-table__cell" title="Status">
+                            Status
+                        </th>
+                        <th class="p-table__cell p-double-row" title="Resource pool">
+                            <div>Resource pool</div>
+                            <div>AZ</div>
+                        </th>
+                        <th class="p-table__cell">
+                            <div role="columnheader" data-ng-click="sortTable('available.cores')" data-ng-class="{'is-sorted': predicate === 'available.cores', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="CPU">
+                                CPU
                             </div>
                         </th>
-                        <th class="p-table__cell" role="columnheader">Power</th>
-                        <th class="p-table__cell p-double-row" role="columnheader" data-ng-click="sortTable('type')" data-ng-class="{'is-sorted': predicate === 'type', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="KVM host type">
-                            <div class="p-double-rows__container">
-                                <div>KVM host type</div>
-                                <div>Virsh</div>
+                        <th class="p-table__cell">
+                            <div role="columnheader" data-ng-click="sortTable('available.memory')" data-ng-class="{'is-sorted': predicate === 'available.memory', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="RAM">
+                                RAM
                             </div>
                         </th>
-                        <th class="p-table__cell p-double-row" role="columnheader" data-ng-click="sortTable('composed_machines')" data-ng-class="{'is-sorted': predicate === 'composed_machines', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="VMs">
-                            <div class="p-double-rows__container">
-                                <div>VM<span style="text-transform: lowercase;">s</span></div>
-                                <div>Owners</div>
+                        <th class="p-table__cell">
+                            <div title="Storage">
+                                Storage
                             </div>
                         </th>
-                        <th class="p-table__cell" role="columnheader" title="Status">Status</th>
-                        <th class="p-table__cell p-double-row" role="columnheader" title="Resource pool">
-                            <div class="p-double-rows__container">
-                                <div>Resource pool</div>
-                                <div>AZ</div>
-                            </div>
+                        <th>
+                            <div class="u-align--right">Actions</div>
                         </th>
-                        <th class="p-table__cell" role="columnheader" data-ng-click="sortTable('available.cores')" data-ng-class="{'is-sorted': predicate === 'available.cores', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="CPU">CPU</th>
-                        <th class="p-table__cell" role="columnheader" data-ng-click="sortTable('available.memory')" data-ng-class="{'is-sorted': predicate === 'available.memory', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="RAM">RAM</th>
-                        <th class="p-table__cell" role="columnheader" title="Storage">Storage</th>
-                        <th><div class="u-align--right">Actions</div></th>
                     </tr>
                 </thead>
                 <tbody vs-repeat vs-scroll-parent="window">

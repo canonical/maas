@@ -1,0 +1,106 @@
+<div class="p-divider">
+
+	<!-- Cores + RAM panel -->
+  <div class="col-4 p-divider__block">
+    <h3 class="p-heading--four">
+      CPU cores: {$ pod.total.cores $}
+      <span data-ng-if="pod.cpu_over_commit_ratio > 1">x {$ pod.cpu_over_commit_ratio $}</span>
+    </h3>
+    <div class="p-meter--cpu-cores">
+      <div class="p-meter--cpu-cores__container">
+        <span
+          class="p-meter--cpu-cores__core--used"
+          ng-repeat="i in pod.used.cores | range"
+        ></span>
+        <span
+          class="p-meter--cpu-cores__core--available"
+          ng-repeat="i in availableWithOvercommit(pod.total.cores, pod.used.cores, pod.cpu_over_commit_ratio) | range"
+        ></span>
+      </div>
+    </div>
+    <p class="u-no-max-width u-space-between">
+      <span>{$ pod.used.cores $} used</span>
+      <span>{$ availableWithOvercommit(pod.total.cores, pod.used.cores, pod.cpu_over_commit_ratio, 1) $} available</span>
+    </p>
+    <h4>
+      RAM: {$ pod.total.memory_gb $} (GiB)
+      <span data-ng-if="pod.memory_over_commit_ratio > 1">x {$ pod.memory_over_commit_ratio $}</span>
+    </h4>
+    <div class="p-meter__container">
+      <meter
+        class="p-meter"
+        max="{$ pod.total.memory * pod.memory_over_commit_ratio $}"
+        value="{$ pod.used.memory $}"
+      ></meter>
+    </div>
+    <p class="u-no-max-width u-space-between">
+      <span>{$ stripTrailingZero(pod.used.memory_gb) $} GiB used</span>
+      <span>{$ availableWithOvercommit(pod.total.memory_gb, pod.used.memory_gb, pod.memory_over_commit_ratio, 1) $} GiB available</span>
+    </p>
+	</div>
+
+	<!-- Storage panel -->
+  <div class="col-8 p-divider__block p-pod-storage">
+    <h3 class="p-heading--four">Storage</h3>
+    <ul class="p-list--divided">
+      <li
+        class="p-list__item p-pod-storage__row"
+        data-ng-repeat="storage in pod.storage_pools"
+      >
+        <div class="row">
+          <div class="col-small-2 col-medium-3 col-4">
+            <p class="u-min-margin--bottom">
+              <strong>{$ storage.name $}</strong>
+            </p>
+            <p style="color: #666">{$ storage.path $}</p>
+          </div>
+          <div class="col-small-2 col-medium-3 col-2 u-align--right">
+            <p class="u-min-margin--bottom">
+              {$ storage.type | formatStorageType $}
+            </p>
+            <p>{$ storage.total | formatBytes $}</p>
+          </div>
+          <div class="col-small-4 col-medium-6 col-6">
+            <div class="p-meter__container">
+              <meter
+                class="p-meter p-meter--kvm"
+                max="{$ storage.total $}"
+                value="{$ storage.used $}"
+                ng-class="{ 'is-over': storage.used > storage.total }"
+              >
+                <div class="p-meter__graph">
+                  <span
+                    class="p-meter__graph-content"
+                    style="width: {$ storage.used / storage.total * 100 $}%"
+									>
+										Disk Usage - {$ storage.used $} out of {$ storage.total$}
+									</span>
+                </div>
+              </meter>
+            </div>
+            <p class="u-no-max-width u-space-between">
+              <span>{$ storage.used | formatBytes $}</span>
+              <span>{$ storage.available | formatBytes $}</span>
+            </p>
+          </div>
+        </div>
+      </li>
+      <li class="p-list__item">
+        <div class="row">
+          <div class="col-6 col-start-large-7 u-space-between">
+            <div class="p-legend__item p-legend__item--used">
+              <span class="p-legend__text default-text">
+                Used
+              </span>
+            </div>
+            <div class="p-legend__item p-legend__item--free">
+              <span class="p-legend__text default-text">
+                Free
+              </span>
+            </div>
+          </div>
+        </div>
+      </li>
+    </ul>
+  </div>
+</div>

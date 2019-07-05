@@ -30,6 +30,16 @@ $color--request-warning: $color-caution;
       &::-moz-meter-bar {
         background-color: $color--request-warning;
       }
+
+      .p-meter__graph-content {
+        background-image: linear-gradient(
+          90deg,
+          $color--request-warning 0%,
+          $color--request-warning 100%,
+          transparent 100%,
+          transparent 100%
+        );
+      }
     }
 
     border-radius: $sp-unit;

@@ -523,8 +523,8 @@
     </header>
 
     <section data-ng-if="section.area === 'summary'">
-        <div class="row">
-            <section class="p-strip" ng-if="canEdit()">
+        <div class="p-strip is-shallow" ng-if="canEdit()">
+            <div class="row">
                 <div class="p-pod-edit">
                     <label class="p-pod-edit__label" for="virsh">Virsh:</label>
                     <div class="p-code-copyable-wrapper">
@@ -534,124 +534,28 @@
                         </div>
                     </div>
                 </div>
-            </section>
-            <div class="p-card--highlighted">
-                <div class="p-pod-summary">
-
-                    <div class="p-pod-summary__aside">
-                        <div class="p-pod-summary__cpu">
-                            <div class="row">
-                                <h4>
-                                    CPU cores: {$ pod.total.cores $}
-                                    <span data-ng-if="pod.cpu_over_commit_ratio > 1">x {$ pod.cpu_over_commit_ratio $}</span>
-                                </h4>
-                            </div>
-                            <div class="p-meter--cpu-cores">
-                                <div class="p-meter--cpu-cores__container">
-                                    <span class="p-meter--cpu-cores__core--used" ng-repeat="i in pod.used.cores | range"></span>
-                                    <span class="p-meter--cpu-cores__core--available" ng-repeat="i in availableWithOvercommit(pod.total.cores, pod.used.cores, pod.cpu_over_commit_ratio) | range"></span>
-                                </div>
-                            </div>
-                            <p class="u-no-max-width">
-                                <span>{$ pod.used.cores $} used</span>
-                                <span class="u-float--right">{$ availableWithOvercommit(pod.total.cores, pod.used.cores, pod.cpu_over_commit_ratio, 1) $} available</span>
-                            </p>
-                        </div>
-                        <div class="p-pod-summary__ram">
-                            <div class="row">
-                                <h4>
-                                    RAM: {$ pod.total.memory_gb $} (GiB)
-                                    <span data-ng-if="pod.memory_over_commit_ratio > 1">x {$ pod.memory_over_commit_ratio $}</span>
-                                </h4>
-                            </div>
-                            <div class="p-meter__container">
-                                <meter class="p-meter" max="{$ pod.total.memory * pod.memory_over_commit_ratio $}" value="{$ pod.used.memory $}"></meter>
-                            </div>
-                            <p class="u-no-max-width">
-                                <span>{$ stripTrailingZero(pod.used.memory_gb) $} GiB used</span>
-                                <span class="u-float--right">{$ availableWithOvercommit(pod.total.memory_gb, pod.used.memory_gb, pod.memory_over_commit_ratio, 1) $} GiB available</span>
-                            </p>
-                        </div>
-                    </div>
-                    <div class="p-pod-summary__storage">
-                        <div class="row u-hide--large">
-                            <hr>
-                        </div>
-                        <div class="row">
-                            <div class="col-small-2 col-medium-3 col-4">
-                                <h3 class="p-heading--four">Storage</h3>
-                            </div>
-                        </div>
-                        <ul class="p-list--divided">
-                            <li class="p-list__item u-no-padding" data-ng-repeat="storage in pod.storage_pools">
-                                <div class="p-storage row u-no-padding--top">
-                                    <div class="p-storage__name col-medium-3 col-4 u-clearfix">
-                                        <p class="p-storage__disk-name">
-                                        <strong>{$ storage.name $}</strong>
-                                        <span class="p-storage__path">
-                                            {$ storage.path $}
-                                        </span>
-                                        </p>
-                                        <div class="p-storage__info">
-                                            <p class="p-storage__type">{$ storage.type | formatStorageType $}<br>
-                                                <span class="p-storage__size">{$ storage.total | formatBytes $}</span>
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div class="p-storage__meter col-medium-3 col-4">
-                                        <div class="p-meter__container">
-                                            <meter class="p-meter p-meter--kvm" max="{$ storage.total $}" value="{$ storage.used $}"
-                                                ng-class="{'is-over': storage.used > storage.total}">
-                                            <div class="p-meter__graph">
-                                                <span class="p-meter__graph-content" style="width: {$ storage.used / storage.total * 100 $}%">Disk Usage - {$ storage.used $} out of {$ storage.total $}</span>
-                                            </div>
-                                            </meter>
-                                        </div>
-                                        <p class="p-p-compact u-clearfix">
-                                            <span class="u-float--left">
-                                                {$ storage.used | formatBytes $}
-                                            </span>
-                                            <span class="u-float--right">
-                                                {$ storage.available | formatBytes $}
-                                            </span>
-                                        </p>
-                                    </div>
-                                </div>
-                            </li>
-                        </ul>
-                        <div class="row">
-                            <ul class="p-legend col-small-2 col-medium-3 col-4 push-4">
-                                <li class="p-legend__item p-legend__item--used">
-                                    <span class="p-legend__text default-text">
-                                        Used
-                                    </span>
-                                </li>
-                                <li class="p-legend__item p-legend__item--free">
-                                    <span class="p-legend__text default-text">
-                                        Free
-                                    </span>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-                    <div class="col-6"
-                        data-ng-if="pod.capabilities.indexOf('iscsi_storage') >= 0">
-                        <h3 class="p-heading--four">iSCSI storage ({$ pod.total.iscsi_storage_gb $}&nbsp;GiB)</h3>
-                        <div class="p-meter__container">
-                            <meter class="p-meter" max="{$ pod.total.iscsi_storage $}" value="{$ pod.used.iscsi_storage $}"></meter>
-                        </div>
-                        <p class="u-no-max-width">
-                            <span>{$ pod.used.iscsi_storage_gb $} GiB used</span>
-                            <span class="u-float--right">{$ pod.available.iscsi_storage_gb $} GiB available</span>
-                        </p>
+            </div>
+        </div>
+        <div class="p-strip is-shallow">
+            <div class="row">
+                <div class="p-card--highlighted">
+                    <div class="row">
+                        <ng-include
+                            src="'./static/partials/pod-details/pod-details-summary.html'"
+                        />
                     </div>
                 </div>
             </div>
         </div>
-        <section class="p-strip">
+        <div class="p-strip">
             <div class="row">
                 <div class="col-12" data-ng-if="pod.composed_machines_count">
-                    <maas-machines-table search="machinesSearch" hide-actions="true" pools="pools" zones="zones"></maas-machines-table>
+                    <maas-machines-table
+                        search="machinesSearch"
+                        hide-actions="true"
+                        pools="pools"
+                        zones="zones"
+                    />
                 </div>
             </div>
             <div class="row">
@@ -661,7 +565,7 @@
                     <button class="p-button--positive is-inline u-no-margin" data-ng-if="canCompose()" data-ng-click="composeMachine()">Compose machine</button>
                 </div>
             </div>
-        </section>
+        </div>
     </section>
     <section class="p-strip" data-ng-if="pod && section.area === 'configuration'">
         <div class="row">
