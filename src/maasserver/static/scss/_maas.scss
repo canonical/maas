@@ -276,12 +276,6 @@
   text-overflow: ellipsis;
 }
 
-// Set base font-size
-.text-base {
-  font-size: map-get($base-font-sizes, base);
-  text-transform: initial;
-}
-
 // Default styles for maas elements e.g. <maas-obj...
 %maas-element {
   display: block;

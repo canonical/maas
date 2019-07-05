@@ -214,12 +214,41 @@
                             </div>
                         </td>
                         <td class="p-table__cell p-double-row" aria-label="Cores" title="{$ availableWithOvercommit(pod.total.cores, pod.used.cores, pod.cpu_over_commit_ratio, 1) $} CPU cores {$ pod.cpu_over_commit_ratio !== 1 ? 'x ' + pod.cpu_over_commit_ratio + ' overcommit' : '' $} available">
-                            <div class="p-double-rows__container">
-                                <div class="p-double-row__main-row">
-                                    <maas-cores-chart used="pod.used.cores" total="pod.total.cores" overcommit="pod.cpu_over_commit_ratio"></maas-cores-chart>
-                                </div>
-                                <div class="p-double-row__muted-row u-align--right">
-                                    {$ pod.total.cores * pod.cpu_over_commit_ratio $}
+                            <div class="p-popover--left">
+                                <div class="p-double-rows__container">
+                                    <div class="p-double-row__main-row">
+                                        <maas-cores-chart used="pod.used.cores" total="pod.total.cores" overcommit="pod.cpu_over_commit_ratio"></maas-cores-chart>
+                                    </div>
+                                    <div class="p-double-row__muted-row u-align--right">
+                                        {$ pod.total.cores * pod.cpu_over_commit_ratio $}
+                                    </div>
+                                    <div class="p-popover__content is-small">
+                                        <div class="p-popover-key__row">
+                                            <div class="p-popover-key__cell">Cores</div>
+                                            <div class="p-popover-key__cell">{$ pod.total.cores $}</div>
+                                            <div class="p-popover-key__cell"><span class="p-cores-chart__key--cores"></span></div>
+                                        </div>
+                                        <div class="p-popover-key__row" data-ng-if="pod.cpu_over_commit_ratio !== 1">
+                                            <div class="p-popover-key__cell">Overcommit (x{$ pod.cpu_over_commit_ratio $})</div>
+                                            <div class="p-popover-key__cell">{$ pod.total.cores * pod.cpu_over_commit_ratio $}</div>
+                                            <div class="p-popover-key__cell"><span class="p-cores-chart__key--overcommit"></span></div>
+                                        </div>
+                                        <div class="p-popover-key__row p-popover-key__row--spacer">
+                                            <div class="p-popover-key__cell"></div>
+                                            <div class="p-popover-key__cell"></div>
+                                            <div class="p-popover-key__cell"></div>
+                                        </div>
+                                        <div class="p-popover-key__row">
+                                            <div class="p-popover-key__cell">Used</div>
+                                            <div class="p-popover-key__cell">{$ pod.used.cores $}</div>
+                                            <div class="p-popover-key__cell"><span class="p-cores-chart__key--used"></span></div>
+                                        </div>
+                                        <div class="p-popover-key__row">
+                                            <div class="p-popover-key__cell">Available</div>
+                                            <div class="p-popover-key__cell">{$ availableWithOvercommit(pod.total.cores, pod.used.cores, pod.cpu_over_commit_ratio, 1) $}</div>
+                                            <div class="p-popover-key__cell"><span class="p-cores-chart__key--available"></span></div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </td>

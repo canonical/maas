@@ -15,6 +15,10 @@ $triangle-height: $sp-unit;
       position: absolute;
       z-index: 10;
 
+      &.is-small {
+        min-width: 0;
+      }
+
       &::before {
         content: "";
         position: absolute;
@@ -84,6 +88,44 @@ $triangle-height: $sp-unit;
       &::after {
         right: -15px;
       }
+    }
+  }
+
+  .p-popover-key__row {
+    display: flex;
+    min-width: 200px;
+  }
+
+  .p-popover-key__row--spacer {
+    margin-bottom: 0.5rem;
+    height: 0;
+
+    .p-popover-key__cell:nth-child(1) {
+      border-bottom: 1px solid $color-mid-light;
+    }
+
+    .p-popover-key_-cell:nth-child(2) {
+      border-bottom: 1px solid $color-mid-light;
+    }
+  }
+
+  .p-popover-key__cell {
+    flex: 1;
+
+    &:nth-child(1) {
+      flex: 0 0 70%;
+      text-align: right;
+    }
+
+    &:nth-child(2) {
+      flex: 0 0 15%;
+      text-align: right;
+    }
+
+    &:nth-child(3) {
+      flex: 0 0 15%;
+      text-align: center;
+      padding-bottom: 0.5rem;
     }
   }
 }

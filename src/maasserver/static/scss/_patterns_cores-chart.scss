@@ -134,4 +134,41 @@ $bar-height: 11px;
     background-image: url(../assets/images/kvm-graph-tex-filler.svg);
     background-position: center left;
   }
+
+  %chart-key-line {
+    display: inline-block;
+    width: 1rem;
+    height: 0;
+    border-top-width: 2px;
+    margin-bottom: 0.2rem;
+  }
+
+  .p-cores-chart__key--cores {
+    @extend %chart-key-line;
+    border-top-style: solid;
+    border-top-color: $color-link;
+  }
+
+  .p-cores-chart__key--overcommit {
+    @extend %chart-key-line;
+    border-top-style: dashed;
+    border-top-color: $color-link;
+  }
+
+  %chart-key-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 1rem;
+  }
+
+  .p-cores-chart__key--used {
+    @extend %chart-key-dot;
+    background-color: $color-link;
+  }
+
+  .p-cores-chart__key--available {
+    @extend %chart-key-dot;
+    background-color: $chart-bg-light;
+  }
 }
