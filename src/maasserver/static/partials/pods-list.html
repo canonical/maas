@@ -139,19 +139,35 @@
             <table class="p-table-expanding p-table--sortable p-table--pods" data-ng-if="pods.length > 0">
                 <thead data-ng-if="windowWidth >= 772" offset="88" media-query="min-width: 772px">
                     <tr class="p-table__row">
-                        <th class="p-table__cell">
+                        <th class="p-table__cell p-double-row" role="columnheader" data-ng-click="sortTable('name')" data-ng-class="{'is-sorted': predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">
                             <div data-ng-if="showActions()">
                                 <input type="checkbox" class="checkbox" data-ng-click="toggleCheckAll()" data-ng-checked="allViewableChecked" id="check-all-pods" data-ng-disabled="add.open || hasActionsInProgress()" />
                                 <label for="check-all-pods" class="checkbox-label"></label>
-                                <span role="columnheader" data-ng-click="sortTable('name')" data-ng-class="{'is-sorted': predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="Name">Name</span>
+                                <span>FQDN</span>
                             </div>
                         </th>
-                        <th class="p-table__cell" role="columnheader" data-ng-click="sortTable('type')" data-ng-class="{'is-sorted': predicate === 'type', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="Type">Type</th>
-                        <th class="p-table__cell" role="columnheader" data-ng-click="sortTable('available.local_storage')" data-ng-class="{'is-sorted': predicate === 'available.local_storage', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="Local storage (GiB)">Local storage (GiB)</th>
-                        <th class="p-table__cell" role="columnheader" data-ng-click="sortTable('available.iscsi_storage')" data-ng-class="{'is-sorted': predicate === 'available.iscsi_storage', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="iSCSI storage (GiB)">iSCSI storage (GiB)</th>
+                        <th class="p-table__cell" role="columnheader">Power</th>
+                        <th class="p-table__cell p-double-row" role="columnheader" data-ng-click="sortTable('type')" data-ng-class="{'is-sorted': predicate === 'type', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="KVM host type">
+                            <div class="p-double-rows__container">
+                                <div>KVM host type</div>
+                                <div>Virsh</div>
+                            </div>
+                        </th>
+                        <th class="p-table__cell p-double-row" role="columnheader" data-ng-click="sortTable('composed_machines')" data-ng-class="{'is-sorted': predicate === 'composed_machines', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="VMs">
+                            <div class="p-double-rows__container">
+                                <div>VM<span style="text-transform: lowercase;">s</span></div>
+                                <div>Owners</div>
+                            </div>
+                        </th>
+                        <th class="p-table__cell" role="columnheader" title="Status">Status</th>
+                        <th class="p-table__cell p-double-row" role="columnheader" title="Resource pool">
+                            <div class="p-double-rows__container">
+                                <div>Resource pool</div>
+                                <div>AZ</div>
+                            </div>
+                        </th>
                         <th class="p-table__cell" role="columnheader" data-ng-click="sortTable('available.cores')" data-ng-class="{'is-sorted': predicate === 'available.cores', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="CPU">CPU</th>
-                        <th class="p-table__cell" role="columnheader" data-ng-click="sortTable('available.memory')" data-ng-class="{'is-sorted': predicate === 'available.memory', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="RAM (GiB)">RAM (GiB)</th>
-                        <th class="p-table__cell u-align--right" role="columnheader" data-ng-click="sortTable('composed_machines')" data-ng-class="{'is-sorted': predicate === 'composed_machines', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="Composed machines">Composed machines</th>
+                        <th class="p-table__cell" role="columnheader" data-ng-click="sortTable('available.memory')" data-ng-class="{'is-sorted': predicate === 'available.memory', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="RAM">RAM</th>
                         <th class="p-table__cell" role="columnheader" title="Storage">Storage</th>
                         <th><div class="u-align--right">Actions</div></th>
                     </tr>
@@ -159,20 +175,43 @@
                 <tbody vs-repeat vs-scroll-parent="window">
                     <tr class="p-table__row" data-ng-repeat="pod in filteredItems = (filterPods(pods) | nodesFilter:search | orderBy:predicate:reverse) track by pod.id" data-ng-class="{ selected: pod.$selected, 'is-active': pod.$selected && pod.action_failed }">
                         <td class="p-table__cell" aria-label="Name" title="{$ pod.name $}">
-                            <div class="u-float--left" data-ng-if="showActions()">
+                            <div class="p-double-row__checkbox" data-ng-if="showActions()">
                                 <input type="checkbox" class="checkbox" data-ng-click="toggleChecked(pod)" data-ng-checked="pod.$selected" id="{$ pod.id $}" data-ng-disabled="add.open || hasActionsInProgress()"/>
                                 <label for="{$ pod.id $}" class="checkbox-label"></label>
                                 <a href="#/{$ getDetailsRoute() $}/{$ pod.id $}"><strong>{$ pod.name $}</strong></a>
                             </div>
                         </td>
-                        <td class="p-table__cell" aria-label="Type" title="{$ getPowerTypeTitle(pod.type) $}">
-                            {$ getPowerTypeTitle(pod.type) $}
+                        <td class="p-table__cell" aria-label="Power" title="Power">&ndash;</td>
+                        <td class="p-table__cell p-double-row" aria-label="KVM host type" title="{$ getPowerTypeTitle(pod.type) $}">
+                            <div class="p-double-rows__container">
+                                <div class="p-double-row__main-row">
+                                    <span class="u-text-overflow">{$ getPowerTypeTitle(pod.type) $}</span>
+                                </div>
+                                <div class="p-double-row__muted-row">
+                                    <span class="u-text-overflow">{$ pod.power_address $}</span>
+                                </div>
+                            </div>
                         </td>
-                        <td class="p-table__cell" aria-label="Local storage (GiB)" title="{$ pod.available.local_storage_gb $} free of {$ pod.total.local_storage_gb $}">
-                            {$ pod.available.local_storage_gb $} free of {$ pod.total.local_storage_gb $}
+                        <td class="p-table__cell p-double-row" aria-label="VMs" title="{$ pod.composed_machines_count $}">
+                            <div class="p-double-rows__container">
+                                <div class="p-double-row__main-row u-align--right">
+                                    {$ pod.composed_machines_count $}
+                                </div>
+                                <div class="p-double-row__muted-row u-align--right">
+                                    &ndash;
+                                </div>
+                            </div>
                         </td>
-                        <td class="p-table__cell" aria-label="iSCSI storage (GiB)" title="{$ pod.available.iscsi_storage_gb || '0' $} free of {$ pod.total.iscsi_storage_gb || '0' $}">
-                            {$ pod.available.iscsi_storage_gb || '0' $} free of {$ pod.total.iscsi_storage_gb || '0' $}
+                        <td class="p-table__cell" aria-label="Status" title="Status">&ndash;</td>
+                        <td class="p-table__cell p-double-row" aria-label="Resource pool" title="Resource pool">
+                            <div class="p-double-rows__container">
+                                <div class="p-double-row__main-row">
+                                    {$ getItemName(pod.pool, pools) $}
+                                </div>
+                                <div class="p-double-row__muted-row">
+                                    {$ getItemName(pod.zone, zones) $}
+                                </div>
+                            </div>
                         </td>
                         <td class="p-table__cell p-double-row" aria-label="Cores" title="{$ availableWithOvercommit(pod.total.cores, pod.used.cores, pod.cpu_over_commit_ratio, 1) $} CPU cores {$ pod.cpu_over_commit_ratio !== 1 ? 'x ' + pod.cpu_over_commit_ratio + ' overcommit' : '' $} available">
                             <div class="p-double-rows__container">
@@ -184,11 +223,15 @@
                                 </div>
                             </div>
                         </td>
-                        <td class="p-table__cell" aria-label="RAM (GiB)" title="{$ availableWithOvercommit(pod.total.memory_gb, pod.used.memory_gb, pod.memory_over_commit_ratio, 1) $} {$ pod.memory_over_commit_ratio !== 1 ? 'x ' + pod.total.memory_gb + ' overcommit' : '' $}">
-                            {$ availableWithOvercommit(pod.total.memory_gb, pod.used.memory_gb, pod.memory_over_commit_ratio, 1) $} free of {$ pod.total.memory_gb * pod.memory_over_commit_ratio $}
-                        </td>
-                        <td class="p-table__cell u-align--right" aria-label="Composed machines" title="{$ pod.composed_machines_count $}">
-                            {$ pod.composed_machines_count $}
+                        <td class="p-table__cell p-double-row" aria-label="RAM (GiB)" title="{$ availableWithOvercommit(pod.total.memory_gb, pod.used.memory_gb, pod.memory_over_commit_ratio, 1) $} {$ pod.memory_over_commit_ratio !== 1 ? 'x ' + pod.total.memory_gb + ' overcommit' : '' $}">
+                            <div class="p-double-rows__container">
+                                <div class="p-double-row__main-row">
+                                    <meter class="p-meter p-meter--thin" max="{$ pod.total.memory * pod.memory_over_commit_ratio $}" value="{$ getMeterValue(pod.total.memory * pod.memory_over_commit_ratio, pod.used.memory) $}" ng-class="{'is-over': pod.used.memory > pod.total.memory * pod.memory_over_commit_ratio}"></meter>
+                                </div>
+                                <div class="p-double-row__muted-row u-align--right">
+                                    {$ pod.used.memory * 1000 * 1000 | formatBytes $}
+                                </div>
+                            </div>
                         </td>
                         <td class="p-table__cell p-double-row" aria-label="Storage" style="overflow: visible">
                             <div class="p-popover--left">

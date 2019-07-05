@@ -711,4 +711,31 @@ describe("PodsListController", function() {
       expect($scope.action.option.isSingle).toBe(true);
     });
   });
+
+  describe("getItemName", () => {
+    it("returns undefined if no arguments", () => {
+      makeController();
+      expect($scope.getItemName()).toBeUndefined();
+    });
+
+    it("returns undefined if id argument is not a number", () => {
+      makeController();
+      expect($scope.getItemName(null, [])).toBeUndefined();
+    });
+
+    it("returns undefined if items argument is not an array", () => {
+      makeController();
+      expect($scope.getItemName(2, null)).toBeUndefined();
+    });
+
+    it("returns item name", () => {
+      makeController();
+      let items = [
+        { id: 0, name: "foo" },
+        { id: 1, name: "bar" },
+        { id: 2, name: "baz" }
+      ];
+      expect($scope.getItemName(2, items)).toBe("baz");
+    });
+  });
 });

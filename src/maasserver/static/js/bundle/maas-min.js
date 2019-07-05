@@ -57998,6 +57998,16 @@ function PodsListController($scope, $rootScope, $location, PodsManager, UsersMan
     action.isSingle = true;
     $scope.podToAction = pod;
     $scope.action.option = action;
+  };
+
+  $scope.getItemName = function (itemId, items) {
+    if (angular.isUndefined(itemId) || !angular.isNumber(itemId) || angular.isUndefined(items) || !angular.isArray(items)) {
+      return;
+    }
+
+    return items.find(function (item) {
+      return item.id === itemId;
+    }).name;
   }; // Load the required managers for this controller.
 
 

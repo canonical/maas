@@ -396,6 +396,19 @@ function PodsListController(
     $scope.action.option = action;
   };
 
+  $scope.getItemName = (itemId, items) => {
+    if (
+      angular.isUndefined(itemId) ||
+      !angular.isNumber(itemId) ||
+      angular.isUndefined(items) ||
+      !angular.isArray(items)
+    ) {
+      return;
+    }
+
+    return items.find(item => item.id === itemId).name;
+  };
+
   // Load the required managers for this controller.
   ManagerHelperService.loadManagers($scope, [
     PodsManager,
