@@ -16,4 +16,4 @@ fi
 
 
 export PGPASS=$(sudo cat /var/snap/maas/current/regiond.conf | grep database_pass | sed 's/database_pass: \(.*\)/\1/')
-sudo psql -U maas -h /var/snap/maas/common/db -d maasdb "$@"
+sudo psql -U maas -h /var/snap/maas/common/postgres/sockets -d maasdb "$@"
