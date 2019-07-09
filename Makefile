@@ -164,10 +164,6 @@ bin/flake8: bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install flake8
 	@touch --no-create $@
 
-bin/sphinx bin/sphinx-build: bin/buildout buildout.cfg versions.cfg setup.py
-	$(buildout) install sphinx
-	@touch --no-create $@
-
 bin/py bin/ipy: bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install repl
 	@touch --no-create bin/py bin/ipy
@@ -322,7 +318,7 @@ coverage/index.html: bin/coverage .coverage
 
 lint: \
     lint-py lint-py-complexity lint-py-imports \
-    lint-js lint-doc lint-rst
+    lint-js lint-rst
         # Only Unix line ends should be accepted
 	@find src/ -type f -exec file "{}" ";" | \
 	    awk '/CRLF/ { print $0; count++ } END {exit count}' || \
@@ -362,9 +358,6 @@ lint-py-imports:
 	  ! -path '*/migrations/*' \
 	  -print0 | xargs -r0 utilities/find-early-imports
 
-lint-doc:
-	@utilities/doc-lint
-
 # JavaScript lint is checked in parallel for speed.  The -n20 -P4 setting
 # worked well on a multicore SSD machine with the files cached, roughly
 # doubling the speed, but it may need tuning for slower systems or cold caches.
@@ -386,27 +379,13 @@ format: bin/yarn
 
 check: clean test
 
-docs/api.rst: bin/maas-region src/maasserver/api/doc_handler.py syncdb
+api-docs.rst: bin/maas-region src/maasserver/api/doc_handler.py syncdb
 	bin/maas-region generate_api_doc > $@
 
 sampledata: bin/maas-region bin/database syncdb
 	$(dbrun) bin/maas-region generate_sample_data
 
-doc: bin/sphinx docs/api.rst
-	bin/sphinx
-
-docs/_build/html/index.html: doc
-
-doc-browse: docs/_build/html/index.html
-	sensible-browser $< > /dev/null 2>&1 &
-
-doc-with-versions: bin/sphinx docs/api.rst
-	$(MAKE) -C docs/_build SPHINXOPTS="-A add_version_switcher=true" html
-
-man: $(patsubst docs/man/%.rst,man/%,$(wildcard docs/man/*.rst))
-
-man/%: docs/man/%.rst | bin/sphinx-build
-	bin/sphinx-build -b man docs man $^
+doc: api-docs.rst
 
 .run .run-e2e: run-skel
 	@cp --archive --verbose $^ $@
@@ -447,9 +426,7 @@ clean: stop clean-failed clean-assets
 	$(RM) -r media/demo/* media/development media/development.*
 	$(RM) src/maasserver/data/templates.py
 	$(RM) *.log
-	$(RM) docs/api.rst
-	$(RM) -r docs/_autosummary docs/_build
-	$(RM) -r man/.doctrees
+	$(RM) api-docs.rst
 	$(RM) .coverage .coverage.* coverage.xml
 	$(RM) -r coverage
 	$(RM) -r .hypothesis
@@ -494,7 +471,6 @@ define phony_targets
   dbharness
   distclean
   doc
-  doc-browse
   force-assets
   force-yarn-update
   format
@@ -505,14 +481,12 @@ define phony_targets
   lander-styles
   lint
   lint-css
-  lint-doc
   lint-js
   lint-py
   lint-py-complexity
   lint-py-imports
   lint-rst
   lxd
-  man
   print-%
   sampledata
   smoke
@@ -792,7 +766,6 @@ phony := $(sort $(strip $(phony)))
 
 define secondary_binaries
   bin/py bin/buildout
-  bin/sphinx bin/sphinx-build
 endef
 
 secondary = $(sort $(strip $(secondary_binaries)))

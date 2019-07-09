@@ -32,9 +32,7 @@
 /debian/debhelper-build-stamp
 /develop-eggs
 /dist
-/docs/api.rst
-/docs/_autosummary
-/docs/_build
+/api-docs.rst
 /eggs
 /etc/maas/rackd.conf
 /etc/maas/regiond.conf
