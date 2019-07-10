@@ -622,6 +622,19 @@ class TestScriptForm(MAASServerTestCase):
         })
         self.assertFalse(form.is_valid())
 
+    def test__user_option_can_match_yaml_value(self):
+        name = factory.make_name('name')
+        script_type = factory.pick_choice(SCRIPT_TYPE_CHOICES)
+        form = ScriptForm(data={
+            'name': name,
+            'script_type': script_type,
+            'script': factory.make_script_content({
+                'name': name,
+                'script_type': script_type,
+            })
+        })
+        self.assertTrue(form.is_valid())
+
     def test__errors_on_bad_yaml(self):
         form = ScriptForm(data={
             'name': factory.make_name('name'),
