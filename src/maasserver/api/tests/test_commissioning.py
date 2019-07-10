@@ -1,4 +1,4 @@
-# Copyright 2013-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the commissioning-related portions of the MAAS API."""
@@ -74,6 +74,22 @@ class AdminCommissioningScriptsAPITest(APITestCase.ForAdmin):
         self.assertEqual(content, stored_script.script.data)
         self.assertEqual(SCRIPT_TYPE.COMMISSIONING, stored_script.script_type)
 
+    def test_POST_creates_errors(self):
+        content = factory.make_script_content(
+            yaml_content={'name': factory.make_name('name')})
+        response = self.client.post(
+            self.get_url(),
+            {
+                'name': factory.make_name('name'),
+                'content': factory.make_file_upload(content=content.encode()),
+            })
+        self.assertThat(response, HasStatusCode(http.client.BAD_REQUEST))
+
+        ret = json_load_bytes(response.content)
+        self.assertDictEqual(
+            {'name': ['May not override values defined in embedded YAML.']},
+            ret)
+
 
 class CommissioningScriptsAPITest(APITestCase.ForUser):
 
@@ -117,6 +133,28 @@ class AdminCommissioningScriptAPITest(APITestCase.ForAdmin):
 
         self.assertEqual(
             new_content.decode('utf-8'), reload_object(script).script.data)
+
+    def test_PUT_errors(self):
+        old_content = factory.make_script_content(
+            yaml_content={'name': factory.make_name('name')})
+        old_content = old_content.encode('ascii')
+        script = factory.make_Script(
+            script_type=SCRIPT_TYPE.COMMISSIONING, script=old_content)
+        new_content = factory.make_script_content(
+            yaml_content={'name': factory.make_name('name')})
+        new_content = new_content.encode('ascii')
+
+        response = self.client.put(
+            self.get_url(script.name),
+            {
+                'name': factory.make_name('name'),
+                'content': factory.make_file_upload(content=new_content)})
+        self.assertThat(response, HasStatusCode(http.client.BAD_REQUEST))
+
+        ret = json_load_bytes(response.content)
+        self.assertDictEqual(
+            {'name': ['May not override values defined in embedded YAML.']},
+            ret)
 
     def test_DELETE_deletes_script(self):
         script = factory.make_Script(script_type=SCRIPT_TYPE.COMMISSIONING)

@@ -169,6 +169,73 @@ class ScriptForm(ModelForm):
             valid = False
         return valid
 
+    def _clean_script(self, parsed_yaml):
+        """Clean script data and validate input."""
+        # Tags and timeout may not be updated from new embedded YAML. This
+        # allows users to receive updated scripts from an upstream maintainer,
+        # such as Canonical, while maintaining user defined tags and timeout.
+
+        # Tags must be a comma seperated string for the form.
+        tags = parsed_yaml.pop('tags', None)
+        if (tags is not None and self.instance.id is None and
+                'tags' not in self.data):
+            tags_valid = True
+            if isinstance(tags, str):
+                self.data['tags'] = tags
+            elif isinstance(tags, list):
+                for tag in tags:
+                    if not isinstance(tag, str):
+                        tags_valid = False
+                        continue
+                if tags_valid:
+                    self.data['tags'] = ','.join(tags)
+            else:
+                tags_valid = False
+            if not tags_valid:
+                set_form_error(
+                    self, 'tags',
+                    'Embedded tags must be a string of comma seperated '
+                    'values, or a list of strings.')
+
+        # Timeout must be a string for the form.
+        timeout = parsed_yaml.pop('timeout', None)
+        if (timeout is not None and self.instance.id is None and
+                'timeout' not in self.data):
+            self.data['timeout'] = str(timeout)
+
+        # Packages and for_hardware must be a JSON string for the form.
+        for key in ['packages', 'for_hardware']:
+            value = parsed_yaml.pop(key, None)
+            if value is not None and key not in self.data:
+                self.data[key] = json.dumps(value)
+
+        for key, value in parsed_yaml.items():
+            if key in self.fields:
+                error = False
+                if key not in self.data:
+                    self.data[key] = value
+                elif key == 'script_type':
+                    # The deprecated Commissioning API always sets the
+                    # script_type to commissioning as it has always only
+                    # accepted commissioning scripts while the form sets
+                    # the default type to testing. If the YAML matches the
+                    # type allow it.
+                    try:
+                        if (translate_script_type(value) !=
+                                translate_script_type(self.data[key])):
+                            error = True
+                    except ValidationError:
+                        error = True
+                elif value != self.data[key]:
+                    # Only allow form data for fields defined in the YAML if
+                    # the data matches.
+                    error = True
+
+                if error:
+                    set_form_error(
+                        self, key,
+                        'May not override values defined in embedded YAML.')
+
     def _read_script(self):
         """Read embedded YAML configuration in a script.
 
@@ -224,52 +291,7 @@ class ScriptForm(ModelForm):
         self.instance.results = parsed_yaml.pop('results', {})
         self.instance.parameters = parsed_yaml.pop('parameters', {})
 
-        # Tags and timeout may not be updated from new embedded YAML. This
-        # allows users to receive updated scripts from an upstream maintainer,
-        # such as Canonical, while maintaining user defined tags and timeout.
-
-        # Tags must be a comma seperated string for the form.
-        tags = parsed_yaml.pop('tags', None)
-        if (tags is not None and self.instance.id is None and
-                'tags' not in self.data):
-            tags_valid = True
-            if isinstance(tags, str):
-                self.data['tags'] = tags
-            elif isinstance(tags, list):
-                for tag in tags:
-                    if not isinstance(tag, str):
-                        tags_valid = False
-                        continue
-                if tags_valid:
-                    self.data['tags'] = ','.join(tags)
-            else:
-                tags_valid = False
-            if not tags_valid:
-                set_form_error(
-                    self, 'tags',
-                    'Embedded tags must be a string of comma seperated '
-                    'values, or a list of strings.')
-
-        # Timeout must be a string for the form.
-        timeout = parsed_yaml.pop('timeout', None)
-        if (timeout is not None and self.instance.id is None and
-                'timeout' not in self.data):
-            self.data['timeout'] = str(timeout)
-
-        # Packages and for_hardware must be a JSON string for the form.
-        for key in ['packages', 'for_hardware']:
-            value = parsed_yaml.pop(key, None)
-            if value is not None and key not in self.data:
-                self.data[key] = json.dumps(value)
-
-        for key, value in parsed_yaml.items():
-            if key in self.fields:
-                if key not in self.data:
-                    self.data[key] = value
-                else:
-                    set_form_error(
-                        self, key,
-                        'May not override values defined in embedded YAML.')
+        self._clean_script(parsed_yaml)
 
     def clean_packages(self):
         if self.cleaned_data['packages'] == '':

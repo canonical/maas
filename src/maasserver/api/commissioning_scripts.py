@@ -1,4 +1,4 @@
-# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `CommissioningScript`."""
@@ -92,11 +92,14 @@ class CommissioningScriptsHandler(OperationsHandler):
             return {
                 'name': script.name,
                 'content': b64encode(script.script.data.encode()),
+                'deprecated': (
+                    'The commissioning-scripts endpoint is deprecated. '
+                    'Please use the node-scripts endpoint.'),
                 'resource_uri': reverse(
                     'commissioning_script_handler', args=[script.name]),
             }
         else:
-            return MAASAPIValidationError(form.errors)
+            raise MAASAPIValidationError(form.errors)
 
     @classmethod
     def resource_uri(cls):
@@ -142,7 +145,7 @@ class CommissioningScriptHandler(OperationsHandler):
             form.save(request)
             return rc.ALL_OK
         else:
-            return MAASAPIValidationError(form.errors)
+            raise MAASAPIValidationError(form.errors)
 
     @classmethod
     def resource_uri(cls, script=None):
