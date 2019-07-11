@@ -252,6 +252,27 @@ def executeScanNetworksSubprocess(
     return done
 
 
+def check_ip_address(request):
+    """Perform's the actual IP address checking using `ping`.
+
+    Redirects stdout and stderr in the subprocess to /dev/null. Leaves
+    stderr intact, so that we might pass useful logging through.
+
+    Returns the `reason` (see `ProcessProtocol.processEnded`) from the
+    scan process after waiting for it to complete.
+
+    :param request: An individual request from the
+        :py:class:`~provisioningserver.rpc.cluster.CheckIPs`.
+    """
+    done, protocol = makeDeferredWithProcessProtocol()
+    args = ['ping', '-c', '1']
+    if request.get('interface'):
+        args += ['-I', request['interface']]
+    args += [request['ip_address']]
+    spawnProcessAndNullifyStdout(protocol, args)
+    return done
+
+
 class Cluster(RPCProtocol):
     """The RPC protocol supported by a cluster controller.
 
@@ -775,6 +796,27 @@ class Cluster(RPCProtocol):
                     e.output_as_unicode)
         maaslog.info("Successfully stopped the rackd service.")
         return {}
+
+    @cluster.CheckIPs.responder
+    def check_ips(self, ip_addresses):
+        """CheckIPs()
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.cluster.CheckIPs`.
+        """
+        d = DeferredList(
+            map(check_ip_address, ip_addresses), consumeErrors=True)
+
+        def map_results(results):
+            for request, (success, _) in zip(ip_addresses, results):
+                request["used"] = success
+            return {
+                "ip_addresses": ip_addresses,
+            }
+
+        d.addCallback(map_results)
+        d.addErrback(log.err, 'Failed to perform IP address checking.')
+        return d
 
 
 @implementer(IConnectionToRegion)

@@ -130,6 +130,7 @@ from testtools.matchers import (
     IsInstance,
     KeysEqual,
     MatchesAll,
+    MatchesDict,
     MatchesListwise,
     MatchesStructure,
 )
@@ -3619,3 +3620,47 @@ class TestClusterProtocol_DisableAndShutoffRackd(MAASTestCase):
             Cluster(), cluster.DisableAndShutoffRackd, {})
         self.assertEquals({}, response.result)
         self.assertEquals(1, mock_call_and_check.call_count)
+
+
+class TestClusterProtocol_CheckIPs(
+        MAASTestCaseThatWaitsForDeferredThreads):
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    def test__is_registered(self):
+        protocol = Cluster()
+        responder = protocol.locateResponder(
+            cluster.CheckIPs.commandName)
+        self.assertIsNotNone(responder)
+
+    @inlineCallbacks
+    def test__reports_results(self):
+        ip_addresses = [
+            {
+                # Always exists, returns exit code of `0`.
+                "ip_address": "127.0.0.1"
+            },
+            {
+                # Broadcast that `ping` by default doesn't allow ping to
+                # occur so the command returns exit code of `2`.
+                "ip_address": "255.255.255.255",
+            }
+        ]
+
+        result = yield call_responder(
+            Cluster(), cluster.CheckIPs, {'ip_addresses': ip_addresses})
+
+        self.assertThat(result, MatchesDict({
+            "ip_addresses": MatchesListwise([
+                MatchesDict({
+                    "ip_address": Equals("127.0.0.1"),
+                    "used": Is(True),
+                    "interface": Is(None),
+                }),
+                MatchesDict({
+                    "ip_address": Equals("255.255.255.255"),
+                    "used": Is(False),
+                    "interface": Is(None),
+                }),
+            ])
+        }))

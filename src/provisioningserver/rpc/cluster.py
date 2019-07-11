@@ -768,3 +768,24 @@ class DisableAndShutoffRackd(amp.Command):
         exceptions.CannotDisableAndShutoffRackd: (
             b"CannotDisableAndShutoffRackd"),
     }
+
+
+class CheckIPs(amp.Command):
+    """Check IP addresses already in-use.
+
+    :since: 2.7
+    """
+    arguments = [
+        (b"ip_addresses", AmpList([
+            (b"ip_address", amp.Unicode()),
+            (b"interface", amp.Unicode(optional=True)),
+        ])),
+    ]
+    response = [
+        (b"ip_addresses", AmpList([
+            (b"ip_address", amp.Unicode()),
+            (b"interface", amp.Unicode(optional=True)),
+            (b"used", amp.Boolean()),
+        ])),
+    ]
+    errors = {}
