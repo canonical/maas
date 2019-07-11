@@ -19,6 +19,7 @@
 @import 'patterns_action-button';
 @import 'patterns_button';
 @import 'patterns_cta';
+@import 'patterns_code';
 @import 'patterns_icons';
 @import 'patterns_navigation';
 @import 'patterns_page-header';
@@ -66,6 +67,7 @@
 @include maas-tag-input;
 @include maas-p-buttons;
 @include maas-p-cta;
+@include maas-p-code;
 @include maas-p-forms;
 @include maas-p-hr;
 @include maas-p-notifications;

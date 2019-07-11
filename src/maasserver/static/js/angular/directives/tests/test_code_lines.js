@@ -40,6 +40,8 @@ describe("maasCodeLines", function() {
     };
 
     var directive = compileDirective("getText()");
-    expect(directive.find("code span").hasClass("code-line")).toBe(true);
+    expect(directive.find("code span").hasClass("p-code-numbered__line")).toBe(
+      true
+    );
   });
 });

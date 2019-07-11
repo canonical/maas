@@ -30,7 +30,8 @@ function maasCodeLines() {
         // Each line is to be wrapped by a span which is style & given
         // its appropriate line number
         angular.forEach(lines, function(line) {
-          insert += newLine + '<span class="code-line">' + line + "</span>";
+          insert +=
+            newLine + '<span class="p-code-numbered__line">' + line + "</span>";
         });
         insert += "</code>";
 

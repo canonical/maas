@@ -60697,7 +60697,7 @@ function maasCodeLines() {
         // its appropriate line number
 
         angular.forEach(lines, function (line) {
-          insert += newLine + '<span class="code-line">' + line + "</span>";
+          insert += newLine + '<span class="p-code-numbered__line">' + line + "</span>";
         });
         insert += "</code>"; // Re-insert the contents
 
