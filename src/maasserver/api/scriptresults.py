@@ -70,7 +70,11 @@ def filter_script_results(script_set, filters, hardware_type=None):
             if script_result.script is not None and
             script_result.script.hardware_type == hardware_type
         ]
-    return sorted(script_results, key=lambda script_result: script_result.name)
+    return sorted(script_results, key=lambda script_result: (
+        script_result.name,
+        getattr(script_result.physical_blockdevice, 'name', None),
+        getattr(script_result.interface, 'name', None),
+    ))
 
 
 class NodeScriptResultsHandler(OperationsHandler):
@@ -342,12 +346,23 @@ class NodeScriptResultHandler(OperationsHandler):
         title = script_result.name
         if extention is not None:
             title = '%s.%s' % (title, extention)
-        if script_result.physical_blockdevice and filetype == 'txt':
-            title = '%s - /dev/%s' % (
-                title, script_result.physical_blockdevice.name)
-        elif script_result.physical_blockdevice:
-            title = '%s-%s' % (
-                title, script_result.physical_blockdevice.name)
+
+        if script_result.physical_blockdevice:
+            if filetype == 'txt':
+                title = '%s - /dev/%s' % (
+                    title, script_result.physical_blockdevice.name)
+            else:
+                title = '%s-%s' % (
+                    title, script_result.physical_blockdevice.name)
+
+        if script_result.interface:
+            if filetype == 'txt':
+                title = '%s - %s' % (
+                    title, script_result.interface.name)
+            else:
+                title = '%s-%s' % (
+                    title, script_result.interface.name)
+
         return title
 
     @operation(idempotent=True)

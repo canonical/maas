@@ -10,6 +10,7 @@ import http.client
 from io import BytesIO
 import os
 import random
+import re
 import tarfile
 import time
 
@@ -970,11 +971,42 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
         response = self.client.get(
             self.get_script_result_uri(script_set), {'op': 'download'})
 
+        self.assertItemsEqual(
+            re.findall(r'(name-\w+ - /dev/[\w-]+)', response.content.decode()),
+            [
+                '%s - /dev/%s' % (
+                    script_result.name,
+                    script_result.physical_blockdevice.name)
+                for script_result in sorted(
+                    script_results, key=lambda script_result: (
+                        script_result.physical_blockdevice.name))
+            ])
         for script_result in script_results:
-            title = '%s - /dev/%s' % (
-                script_result.name, script_result.physical_blockdevice.name)
-            title = title.encode()
-            self.assertIn(title, response.content)
+            self.assertIn(script_result.output, response.content)
+
+    def test_download_shows_results_from_all_interfaces(self):
+        script = factory.make_Script(hardware_type=HARDWARE_TYPE.NETWORK)
+        script_set = self.make_scriptset()
+        script_results = []
+        for _ in range(3):
+            interface = factory.make_Interface(node=script_set.node)
+            script_results.append(factory.make_ScriptResult(
+                script_set=script_set, script=script, interface=interface))
+
+        response = self.client.get(
+            self.get_script_result_uri(script_set), {'op': 'download'})
+
+        self.assertItemsEqual(
+            re.findall(r'(name-\w+ - [\w-]+)', response.content.decode()),
+            [
+                '%s - %s' % (
+                    script_result.name,
+                    script_result.interface.name)
+                for script_result in sorted(
+                    script_results, key=lambda script_result: (
+                        script_result.interface.name))
+            ])
+        for script_result in script_results:
             self.assertIn(script_result.output, response.content)
 
     def test_download_binary(self):
