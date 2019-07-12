@@ -1776,7 +1776,7 @@ class TestVirshSSH(MAASTestCase):
     def test_get_domain_capabilities_for_qemu(self):
         conn = self.configure_virshssh('')
         self.patch(virsh.VirshSSH, "run").side_effect = [
-            factory.make_exception(),
+            'error: message from virsh',
             SAMPLE_CAPABILITY_QEMU,
         ]
         self.assertEqual({

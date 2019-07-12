@@ -1055,14 +1055,14 @@ class VirshSSH(pexpect.spawn):
 
         Determines the type and emulator of the domain to use.
         """
-        try:
-            # Test for KVM support first.
-            xml = self.run(['domcapabilities', '--virttype', 'kvm'])
-            emulator_type = 'kvm'
-        except Exception:
+        # Test for KVM support first.
+        xml = self.run(['domcapabilities', '--virttype', 'kvm'])
+        if xml.startswith('error'):
             # Fallback to qemu support. Fail if qemu not supported.
             xml = self.run(['domcapabilities', '--virttype', 'qemu'])
             emulator_type = 'qemu'
+        else:
+            emulator_type = 'kvm'
 
         # XXX newell 2017-05-18 bug=1690781
         # Check to see if the XML output was an error.
