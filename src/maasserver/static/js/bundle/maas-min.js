@@ -39078,7 +39078,7 @@ exports.cacheScriptStatus = cacheScriptStatus;
 exports.maasScriptStatus = maasScriptStatus;
 cacheScriptStatus.$inject = ["$templateCache"];
 
-/* Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
+/* Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * Script status icon select directive.
@@ -39114,7 +39114,10 @@ function maasScriptStatus() {
           break;
         // SCRIPT_STATUS.RUNNING
 
-        case 1: // SCRIPT_STATUS.INSTALLING
+        case 1: // SCRIPT_STATUS.APPLYING_NETCONF
+
+        case 10: // eslint-disable-line no-fallthrough
+        // SCRIPT_STATUS.INSTALLING
 
         case 7:
           // eslint-disable-line no-fallthrough
@@ -39133,6 +39136,9 @@ function maasScriptStatus() {
         // SCRIPT_STATUS.DEGRADED
 
         case 6: // eslint-disable-line no-fallthrough
+        // SCRIPT_STATUS.FAILED_APPLYING_NETCONF
+
+        case 11: // eslint-disable-line no-fallthrough
         // SCRIPT_STATUS.FAILED_INSTALLING
 
         case 8:

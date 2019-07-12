@@ -1122,12 +1122,29 @@ class TestInstallingAPI(MAASServerTestCase):
             ceil(script_set.last_ping.timestamp()), start_time)
         self.assertLessEqual(floor(script_set.last_ping.timestamp()), end_time)
 
+    def test_signaling_installation_with_netconf_sets_script_to_netconf(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYING, owner=factory.make_User(),
+            with_empty_script_sets=True)
+        script_result = (
+            node.current_installation_script_set.scriptresult_set.first())
+        client = make_node_client(node=node)
+        response = call_signal(
+            client, status=SIGNAL_STATUS.APPLYING_NETCONF,
+            script_result_id=script_result.id)
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        script_result = reload_object(script_result)
+        self.assertEquals(SCRIPT_STATUS.APPLYING_NETCONF, script_result.status)
+
     def test_signaling_installation_with_install_sets_script_to_install(self):
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYING, owner=factory.make_User(),
             with_empty_script_sets=True)
         script_result = (
             node.current_installation_script_set.scriptresult_set.first())
+        script_result.status = random.choice(
+            [SCRIPT_STATUS.PENDING, SCRIPT_STATUS.APPLYING_NETCONF])
+        script_result.save()
         client = make_node_client(node=node)
         response = call_signal(
             client, status=SIGNAL_STATUS.INSTALLING,
@@ -1150,6 +1167,27 @@ class TestInstallingAPI(MAASServerTestCase):
         script_result = reload_object(script_result)
         self.assertEquals(SCRIPT_STATUS.RUNNING, script_result.status)
 
+    def test_signaling_netconf_with_script_id_ignores_not_pending(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYING, owner=factory.make_User(),
+            with_empty_script_sets=True)
+        script_result = (
+            node.current_installation_script_set.scriptresult_set.first())
+        script_status = factory.pick_choice(
+            SCRIPT_STATUS_CHOICES,
+            but_not=[
+                SCRIPT_STATUS.PENDING, SCRIPT_STATUS.INSTALLING,
+                SCRIPT_STATUS.APPLYING_NETCONF])
+        script_result.status = script_status
+        script_result.save()
+        client = make_node_client(node=node)
+        response = call_signal(
+            client, status=SIGNAL_STATUS.WORKING,
+            script_result_id=script_result.id)
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        script_result = reload_object(script_result)
+        self.assertEquals(script_status, script_result.status)
+
     def test_signaling_installation_with_script_id_ignores_not_pending(self):
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYING, owner=factory.make_User(),
@@ -1158,7 +1196,9 @@ class TestInstallingAPI(MAASServerTestCase):
             node.current_installation_script_set.scriptresult_set.first())
         script_status = factory.pick_choice(
             SCRIPT_STATUS_CHOICES,
-            but_not=[SCRIPT_STATUS.PENDING, SCRIPT_STATUS.INSTALLING])
+            but_not=[
+                SCRIPT_STATUS.PENDING, SCRIPT_STATUS.APPLYING_NETCONF,
+                SCRIPT_STATUS.INSTALLING])
         script_result.status = script_status
         script_result.save()
         client = make_node_client(node=node)
@@ -2403,12 +2443,29 @@ class TestCommissioningAPI(MAASServerTestCase):
             ceil(script_set.last_ping.timestamp()), start_time)
         self.assertLessEqual(floor(script_set.last_ping.timestamp()), end_time)
 
+    def test_signaling_commissioning_with_netconf_sets_script_to_netconf(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, owner=factory.make_User(),
+            with_empty_script_sets=True)
+        script_result = (
+            node.current_commissioning_script_set.scriptresult_set.first())
+        client = make_node_client(node=node)
+        response = call_signal(
+            client, status=SIGNAL_STATUS.APPLYING_NETCONF,
+            script_result_id=script_result.id)
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        script_result = reload_object(script_result)
+        self.assertEquals(SCRIPT_STATUS.APPLYING_NETCONF, script_result.status)
+
     def test_signaling_commissioning_with_install_sets_script_to_install(self):
         node = factory.make_Node(
             status=NODE_STATUS.COMMISSIONING, owner=factory.make_User(),
             with_empty_script_sets=True)
         script_result = (
             node.current_commissioning_script_set.scriptresult_set.first())
+        script_result.status = random.choice(
+            [SCRIPT_STATUS.PENDING, SCRIPT_STATUS.APPLYING_NETCONF])
+        script_result.save()
         client = make_node_client(node=node)
         response = call_signal(
             client, status=SIGNAL_STATUS.INSTALLING,
@@ -2439,7 +2496,9 @@ class TestCommissioningAPI(MAASServerTestCase):
             node.current_commissioning_script_set.scriptresult_set.first())
         script_status = factory.pick_choice(
             SCRIPT_STATUS_CHOICES,
-            but_not=[SCRIPT_STATUS.PENDING, SCRIPT_STATUS.INSTALLING])
+            but_not=[
+                SCRIPT_STATUS.PENDING, SCRIPT_STATUS.APPLYING_NETCONF,
+                SCRIPT_STATUS.INSTALLING])
         script_result.status = script_status
         script_result.save()
         client = make_node_client(node=node)
@@ -2590,12 +2649,29 @@ class TestTestingAPI(MAASServerTestCase):
         self.assertThat(response, HasStatusCode(http.client.OK))
         self.assertEqual(event.type.name, EVENT_TYPES.RUNNING_TEST)
 
+    def test_signaling_testing_with_netconf_sets_script_to_netconf(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.TESTING, owner=factory.make_User(),
+            with_empty_script_sets=True)
+        script_result = (
+            node.current_testing_script_set.scriptresult_set.first())
+        client = make_node_client(node=node)
+        response = call_signal(
+            client, status=SIGNAL_STATUS.APPLYING_NETCONF,
+            script_result_id=script_result.id)
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        script_result = reload_object(script_result)
+        self.assertEquals(SCRIPT_STATUS.APPLYING_NETCONF, script_result.status)
+
     def test_signaling_testing_with_install_sets_script_to_install(self):
         node = factory.make_Node(
             status=NODE_STATUS.TESTING, owner=factory.make_User(),
             with_empty_script_sets=True)
         script_result = (
             node.current_testing_script_set.scriptresult_set.first())
+        script_result.status = random.choice(
+            [SCRIPT_STATUS.PENDING, SCRIPT_STATUS.APPLYING_NETCONF])
+        script_result.save()
         client = make_node_client(node=node)
         response = call_signal(
             client, status=SIGNAL_STATUS.INSTALLING,
@@ -2626,7 +2702,9 @@ class TestTestingAPI(MAASServerTestCase):
             node.current_testing_script_set.scriptresult_set.first())
         script_status = factory.pick_choice(
             SCRIPT_STATUS_CHOICES,
-            but_not=[SCRIPT_STATUS.PENDING, SCRIPT_STATUS.INSTALLING])
+            but_not=[
+                SCRIPT_STATUS.PENDING, SCRIPT_STATUS.APPLYING_NETCONF,
+                SCRIPT_STATUS.INSTALLING])
         script_result.status = script_status
         script_result.save()
         client = make_node_client(node=node)

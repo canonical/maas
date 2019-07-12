@@ -71,15 +71,21 @@ def get_status_from_qs(qs):
     # Skipped is omitted here otherwise one skipped test will show
     # a warning icon in the UI on the test tab.
     for status in (
-            SCRIPT_STATUS.RUNNING, SCRIPT_STATUS.INSTALLING,
-            SCRIPT_STATUS.PENDING, SCRIPT_STATUS.ABORTED,
-            SCRIPT_STATUS.FAILED, SCRIPT_STATUS.FAILED_INSTALLING,
-            SCRIPT_STATUS.TIMEDOUT, SCRIPT_STATUS.DEGRADED):
+            SCRIPT_STATUS.RUNNING, SCRIPT_STATUS.APPLYING_NETCONF,
+            SCRIPT_STATUS.INSTALLING, SCRIPT_STATUS.PENDING,
+            SCRIPT_STATUS.ABORTED, SCRIPT_STATUS.FAILED,
+            SCRIPT_STATUS.FAILED_APPLYING_NETCONF,
+            SCRIPT_STATUS.FAILED_INSTALLING, SCRIPT_STATUS.TIMEDOUT,
+            SCRIPT_STATUS.DEGRADED):
         for script_result in qs:
             if (script_result.status == status and
                     not script_result.suppressed):
                 if status == SCRIPT_STATUS.INSTALLING:
                     # When a script is installing the set is running.
+                    return SCRIPT_STATUS.RUNNING
+                elif status == SCRIPT_STATUS.APPLYING_NETCONF:
+                    # When a network configuration is being applied the set is
+                    # running.
                     return SCRIPT_STATUS.RUNNING
                 elif status == SCRIPT_STATUS.TIMEDOUT:
                     # A timeout causes the node to go into a failed status
@@ -88,6 +94,10 @@ def get_status_from_qs(qs):
                 elif status == SCRIPT_STATUS.FAILED_INSTALLING:
                     # Installation failure causes the node to go into a
                     # failed status so show the set as failed.
+                    return SCRIPT_STATUS.FAILED
+                elif status == SCRIPT_STATUS.FAILED_APPLYING_NETCONF:
+                    # Failure to apply network configuration causes the node to
+                    # go into a failed status so show the set as failed.
                     return SCRIPT_STATUS.FAILED
                 else:
                     return status

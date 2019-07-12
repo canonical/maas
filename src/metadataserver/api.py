@@ -504,7 +504,7 @@ class VersionIndexHandler(MetadataViewHandler):
         script_set.last_ping = datetime.now()
         script_set.save()
 
-        if status == SIGNAL_STATUS.INSTALLING:
+        if status == SIGNAL_STATUS.APPLYING_NETCONF:
             script_result_id = get_optional_param(
                 request.POST, 'script_result_id', None, Int)
             if script_result_id is not None:
@@ -513,6 +513,18 @@ class VersionIndexHandler(MetadataViewHandler):
                 # incase the script result has been uploaded and proceeded
                 # already.
                 if script_result.status == SCRIPT_STATUS.PENDING:
+                    script_result.status = SCRIPT_STATUS.APPLYING_NETCONF
+                    script_result.save(update_fields=['status'])
+        if status == SIGNAL_STATUS.INSTALLING:
+            script_result_id = get_optional_param(
+                request.POST, 'script_result_id', None, Int)
+            if script_result_id is not None:
+                script_result = script_set.find_script_result(script_result_id)
+                # Only update the script status if it was in a pending state
+                # incase the script result has been uploaded and proceeded
+                # already.
+                if script_result.status in [
+                        SCRIPT_STATUS.PENDING, SCRIPT_STATUS.APPLYING_NETCONF]:
                     script_result.status = SCRIPT_STATUS.INSTALLING
                     script_result.save(update_fields=['status'])
         elif status == SIGNAL_STATUS.WORKING:
@@ -524,7 +536,8 @@ class VersionIndexHandler(MetadataViewHandler):
                 # installing state incase the script result has been uploaded
                 # and proceeded already.
                 if script_result.status in [
-                        SCRIPT_STATUS.PENDING, SCRIPT_STATUS.INSTALLING]:
+                        SCRIPT_STATUS.PENDING, SCRIPT_STATUS.APPLYING_NETCONF,
+                        SCRIPT_STATUS.INSTALLING]:
                     script_result.status = SCRIPT_STATUS.RUNNING
                     script_result.save(update_fields=['status'])
 
@@ -539,8 +552,8 @@ class VersionIndexHandler(MetadataViewHandler):
         # commissioning Scripts.
         script_set = node.current_commissioning_script_set
         if script_set is None or script_set.status not in [
-                SCRIPT_STATUS.PENDING, SCRIPT_STATUS.INSTALLING,
-                SCRIPT_STATUS.RUNNING]:
+                SCRIPT_STATUS.PENDING, SCRIPT_STATUS.APPLYING_NETCONF,
+                SCRIPT_STATUS.INSTALLING, SCRIPT_STATUS.RUNNING]:
             script_set = ScriptSet.objects.create_commissioning_script_set(
                 node, ['none'])
             node.current_commissioning_script_set = script_set
@@ -698,8 +711,9 @@ class VersionIndexHandler(MetadataViewHandler):
             FAILURE, COMMISSIONING for requesting the node be put into
             COMMISSIONING when NEW, TESTING for requesting the node be put
             into TESTING from COMMISSIONING, TIMEDOUT if the script has run
-            past its time limit, or INSTALLING for installing required
-            packages.
+            past its time limit, INSTALLING when packages are being installed,
+            or APPLYING_NETCONF when custom network configuration is being
+            applied.
         :param error: An optional error string. If given, this will be stored
             (overwriting any previous error string), and displayed in the MAAS
             UI. If not given, any previous error string will be cleared.
@@ -1018,7 +1032,7 @@ class MAASScriptsHandler(OperationsHandler):
             # Don't rerun Scripts which have already run.
             if script_result.status not in (
                     SCRIPT_STATUS.PENDING, SCRIPT_STATUS.RUNNING,
-                    SCRIPT_STATUS.INSTALLING):
+                    SCRIPT_STATUS.APPLYING_NETCONF, SCRIPT_STATUS.INSTALLING):
                 continue
 
             path = os.path.join(prefix, script_result.name)

@@ -234,12 +234,12 @@ class ScriptResult(CleanSave, TimestampedModel):
         # starts. This also allows us to avoid creating an RPC call for the
         # rack controller to create a new ScriptSet.
         if not self.script_set.node.is_controller:
-            # Allow PENDING, INSTALLING, and RUNNING scripts incase the node
-            # didn't inform MAAS the Script was being run, it just uploaded
-            # results.
+            # Allow PENDING, APPLYING_NETCONF, INSTALLING, and RUNNING scripts
+            # incase the node didn't inform MAAS the Script was being run, it
+            # just uploaded results.
             assert self.status in (
-                SCRIPT_STATUS.PENDING, SCRIPT_STATUS.INSTALLING,
-                SCRIPT_STATUS.RUNNING)
+                SCRIPT_STATUS.PENDING, SCRIPT_STATUS.APPLYING_NETCONF,
+                SCRIPT_STATUS.INSTALLING, SCRIPT_STATUS.RUNNING)
 
         if timedout:
             self.status = SCRIPT_STATUS.TIMEDOUT
@@ -249,6 +249,8 @@ class ScriptResult(CleanSave, TimestampedModel):
                 self.status = SCRIPT_STATUS.PASSED
             elif self.status == SCRIPT_STATUS.INSTALLING:
                 self.status = SCRIPT_STATUS.FAILED_INSTALLING
+            elif self.status == SCRIPT_STATUS.APPLYING_NETCONF:
+                self.status = SCRIPT_STATUS.FAILED_APPLYING_NETCONF
             else:
                 self.status = SCRIPT_STATUS.FAILED
 
@@ -363,7 +365,7 @@ class ScriptResult(CleanSave, TimestampedModel):
                 SCRIPT_STATUS.PASSED, SCRIPT_STATUS.FAILED,
                 SCRIPT_STATUS.TIMEDOUT, SCRIPT_STATUS.ABORTED,
                 SCRIPT_STATUS.DEGRADED, SCRIPT_STATUS.FAILED_INSTALLING,
-                SCRIPT_STATUS.SKIPPED}:
+                SCRIPT_STATUS.FAILED_APPLYING_NETCONF, SCRIPT_STATUS.SKIPPED}:
             self.ended = datetime.now()
             if 'update_fields' in kwargs:
                 kwargs['update_fields'].append('ended')

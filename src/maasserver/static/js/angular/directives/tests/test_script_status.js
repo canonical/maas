@@ -1,4 +1,4 @@
-/* Copyright 2017 Canonical Ltd.  This software is licensed under the
+/* Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * Unit tests for script status icon select directive.
@@ -47,6 +47,12 @@ describe("maasScriptStatus", function() {
     expect(select.attr("class")).toBe("p-icon--running");
   });
 
+  it("SCRIPT_STATUS.APPLYING_NETCONF", function() {
+    var directive = compileDirective("10");
+    var select = directive.find("span");
+    expect(select.attr("class")).toBe("p-icon--running");
+  });
+
   it("SCRIPT_STATUS.INSTALLING", function() {
     var directive = compileDirective("7");
     var select = directive.find("span");
@@ -73,6 +79,12 @@ describe("maasScriptStatus", function() {
 
   it("SCRIPT_STATUS.DEGRADED", function() {
     var directive = compileDirective("6");
+    var select = directive.find("span");
+    expect(select.attr("class")).toBe("p-icon--error");
+  });
+
+  it("SCRIPT_STATUS.FAILED_APPLYING_NETCONF", function() {
+    var directive = compileDirective("11");
     var select = directive.find("span");
     expect(select.attr("class")).toBe("p-icon--error");
   });

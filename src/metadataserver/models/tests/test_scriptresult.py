@@ -67,6 +67,7 @@ class TestScriptResult(MAASServerTestCase):
                 SCRIPT_STATUS_CHOICES,
                 [
                     SCRIPT_STATUS.PENDING,
+                    SCRIPT_STATUS.APPLYING_NETCONF,
                     SCRIPT_STATUS.INSTALLING,
                     SCRIPT_STATUS.RUNNING,
                 ]))
@@ -122,6 +123,15 @@ class TestScriptResult(MAASServerTestCase):
         script_result.store_result(exit_status)
         self.assertEquals(
             SCRIPT_STATUS.FAILED_INSTALLING, script_result.status)
+        self.assertEquals(exit_status, script_result.exit_status)
+
+    def test_store_result_sets_status_to_netconf_failed_when_netconf(self):
+        script_result = factory.make_ScriptResult(
+            status=SCRIPT_STATUS.APPLYING_NETCONF)
+        exit_status = random.randint(1, 255)
+        script_result.store_result(exit_status)
+        self.assertEquals(
+            SCRIPT_STATUS.FAILED_APPLYING_NETCONF, script_result.status)
         self.assertEquals(exit_status, script_result.exit_status)
 
     def test_store_result_stores_output(self):
@@ -352,7 +362,8 @@ class TestScriptResult(MAASServerTestCase):
         script_result.status = random.choice([
             SCRIPT_STATUS.PASSED, SCRIPT_STATUS.FAILED, SCRIPT_STATUS.TIMEDOUT,
             SCRIPT_STATUS.ABORTED, SCRIPT_STATUS.DEGRADED,
-            SCRIPT_STATUS.FAILED_INSTALLING, SCRIPT_STATUS.SKIPPED])
+            SCRIPT_STATUS.FAILED_INSTALLING, SCRIPT_STATUS.SKIPPED,
+            SCRIPT_STATUS.FAILED_APPLYING_NETCONF])
         script_result.save(update_fields=['status'])
         self.assertIsNotNone(reload_object(script_result).ended)
 
