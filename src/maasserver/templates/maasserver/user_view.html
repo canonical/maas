@@ -47,7 +47,14 @@
         </div>
         <hr>
         <div class="row u-align--right">
-            <a href="{% url 'accounts-edit' view_user.username %}" class="p-button--neutral">Edit user</a>
+            <a
+                class="p-button--neutral"
+                href="{% if user == view_user %}{% url 'prefs' %}
+                    {% else %}{% url 'accounts-edit' view_user.username %}
+                    {% endif %}"
+            >
+                Edit user
+            </a>
             <a href="{% url 'accounts-del' view_user.username %}" class="p-button--negative">Delete user</a>
         </div>
     </form>

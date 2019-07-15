@@ -83,10 +83,10 @@ class SettingsTest(MAASServerTestCase):
             self.assertSequenceEqual(
                 [reverse('accounts-view', args=[user.username])],
                 [link.get('href') for link in row.cssselect('a.user')])
-            # A link to edit the user is shown.
-            self.assertIn(
-                reverse('accounts-edit', args=[user.username]), links)
             if user != admin:
+                # A link to edit the user is shown.
+                self.assertIn(
+                    reverse('accounts-edit', args=[user.username]), links)
                 # A link to delete the user is shown.
                 self.assertIn(
                     reverse('accounts-del', args=[user.username]), links)
@@ -95,6 +95,8 @@ class SettingsTest(MAASServerTestCase):
                 # logged-in user.
                 self.assertNotIn(
                     reverse('accounts-del', args=[user.username]), links)
+                # A link to user preferences page is shown
+                self.assertIn(reverse('prefs', args=None), links)
             # account type is reported
             self.assertIn(
                 'Local', [elem.text.strip() for elem in row.cssselect('td')])

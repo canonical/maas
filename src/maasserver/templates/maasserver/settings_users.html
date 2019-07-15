@@ -87,7 +87,11 @@
                                 {% if user_item.is_superuser %} Yes {% endif %}
                             </td>
                             <td class="u-align--right">
-                                <a href="{% url 'accounts-edit' user_item.username %}" title="Edit user {{ user_item.username }}" class="p-button--base is-small">
+                                <a
+                                    href="{% if user == user_item %}{% url 'prefs' %}{% else %}{% url 'accounts-edit' user_item.username %}{% endif %}"
+                                    title="Edit user {{ user_item.username }}"
+                                    class="p-button--base is-small"
+                                >
                                     <i class="p-icon--edit">Edit</i>
                                 </a>
                                 {% if user != user_item %}
