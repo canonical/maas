@@ -1,0 +1,143 @@
+@mixin maas-table-pods {
+  .p-table--pods {
+    .p-table__row {
+      .p-table__cell {
+        &:nth-child(1) {
+          width: 17%;
+        }
+
+        &:nth-child(2) {
+          width: 6%;
+        }
+
+        &:nth-child(3) {
+          width: 17%;
+        }
+
+        &:nth-child(4) {
+          width: 4%;
+        }
+
+        &:nth-child(5) {
+          width: 10%;
+        }
+
+        &:nth-child(6) {
+          width: 8%;
+        }
+
+        &:nth-child(7) {
+          width: 8%;
+        }
+
+        &:nth-child(8) {
+          width: 8%;
+        }
+
+        &:nth-child(9) {
+          width: 8%;
+        }
+
+        &:nth-child(10) {
+          width: 6%;
+        }
+      }
+    }
+  }
+
+  .p-table--pod-networking-config,
+  .p-table--pod-storage-config {
+    input {
+      // overriding min-width to make inputs fit within container
+      min-width: auto;
+      @extend %u-input-min-margin--bottom;
+    }
+  }
+
+  $icon-button-width: calc(
+    2px + #{$sph-inner--small + $vanilla-2-icon-button-side-padding * 2 +
+      map-get($icon-sizes, default)}
+  );
+
+  .p-table--pod-networking-config {
+    select {
+      @extend %u-input-min-margin--bottom;
+    }
+
+    @media (min-width: $breakpoint-small) {
+      margin-bottom: 0;
+
+      .p-table__row {
+        th,
+        td {
+          &:nth-child(1) {
+            width: $icon-button-width;
+          }
+
+          &:nth-child(2) {
+            width: 10%;
+          }
+
+          &:nth-child(3) {
+            width: 25%;
+          }
+
+          &:nth-child(4) {
+            width: 15%;
+          }
+
+          &:nth-child(5) {
+            width: 23%;
+          }
+
+          &:nth-child(6) {
+            width: 10%;
+          }
+
+          &:nth-child(7) {
+            width: 12%;
+          }
+
+          &:nth-child(8) {
+            width: 5%;
+          }
+        }
+      }
+    }
+  }
+
+  .p-table--pod-storage-config {
+    @media (min-width: $breakpoint-small) {
+      margin-bottom: 0;
+
+      .p-table__row {
+        th,
+        td {
+          &:nth-child(1) {
+            width: $icon-button-width;
+          }
+
+          &:nth-child(2) {
+            width: 10%;
+          }
+
+          &:nth-child(3) {
+            width: 40%;
+          }
+
+          &:nth-child(4) {
+            width: 40%;
+          }
+
+          &:nth-child(5) {
+            width: 10%;
+          }
+        }
+      }
+    }
+  }
+
+  .p-table--pod-networking-config--message {
+    margin-left: 35%;
+  }
+}

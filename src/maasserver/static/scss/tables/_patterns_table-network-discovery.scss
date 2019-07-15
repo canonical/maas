@@ -1,0 +1,39 @@
+@mixin maas-table-network-discovery {
+  .p-table--network-discovery {
+    $chevron-cell-width: 50px;
+
+    tr {
+      justify-content: space-between;
+    }
+
+    th,
+    td {
+      flex: 0 0 auto;
+    }
+
+    &__name {
+      width: 15%;
+    }
+
+    &__mac {
+      width: 20%;
+    }
+
+    &__ip {
+      width: 25%;
+    }
+
+    &__rack {
+      width: 15%;
+    }
+
+    &__last-seen {
+      width: calc(25% - #{$chevron-cell-width});
+    }
+
+    &__chevron {
+      flex: 0 0 auto;
+      width: $chevron-cell-width; // chevron needs a static width
+    }
+  }
+}

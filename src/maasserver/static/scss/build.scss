@@ -13,7 +13,6 @@
 @import 'patterns_inline-list';
 @import 'patterns_divided-list';
 @import 'base_typography';
-@import 'base_tables';
 @import 'base_forms';
 @import 'base_links';
 @import 'patterns_action-button';
@@ -25,7 +24,6 @@
 @import 'patterns_page-header';
 @import 'patterns_tabs';
 @import 'patterns_switch';
-@import 'patterns_table-expanding';
 @import 'patterns_card';
 @import 'patterns_meter';
 @import 'patterns_strips';
@@ -36,7 +34,6 @@
 @import 'patterns_pod-summary';
 @import 'patterns_footer';
 @import 'patterns_search-box';
-@import 'patterns_table-sortable';
 @import 'tables';
 @import 'patterns_space-between';
 @import 'patterns_filter';
@@ -50,7 +47,6 @@
 @include maas;
 @include maas-inline-lists;
 @include maas-divided-lists;
-@include maas-tables;
 
 @include maas-b-forms;
 @include maas-b-links;
@@ -60,7 +56,6 @@
 @include maas-page-header;
 @include maas-tabs;
 @include maas-switch;
-@include maas-table-expanding;
 @include maas-cards;
 @include maas-meter;
 @include maas-p-strip;
@@ -75,8 +70,6 @@
 @include maas-p-search-box;
 @include maas-p-sticky-footer;
 @include maas-p-filter;
-@include maas-table-sortable;
-@include maas-table-widths;
 @include patterns_space-between;
 @include patterns_charts;
 @include patterns_option-selector;
