@@ -1,11 +1,13 @@
-<header class="p-card__header">
+<header>
   <h2 class="p-heading--four">Overview</h2>
-  <h3 class="p-heading--four u-no-margin--top">
+  <h3 class="p-heading--four">
     <span data-ng-if="node.node_type == 2">Rackd</span>
     <span data-ng-if="node.node_type == 3">Regiond</span>
     <span data-ng-if="node.node_type == 4">Regiond+rackd</span>
-    <p data-ng-if="showFailedTestWarning()"><i class="p-icon--warning">Warning:</i> Node has failed tests; use with caution!</p>
   </h3>
+  <p class="u-sv1" data-ng-if="showFailedTestWarning()">
+    <i class="p-icon--warning">Warning:</i> Node has failed tests; use with caution!
+  </p>
 </header>
 <div class="p-card__content">
   <ul class="p-list">
@@ -17,6 +19,6 @@
     <li class="p-list__item" data-ng-if="node.power_type"><span class="muted-label">Power type:</span> {$ node.power_type $}</li>
   </ul>
 </div>
-<footer class="p-card__footer">
+<footer>
   <p data-ng-if="isSuperUser()"><a data-ng-click="section.area = 'configuration'">Edit &rsaquo;</a></p>
 </footer>

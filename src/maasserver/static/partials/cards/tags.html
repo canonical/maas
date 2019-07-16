@@ -1,12 +1,12 @@
-<header class="p-card__header">
+<header>
   <h2 class="p-heading--four">Tags</h2>
 </header>
 <div>
-  <span data-ng-if="!node.tags.length"><i>No tags</i></span>
-  <span data-ng-repeat="tag in node.tags">
-      <a href="#/machines/?query=tags:({$ tag $})">{$ tag $}</a>
-  </span>
-</div>
-<footer class="p-card__footer">
+  <p>
+    <span data-ng-if="!node.tags.length"><i>No tags</i></span>
+    <span data-ng-repeat="tag in node.tags">
+        <a href="#/machines/?query=tags:({$ tag $})">{$ tag $}</a>
+    </span>
+  </p>
   <p data-ng-if="canEdit()"><a data-ng-click="section.area = 'configuration'">Edit &rsaquo;</a></p>
-</footer>
+</div>

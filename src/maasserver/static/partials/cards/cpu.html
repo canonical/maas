@@ -1,7 +1,7 @@
-<header class="p-card__header">
+<header>
   <h2 class="p-heading--four">CPU</h2>
-  <h3 class="p-heading--four u-no-margin--top" data-ng-if="node.cpu_count > 0"><strong>{$ getCPUSubtext() $}</strong> <span class="p-heading--six">({$ node.architecture $})</span></h3>
-  <h3 class="p-heading--four u-no-margin--top" data-ng-if="node.cpu_count === 0"><strong>Unknown</strong> <span class="p-heading--six">({$ node.architecture $})</span></h3>
+  <h3 class="p-heading--four" data-ng-if="node.cpu_count > 0"><strong>{$ getCPUSubtext() $}</strong> <span class="p-heading--six">({$ node.architecture $})</span></h3>
+  <h3 class="p-heading--four" data-ng-if="node.cpu_count === 0"><strong>Unknown</strong> <span class="p-heading--six">({$ node.architecture $})</span></h3>
 </header>
 <div data-ng-controller="NodeResultsController" class="p-card__content">
   <div data-ng-repeat="test_result in testing_results">
@@ -16,7 +16,7 @@
     </div>
   </div>
 </div>
-<footer class="p-card__footer">
+<footer>
   <p data-ng-if="!isDevice && !(isController && node.status === 'New') && node.cpu_count > 0">
     <span node.cpu_test_status="script-status" data-script-status="node.cpu_test_status"></span>
     {$ node.cpu_test_status_tooltip $}

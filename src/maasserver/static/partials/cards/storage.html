@@ -1,7 +1,7 @@
-<header class="p-card__header">
+<header>
   <h2 class="p-heading--four">Storage</h2>
-  <h3 class="p-heading--four u-no-margin--top" data-ng-if="node.storage > 0"><strong>{$ node.storage $} GB over {$ node.physical_disk_count $} disks</strong></h3>
-  <h3 class="p-heading--four u-no-margin--top" data-ng-if="node.storage == 0"><strong>Unknown</strong></h3>
+  <h3 class="p-heading--four" data-ng-if="node.storage > 0"><strong>{$ node.storage $} GB over {$ node.physical_disk_count $} disks</strong></h3>
+  <h3 class="p-heading--four" data-ng-if="node.storage == 0"><strong>Unknown</strong></h3>
 </header>
 <div>
   <ul class="p-list">
@@ -10,7 +10,7 @@
     </li>
   </ul>
 </div>
-<footer class="p-card__footer">
+<footer>
   <p data-ng-if="!isDevice && !(isController && node.status === 'New') && node.storage > 0">
     <span data-maas-script-status="script-status" data-script-status="node.storage_test_status"></span>
     {$ node.storage_test_status_tooltip $}
