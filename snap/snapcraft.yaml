@@ -19,6 +19,7 @@ apps:
         - hardware-observe
         - kernel-module-observe
         - log-observe # for CAP_DAC_OVERRIDE on nginx
+        - mount-observe
         - network
         - network-bind
         - network-observe
@@ -27,13 +28,12 @@ apps:
         - time-control # chrony
 
   maas:
-    command: bin/maas
-    environment:
-      LD_PRELOAD: $SNAP/usr/lib/stub_initgroups.so
+    command: bin/maas-cli
     plugs:
-        - network # needed for external authentication
-        - network-bind # needed for postgres
-        - network-observe # needed to get default URL
+        - mount-observe  # to read /proc/*/mounts
+        - network # for external authentication
+        - network-bind # for postgres
+        - network-observe # to get default URL
 
 parts:
   maas-pypi:
@@ -268,7 +268,9 @@ parts:
 hooks:
   install:
     plugs:
-      - network  # needed to connect to the db for running upgrades
+      - mount-observe  # to read /proc/*/mounts
+      - network  # to connect to the db for running upgrades
   post-refresh:
     plugs:
-      - network  # needed to connect to the db for running upgrades
+      - mount-observe  # to read /proc/*/mounts
+      - network  # to connect to the db for running upgrades
