@@ -64,71 +64,73 @@
                 <h2 class="p-heading--four">VLAN Summary</h2>
             </div>
             <div class="col-6">
-                <button type="button" name="button" class="p-button--neutral u-float--right" data-ng-click="vlanDetails.enterEditSummary()" data-ng-if="!vlanDetails.editSummary && vlanDetails.isSuperUser()">Edit</button>
+                <div class="u-align--right">
+                    <button type="button" name="button" class="p-button--neutral u-float--right" data-ng-click="vlanDetails.enterEditSummary()" data-ng-if="!vlanDetails.editSummary && vlanDetails.isSuperUser()">Edit</button>
+                </div>
             </div>
         </div>
         <div class="p-form p-form--stacked row" data-ng-if="!vlanDetails.editSummary">
             <div class="col-6">
-                <div class="p-form__group">
-                    <div class="p-form__label is-disabled col-2 col-small-2 col-medium-2">
+                <div class="p-form__group row">
+                    <div class="p-form__label is-disabled col-2">
                         <p>VID</p>
                     </div>
-                    <div class="p-form__control col-3 col-small-2 col-medium-3">
+                    <div class="p-form__control col-4">
                         <p>{$ vlanDetails.vlan.vid $}</p>
                     </div>
                 </div>
-                <div class="p-form__group">
-                    <div class="p-form__label is-disabled col-2 col-small-2 col-medium-2">
+                <div class="p-form__group row">
+                    <div class="p-form__label is-disabled col-2">
                         <p>Name</p>
                     </div>
-                    <div class="p-form__control col-3 col-small-2 col-medium-3">
+                    <div class="p-form__control col-4">
                         <p>{$ vlanDetails.vlan.name $}</p>
                     </div>
                 </div>
-                <div class="p-form__group">
-                    <div class="p-form__label is-disabled col-2 col-small-2 col-medium-2">
+                <div class="p-form__group row">
+                    <div class="p-form__label is-disabled col-2">
                         <p>MTU</p>
                     </div>
-                    <div class="p-form__control col-3 col-small-2 col-medium-3">
+                    <div class="p-form__control col-4">
                         <p>{$ vlanDetails.vlan.mtu $}</p>
                     </div>
                 </div>
-                <div class="p-form__group">
-                    <div class="p-form__label is-disabled col-2 col-small-2 col-medium-2">
+                <div class="p-form__group row">
+                    <div class="p-form__label is-disabled col-2">
                         <p>Space</p>
                     </div>
-                    <div class="p-form__control col-3 col-small-2 col-medium-3">
+                    <div class="p-form__control col-4">
                         <p>{$ vlanDetails.getSpaceName() $}</p>
                     </div>
                 </div>
-                <div class="p-form__group">
-                    <div class="p-form__label is-disabled col-2 col-small-2 col-medium-2">
+                <div class="p-form__group row">
+                    <div class="p-form__label is-disabled col-2">
                         <p>Description</p>
                     </div>
-                    <div class="p-form__control col-3 col-small-2 col-medium-3">
+                    <div class="p-form__control col-4">
                         <p data-ng-if="vlanDetails.vlan.description">{$ vlanDetails.vlan.description $}</p>
                         <p data-ng-if="!vlanDetails.vlan.description">-</p>
                     </div>
                 </div>
             </div>
             <div class="col-6">
-                <div class="p-form__group">
-                    <div class="p-form__label is-disabled col-2 col-small-2 col-medium-2">
+                <div class="p-form__group row">
+                    <div class="p-form__label is-disabled col-2">
                         <p>Fabric</p>
                     </div>
-                    <div class="p-form__control col-3 col-small-2 col-medium-3">
+                    <div class="p-form__control col-4">
                         <p><a href="#/fabric/{$ vlanDetails.fabric.id $}">{$ vlanDetails.fabric.name $}</a></p>
                     </div>
                 </div>
-                <div class="p-form__group" data-ng-if="vlanDetails.relatedControllers">
-                    <div class="p-form__label is-disabled col-2 col-small-2 col-medium-2">
+                <div class="p-form__group row" data-ng-if="vlanDetails.relatedControllers">
+                    <div class="p-form__label is-disabled col-2">
                         <p>{$ vlanDetails.relatedControllers.length === 1 ? 'Rack controller' : 'Rack controllers' $}
                         <span class="p-tooltip--top-center">
                             <i class="p-icon--information">Help:</i>
                             <span class="p-tooltip__message" role="tooltip">A rack controller controls hosts and images and runs network services&#xa;like DHCP for connected VLANs.</span>
                         </span></p>
                     </div>
-                    <div class="p-form__control col-3 col-small-2 col-medium-3">
+                    <div class="p-form__control col-4">
                         <span data-ng-if="vlanDetails.primaryRack">
                             <a href="#/controller/{$ vlanDetails.primaryRack.system_id $}">{$ vlanDetails.primaryRack.hostname $}</a><span
                                 data-ng-if="vlanDetails.secondaryRack">,</span>
@@ -147,29 +149,28 @@
                 <div class="row">
                     <div class="col-6">
                         <maas-obj-field type="text" key="vid" label="VID" placeholder="VLAN VID"
-                            blur-on-enter="true" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
+                            blur-on-enter="true" label-width="2" input-width="4"></maas-obj-field>
                         <maas-obj-field type="text" key="name" label="Name" placeholder="VLAN name"
-                            blur-on-enter="true" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
+                            blur-on-enter="true" label-width="2" input-width="4"></maas-obj-field>
                         <maas-obj-field type="text" key="mtu" label="MTU" placeholder="VLAN MTU"
-                            blur-on-enter="true" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
+                            blur-on-enter="true" label-width="2" input-width="4"></maas-obj-field>
                         <maas-obj-field type="options" key="space" label="Space" placeholder="(undefined)" placeholder-enabled="true"
-                            options="space.id as space.name for space in vlanDetails.spaces" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"
-                            ></maas-obj-field>
+                            options="space.id as space.name for space in vlanDetails.spaces" label-width="2" input-width="4"></maas-obj-field>
                         <maas-obj-field type="textarea" key="description" label="Description" placeholder="VLAN description"
-                            blur-on-enter="true" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
+                            blur-on-enter="true" label-width="2" input-width="4"></maas-obj-field>
                     </div>
                     <div class="col-6">
                         <maas-obj-field type="options" key="fabric" label="Fabric"
-                                        options="fabric.id as fabric.name for fabric in vlanDetails.fabrics" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
-                        <div class="p-form__group" data-ng-if="vlanDetails.relatedControllers">
-                            <div class="p-form__label is-disabled col-2 col-small-2 col-medium-2">
+                                        options="fabric.id as fabric.name for fabric in vlanDetails.fabrics" label-width="2" input-width="4"></maas-obj-field>
+                        <div class="p-form__group row" data-ng-if="vlanDetails.relatedControllers">
+                            <div class="p-form__label is-disabled col-2">
                                 <p>Rack controllers
                                 <span class="p-tooltip--top-center">
                                     <i class="p-icon--information">Help:</i>
                                     <span class="p-tooltip__message" role="tooltip">A rack controller controls hosts and images and runs network services&#xa;like DHCP for connected VLANs.</span>
                                 </span></p>
                             </div>
-                            <div class="p-form__control col-3 col-small-2 col-medium-3">
+                            <div class="p-form__control col-4">
                                 <p>
                                     <span data-ng-repeat="rack in vlanDetails.relatedControllers">
                                         <a href="#/controller/{$ rack.system_id $}">{$ rack.hostname $}</a><span ng-show="!$last">,</span>
@@ -184,9 +185,13 @@
                         <maas-obj-errors></maas-obj-errors>
                     </div>
                     <div class="row u-align--right">
-                        <button class="p-button--base" type="button"
-                        data-ng-click="vlanDetails.exitEditSummary()">Cancel</button>
-                        <button class="p-button--positive" maas-obj-save>Save summary</button>
+                        <div class="col-12">
+                            <div class="u-align--right">
+                                <button class="p-button--base" type="button"
+                                data-ng-click="vlanDetails.exitEditSummary()">Cancel</button>
+                                <button class="p-button--positive" maas-obj-save>Save summary</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </maas-obj-form>
@@ -441,26 +446,26 @@
         </div>
         <div class="p-form p-form--stacked row">
             <div class="col-8">
-                <div class="p-form__group" data-ng-if="vlanDetails.primaryRack && vlanDetails.secondaryRack && vlanDetails.getDHCPStatus() !== 'Disabled'">
-                    <div class="p-form__label">
+                <div class="p-form__group row" data-ng-if="vlanDetails.primaryRack && vlanDetails.secondaryRack && vlanDetails.getDHCPStatus() !== 'Disabled'">
+                    <div class="p-form__label col-2">
                         <p>High availability&nbsp;<span class="p-icon--success"></span></p>
                     </div>
                 </div>
 
-                <div class="p-form__group">
-                    <div class="p-form__label is-disabled">
+                <div class="p-form__group row">
+                    <div class="p-form__label is-disabled col-2">
                         <p>Status</p>
                     </div>
-                    <div class="p-form__control">
+                    <div class="p-form__control col-4">
                         <p>{$ vlanDetails.getDHCPStatus() $}</p>
                     </div>
                 </div>
 
-                <div class="p-form__group" data-ng-if="vlanDetails.vlan.external_dhcp && vlanDetails.getDHCPStatus() !== 'Disabled'">
-                    <div class="p-form__label is-disabled">
+                <div class="p-form__group row" data-ng-if="vlanDetails.vlan.external_dhcp && vlanDetails.getDHCPStatus() !== 'Disabled'">
+                    <div class="p-form__label is-disabled col-2">
                         <p>External DHCP</p>
                     </div>
-                    <div class="p-form__control">
+                    <div class="p-form__control col-4">
                         <p>
                             {$ vlanDetails.vlan.external_dhcp $}
                             <span class="p-tooltip--top-center">
@@ -470,8 +475,8 @@
                         </p>
                     </div>
                 </div>
-                <div class="p-form__group" data-ng-if="vlanDetails.primaryRack && vlanDetails.getDHCPStatus() !== 'Disabled'">
-                    <div class="p-form__label is-disabled">
+                <div class="p-form__group row" data-ng-if="vlanDetails.primaryRack && vlanDetails.getDHCPStatus() !== 'Disabled'">
+                    <div class="p-form__label is-disabled col-2">
                         <p>
                             {$ vlanDetails.secondaryRack ? 'Primary controller' : 'Rack controller' $}
                             <span class="p-tooltip--top-center">
@@ -480,12 +485,12 @@
                             </span>
                         </p>
                     </div>
-                    <div class="p-form__control">
+                    <div class="p-form__control col-4">
                         <p>{$ vlanDetails.primaryRack.hostname $}</p>
                     </div>
                 </div>
-                <div class="p-form__group" data-ng-if="vlanDetails.secondaryRack && vlanDetails.getDHCPStatus() !== 'Disabled'">
-                    <div class="p-form__label is-disabled">
+                <div class="p-form__group row" data-ng-if="vlanDetails.secondaryRack && vlanDetails.getDHCPStatus() !== 'Disabled'">
+                    <div class="p-form__label is-disabled col-2">
                         <p>
                             Secondary controller
                             <span class="p-tooltip--top-center">
@@ -494,7 +499,7 @@
                             </span>
                         </p>
                     </div>
-                    <div class="p-form__control">
+                    <div class="p-form__control col-4">
                         <p>{$ vlanDetails.secondaryRack.hostname $}</p>
                     </div>
                 </div>

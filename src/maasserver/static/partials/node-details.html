@@ -529,12 +529,12 @@
             <form class="p-form p-form--stacked">
                 <div class="row">
                     <div class="col-6">
-                        <div class="p-form__group u-clearfix" data-ng-if="!isDevice && !isController"
+                        <div class="p-form__group row" data-ng-if="!isDevice && !isController"
                             data-ng-class="{ 'is-error': invalidArchitecture() }">
                             <label for="architecture"
-                                class="p-form__label col-2 col-small-2 col-medium-2"
+                                class="p-form__label col-2"
                                 data-ng-class="{'is-disabled': !summary.editing }">Architecture</label>
-                            <div class="p-form__control col-3 col-small-2 col-medium-3">
+                            <div class="p-form__control col-4">
                                 <select name="architecture" id="architecture" class="p-form-validation__input"
                                     data-ng-disabled="!summary.editing"
                                     data-ng-model="summary.architecture.selected"
@@ -543,11 +543,11 @@
                                 </select>
                             </div>
                         </div>
-                        <div class="p-form__group u-clearfix" data-ng-if="!isDevice && !isController">
+                        <div class="p-form__group row" data-ng-if="!isDevice && !isController">
                             <label for="min_hwe_kernel"
-                                class="p-form__label col-2 col-small-2 col-medium-2"
+                                class="p-form__label col-2"
                                 data-ng-class="{'is-disabled': !summary.editing }">Minimum Kernel</label>
-                            <div class="p-form__control col-3 col-small-2 col-medium-3">
+                            <div class="p-form__control col-4">
                                 <select name="min_hwe_kernel" id="min_hwe_kernel"
                                     data-ng-disabled="!summary.editing"
                                     data-ng-model="summary.min_hwe_kernel.selected"
@@ -556,11 +556,11 @@
                                 </select>
                             </div>
                         </div>
-                        <div class="p-form__group u-clearfix">
+                        <div class="p-form__group row">
                             <label for="zone"
-                                class="p-form__label col-2 col-small-2 col-medium-2"
+                                class="p-form__label col-2"
                                 data-ng-class="{'is-disabled': !summary.editing }">Zone</label>
-                            <div class="p-form__control col-3 col-small-2 col-medium-3">
+                            <div class="p-form__control col-4">
                                 <select name="zone" id="zone"
                                     data-ng-disabled="!summary.editing"
                                     data-ng-model="summary.zone.selected"
@@ -569,11 +569,11 @@
                                 </select>
                             </div>
                         </div>
-                        <div class="p-form__group u-clearfix" data-ng-if="!isDevice && !isController">
+                        <div class="p-form__group row" data-ng-if="!isDevice && !isController">
                             <label for="pool"
-                                class="p-form__label col-2 col-small-2 col-medium-2"
+                                class="p-form__label col-2"
                                 data-ng-class="{'is-disabled': !summary.editing }">Resource pool</label>
-                            <div class="p-form__control col-3 col-small-2 col-medium-3">
+                            <div class="p-form__control col-4">
                                 <select name="pool" id="pool"
                                     data-ng-disabled="!summary.editing"
                                     data-ng-model="summary.pool.selected"
@@ -582,20 +582,20 @@
                                 </select>
                             </div>
                         </div>
-                        <div class="p-form__group u-clearfix" data-ng-if="!isDevice && !isController">
+                        <div class="p-form__group row" data-ng-if="!isDevice && !isController">
                             <label for="pool"
-                                class="p-form__label col-2 col-small-2 col-medium-2"
+                                class="p-form__label col-2"
                                 data-ng-class="{'is-disabled': !summary.editing }">Note</label>
-                            <div class="p-form__control col-3 col-small-2 col-medium-3">
+                            <div class="p-form__control col-4">
                                 <input name="note" id="note" type="text"
                                     data-ng-disabled="!summary.editing"
                                     data-ng-model="summary.description" />
                             </div>
                         </div>
-                        <div class="p-form__group u-clearfix">
-                            <label class="p-form__label col-2 col-small-2 col-medium-2"
+                        <div class="p-form__group row">
+                            <label class="p-form__label col-2"
                                 data-ng-class="{'is-disabled': !summary.editing }">Tags</label>
-                            <div class="p-form__control col-3 col-small-2 col-medium-3 tags--inline">
+                            <div class="p-form__control col-4 tags--inline">
                                 <span data-ng-repeat="tag in node.tags" data-ng-hide="summary.editing">
                                     <a href="#/machines/?query=tags:({$ tag $})">{$ tag $}</a>
                                 </span>
@@ -624,10 +624,12 @@
                     <h2 class="p-heading--four">Power configuration</h2>
                 </div>
                 <div class="col-2">
-                    <button class="p-button--neutral u-float--right"
-                        data-ng-show="canEdit() && power_types.length"
-                        data-ng-click="editPower()"
-                        data-ng-if="!power.editing">Edit</button>
+                    <div class="u-align--right">
+                        <button class="p-button--neutral u-float--right"
+                            data-ng-show="canEdit() && power_types.length"
+                            data-ng-click="editPower()"
+                            data-ng-if="!power.editing">Edit</button>
+                    </div>
                 </div>
             </div>
             <div class="row">
@@ -997,30 +999,30 @@
                             <div class="row">
                                 <div class="col-6">
                                     <h3 class="p-heading--five">Bridge details</h3>
-                                    <div class="p-form__group u-vertically-center" data-ng-class="{ 'is-error': isInterfaceNameInvalid(newBridgeInterface) }">
-                                        <label for="name" class="p-form__label">Bridge name</label>
-                                        <div class="p-form__control">
+                                    <div class="p-form__group row u-vertically-center" data-ng-class="{ 'is-error': isInterfaceNameInvalid(newBridgeInterface) }">
+                                        <label for="name" class="p-form__label col-2">Bridge name</label>
+                                        <div class="p-form__control col-4">
                                             <input type="text" class="table__input editible" data-ng-model="newBridgeInterface.name">
                                         </div>
                                     </div>
-                                    <div class="p-form__group u-vertically-center" data-ng-class="{ 'is-error': isMACAddressInvalid(newBridgeInterface.mac_address) }">
-                                        <label for="mac" class="p-form__label">MAC address</label>
-                                        <div class="p-form__control">
+                                    <div class="p-form__group row u-vertically-center" data-ng-class="{ 'is-error': isMACAddressInvalid(newBridgeInterface.mac_address) }">
+                                        <label for="mac" class="p-form__label col-2">MAC address</label>
+                                        <div class="p-form__control col-4">
                                             <input type="text" name="mac" placeholder="00:00:00:00:00:00" data-ng-model="newBridgeInterface.mac_address" data-ng-value="newBridgeInterface.mac_address" data-ng-pattern="/^([0-9A-F]{2}[::]){5}([0-9A-F]{2})$/gmi" maxlength="17" mac-address data-ng-placeholder="getInterfacePlaceholderMACAddress(newBridgeInterface)">
                                         </div>
                                     </div>
-                                    <div class="p-form__group u-vertically-center">
-                                        <label class="p-form__label">Tags</label>
-                                        <div class="p-form__control tags--inline">
+                                    <div class="p-form__group row u-vertically-center">
+                                        <label class="p-form__label col-2">Tags</label>
+                                        <div class="p-form__control col-4 tags--inline">
                                             <tags-input data-ng-model="newBridgeInterface.tags" allow-tags-pattern="[\w-]+"></tags-input>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="col-6">
                                     <h3 class="p-heading--five">Network</h3>
-                                    <div class="p-form__group u-vertically-center">
-                                        <label class="p-form__label">Fabric</label>
-                                        <div class="p-form__control">
+                                    <div class="p-form__group row u-vertically-center">
+                                        <label class="p-form__label col-2">Fabric</label>
+                                        <div class="p-form__control col-4">
                                             <select
                                                 name="fabric"
                                                 data-ng-model="newBridgeInterface.fabric"
@@ -1029,9 +1031,9 @@
                                             </select>
                                         </div>
                                     </div>
-                                    <div class="p-form__group u-vertically-center">
-                                        <label class="p-form__label">VLAN</label>
-                                        <div class="p-form__control">
+                                    <div class="p-form__group row u-vertically-center">
+                                        <label class="p-form__label col-2">VLAN</label>
+                                        <div class="p-form__control col-4">
                                             <select name="vlan"
                                                 data-ng-model="newBridgeInterface.vlan"
                                                 data-ng-options="vlan as getVLANText(vlan) for vlan in vlans"
@@ -1039,9 +1041,9 @@
                                             </select>
                                         </div>
                                     </div>
-                                    <div class="p-form__group u-vertically-center">
-                                        <label class="p-form__label">Subnet</label>
-                                        <div class="p-form__control">
+                                    <div class="p-form__group row u-vertically-center">
+                                        <label class="p-form__label col-2">Subnet</label>
+                                        <div class="p-form__control col-4">
                                             <select name="subnet"
                                                 data-ng-model="newBridgeInterface.subnet"
                                                 data-ng-change="subnetChanged(newBridgeInterface)"
@@ -1050,9 +1052,9 @@
                                             </select>
                                         </div>
                                     </div>
-                                    <div class="p-form__group" data-ng-if="!isLinkModeDisabled(newBridgeInterface)">
-                                        <label for="link-mode" class="p-form__label">IP mode</label>
-                                        <div class="p-form__control">
+                                    <div class="p-form__group row" data-ng-if="!isLinkModeDisabled(newBridgeInterface)">
+                                        <label for="link-mode" class="p-form__label col-2">IP mode</label>
+                                        <div class="p-form__control col-4">
                                             <select name="link-mode"
                                                 data-ng-model="newBridgeInterface.mode"
                                                 data-ng-change="modeChanged(newBridgeInterface)"
@@ -1060,9 +1062,9 @@
                                             </select>
                                         </div>
                                     </div>
-                                    <div class="p-form__group" data-ng-if="newBridgeInterface.mode == 'static'">
-                                        <label for="ip-address" class="p-form__label">IP address</label>
-                                        <div class="p-form__control"
+                                    <div class="p-form__group row" data-ng-if="newBridgeInterface.mode == 'static'">
+                                        <label for="ip-address" class="p-form__label col-2">IP address</label>
+                                        <div class="p-form__control col-4"
                                         data-ng-class="{ 'is-error': isIPAddressInvalid(newBridgeInterface) }">
                                             <input name="ip-address" type="text" placeholder="IP address" data-ng-model="newBridgeInterface.ip_address">
                                         </div>
@@ -1074,24 +1076,24 @@
                             <div class="row">
                                 <div class="col-6">
                                     <h3 class="p-heading--five">Advanced options</h3>
-                                    <div class="p-form__group u-vertically-center" style="min-height: 2.5rem;">
-                                        <label for="stp" class="p-form__label">
+                                    <div class="p-form__group row u-vertically-center" style="min-height: 2.5rem;">
+                                        <label for="stp" class="p-form__label col-2">
                                             STP
                                             <span class="p-tooltip--right" aria-describedby="stp">
                                                 <i class="p-icon--question"></i>
                                                 <span class="p-tooltip__message" role="tooltip" id="stp">Controls the participation of this bridge in the spanning tree protocol.</span>
                                             </span>
                                         </label>
-                                        <div class="p-form__control">
+                                        <div class="p-form__control col-4">
                                             <div class="onoffswitch maas-p-switch">
                                                 <input id="bridge_stp" type="checkbox" name="bridge_stp" class="onoffswitch-checkbox maas-p-switch--input" data-ng-model="newBridgeInterface.bridge_stp">
                                                 <div class="maas-p-switch--mask"></div>
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="p-form__group u-vertically-center" data-ng-if="newBridgeInterface.bridge_stp">
-                                        <label for="fd" class="p-form__label">Forward delay (ms)</label>
-                                        <div class="p-form__control">
+                                    <div class="p-form__group row u-vertically-center" data-ng-if="newBridgeInterface.bridge_stp">
+                                        <label for="fd" class="p-form__label col-2">Forward delay (ms)</label>
+                                        <div class="p-form__control col-4">
                                             <input type="text" name="fd" data-ng-model="newBridgeInterface.bridge_fd">
                                         </div>
                                     </div>
@@ -1437,32 +1439,32 @@
                         <div class="p-form p-form--stacked" data-ng-class="{ 'is-active': isEditing(interface) || isShowingAdd() }">
                             <div class="row" data-ng-if="isShowingAdd()">
                                 <div class="col-6">
-                                    <div class="p-form__group">
-                                        <label class="p-form__label">Name</label>
-                                        <div class="p-form__control">
-                                            <span class="col-4">{$ getAddName() $}</span>
+                                    <div class="p-form__group row">
+                                        <label class="p-form__label col-2">Name</label>
+                                        <div class="p-form__control col-4">
+                                            {$ getAddName() $}
                                         </div>
                                     </div>
-                                    <div class="p-form__group">
-                                        <label for="type" class="p-form__label">Type</label>
-                                        <div class="p-form__control">
+                                    <div class="p-form__group row">
+                                        <label for="type" class="p-form__label col-2">Type</label>
+                                        <div class="p-form__control col-4">
                                             <select name="type" data-ng-model="newInterface.type" data-ng-change="addTypeChanged()">
                                                 <option value="alias" data-ng-show="canAddAlias(newInterface.parent)">Alias</option>
                                                 <option value="vlan" data-ng-show="canAddVLAN(newInterface.parent)">VLAN</option>
                                             </select>
                                         </div>
                                     </div>
-                                    <div class="p-form__group" data-ng-if="newInterface.type !== 'alias'">
-                                        <label class="p-form__label">Tags</label>
-                                        <div class="p-form__control tags--inline">
+                                    <div class="p-form__group row" data-ng-if="newInterface.type !== 'alias'">
+                                        <label class="p-form__label col-2">Tags</label>
+                                        <div class="p-form__control col-4 tags--inline">
                                             <tags-input data-ng-model="newInterface.tags" allow-tags-pattern="[\w-]+"></tags-input>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="col-6">
-                                    <div class="p-form__group">
-                                        <label for="fabric" class="p-form__label">Fabric</label>
-                                        <div class="p-form__control">
+                                    <div class="p-form__group row">
+                                        <label for="fabric" class="p-form__label col-2">Fabric</label>
+                                        <div class="p-form__control col-4">
                                             <select name="fabric"
                                                 data-ng-model="newInterface.parent.fabric"
                                                 data-ng-options="fabric as fabric.name for fabric in fabrics"
@@ -1470,9 +1472,9 @@
                                             </select>
                                         </div>
                                     </div>
-                                    <div class="p-form__group" data-ng-if="newInterface.type === 'alias'">
-                                        <label for="vlan" class="p-form__label">VLAN</label>
-                                        <div class="p-form__control">
+                                    <div class="p-form__group row" data-ng-if="newInterface.type === 'alias'">
+                                        <label for="vlan" class="p-form__label col-2">VLAN</label>
+                                        <div class="p-form__control col-4">
                                             <select name="vlan"
                                                 data-ng-model="newInterface.vlan"
                                                 data-ng-options="vlan as getVLANText(vlan) for vlan in vlans"
@@ -1480,9 +1482,9 @@
                                             </select>
                                         </div>
                                     </div>
-                                    <div class="p-form__group" data-ng-if="newInterface.type === 'vlan'">
-                                        <label for="vlan" class="p-form__label">VLAN</label>
-                                        <div class="p-form__control">
+                                    <div class="p-form__group row" data-ng-if="newInterface.type === 'vlan'">
+                                        <label for="vlan" class="p-form__label col-2">VLAN</label>
+                                        <div class="p-form__control col-4">
                                             <select name="vlan"
                                                 data-ng-model="newInterface.vlan"
                                                 data-ng-change="vlanChanged(newInterface)"
@@ -1490,9 +1492,9 @@
                                             </select>
                                         </div>
                                     </div>
-                                    <div class="p-form__group">
-                                        <label for="subnet" class="p-form__label">Subnet</label>
-                                        <div class="p-form__control">
+                                    <div class="p-form__group row">
+                                        <label for="subnet" class="p-form__label col-2">Subnet</label>
+                                        <div class="p-form__control col-4">
                                             <select name="subnet"
                                                 data-ng-model="newInterface.subnet"
                                                 data-ng-change="subnetChanged(newInterface)"
@@ -1501,9 +1503,9 @@
                                             </select>
                                         </div>
                                     </div>
-                                    <div class="p-form__group" data-ng-if="!isLinkModeDisabled(newInterface)">
-                                        <label for="link-mode" class="p-form__label">IP mode</label>
-                                        <div class="p-form__control">
+                                    <div class="p-form__group row" data-ng-if="!isLinkModeDisabled(newInterface)">
+                                        <label for="link-mode" class="p-form__label col-2">IP mode</label>
+                                        <div class="p-form__control col-4">
                                             <select name="link-mode"
                                                 data-ng-model="newInterface.mode"
                                                 data-ng-change="modeChanged(newInterface)"
@@ -1511,9 +1513,9 @@
                                             </select>
                                         </div>
                                     </div>
-                                    <div class="p-form__group" data-ng-if="newInterface.mode == 'static'">
-                                        <label for="ip-address" class="p-form__label">IP address</label>
-                                        <div class="p-form__control"
+                                    <div class="p-form__group row" data-ng-if="newInterface.mode == 'static'">
+                                        <label for="ip-address" class="p-form__label col-2">IP address</label>
+                                        <div class="p-form__control col-4"
                                         data-ng-class="{ 'is-error': isIPAddressInvalid(newInterface) }">
                                             <input name="ip-address" type="text" placeholder="IP address" data-ng-model="newInterface.ip_address">
                                         </div>
@@ -1649,19 +1651,19 @@
                                             <div class="row p-form--stacked">
                                                 <div class="col-6">
                                                     <h3 class="p-heading--five">Bond details</h3>
-                                                    <div class="p-form__group">
-                                                        <label for="bond-mode" class="p-form__label">Bond mode</label>
-                                                        <div class="p-form__control">
+                                                    <div class="p-form__group row">
+                                                        <label for="bond-mode" class="p-form__label col-2">Bond mode</label>
+                                                        <div class="p-form__control col-4">
                                                             <select name="bond-mode"
                                                                 data-ng-model="editInterface.bond_mode"
                                                                 data-ng-options="mode[0] as mode[1] for mode in bondOptions.modes">
                                                             </select>
                                                         </div>
                                                     </div>
-                                                    <div class="p-form__group p-form-validation" data-ng-if="showXMITHashPolicy()"
+                                                    <div class="p-form__group row p-form-validation" data-ng-if="showXMITHashPolicy()"
                                                         data-ng-class="{ 'is-caution': showLACPRate() && modeAndPolicyCompliant() }">
-                                                        <label for="xmit-hash-policy" class="p-form__label">Hash policy</label>
-                                                        <div class="p-form__control">
+                                                        <label for="xmit-hash-policy" class="p-form__label col-2">Hash policy</label>
+                                                        <div class="p-form__control col-4">
                                                             <select name="xmit-hash-policy"
                                                                 class="p-form-validation__input"
                                                                 data-ng-model="editInterface.xmitHashPolicy"
@@ -1672,19 +1674,19 @@
                                                             </p>
                                                         </div>
                                                     </div>
-                                                    <div class="p-form__group" data-ng-if="showLACPRate()">
-                                                        <label for="lacp-rate" class="p-form__label">LACP rate</label>
-                                                        <div class="p-form__control">
+                                                    <div class="p-form__group row" data-ng-if="showLACPRate()">
+                                                        <label for="lacp-rate" class="p-form__label col-2">LACP rate</label>
+                                                        <div class="p-form__control col-4">
                                                             <select name="lacp-rate"
                                                                 data-ng-model="editInterface.lacpRate"
                                                                 data-ng-options="rate[0] as rate[1] for rate in bondOptions.lacp_rates">
                                                             </select>
                                                         </div>
                                                     </div>
-                                                    <div class="p-form__group">
-                                                        <label for="bond-name" class="p-form__label">Bond name</label>
+                                                    <div class="p-form__group row">
+                                                        <label for="bond-name" class="p-form__label col-2">Bond name</label>
                                                         <div
-                                                            class="p-form__control p-form-validation"
+                                                            class="p-form__control p-form-validation col-4"
                                                             data-ng-class="{ 'is-error': isInterfaceNameInvalid(editInterface) }"
                                                         >
                                                             <input
@@ -1696,18 +1698,18 @@
                                                             >
                                                         </div>
                                                     </div>
-                                                    <div class="p-form__group">
-                                                        <label class="p-form__label">Tags</label>
-                                                        <div class="p-form__control tags--inline">
+                                                    <div class="p-form__group row">
+                                                        <label class="p-form__label col-2">Tags</label>
+                                                        <div class="p-form__control col-4 tags--inline">
                                                             <tags-input data-ng-model="editInterface.tags" allow-tags-pattern="[\w-]+"></tags-input>
                                                         </div>
                                                     </div>
                                                 </div>
                                                 <div class="col-6">
                                                     <h3 class="p-heading--five">Network</h3>
-                                                    <div class="p-form__group u-vertically-center">
-                                                        <label class="p-form__label">Fabric</label>
-                                                        <div class="p-form__control">
+                                                    <div class="p-form__group row u-vertically-center">
+                                                        <label class="p-form__label col-2">Fabric</label>
+                                                        <div class="p-form__control col-4">
                                                             <select
                                                                 name="fabric"
                                                                 data-ng-model="editInterface.fabric"
@@ -1717,9 +1719,9 @@
                                                             </select>
                                                         </div>
                                                     </div>
-                                                    <div class="p-form__group u-vertically-center">
-                                                        <label class="p-form__label">VLAN</label>
-                                                        <div class="p-form__control">
+                                                    <div class="p-form__group row u-vertically-center">
+                                                        <label class="p-form__label col-2">VLAN</label>
+                                                        <div class="p-form__control col-4">
                                                             <select name="vlan"
                                                                 data-ng-model="editInterface.vlan"
                                                                 data-ng-options="vlan as getVLANText(vlan) for vlan in vlans | filterVLANNotOnFabric:editInterface.fabric.vlan_ids"
@@ -1727,9 +1729,9 @@
                                                             </select>
                                                         </div>
                                                     </div>
-                                                    <div class="p-form__group u-vertically-center">
-                                                        <label class="p-form__label">Subnet</label>
-                                                        <div class="p-form__control">
+                                                    <div class="p-form__group row u-vertically-center">
+                                                        <label class="p-form__label col-2">Subnet</label>
+                                                        <div class="p-form__control col-4">
                                                             <select name="subnet"
                                                                 data-ng-model="editInterface.subnet"
                                                                 data-ng-change="subnetChanged(editInterface)"
@@ -1738,9 +1740,9 @@
                                                             </select>
                                                         </div>
                                                     </div>
-                                                    <div class="p-form__group" data-ng-if="!isLinkModeDisabled(editInterface)">
-                                                        <label for="link-mode" class="p-form__label">IP mode</label>
-                                                        <div class="p-form__control">
+                                                    <div class="p-form__group row" data-ng-if="!isLinkModeDisabled(editInterface)">
+                                                        <label for="link-mode" class="p-form__label col-2">IP mode</label>
+                                                        <div class="p-form__control col-4">
                                                             <select name="link-mode"
                                                                 data-ng-model="editInterface.mode"
                                                                 data-ng-change="modeChanged(editInterface)"
@@ -1748,9 +1750,9 @@
                                                             </select>
                                                         </div>
                                                     </div>
-                                                    <div class="p-form__group" data-ng-if="editInterface.mode == 'static'">
-                                                        <label for="ip-address" class="p-form__label">IP address</label>
-                                                        <div class="p-form__control" data-ng-class="{ 'is-error': isIPAddressInvalid(editInterface) }">
+                                                    <div class="p-form__group row" data-ng-if="editInterface.mode == 'static'">
+                                                        <label for="ip-address" class="p-form__label col-2">IP address</label>
+                                                        <div class="p-form__control col-4" data-ng-class="{ 'is-error': isIPAddressInvalid(editInterface) }">
                                                             <input name="ip-address" type="text" placeholder="IP address" data-ng-model="editInterface.ip_address">
                                                         </div>
                                                     </div>
@@ -1762,9 +1764,9 @@
                                             <div class="row p-form--stacked">
                                                 <div class="col-6">
                                                     <h3 class="p-heading--five">Advanced options</h3>
-                                                    <div class="p-form__group">
-                                                        <label for="mac" class="p-form__label">MAC address</label>
-                                                        <div class="p-form__control p-form-validation"
+                                                    <div class="p-form__group row">
+                                                        <label for="mac" class="p-form__label col-2">MAC address</label>
+                                                        <div class="p-form__control col-4 p-form-validation"
                                                             data-ng-class="{ 'is-error': isMACAddressInvalid(editInterface.mac_address) }">
                                                             <input type="text" name="mac" class="p-form-validation__input"
                                                                 placeholder="00:00:00:00:00:00"
@@ -1775,31 +1777,31 @@
                                                             >
                                                         </div>
                                                     </div>
-                                                    <div class="p-form__group">
-                                                        <label for="link-monitoring" class="p-form__label">Link monitoring</label>
-                                                        <div class="p-form__control">
+                                                    <div class="p-form__group row">
+                                                        <label for="link-monitoring" class="p-form__label col-2">Link monitoring</label>
+                                                        <div class="p-form__control col-4">
                                                             <select name="link-monitoring" id="link-monitoring" data-ng-model="editInterfaceLinkMonitoring">
                                                                 <option value="">No link monitoring</option>
                                                                 <option value="mii">MII link monitoring</option>
                                                             </select>
                                                         </div>
                                                     </div>
-                                                    <div class="p-form__group" data-ng-if="editInterfaceLinkMonitoring === 'mii'">
-                                                        <label for="monitoring-frequency" class="p-form__label u-no-padding--top">Monitoring frequency (ms)</label>
-                                                        <div class="p-form__control">
+                                                    <div class="p-form__group row" data-ng-if="editInterfaceLinkMonitoring === 'mii'">
+                                                        <label for="monitoring-frequency" class="p-form__label col-2 u-no-padding--top">Monitoring frequency (ms)</label>
+                                                        <div class="p-form__control col-4">
                                                             <input type="text" name="monitoring-frequency" id="monitoring-frequency"
                                                                 data-ng-model="editInterface.bond_miimon">
                                                         </div>
                                                     </div>
-                                                    <div class="p-form__group" data-ng-if="editInterfaceLinkMonitoring === 'mii'">
-                                                        <label for="updelay" class="p-form__label">Updelay (ms)</label>
-                                                        <div class="p-form__control">
+                                                    <div class="p-form__group row" data-ng-if="editInterfaceLinkMonitoring === 'mii'">
+                                                        <label for="updelay" class="p-form__label col-2">Updelay (ms)</label>
+                                                        <div class="p-form__control col-4">
                                                             <input type="text" name="updelay" id="updelay" data-ng-model="editInterface.bond_updelay">
                                                         </div>
                                                     </div>
-                                                    <div class="p-form__group"  data-ng-if="editInterfaceLinkMonitoring === 'mii'">
-                                                        <label for="downdelay" class="p-form__label">Downdelay (ms)</label>
-                                                        <div class="p-form__control">
+                                                    <div class="p-form__group row"  data-ng-if="editInterfaceLinkMonitoring === 'mii'">
+                                                        <label for="downdelay" class="p-form__label col-2">Downdelay (ms)</label>
+                                                        <div class="p-form__control col-4">
                                                             <input type="text" name="downdelay" id="downdelay" data-ng-model="editInterface.bond_downdelay">
                                                         </div>
                                                     </div>
@@ -2031,20 +2033,20 @@
                             <div class="row p-form--stacked">
                                 <div class="col-6">
                                     <h3 class="p-heading--five">Bond details</h3>
-                                    <div class="p-form__group">
-                                        <label for="bond-mode" class="p-form__label">Bond mode</label>
-                                        <div class="p-form__control">
+                                    <div class="p-form__group row">
+                                        <label for="bond-mode" class="p-form__label col-2">Bond mode</label>
+                                        <div class="p-form__control col-4">
                                             <select name="bond-mode"
                                                 data-ng-model="newBondInterface.bond_mode"
                                                 data-ng-options="mode[0] as mode[1] for mode in bondOptions.modes">
                                             </select>
                                         </div>
                                     </div>
-                                    <div class="p-form__group p-form-validation"
+                                    <div class="p-form__group row p-form-validation"
                                         data-ng-if="showXMITHashPolicy()"
                                         data-ng-class="{ 'is-caution': showLACPRate() && modeAndPolicyCompliant() }">
-                                        <label for="xmit-hash-policy" class="p-form__label">Hash policy</label>
-                                        <div class="p-form__control">
+                                        <label for="xmit-hash-policy" class="p-form__label col-2">Hash policy</label>
+                                        <div class="p-form__control col-4">
                                             <select name="xmit-hash-policy"
                                                 class="p-form-validation__input"
                                                 data-ng-model="newBondInterface.xmitHashPolicy"
@@ -2055,19 +2057,19 @@
                                             </p>
                                         </div>
                                     </div>
-                                    <div class="p-form__group" data-ng-if="showLACPRate()">
-                                        <label for="lacp-rate" class="p-form__label">LACP rate</label>
-                                        <div class="p-form__control">
+                                    <div class="p-form__group row" data-ng-if="showLACPRate()">
+                                        <label for="lacp-rate" class="p-form__label col-2">LACP rate</label>
+                                        <div class="p-form__control col-4">
                                             <select name="lacp-rate"
                                                 data-ng-model="newBondInterface.lacpRate"
                                                 data-ng-options="rate[0] as rate[1] for rate in bondOptions.lacp_rates">
                                             </select>
                                         </div>
                                     </div>
-                                    <div class="p-form__group">
-                                        <label for="bond-name" class="p-form__label">Bond name</label>
+                                    <div class="p-form__group row">
+                                        <label for="bond-name" class="p-form__label col-2">Bond name</label>
                                         <div
-                                            class="p-form__control p-form-validation"
+                                            class="p-form__control p-form-validation col-4"
                                             data-ng-class="{ 'is-error': isInterfaceNameInvalid(newBondInterface) }"
                                         >
                                             <input
@@ -2079,18 +2081,18 @@
                                             >
                                         </div>
                                     </div>
-                                    <div class="p-form__group">
-                                        <label class="p-form__label">Tags</label>
-                                        <div class="p-form__control tags--inline">
+                                    <div class="p-form__group row">
+                                        <label class="p-form__label col-2">Tags</label>
+                                        <div class="p-form__control tags--inline col-4">
                                             <tags-input data-ng-model="newBondInterface.tags" allow-tags-pattern="[\w-]+"></tags-input>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="col-6">
                                     <h3 class="p-heading--five">Network</h3>
-                                    <div class="p-form__group u-vertically-center">
-                                        <label class="p-form__label">Fabric</label>
-                                        <div class="p-form__control">
+                                    <div class="p-form__group row u-vertically-center">
+                                        <label class="p-form__label col-2">Fabric</label>
+                                        <div class="p-form__control col-4">
                                             <select
                                                 name="fabric"
                                                 data-ng-model="newBondInterface.fabric"
@@ -2099,9 +2101,9 @@
                                             </select>
                                         </div>
                                     </div>
-                                    <div class="p-form__group u-vertically-center">
-                                        <label class="p-form__label">VLAN</label>
-                                        <div class="p-form__control">
+                                    <div class="p-form__group row u-vertically-center">
+                                        <label class="p-form__label col-2">VLAN</label>
+                                        <div class="p-form__control col-4">
                                             <select name="vlan"
                                                 data-ng-model="newBondInterface.vlan"
                                                 data-ng-options="vlan as getVLANText(vlan) for vlan in vlans | filterVLANNotOnFabric:newBondInterface.fabric.vlan_ids"
@@ -2109,9 +2111,9 @@
                                             </select>
                                         </div>
                                     </div>
-                                    <div class="p-form__group u-vertically-center">
-                                        <label class="p-form__label">Subnet</label>
-                                        <div class="p-form__control">
+                                    <div class="p-form__group row u-vertically-center">
+                                        <label class="p-form__label col-2">Subnet</label>
+                                        <div class="p-form__control col-4">
                                             <select name="subnet"
                                                 data-ng-model="newBondInterface.subnet"
                                                 data-ng-change="subnetChanged(newBondInterface)"
@@ -2120,9 +2122,9 @@
                                             </select>
                                         </div>
                                     </div>
-                                    <div class="p-form__group u-vertically-center" data-ng-if="!isLinkModeDisabled(newBondInterface)">
-                                        <label for="link-mode" class="p-form__label">IP mode</label>
-                                        <div class="p-form__control">
+                                    <div class="p-form__group row u-vertically-center" data-ng-if="!isLinkModeDisabled(newBondInterface)">
+                                        <label for="link-mode" class="p-form__label col-2">IP mode</label>
+                                        <div class="p-form__control col-4">
                                             <select name="link-mode"
                                                 data-ng-model="newBondInterface.mode"
                                                 data-ng-change="modeChanged(newBondInterface)"
@@ -2130,9 +2132,9 @@
                                             </select>
                                         </div>
                                     </div>
-                                    <div class="p-form__group u-vertically-center" data-ng-if="newBondInterface.mode == 'static'">
-                                        <label for="ip-address" class="p-form__label">IP address</label>
-                                        <div class="p-form__control" data-ng-class="{ 'is-error': isIPAddressInvalid(newBondInterface) }">
+                                    <div class="p-form__group row u-vertically-center" data-ng-if="newBondInterface.mode == 'static'">
+                                        <label for="ip-address" class="p-form__label col-2">IP address</label>
+                                        <div class="p-form__control col-4" data-ng-class="{ 'is-error': isIPAddressInvalid(newBondInterface) }">
                                             <input name="ip-address" type="text" placeholder="IP address" data-ng-model="newBondInterface.ip_address">
                                         </div>
                                     </div>
@@ -2144,9 +2146,9 @@
                             <div class="row p-form--stacked">
                                 <div class="col-6">
                                     <h3 class="p-heading--five">Advanced options</h3>
-                                    <div class="p-form__group">
-                                        <label for="mac" class="p-form__label">MAC address</label>
-                                        <div class="p-form__control p-form-validation"
+                                    <div class="p-form__group row">
+                                        <label for="mac" class="p-form__label col-2">MAC address</label>
+                                        <div class="p-form__control p-form-validation col-4"
                                             data-ng-class="{ 'is-error': isMACAddressInvalid(newBondInterface.mac_address) }">
                                             <input type="text" name="mac" class="p-form-validation__input"
                                                 placeholder="00:00:00:00:00:00"
@@ -2157,31 +2159,31 @@
                                             >
                                         </div>
                                     </div>
-                                    <div class="p-form__group">
-                                        <label for="link-monitoring" class="p-form__label">Link monitoring</label>
-                                        <div class="p-form__control">
+                                    <div class="p-form__group row">
+                                        <label for="link-monitoring" class="p-form__label col-2">Link monitoring</label>
+                                        <div class="p-form__control col-4">
                                             <select name="link-monitoring" id="link-monitoring" data-ng-model="newInterfaceLinkMonitoring">
                                                 <option value="">No link monitoring</option>
                                                 <option value="mii">MII link monitoring</option>
                                             </select>
                                         </div>
                                     </div>
-                                    <div class="p-form__group" data-ng-if="newInterfaceLinkMonitoring === 'mii'">
-                                        <label for="monitoring-frequency" class="p-form__label u-no-padding--top">Monitoring frequency (ms)</label>
-                                        <div class="p-form__control">
+                                    <div class="p-form__group row" data-ng-if="newInterfaceLinkMonitoring === 'mii'">
+                                        <label for="monitoring-frequency" class="p-form__label u-no-padding--top col-2">Monitoring frequency (ms)</label>
+                                        <div class="p-form__control col-4">
                                             <input type="text" name="monitoring-frequency" id="monitoring-frequency"
                                                 data-ng-model="newBondInterface.bond_miimon">
                                         </div>
                                     </div>
-                                    <div class="p-form__group" data-ng-if="newInterfaceLinkMonitoring === 'mii'">
-                                        <label for="updelay" class="p-form__label">Updelay (ms)</label>
-                                        <div class="p-form__control">
+                                    <div class="p-form__group row" data-ng-if="newInterfaceLinkMonitoring === 'mii'">
+                                        <label for="updelay" class="p-form__label col-2">Updelay (ms)</label>
+                                        <div class="p-form__control col-4">
                                             <input type="text" name="updelay" id="updelay" data-ng-model="newBondInterface.bond_updelay">
                                         </div>
                                     </div>
-                                    <div class="p-form__group" data-ng-if="newInterfaceLinkMonitoring === 'mii'">
-                                        <label for="downdelay" class="p-form__label">Downdelay (ms)</label>
-                                        <div class="p-form__control">
+                                    <div class="p-form__group row" data-ng-if="newInterfaceLinkMonitoring === 'mii'">
+                                        <label for="downdelay" class="p-form__label col-2">Downdelay (ms)</label>
+                                        <div class="p-form__control col-4">
                                             <input type="text" name="downdelay" id="downdelay" data-ng-model="newBondInterface.bond_downdelay">
                                         </div>
                                     </div>

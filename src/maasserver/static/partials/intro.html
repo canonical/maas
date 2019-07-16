@@ -9,9 +9,7 @@
                 <hr />
                 <div class="p-card__content">
                     <maas-obj-form obj="maasName" manager="configManager" class="p-form p-form--stacked">
-                        <div class="p-form__group">
-                            <maas-obj-field type="text" key="value" label="Region name" placeholder="e.g. us-west"  subtle="false" blur-on-enter="true"></maas-obj-field>
-                        </div>
+                        <maas-obj-field type="text" key="value" label="Region name" placeholder="e.g. us-west"  subtle="false" blur-on-enter="true" label-width="2" input-width="4"></maas-obj-field>
                     </maas-obj-form>
                 </div>
             </div>
@@ -27,30 +25,22 @@
                 <ul class="p-card__content p-list">
                     <li>
                         <maas-obj-form obj="upstreamDNS" manager="configManager" class="p-form p-form--stacked">
-                            <div class="p-form__group">
-                                <maas-obj-field type="text" key="value" label="DNS forwarder" placeholder="e.g: 8.8.8.8 8.8.4.4" subtle="false" blur-on-enter="true" help-text="A space-separated list of upstream DNS servers to which MAAS should forward requests for domains not managed by MAAS directly."></maas-obj-field>
-                            </div>
+                            <maas-obj-field type="text" key="value" label="DNS forwarder" placeholder="e.g: 8.8.8.8 8.8.4.4" subtle="false" blur-on-enter="true" help-text="A space-separated list of upstream DNS servers to which MAAS should forward requests for domains not managed by MAAS directly." label-width="2" input-width="4"></maas-obj-field>
                         </maas-obj-form>
                     </li>
                     <li>
                         <maas-obj-form obj="mainArchive" manager="repoManager" class="p-form p-form--stacked">
-                            <div class="p-form__group">
-                                <maas-obj-field type="text" key="url" label="Ubuntu archive" subtle="false" blur-on-enter="true" help-text="The server where machines retrieve packages for Intel architectures."></maas-obj-field>
-                            </div>
+                            <maas-obj-field type="text" key="url" label="Ubuntu archive" subtle="false" blur-on-enter="true" help-text="The server where machines retrieve packages for Intel architectures." label-width="2" input-width="4"></maas-obj-field>
                         </maas-obj-form>
                     </li>
                     <li>
                         <maas-obj-form obj="portsArchive" manager="repoManager" class="p-form p-form--stacked">
-                            <div class="p-form__group">
-                                <maas-obj-field type="text" key="url" label="Ubuntu extra architectures" subtle="false" blur-on-enter="true" help-text="Archive used by machines to retrieve packages for non-Intel architectures."></maas-obj-field>
-                            </div>
+                            <maas-obj-field type="text" key="url" label="Ubuntu extra architectures" subtle="false" blur-on-enter="true" help-text="Archive used by machines to retrieve packages for non-Intel architectures." label-width="2" input-width="4"></maas-obj-field>
                         </maas-obj-form>
                     </li>
                     <li>
                         <maas-obj-form obj="httpProxy" manager="configManager" class="p-form p-form--stacked">
-                            <div class="p-form__group">
-                                <maas-obj-field type="text" key="value" label="APT &amp; HTTP/HTTPS proxy server" subtle="false" blur-on-enter="true" help-text="This will be passed onto deployed machines to use as a proxy for APT and YUM traffic. MAAS also uses the proxy for downloading boot images. If no URL is provided, the build-in MAAS proxy will be used."></maas-obj-field>
-                            </div>
+                            <maas-obj-field type="text" key="value" label="APT &amp; HTTP/HTTPS proxy server" subtle="false" blur-on-enter="true" help-text="This will be passed onto deployed machines to use as a proxy for APT and YUM traffic. MAAS also uses the proxy for downloading boot images. If no URL is provided, the build-in MAAS proxy will be used." label-width="2" input-width="4"></maas-obj-field>
                         </maas-obj-form>
                     </li>
                 </ul>

@@ -60,24 +60,26 @@
               <h2 class="p-heading--four">Space summary</h2>
             </div>
             <div class="col-6">
-              <button type="button" name="button" class="button--neutral u-float--right" data-ng-click="enterEditSummary()" data-ng-if="!editSummary">Edit</button>
+                <div class="u-align--right">
+                    <button type="button" name="button" class="button--neutral" data-ng-click="enterEditSummary()" data-ng-if="!editSummary">Edit</button>
+                </div>
             </div>
         </div>
         <div class="form p-form--stacked row" data-ng-if="!editSummary">
             <div class="col-6">
-                <div class="p-form__group">
-                    <div class="p-form__label col-2 col-medium-2">
+                <div class="p-form__group row">
+                    <div class="p-form__label col-2">
                         <p><strong>Name</strong></p>
                     </div>
-                    <div class="p-form__control col-4 col-medium-3">
+                    <div class="p-form__control col-4">
                         <p>{$ space.name $}</p>
                     </div>
                 </div>
                 <div class="p-form__group">
-                    <div class="p-form__label col-2 col-medium-2">
+                    <div class="p-form__label col-2">
                         <p><strong>Description</strong></p>
                     </div>
-                    <div class="p-form__control col-4 col-medium-3">
+                    <div class="p-form__control col-4">
                         <p>{$ space.description $}</p>
                     </div>
                 </div>
@@ -88,16 +90,18 @@
                 <div class="row">
                     <div class="col-6">
                         <maas-obj-field type="text" key="name" label="Name" placeholder="Space name"
-                            blur-on-enter="true" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
+                            blur-on-enter="true" label-width="2" input-width="4"></maas-obj-field>
                         <maas-obj-field type="textarea" key="description" label="Description" placeholder="Space description"
-                            blur-on-enter="true" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
+                            blur-on-enter="true" label-width="2" input-width="4"></maas-obj-field>
                     </div>
                 </div>
                 <div class="row">
-                    <div class="col-12 u-align--right">
-                        <button class="p-button--base"
-                        data-ng-click="exitEditSummary()" type="button">Cancel</button>
-                        <button class="p-button--positive" maas-obj-save>Save summary</button>
+                    <div class="col-12">
+                        <div class="u-align--right">
+                            <button class="p-button--base"
+                            data-ng-click="exitEditSummary()" type="button">Cancel</button>
+                            <button class="p-button--positive" maas-obj-save>Save summary</button>
+                        </div>
                     </div>
                 </div>
             </maas-obj-form>

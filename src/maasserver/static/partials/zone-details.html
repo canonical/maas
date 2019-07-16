@@ -64,26 +64,28 @@
                     <h2 class="p-heading--four">Availability zone</h2>
                 </div>
                 <div class="col-6">
-                    <button type="button" name="button" class="p-button--neutral u-float--right" data-ng-click="enterEditSummary()" data-ng-if="editSummary != true && isSuperUser()">Edit</button>
+                    <div class="u-align--right">
+                        <button type="button" name="button" class="p-button--neutral u-float--right" data-ng-click="enterEditSummary()" data-ng-if="editSummary != true && isSuperUser()">Edit</button>
+                    </div>
                 </div>
             </div>
             <div class="row form p-form--stacked" data-ng-if="editSummary != true">
                 <div class="col-6">
-                    <div class="p-form__group">
-                        <p class="p-form__label is-disabled">Name</p>
-                        <div class="p-form__control">
+                    <div class="p-form__group row">
+                        <p class="p-form__label col-2 is-disabled">Name</p>
+                        <div class="p-form__control col-4">
                             <p>{$ zone.name $}</p>
                         </div>
                     </div>
-                    <div class="p-form__group">
-                        <p class="p-form__label is-disabled">Description</p>
-                        <div class="p-form__control">
+                    <div class="p-form__group row">
+                        <p class="p-form__label col-2 is-disabled">Description</p>
+                        <div class="p-form__control col-4">
                             <p>{$ zone.description $}</p>
                         </div>
                     </div>
-                    <div class="p-form__group">
-                        <p class="p-form__label is-disabled">Machines</p>
-                        <div class="p-form__control">
+                    <div class="p-form__group row">
+                        <p class="p-form__label col-2 is-disabled">Machines</p>
+                        <div class="p-form__control col-4">
                             <p>{$ zone.machines_count $}</p>
                         </div>
                     </div>
@@ -97,9 +99,9 @@
                                 label-width="2" input-width="4" blur-on-enter="true"></maas-obj-field>
                             <maas-obj-field type="textarea" key="description" label="Description" placeholder="Zone description"
                                 label-width="2" input-width="4" blur-on-enter="true"></maas-obj-field>
-                            <div class="p-form__group">
-                                <p class="p-form__label is-disabled">Machines</p>
-                                <div class="p-form__control">
+                            <div class="p-form__group row">
+                                <p class="p-form__label col-2 is-disabled">Machines</p>
+                                <div class="p-form__control col-4">
                                     <a href="#/machines&query=zone:({$ zone.name $})">{$ zone.machines_count $}</a>
                                 </div>
                             </div>

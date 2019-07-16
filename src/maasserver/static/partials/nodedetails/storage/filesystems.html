@@ -83,17 +83,17 @@
                         </div>
                         <div class="row p-form p-form--stacked">
                             <div class="col-6">
-                                <div class="p-form__group">
-                                    <label class="p-form__label col-small-2">Description</label>
-                                    <div class="p-form__control p-form__control--placeholder col-small-2">
+                                <div class="p-form__group row">
+                                    <label class="p-form__label col-2">Description</label>
+                                    <div class="p-form__control p-form__control--placeholder col-4">
                                         <span data-ng-bind="description"></span>
                                     </div>
                                 </div>
-                                <maas-obj-field type="options" key="fstype" label="Filesystem" subtle="false" options="type for type in specialFilesystemTypes"></maas-obj-field>
+                                <maas-obj-field type="options" key="fstype" label="Filesystem" subtle="false" options="type for type in specialFilesystemTypes" label-width="2" input-width="4"></maas-obj-field>
                             </div>
                             <div class="col-6">
-                                <maas-obj-field type="text" key="mount_point" label="Mount point" subtle="false" placeholder="Absolute path"></maas-obj-field>
-                                <maas-obj-field type="text" key="mount_options" label="Mount options" subtle="false" placeholder="Separated by commas, no spaces"></maas-obj-field>
+                                <maas-obj-field type="text" key="mount_point" label="Mount point" subtle="false" placeholder="Absolute path" label-width="2" input-width="4"></maas-obj-field>
+                                <maas-obj-field type="text" key="mount_options" label="Mount options" subtle="false" placeholder="Separated by commas, no spaces" label-width="2" input-width="4"></maas-obj-field>
                             </div>
                         </div>
                         <hr>

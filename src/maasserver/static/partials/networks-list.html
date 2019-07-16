@@ -21,14 +21,20 @@
           <div class="p-strip">
             <maas-obj-form obj="newObject" manager="fabricManager" manager-method="createItem"
                 inline="true" save-on-blur="false" after-save="cancelAction">
-                <maas-obj-field
-                  type="text" key="name" label="Add fabric" subtle="false"
-                  placeholder="Name (optional)"></maas-obj-field>
-                <maas-obj-errors></maas-obj-errors>
-                <div class="page-header__controls u-no-margin--top col-4">
-                    <div class="u-align--right">
-                        <button class="p-button p-button--inline" data-ng-click="cancelAction()">Cancel</button>
-                        <button class="p-button--positive p-button--inline" maas-obj-save>Add fabric</button>
+                <div class="row">
+                    <div class="col-6">
+                        <maas-obj-field
+                          type="text" key="name" label="Add fabric" subtle="false"
+                          placeholder="Name (optional)"></maas-obj-field>
+                        <maas-obj-errors></maas-obj-errors>
+                    </div>
+                    <div class="col-6">
+                        <div class="page-header__controls u-no-margin--top col-4">
+                            <div class="u-align--right">
+                                <button class="p-button p-button--inline" data-ng-click="cancelAction()">Cancel</button>
+                                <button class="p-button--positive p-button--inline" maas-obj-save>Add fabric</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </maas-obj-form>
@@ -42,20 +48,20 @@
                         <div class="col-6">
                             <maas-obj-field
                                 type="text" key="name" label="Add VLAN" subtle="false"
-                                placeholder="Name (optional)" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
+                                placeholder="Name (optional)" label-width="2" input-width="4"></maas-obj-field>
                             <maas-obj-field
                                 type="text" key="vid" label="with VID" subtle="false"
-                                placeholder="numeric value 1-4094" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
+                                placeholder="numeric value 1-4094" label-width="2" input-width="4"></maas-obj-field>
                         </div>
                         <div class="col-6">
                             <maas-obj-field
                                 type="options" key="fabric" label="to fabric" subtle="false"
                                 options="f.id as f.name for f in fabrics"
-                                placeholder="Select fabric" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
+                                placeholder="Select fabric" label-width="2" input-width="4"></maas-obj-field>
                             <maas-obj-field
                                 subtle="false" type="options" key="space" label="in space"
                                 placeholder="(undefined)" placeholder-enabled="true"
-                                options="space.id as space.name for space in spaces" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
+                                options="space.id as space.name for space in spaces" label-width="2" input-width="4"></maas-obj-field>
                         </div>
                     </div>
                 </div>
@@ -69,16 +75,21 @@
             </maas-obj-form>
         </section>
         <section class="row u-no-margin--bottom ng-hide" data-ng-show="actionOption.name === 'add_space'">
-            <maas-obj-form obj="newObject" manager="spaceManager" manager-method="createItem"
-                inline="true" save-on-blur="false" after-save="cancelAction">
-                  <maas-obj-field
-                      type="text" key="name" label="Add space" subtle="false"
-                      placeholder="Name (optional)"></maas-obj-field>
-                  <maas-obj-errors></maas-obj-errors>
-                  <div class="page-header__controls u-no-margin--top u-align--right col-4">
-                      <button class="p-button p-button--inline" data-ng-click="cancelAction()">Cancel</button>
-                      <button class="p-button--positive p-button--inline" maas-obj-save>Add space</button>
-                  </div>
+            <maas-obj-form obj="newObject" manager="spaceManager" manager-method="createItem" inline="true" save-on-blur="false" after-save="cancelAction">
+                <div class="row">
+                    <div class="col-6">
+                        <maas-obj-field
+                            type="text" key="name" label="Add space" subtle="false"
+                            placeholder="Name (optional)"></maas-obj-field>
+                        <maas-obj-errors></maas-obj-errors>
+                    </div>
+                    <div class="col-6">
+                        <div class="page-header__controls u-no-margin--top u-align--right col-4">
+                            <button class="p-button p-button--inline" data-ng-click="cancelAction()">Cancel</button>
+                            <button class="p-button--positive p-button--inline" maas-obj-save>Add space</button>
+                        </div>
+                    </div>
+                </div>
             </maas-obj-form>
         </section>
         <section class="row ng-hide" data-ng-show="actionOption.name == 'add_subnet'">
@@ -88,25 +99,25 @@
               <div class="col-6">
                 <maas-obj-field
                     subtle="false" type="text" key="name" label="Name" placeholder="Name (optional)"
-                    label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
+                    label-width="2" input-width="4"></maas-obj-field>
                 <maas-obj-field
                     subtle="false" type="text" key="cidr" label="CIDR"
                     placeholder="Use IPv4 or IPv6 format"
-                    label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
+                    label-width="2" input-width="4"></maas-obj-field>
                 <maas-obj-field
                     subtle="false" type="text" key="gateway_ip" label="Gateway IP"
                     placeholder="Use IPv4 or IPv6 format (optional)"
-                    label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
+                    label-width="2" input-width="4"></maas-obj-field>
               </div>
               <div class="col-6">
                 <maas-obj-field
                     subtle="false" type="text" key="dns_servers" label="DNS servers"
                     placeholder="Use IPv4 or IPv6 format (optional)"
-                    label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
+                    label-width="2" input-width="4"></maas-obj-field>
                 <maas-obj-field
                     subtle="false" type="options" key="vlan" label="Fabric &amp; VLAN" placeholder="Choose Fabric &amp; VLAN"
                     options="v.id as getVLANName(v) group by getFabricNameById(v.fabric) for v in vlans"
-                    label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
+                    label-width="2" input-width="4"></maas-obj-field>
               </div>
             </section>
             <section class="u-no-margin--top">

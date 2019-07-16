@@ -72,18 +72,18 @@
     </div>
     <div data-ng-class="{ 'u-hide': !add.open }">
         <maas-obj-form obj="add.obj" manager="podManager" manager-method="createItem"
-            save-on-blur="false" after-save="cancelAddPod" data-ng-if="add.open">
+            save-on-blur="false" after-save="cancelAddPod" data-ng-if="add.open" class="p-form--stacked">
             <div class="row">
                 <h3 class="page-header__dropdown-title p-heading--five">Add {$ getPageHeading() $}</h3>
             </div>
             <div class="row">
-                <div class="col-5">
-                    <maas-obj-field type="text" key="name" label="Name" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4" placeholder="Name (optional)"></maas-obj-field>
-                    <maas-obj-field type="options" key="zone" label="Zone" subtle="false" placeholder="Choose a zone" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4" options="zone.id as zone.name for zone in zones"></maas-obj-field>
-                    <maas-obj-field type="options" key="pool" label="Resource pool" subtle="false" placeholder="Choose a pool" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4" options="pool.id as pool.name for pool in pools"></maas-obj-field>
+                <div class="col-6">
+                    <maas-obj-field type="text" key="name" label="Name" label-width="2" input-width="4" placeholder="Name (optional)"></maas-obj-field>
+                    <maas-obj-field type="options" key="zone" label="Zone" subtle="false" placeholder="Choose a zone" label-width="2" input-width="4" options="zone.id as zone.name for zone in zones"></maas-obj-field>
+                    <maas-obj-field type="options" key="pool" label="Resource pool" subtle="false" placeholder="Choose a pool" label-width="2" input-width="4" options="pool.id as pool.name for pool in pools"></maas-obj-field>
                 </div>
-                <div class="col-6 col-start-large-2">
-                    <maas-pod-parameters hide-slider="true" hide-type="true"></maas-pod-parameters>
+                <div class="col-6">
+                    <maas-pod-parameters class="row" hide-slider="true" hide-type="true"></maas-pod-parameters>
                 </div>
             </div>
             <div class="p-strip is-shallow">

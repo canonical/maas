@@ -537,7 +537,7 @@ export function maasObjField($compile) {
       // Set ngDisabled from the parent controller.
       scope.ngDisabled = controller.scope.ngDisabled;
 
-      element.addClass("p-form__group");
+      element.addClass("p-form__group row");
       if (attrs.subtle !== "false") {
         element.addClass("form__group--subtle");
       }

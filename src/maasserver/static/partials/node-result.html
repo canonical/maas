@@ -22,59 +22,59 @@
     <div class="p-strip">
         <div class="form p-form--stacked row">
             <div class="col-6">
-                <div class="p-form__group">
-                    <div class="p-form__label">
+                <div class="p-form__group row">
+                    <div class="p-form__label col-2">
                         Status
                     </div>
-                    <div class="p-form__control">
+                    <div class="p-form__control col-4">
                         <p class="ng-binding u-no-padding--top">
                             <span data-maas-script-status="script-status" data-script-status="result.status" class="ng-isolate-scope"></span> {$ result.status_name $}
                         </p>
                     </div>
                 </div>
-                <div class="p-form__group">
-                    <div class="p-form__label">
+                <div class="p-form__group row">
+                    <div class="p-form__label col-2">
                         Exit Status
                     </div>
-                    <div class="p-form__control">
+                    <div class="p-form__control col-4">
                         <p class="ng-binding u-no-padding--top" data-ng-if="result.exit_status || result.exit_status === 0">{$ result.exit_status $}</p>
                         <p class="ng-binding u-no-padding--top" data-ng-if="!result.exit_status && result.exit_status !== 0">&nbsp;</p>
                     </div>
                 </div>
-                <div class="p-form__group">
-                    <div class="p-form__label">
+                <div class="p-form__group row">
+                    <div class="p-form__label col-2">
                         Tags
                     </div>
-                    <div class="p-form__control">
+                    <div class="p-form__control col-4">
                         <p class="ng-binding u-no-padding--top" data-ng-if="result.tags">{$ result.tags $}</p>
                         <p class="ng-binding u-no-padding--top" data-ng-if="!result.tags">&nbsp;</p>
                     </div>
                 </div>
             </div>
             <div class="col-6">
-                <div class="p-form__group">
-                    <div class="p-form__label">
+                <div class="p-form__group row">
+                    <div class="p-form__label col-2">
                         Start Time
                     </div>
-                    <div class="p-form__control">
+                    <div class="p-form__control col-4">
                         <p class="ng-binding u-no-padding--top" data-ng-if="result.started">{$ result.started $}</p>
                         <p class="ng-binding u-no-padding--top" data-ng-if="!result.started">&nbsp;</p>
                     </div>
                 </div>
-                <div class="p-form__group">
-                    <div class="p-form__label">
+                <div class="p-form__group row">
+                    <div class="p-form__label col-2">
                         End Time
                     </div>
-                    <div class="p-form__control">
+                    <div class="p-form__control col-4">
                         <p class="ng-binding u-no-padding--top" data-ng-if="result.ended">{$ result.ended $}</p>
                         <p class="ng-binding u-no-padding--top" data-ng-if="!result.ended">&nbsp;</p>
                     </div>
                 </div>
-                <div class="p-form__group">
-                    <div class="p-form__label">
+                <div class="p-form__group row">
+                    <div class="p-form__label col-2">
                         Runtime
                     </div>
-                    <div class="p-form__control">
+                    <div class="p-form__control col-4">
                         <p class="ng-binding u-no-padding--top" data-ng-if="result.runtime">{$ result.runtime $}</p>
                         <p class="ng-binding u-no-padding--top" data-ng-if="!result.runtime">&nbsp;</p>
                     </div>

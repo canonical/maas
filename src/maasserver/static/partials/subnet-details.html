@@ -99,53 +99,53 @@
         </div>
         <div class="form p-form--stacked row" data-ng-if="editSummary != true">
             <div class="col-6">
-                <div class="p-form__group">
-                    <div class="p-form__label is-disabled col-2 col-medium-2">
+                <div class="p-form__group row">
+                    <div class="p-form__label is-disabled col-2">
                         <p>Name</p>
                     </div>
-                    <div class="p-form__control col-4 col-medium-3">
+                    <div class="p-form__control col-4">
                         <p>{$ subnet.name $}</p>
                     </div>
                 </div>
-                <div class="p-form__group">
-                    <div class="p-form__label is-disabled col-2 col-medium-2">
+                <div class="p-form__group row">
+                    <div class="p-form__label is-disabled col-2">
                         <p>CIDR</p>
                     </div>
-                    <div class="p-form__control col-4 col-medium-3">
+                    <div class="p-form__control col-4">
                         <p>{$ subnet.cidr $}</span>
                     </div>
                 </div>
-                <div class="p-form__group">
-                    <div class="p-form__label is-disabled col-2 col-medium-2">
+                <div class="p-form__group row">
+                    <div class="p-form__label is-disabled col-2">
                         <p>Gateway IP</p>
                     </div>
-                    <div class="p-form__control col-4 col-medium-3">
+                    <div class="p-form__control col-4">
                         <p data-ng-if="subnet.gateway_ip">{$ subnet.gateway_ip $}</p>
                         <p data-ng-if="!subnet.gateway_ip">&nbsp;</p>
                     </div>
                 </div>
-                <div class="p-form__group">
-                    <div class="p-form__label is-disabled col-2 col-medium-2">
+                <div class="p-form__group row">
+                    <div class="p-form__label is-disabled col-2">
                         <p>DNS</p>
                     </div>
-                    <div class="p-form__control col-4 col-medium-3">
+                    <div class="p-form__control col-4">
                         <p data-ng-if="subnet.dns_servers">{$ subnet.dns_servers $}</p>
                         <p data-ng-if="!subnet.dns_servers">&nbsp;</p>
                     </div>
                 </div>
-                <div class="p-form__group">
-                    <div class="p-form__label is-disabled col-2 col-medium-2">
+                <div class="p-form__group row">
+                    <div class="p-form__label is-disabled col-2">
                         <p>Description</p>
                     </div>
-                    <div class="p-form__control col-4 col-medium-3">
+                    <div class="p-form__control col-4">
                         <p data-ng-if="subnet.description">{$ subnet.description $}</p>
                         <p data-ng-if="!subnet.description">&nbsp;</p>
                     </div>
                 </div>
             </div>
             <div class="col-6">
-                <div class="p-form__group">
-                    <div class="p-form__label is-disabled col-2 col-medium-2">
+                <div class="p-form__group row">
+                    <div class="p-form__label is-disabled col-2">
                         <p>
                             Managed allocation
                             <span data-ng-if="subnet.managed == false" class="p-tooltip--btm-right">
@@ -159,13 +159,13 @@
                             </span>
                         </p>
                     </div>
-                    <div class="p-form__control col-4 col-medium-3">
+                    <div class="p-form__control col-4">
                         <span data-ng-if="subnet.managed == false">Disabled</span>
                         <span data-ng-if="subnet.managed == true">Enabled</span>
                     </div>
                 </div>
-                <div class="p-form__group">
-                    <div class="p-form__label is-disabled col-2 col-medium-2">
+                <div class="p-form__group row">
+                    <div class="p-form__label is-disabled col-2">
                         <p>
                             Active discovery
                             <span data-ng-if="subnet.managed == true" class="p-tooltip--btm-right">
@@ -174,13 +174,13 @@
                             </span>
                         </p>
                     </div>
-                    <div class="p-form__control col-4 col-medium-3">
+                    <div class="p-form__control col-4">
                         <span data-ng-if="subnet.active_discovery == false">Disabled</span>
                         <span data-ng-if="subnet.active_discovery == true">Enabled</span>
                     </div>
                 </div>
-                <div class="p-form__group">
-                    <div class="p-form__label is-disabled col-2 col-medium-2">
+                <div class="p-form__group row">
+                    <div class="p-form__label is-disabled col-2">
                         <p>
                             Proxy access
                             <span data-ng-if="subnet.allow_proxy == false" class="p-tooltip--btm-right">
@@ -194,13 +194,13 @@
                             </span>
                         </p>
                     </div>
-                    <div class="p-form__control col-4 col-medium-3">
+                    <div class="p-form__control col-4">
                         <span data-ng-if="subnet.allow_proxy == false">Disallowed</span>
                         <span data-ng-if="subnet.allow_proxy == true">Allowed</span>
                     </div>
                 </div>
-                <div class="p-form__group">
-                    <div class="p-form__label is-disabled col-2 col-medium-2">
+                <div class="p-form__group row">
+                    <div class="p-form__label is-disabled col-2">
                         <p>
                             Allow DNS resolution
                             <span data-ng-if="subnet.allow_dns == false" class="p-tooltip--btm-right">
@@ -214,32 +214,32 @@
                             </span>
                         </p>
                     </div>
-                    <div class="p-form__control col-4 col-medium-3">
+                    <div class="p-form__control col-4">
                         <span data-ng-if="subnet.allow_dns == false">Disallowed</span>
                         <span data-ng-if="subnet.allow_dns == true">Allowed</span>
                     </div>
                 </div>
-                <div class="p-form__group">
-                    <div class="p-form__label is-disabled col-2 col-medium-2">
+                <div class="p-form__group row">
+                    <div class="p-form__label is-disabled col-2">
                         <p>Fabric</p>
                     </div>
-                    <div class="p-form__control col-4 col-medium-3">
+                    <div class="p-form__control col-4">
                         <p>{$ subnet.fabric_name $}</p>
                     </div>
                 </div>
-                <div class="p-form__group">
-                    <div class="p-form__label is-disabled col-2 col-medium-2">
+                <div class="p-form__group row">
+                    <div class="p-form__label is-disabled col-2">
                         <p>VLAN</p>
                     </div>
-                    <div class="p-form__control col-4 col-medium-3">
+                    <div class="p-form__control col-4">
                         <p>{$ subnet.vlan_name $}</p>
                     </div>
                 </div>
-                <div class="p-form__group">
-                    <div class="p-form__label is-disabled col-2 col-medium-2">
+                <div class="p-form__group row">
+                    <div class="p-form__label is-disabled col-2">
                         <p>Space</p>
                     </div>
-                    <div class="p-form__control col-4 col-medium-3">
+                    <div class="p-form__control col-4">
                         <p>
                             <a data-ng-if="space !== null" href="#/space/{$ space.id $}">{$ space.name $}</a>
                             <span data-ng-if="space === null">
@@ -271,7 +271,7 @@
                     </div>
                     <div class="col-6">
                         <maas-obj-field type="onoffswitch" key="managed" label="Managed allocation"
-                            label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"
+                            label-width="2" label-width-tablet="2" input-width="4"
                             label-info="When enabled, MAAS will assume it may take full control of DHCP and&#xa;IP address management on this subnet. When disabled, MAAS will only&#xa;allocate addresses from reserved IP ranges on this subnet, and will not&#xa;include this subnet's dynamic ranges in the DHCP configuration.">
                         </maas-obj-field>
                         <p class="row" data-ng-if="subnet.$maasForm.getValue('managed') != subnet.managed">
@@ -287,27 +287,27 @@
                             </div>
                         </p>
                         <maas-obj-field data-ng-if="subnet.version === 4" type="onoffswitch" key="active_discovery" label="Active mapping"
-                            label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"
-                            input-width-tablet="4" label-info="When enabled, MAAS will scan this subnet {$ active_discovery_interval | lowercase $}&#xa;to discover hosts that have not been discovered passively."></maas-obj-field>
+                            label-width="2" input-width="4"
+                            label-info="When enabled, MAAS will scan this subnet {$ active_discovery_interval | lowercase $}&#xa;to discover hosts that have not been discovered passively."></maas-obj-field>
                         <maas-obj-field type="onoffswitch" key="allow_proxy" label="Proxy access"
-                            llabel-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"
+                            label-width="2" input-width="4"
 			                label-info="When enabled, MAAS will allow clients from this subnet to access&#xa;the MAAS proxy.">
                         </maas-obj-field>
                         <maas-obj-field type="onoffswitch" key="allow_dns" label="Allow DNS resolution"
-                            label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"
+                            label-width="2" input-width="4"
 			                label-info="When enabled, MAAS will allow clients from this subnet to use&#xa;MAAS for DNS resolution.">
                         </maas-obj-field>
                         <maas-obj-field type="options" key="fabric" label="Fabric" placeholder="Choose fabric"
                             options="fabric.id as fabric.name for fabric in fabrics | orderBy:'name'"
-                            label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
+                            label-width="2" input-width="4"></maas-obj-field>
                         <maas-obj-field type="options" key="vlan" class="u-margin--bottom" label="VLAN" placeholder="Choose VLAN"
                             options="v.id as getVLANName(v) for v in vlans | filterByFabric:subnet.$maasForm.getValue('fabric')"
-                            label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
-                        <div class="p-form__group">
-                            <div class="p-form__label is-disabled col-2 col-medium-2">
+                            label-width="2" input-width="4"></maas-obj-field>
+                        <div class="p-form__group row">
+                            <div class="p-form__label is-disabled col-2">
                                 <p>Space</p>
                             </div>
-                            <div class="p-form__control col-4 col-medium-3">
+                            <div class="p-form__control col-4">
                                 <p>
                                     <a data-ng-if="space !== null" href="#/space/{$ space.id $}">{$ space.name $}</a>
                                     <span data-ng-if="space === null">

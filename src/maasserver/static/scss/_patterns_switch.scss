@@ -1,7 +1,7 @@
 @mixin maas-switch {
   .maas-p-switch {
     height: $sp-large;
-    margin: 0 auto;
+    margin: $sp-small auto 0;
     position: relative;
     width: $sp-large * 2;
     display: inline-block;

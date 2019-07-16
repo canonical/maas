@@ -134,12 +134,12 @@
                         </div>
                         <div class="row p-form p-form--stacked" data-ng-if="availableMode === 'edit'">
                             <div class="col-6">
-                                <div class="p-form__group p-form-validation u-hide--large"
+                                <div class="p-form__group row p-form-validation u-hide--large"
                                     data-ng-show="availableMode === 'edit' && item.$selected"
                                     data-ng-class="{ 'is-error': isNameInvalid(item) }">
-                                    <label class="p-form__label" for="device-name"
+                                    <label class="p-form__label col-2" for="device-name"
                                         data-ng-show="availableMode === 'edit' && item.$selected">Name</label>
-                                    <div class="p-form__control">
+                                    <div class="p-form__control col-4">
                                         <input type="text" id="device-name" class="p-form-validation__input"
                                             data-ng-model="item.name"
                                             data-ng-show="availableMode === 'edit' && item.$selected"
@@ -147,27 +147,27 @@
                                             data-ng-change="nameHasChanged(item)">
                                     </div>
                                 </div>
-                                <div class="p-form__group">
-                                    <label class="p-form__label">Size</label>
-                                    <div class="p-form__control">
+                                <div class="p-form__group row">
+                                    <label class="p-form__label col-2">Size</label>
+                                    <div class="p-form__control col-4">
                                         <span>{$ item.size_human $}</span>
                                     </div>
                                 </div>
-                                <div class="p-form__group ng-hide" data-ng-show="showFreeSpace(item)">
-                                    <label class="p-form__label">Free space</label>
-                                    <div class="p-form__control">
+                                <div class="p-form__group row ng-hide" data-ng-show="showFreeSpace(item)">
+                                    <label class="p-form__label col-2">Free space</label>
+                                    <div class="p-form__control col-4">
                                         <span>{$ item.available_size_human $}</span>
                                     </div>
                                 </div>
-                                <div class="p-form__group">
-                                    <label class="p-form__label">Type</label>
-                                    <div class="p-form__control">
+                                <div class="p-form__group row">
+                                    <label class="p-form__label col-2">Type</label>
+                                    <div class="p-form__control col-4">
                                         <span>{$ getDeviceType(item) $}</span>
                                     </div>
                                 </div>
-                                <div class="p-form__group" data-ng-if="item.$options.editingTags">
-                                    <label for="tags" class="p-form__label">Tags</label>
-                                    <div class="p-form__control tags--inline">
+                                <div class="p-form__group row" data-ng-if="item.$options.editingTags">
+                                    <label for="tags" class="p-form__label col-2">Tags</label>
+                                    <div class="p-form__control col-4 tags--inline">
                                         <tags-input
                                             data-ng-model="item.$options.tags"
                                             data-ng-if="item.$options.editingTags"
@@ -176,9 +176,9 @@
                                 </div>
                             </div>
                             <div class="col-6" data-ng-show="item.$options.editingFilesystem">
-                                <div class="p-form__group">
-                                    <label for="filesys" class="p-form__label">Filesystem</label>
-                                    <div class="p-form__control">
+                                <div class="p-form__group row">
+                                    <label for="filesys" class="p-form__label col-2">Filesystem</label>
+                                    <div class="p-form__control col-4">
                                         <select name="filesys"
                                             data-ng-model="item.$options.fstype"
                                             data-ng-change="fstypeChanged(item.$options)"
@@ -187,19 +187,19 @@
                                         </select>
                                     </div>
                                 </div>
-                                <div class="p-form__group p-form-validation"
+                                <div class="p-form__group row p-form-validation"
                                     data-ng-class="{ 'is-error': isMountPointInvalid(item.$options.mountPoint) }">
-                                    <label for="mount-point" class="p-form__label">Mount point</label>
-                                    <div class="p-form__control">
+                                    <label for="mount-point" class="p-form__label col-2">Mount point</label>
+                                    <div class="p-form__control col-4">
                                         <input type="text" id="mount-point" class="p-form-validation__input"
                                             placeholder="Absolute path"
                                             data-ng-model="item.$options.mountPoint"
                                             data-ng-disabled="!usesMountPoint(item.$options.fstype)">
                                     </div>
                                 </div>
-                                <div class="p-form__group">
-                                    <label for="mount-options" class="p-form__label">Mount options</label>
-                                    <div class="p-form__control">
+                                <div class="p-form__group row">
+                                    <label for="mount-options" class="p-form__label col-2">Mount options</label>
+                                    <div class="p-form__control col-4">
                                         <input type="text" id="mount-options"
                                             placeholder="Separated by commas, no spaces"
                                             data-ng-model="item.$options.mountOptions"
@@ -212,29 +212,29 @@
                             data-ng-if="availableMode === 'format-mount'"
                             data-ng-class="{ 'is-active': availableMode === 'format-mount' }">
                             <div class="col-6">
-                                <div class="p-form__group">
-                                    <label class="p-form__label">Size</label>
-                                    <div class="p-form__control">
+                                <div class="p-form__group row">
+                                    <label class="p-form__label col-2">Size</label>
+                                    <div class="p-form__control col-4">
                                         <span>{$ item.size_human $} <span class="ng-hide" data-ng-show="showFreeSpace(item)">Free: {$ item.available_size_human $}</span></span>
                                     </div>
                                 </div>
-                                <div class="p-form__group">
-                                    <label class="p-form__label">Type</label>
-                                    <div class="p-form__control">
+                                <div class="p-form__group row">
+                                    <label class="p-form__label col-2">Type</label>
+                                    <div class="p-form__control col-4">
                                         <span>{$ getDeviceType(item) $}</span>
                                     </div>
                                 </div>
-                                <div class="p-form__group u-vertically-center">
-                                    <label for="tags" class="p-form__label">Tags</label>
-                                    <div class="p-form__control">
+                                <div class="p-form__group row u-vertically-center">
+                                    <label for="tags" class="p-form__label col-2">Tags</label>
+                                    <div class="p-form__control col-4">
                                         <input type="text" id="tags" name="tags">
                                     </div>
                                 </div>
                             </div>
                             <div class="col-6">
-                                <div class="p-form__group">
-                                    <label for="filesys" class="p-form__label">Filesystem</label>
-                                    <div class="p-form__control">
+                                <div class="p-form__group row">
+                                    <label for="filesys" class="p-form__label col-2">Filesystem</label>
+                                    <div class="p-form__control col-4">
                                         <select name="filesys"
                                             data-ng-model="item.$options.fstype"
                                             data-ng-change="fstypeChanged(item.$options)"
@@ -243,19 +243,19 @@
                                         </select>
                                     </div>
                                 </div>
-                                <div class="p-form__group p-form-validation"
+                                <div class="p-form__group row p-form-validation"
                                     data-ng-class="{ 'is-error': isMountPointInvalid(item.$options.mountPoint) }">
-                                    <label for="mount-point" class="p-form__label">Mount point</label>
-                                    <div class="p-form__control">
+                                    <label for="mount-point" class="p-form__label col-2">Mount point</label>
+                                    <div class="p-form__control col-4">
                                         <input type="text" id="mount-point" class="p-form-validation__input"
                                             placeholder="Absolute path"
                                             data-ng-model="item.$options.mountPoint"
                                             data-ng-disabled="!usesMountPoint(item.$options.fstype)">
                                     </div>
                                 </div>
-                                <div class="p-form__group">
-                                    <label for="mount-options" class="p-form__label">Mount options</label>
-                                    <div class="p-form__control">
+                                <div class="p-form__group row">
+                                    <label for="mount-options" class="p-form__label col-2">Mount options</label>
+                                    <div class="p-form__control col-4">
                                         <input type="text" id="mount-options"
                                             placeholder="Separated by commas, no spaces"
                                             data-ng-model="item.$options.mountOptions"
@@ -274,26 +274,26 @@
                                 save-on-blur="false">
                                 <div class="row">
                                     <div class="col-6">
-                                        <div class="p-form__group">
-                                            <label for="mount-options" class="p-form__label">Name</label>
-                                            <div class="p-form__control">
+                                        <div class="p-form__group row">
+                                            <label for="mount-options" class="p-form__label col-2">Name</label>
+                                            <div class="p-form__control col-4">
                                                 <span>{$ getAddPartitionName(item) $}</span>
                                             </div>
                                         </div>
-                                        <div class="p-form__group">
-                                            <label for="mount-options" class="p-form__label">Type</label>
-                                            <div class="p-form__control">
+                                        <div class="p-form__group row">
+                                            <label for="mount-options" class="p-form__label col-2">Type</label>
+                                            <div class="p-form__control col-4">
                                                 <span>Partition</span>
                                             </div>
                                         </div>
 
                                         <maas-obj-field type="text" key="size" label="Size"
-                                            label-width="2" input-width="3" value="{$ item.$options.size $}">
+                                            label-width="2" input-width="4" value="{$ item.$options.size $}">
                                         </maas-obj-field>
 
-                                        <div class="p-form__group p-form-validation" data-ng-class="{ 'is-error': isAddPartitionSizeInvalid(item) }">
-                                            <label class="p-form__label" for="size">Units</label>
-                                            <div class="p-form__control">
+                                        <div class="p-form__group row p-form-validation" data-ng-class="{ 'is-error': isAddPartitionSizeInvalid(item) }">
+                                            <label class="p-form__label col-2" for="size">Units</label>
+                                            <div class="p-form__control col-4">
                                                 <select name="size-units" class="p-form-validation__input" data-ng-model="item.$options.sizeUnits">
                                                     <option value="MB">MB</option>
                                                     <option value="GB">GB</option>
@@ -304,9 +304,9 @@
                                         </div>
                                     </div>
                                     <div class="col-6">
-                                        <div class="p-form__group">
-                                            <label class="p-form__label" for="filesys">Filesystem</label>
-                                            <div class="p-form__control">
+                                        <div class="p-form__group row">
+                                            <label class="p-form__label col-2" for="filesys">Filesystem</label>
+                                            <div class="p-form__control col-4">
                                                 <select name="filesys" id="filesys"
                                                 data-ng-model="item.$options.fstype"
                                                 data-ng-change="fstypeChanged(item.$options)"
@@ -315,13 +315,13 @@
                                                 </select>
                                             </div>
                                         </div>
-                                        <div class="p-form__group p-form-validation" data-ng-class="{ 'is-error': isMountPointInvalid(item.$options.mountPoint) }">
+                                        <div class="p-form__group row p-form-validation" data-ng-class="{ 'is-error': isMountPointInvalid(item.$options.mountPoint) }">
                                             <maas-obj-field type="text" key="mount_point" label="Mount point"
                                                 data-ng-disabled="!usesMountPoint(item.$options.fstype)"
-                                                subtle="false" placeholder="Absolute path"></maas-obj-field>
+                                                subtle="false" placeholder="Absolute path" label-width="2" input-width="4"></maas-obj-field>
                                             <maas-obj-field type="text" key="mount_options" label="Mount options"
                                                 data-ng-disabled="item.$options.fstype === null"
-                                                subtle="false" placeholder="Separated by commas, no spaces">
+                                                subtle="false" placeholder="Separated by commas, no spaces" label-width="2" input-width="4">
                                             </maas-obj-field>
                                         </div>
                                     </div>
@@ -348,19 +348,19 @@
                             data-ng-if="availableMode === 'logical-volume'"
                             data-ng-class="{ 'is-active': availableMode === 'logical-volume' }">
                             <div class="col-6">
-                                <div class="p-form__group p-form-validation"
+                                <div class="p-form__group row p-form-validation"
                                     data-ng-class="{ 'is-error': isLogicalVolumeNameInvalid(item) }">
-                                    <label for="name" class="p-form__label">Name</label>
-                                    <div class="p-form__control">
+                                    <label for="name" class="p-form__label col-2">Name</label>
+                                    <div class="p-form__control col-4">
                                         <input type="text" class="p-form-validation__input"
                                             data-ng-change="newLogicalVolumeNameChanged(item)"
                                             data-ng-model="item.$options.name">
                                     </div>
                                 </div>
-                                <div class="p-form__group p-form-validation"
+                                <div class="p-form__group row p-form-validation"
                                     data-ng-class="{ 'is-error': isAddLogicalVolumeSizeInvalid(item) }">
-                                    <label for="size" class="p-form__label">Size</label>
-                                    <div class="p-form__control">
+                                    <label for="size" class="p-form__label col-2">Size</label>
+                                    <div class="p-form__control col-4">
                                         <input type="text" id="size"
                                             class="p-form-validation__input"
                                             data-ng-model="item.$options.size">
@@ -377,17 +377,17 @@
                                     <dt>Type</dt>
                                     <dd>Logical volume</dd>
                                 </dl>
-                                <div class="p-form__group">
-                                    <label for="tags" class="p-form__label">Tags</label>
-                                    <div class="p-form__control tags--inline">
+                                <div class="p-form__group row">
+                                    <label for="tags" class="p-form__label col-2">Tags</label>
+                                    <div class="p-form__control tags--inline col-4">
                                         <tags-input data-ng-model="item.$options.tags" allow-tags-pattern="[\w-]+"></tags-input>
                                     </div>
                                 </div>
                             </div>
                             <div class="col-6">
-                                <div class="p-form__group">
-                                    <label for="filesys" class="p-form__label">Filesystem</label>
-                                    <div class="p-form__control">
+                                <div class="p-form__group row">
+                                    <label for="filesys" class="p-form__label col-2">Filesystem</label>
+                                    <div class="p-form__control col-4">
                                         <select name="filesys"
                                             data-ng-model="item.$options.fstype"
                                             data-ng-change="fstypeChanged(item.$options)"
@@ -396,10 +396,10 @@
                                         </select>
                                     </div>
                                 </div>
-                                <div class="p-form__group p-form-validation"
+                                <div class="p-form__group row p-form-validation"
                                     data-ng-class="{ 'is-error': isMountPointInvalid(item.$options.mountPoint) }">
-                                    <label for="mount-point" class="p-form__label">Mount point</label>
-                                    <div class="p-form__control">
+                                    <label for="mount-point" class="p-form__label col-2">Mount point</label>
+                                    <div class="p-form__control col-4">
                                         <input type="text" id="mount-point"
                                             class="p-form-validation__input"
                                             placeholder="Absolute path"
@@ -407,9 +407,9 @@
                                             data-ng-disabled="!usesMountPoint(item.$options.fstype)">
                                     </div>
                                 </div>
-                                <div class="p-form__group">
-                                    <label for="mount-options" class="p-form__label">Mount options</label>
-                                    <div class="p-form__control">
+                                <div class="p-form__group row">
+                                    <label for="mount-options" class="p-form__label col-2">Mount options</label>
+                                    <div class="p-form__control col-4">
                                         <input type="text" id="mount-options"
                                             placeholder="Separated by commas, no spaces"
                                             data-ng-model="item.$options.mountOptions"
@@ -481,44 +481,44 @@
                         <div class="p-form p-form--stacked">
                             <div class="row">
                                 <div class="col-6">
-                                    <div class="p-form__group u-hide--large p-form-validation"
+                                    <div class="p-form__group row u-hide--large p-form-validation"
                                         data-ng-class="{ 'is-error': isNewDiskNameInvalid(availableNew.name) }">
-                                        <label for="bcache-name" class="p-form__label">Name</label>
-                                        <div class="p-form__control">
+                                        <label for="bcache-name" class="p-form__label col-2">Name</label>
+                                        <div class="p-form__control col-4">
                                             <input type="text" id="bcache-name" data-ng-model="availableNew.name"
                                                 class="p-form-validation__input">
                                         </div>
                                     </div>
-                                    <div class="p-form__group">
-                                        <label for="bcache-name" class="p-form__label col-small-2">Size</label>
-                                        <div class="p-form__control col-small-2">
+                                    <div class="p-form__group row">
+                                        <label for="bcache-name" class="p-form__label col-2">Size</label>
+                                        <div class="p-form__control col-4">
                                             <span class="p-form__control--placeholder">{$ availableNew.device.size_human $}</span>
                                         </div>
                                     </div>
-                                    <div class="p-form__group">
-                                        <label for="bcache-name" class="p-form__label col-small-2">Type</label>
-                                        <div class="p-form__control col-small-2">
+                                    <div class="p-form__group row">
+                                        <label for="bcache-name" class="p-form__label col-2">Type</label>
+                                        <div class="p-form__control col-4">
                                             <span class="p-form__control--placeholder">Bcache</span>
                                         </div>
                                     </div>
-                                    <div class="p-form__group">
-                                        <label class="p-form__label">Tags</label>
-                                        <div class="p-form__control tags--inline">
+                                    <div class="p-form__group row">
+                                        <label class="p-form__label col-2">Tags</label>
+                                        <div class="p-form__control tags--inline col-4">
                                             <tags-input data-ng-model="availableNew.tags" allow-tags-pattern="[\w-]+"></tags-input>
                                         </div>
                                     </div>
-                                    <div class="p-form__group">
-                                        <label for="cache-set" class="p-form__label">Cache set</label>
-                                        <div class="p-form__control">
+                                    <div class="p-form__group row">
+                                        <label for="cache-set" class="p-form__label col-2">Cache set</label>
+                                        <div class="p-form__control col-4">
                                             <select name="cache-set" id="cache-set"
                                                 data-ng-model="availableNew.cacheset"
                                                 data-ng-options="cacheset as cacheset.name for cacheset in cachesets">
                                             </select>
                                         </div>
                                     </div>
-                                    <div class="p-form__group">
-                                        <label for="cache-mode" class="p-form__label">Cache mode</label>
-                                        <div class="p-form__control">
+                                    <div class="p-form__group row">
+                                        <label for="cache-mode" class="p-form__label col-2">Cache mode</label>
+                                        <div class="p-form__control col-4">
                                             <select name="cache-mode" id="cache-mode"
                                                 data-ng-model="availableNew.cacheMode">
                                                 <option value="writeback">writeback</option>
@@ -529,9 +529,9 @@
                                     </div>
                                 </div>
                                 <div class="col-6">
-                                    <div class="p-form__group">
-                                        <label for="type" class="p-form__label">Filesystem</label>
-                                        <div class="p-form__control">
+                                    <div class="p-form__group row">
+                                        <label for="type" class="p-form__label col-2">Filesystem</label>
+                                        <div class="p-form__control col-4">
                                             <select name="filesys"
                                                 data-ng-model="availableNew.fstype"
                                                 data-ng-change="fstypeChanged(availableNew)"
@@ -540,19 +540,19 @@
                                             </select>
                                         </div>
                                     </div>
-                                    <div class="p-form__group p-form-validation"
+                                    <div class="p-form__group row p-form-validation"
                                         data-ng-class="{ 'is-error': isMountPointInvalid(availableNew.mountPoint) }">
-                                        <label for="mount-point" class="p-form__label">Mount point</label>
-                                        <div class="p-form__control">
+                                        <label for="mount-point" class="p-form__label col-2">Mount point</label>
+                                        <div class="p-form__control col-4">
                                             <input type="text" id="mount-point" class="p-form-validation__input"
                                                 placeholder="Absolute path"
                                                 data-ng-model="availableNew.mountPoint"
                                                 data-ng-disabled="!usesMountPoint(availableNew.fstype)">
                                         </div>
                                     </div>
-                                    <div class="p-form__group">
-                                        <label for="mount-options" class="p-form__label">Mount options</label>
-                                        <div class="p-form__control">
+                                    <div class="p-form__group row">
+                                        <label for="mount-options" class="p-form__label col-2">Mount options</label>
+                                        <div class="p-form__control col-4">
                                             <input type="text" id="mount-options"
                                                 placeholder="Separated by commas, no spaces"
                                                 data-ng-model="availableNew.mountOptions"
@@ -618,21 +618,21 @@
                         <div class="p-form p-form--stacked">
                             <div class="row">
                                 <div class="col-6">
-                                    <div class="p-form__group u-hide--medium u-hide--large">
-                                        <label for="new-raid-name" class="p-form__label">Name</label>
-                                        <div class="p-form__control" data-ng-class="{ 'is-error': isNewDiskNameInvalid(availableNew.name) }">
+                                    <div class="p-form__group row u-hide--medium u-hide--large">
+                                        <label for="new-raid-name" class="p-form__label col-2">Name</label>
+                                        <div class="p-form__control col-4" data-ng-class="{ 'is-error': isNewDiskNameInvalid(availableNew.name) }">
                                             <input type="text" id="new-raid-name" data-ng-model="availableNew.name">
                                         </div>
                                     </div>
-                                    <div class="p-form__group">
-                                        <label class="p-form__label col-small-2">Size</label>
-                                        <div class="p-form__control col-small-2">
+                                    <div class="p-form__group row">
+                                        <label class="p-form__label col-2">Size</label>
+                                        <div class="p-form__control col-4">
                                             <span class="p-form__control--placeholder">{$ getNewRAIDSize() $}</span>
                                         </div>
                                     </div>
-                                    <div class="p-form__group">
-                                        <label for="type" class="p-form__label">RAID type</label>
-                                        <div class="p-form__control">
+                                    <div class="p-form__group row">
+                                        <label for="type" class="p-form__label col-2">RAID type</label>
+                                        <div class="p-form__control col-4">
                                             <select name="type" id="type"
                                                 data-ng-model="availableNew.mode"
                                                 data-ng-change="RAIDModeChanged()"
@@ -640,17 +640,17 @@
                                             </select>
                                         </div>
                                     </div>
-                                    <div class="p-form__group">
-                                        <label class="p-form__label">Tags</label>
-                                        <div class="p-form__control tags--inline">
+                                    <div class="p-form__group row">
+                                        <label class="p-form__label col-2">Tags</label>
+                                        <div class="p-form__control col-4 tags--inline">
                                             <tags-input data-ng-model="availableNew.tags" allow-tags-pattern="[\w-]+"></tags-input>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="col-6">
-                                    <div class="p-form__group">
-                                        <label for="type" class="p-form__label">Filesystem</label>
-                                        <div class="p-form__control">
+                                    <div class="p-form__group row">
+                                        <label for="type" class="p-form__label col-2">Filesystem</label>
+                                        <div class="p-form__control col-4">
                                             <select name="filesys"
                                                 data-ng-model="availableNew.fstype"
                                                 data-ng-change="fstypeChanged(availableNew)"
@@ -659,19 +659,19 @@
                                             </select>
                                         </div>
                                     </div>
-                                    <div class="p-form__group p-form-validation"
+                                    <div class="p-form__group row p-form-validation"
                                         data-ng-class="{ 'is-error': isMountPointInvalid(availableNew.mountPoint) }">
-                                        <label for="mount-point" class="p-form__label">Mount point</label>
-                                        <div class="p-form__control">
+                                        <label for="mount-point" class="p-form__label col-2">Mount point</label>
+                                        <div class="p-form__control col-4">
                                             <input type="text" id="mount-point" class="p-form-validation__input"
                                                 placeholder="Absolute path"
                                                 data-ng-model="availableNew.mountPoint"
                                                 data-ng-disabled="!usesMountPoint(availableNew.fstype)">
                                         </div>
                                     </div>
-                                    <div class="p-form__group">
-                                        <label for="mount-options" class="p-form__label">Mount options</label>
-                                        <div class="p-form__control">
+                                    <div class="p-form__group row">
+                                        <label for="mount-options" class="p-form__label col-2">Mount options</label>
+                                        <div class="p-form__control col-4">
                                             <input type="text" id="mount-options"
                                                 placeholder="Separated by commas, no spaces"
                                                 data-ng-model="availableNew.mountOptions"
@@ -752,21 +752,21 @@
                         <div class="p-form p-form--stacked">
                             <div class="row">
                                 <div class="col-6">
-                                    <div class="p-form__group p-form-validation">
-                                        <label for="new-vg-name" class="p-form__label">Name</label>
-                                        <div class="p-form__control" data-ng-class="{ 'is-error': isNewDiskNameInvalid(availableNew.name) }">
+                                    <div class="p-form__group row p-form-validation">
+                                        <label for="new-vg-name" class="p-form__label col-2">Name</label>
+                                        <div class="p-form__control col-4" data-ng-class="{ 'is-error': isNewDiskNameInvalid(availableNew.name) }">
                                             <input type="text" class="p-form-validation__input" id="new-vg-name" data-ng-model="availableNew.name">
                                         </div>
                                     </div>
-                                    <div class="p-form__group">
-                                        <label for="new-vg-name" class="p-form__label col-small-2">Size</label>
-                                        <div class="p-form__control col-small-2">
+                                    <div class="p-form__group row">
+                                        <label for="new-vg-name" class="p-form__label col-2">Size</label>
+                                        <div class="p-form__control col-4">
                                             <span class="p-form__control--placeholder">{$ getNewVolumeGroupSize() $}</span>
                                         </div>
                                     </div>
-                                    <div class="p-form__group">
-                                        <label for="new-vg-name" class="p-form__label col-small-2">Type</label>
-                                        <div class="p-form__control col-small-2">
+                                    <div class="p-form__group row">
+                                        <label for="new-vg-name" class="p-form__label col-2">Type</label>
+                                        <div class="p-form__control col-4">
                                             <span class="p-form__control--placeholder">Volume group</span>
                                         </div>
                                     </div>
@@ -812,10 +812,10 @@
             <div class="row">
                 <div class="row p-form--stacked">
                     <div class="col-6">
-                        <div class="p-form__group p-form-validation"
+                        <div class="p-form__group row p-form-validation"
                             data-ng-class="{ 'is-error': isNewDiskNameInvalid(datastores.new.name) }">
-                            <label for="datastore-name" class="p-form__label u-sv3">Name</label>
-                            <div class="p-form__control">
+                            <label for="datastore-name" class="p-form__label u-sv3 col-2">Name</label>
+                            <div class="p-form__control col-4">
                                 <input type="text"
                                     name="datastore-name"
                                     id="datastore-name"
@@ -834,23 +834,23 @@
                                 </p>
                             </div>
                         </div>
-                        <div class="p-form__group">
-                            <label for="datastore-total-size" class="p-form__label">Size to add</label>
-                            <div class="p-form__control">
+                        <div class="p-form__group row">
+                            <label for="datastore-total-size" class="p-form__label col-2">Size to add</label>
+                            <div class="p-form__control col-4">
                                 <p id="datastore-total-size">{$ getFormattedTotalDiskSize(selectedAvailableDatastores) $}</p>
                             </div>
                         </div>
                     </div>
                     <div class="col-6">
-                        <div class="p-form__group">
-                            <label for="datastore-filesystem" class="p-form__label u-sv3">Filesystem</label>
-                            <div class="p-form__control">
+                        <div class="p-form__group row">
+                            <label for="datastore-filesystem" class="p-form__label u-sv3 col-2">Filesystem</label>
+                            <div class="p-form__control col-4">
                                 <p>{$ datastores.new.filesystem $}</p>
                             </div>
                         </div>
-                        <div class="p-form__group" data-ng-if="datastores.new.filesystem.mount_point">
-                            <label for="datastore-mountpoint" class="p-form__label">Mount point</label>
-                            <div class="p-form__control">
+                        <div class="p-form__group row" data-ng-if="datastores.new.filesystem.mount_point">
+                            <label for="datastore-mountpoint" class="p-form__label col-2">Mount point</label>
+                            <div class="p-form__control col-4">
                                 <p>{$ datastores.new.filesystem.mount_point $}</p>
                             </div>
                         </div>
@@ -875,26 +875,26 @@
         <div class="p-card" data-ng-if="addToExistingDatastore">
             <div class="row p-form--stacked">
                 <div class="col-6">
-                    <div class="p-form__group">
-                        <label for="datastore-name" class="p-form__label u-sv3">Datastore</label>
-                        <div class="p-form__control">
+                    <div class="p-form__group row">
+                        <label for="datastore-name" class="p-form__label u-sv3 col-2">Datastore</label>
+                        <div class="p-form__control col-4">
                             <select name="datastore-name" id="datastore-name"
                                 data-ng-model="datastores.old"
                                 data-ng-options="disk as disk.name for disk in node.disks | datastoresOnly">
                             </select>
                         </div>
                     </div>
-                    <div class="p-form__group">
-                        <label for="datastore-total-size" class="p-form__label">Size to add</label>
-                        <div class="p-form__control">
+                    <div class="p-form__group row">
+                        <label for="datastore-total-size" class="p-form__label col-2">Size to add</label>
+                        <div class="p-form__control col-4">
                             <p id="datastore-total-size">{$ getFormattedTotalDiskSize(selectedAvailableDatastores) $}</p>
                         </div>
                     </div>
                 </div>
                 <div class="col-6">
-                    <div class="p-form__group">
-                        <label for="datastore-mountpoint" class="p-form__label">Mount point</label>
-                        <div class="p-form__control">
+                    <div class="p-form__group row">
+                        <label for="datastore-mountpoint" class="p-form__label col-2">Mount point</label>
+                        <div class="p-form__control col-4">
                             <p>{$ datastores.old.filesystem.mount_point $}</p>
                         </div>
                     </div>

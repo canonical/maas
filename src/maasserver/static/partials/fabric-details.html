@@ -77,34 +77,36 @@
                     <h2 class="p-heading--four">Fabric summary</h2>
                 </div>
                 <div class="col-6">
-                    <button type="p-button" name="p-button" class="p-button--neutral u-float--right" data-ng-click="enterEditSummary()" data-ng-if="editSummary != true && isSuperUser()">Edit</button>
+                    <div class="u-align--right">
+                        <button type="p-button" name="p-button" class="p-button--neutral u-float--right" data-ng-click="enterEditSummary()" data-ng-if="editSummary != true && isSuperUser()">Edit</button>
+                    </div>
                 </div>
             </div>
             <div class="form p-form--stacked row" data-ng-if="editSummary != true">
                 <div class="col-6">
-                    <div class="p-form__group">
-                        <div class="p-form__label is-disabled col-2 col-medium-2">
+                    <div class="p-form__group row">
+                        <div class="p-form__label is-disabled col-2">
                             <div>Name</div>
                         </div>
-                        <div class="p-form__control col-3 col-medium-4">
+                        <div class="p-form__control col-4">
                             <p>{$ fabric.name $}</p>
                         </div>
                     </div>
-                    <div class="p-form__group">
-                        <div class="p-form__label is-disabled col-2 col-medium-2">
+                    <div class="p-form__group row">
+                        <div class="p-form__label is-disabled col-2">
                             <div>Description</div>
                         </div>
-                        <div class="p-form__control col-4 col-medium-4">
+                        <div class="p-form__control col-4">
                             <p>{$ fabric.description $}</p>
                         </div>
                     </div>
                 </div>
                 <div class="col-6">
-                    <div class="p-form__group">
-                        <div class="p-form__label is-disabled col-2 col-medium-2">
+                    <div class="p-form__group row">
+                        <div class="p-form__label is-disabled col-2">
                             <div>Rack controllers</div>
                         </div>
-                        <div class="p-form__control col-3 col-medium-4">
+                        <div class="p-form__control col-4">
                             <span data-ng-repeat="rack in racks | orderBy:'hostname' track by rack.system_id">
                                 <a href="#/controller/{$ rack.system_id $}">{$ rack.hostname $}</a><span ng-show="!$last">,</span>
                             </span>
@@ -117,15 +119,16 @@
                 <maas-obj-form obj="fabric" data-ng-if="editSummary == true" table-form="true" save-on-blur="false" after-save="exitEditSummary" manager="fabricManager" data-ng-disabled="!isSuperUser()" class="p-form--stacked">
                     <div class="row">
                         <div class="col-6">
-                            <maas-obj-field type="text" key="name" label="Name" placeholder="Fabric name" blur-on-enter="true" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
-                            <maas-obj-field type="textarea" key="description" label="Description" placeholder="Fabric description" blur-on-enter="true" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
+                            <maas-obj-field type="text" key="name" label="Name" placeholder="Fabric name" blur-on-enter="true" label-width="2"
+                            input-width="4"></maas-obj-field>
+                            <maas-obj-field type="textarea" key="description" label="Description" placeholder="Fabric description" blur-on-enter="true" label-width="2" input-width="4" input-width-tablet="4"></maas-obj-field>
                         </div>
                         <div class="col-6">
-                            <div class="p-form__group">
-                                <div class="p-form__label is-disabled col-2 col-medium-2">
+                            <div class="p-form__group row">
+                                <div class="p-form__label is-disabled col-2">
                                     <p>Rack controllers</p>
                                 </div>
-                                <div class="p-form__control col-3 col-medium-4">
+                                <div class="p-form__control col-4">
                                     <span data-ng-repeat="rack in racks | orderBy:'hostname' track by rack.system_id">
                                         <a href="#/controller/{$ rack.system_id $}">{$ rack.hostname $}</a><span ng-show="!$last">,</span>
                                     </span>
@@ -134,10 +137,17 @@
                         </div>
                     </div>
                     <div class="row u-no-margin--top">
-                        <div class="row u-align--right">
-                            <button class="p-button--base" type="button"
-                            data-ng-click="exitEditSummary()">Cancel</button>
-                            <button class="p-button--positive" maas-obj-save>Save summary</button>
+                        <div class="row">
+                            <div class="col-6">
+                                <maas-obj-errors></maas-obj-errors>
+                            </div>
+                            <div class="col-6">
+                                <div class="u-align--right">
+                                    <button class="p-button--base" type="button"
+                                    data-ng-click="exitEditSummary()">Cancel</button>
+                                    <button class="p-button--positive" maas-obj-save>Save summary</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </maas-obj-form>

@@ -10,28 +10,28 @@
         <div class="row">
             <div class="col-6">
                 <maas-obj-field type="text" key="hostname" label="Machine name"
-                    label-width="2" input-width="3" subtle="false"
+                    label-width="2" input-width="4" subtle="false"
                     placeholder="Machine name (optional)">
                 </maas-obj-field>
-                <div class="p-form__group">
+                <div class="p-form__group row">
                     <label for="domain" class="p-form__label col-2">Domain</label>
-                    <div class="p-form__control col-3">
+                    <div class="p-form__control col-4">
                         <select name="domain" id="domain" data-ng-model="machine.domain" data-ng-options="domain as domain.name for domain in domains">
                             <option value="" disabled>Choose a domain</option>
                         </select>
                     </div>
                 </div>
-                <div class="p-form__group">
+                <div class="p-form__group row">
                     <label for="architecture" class="p-form__label col-2">Architecture</label>
-                    <div class="p-form__control col-3">
+                    <div class="p-form__control col-4">
                         <select name="architecture" id="architecture" data-ng-model="machine.architecture" data-ng-options="arch for arch in architectures">
                             <option value="">Choose an architecture</option>
                         </select>
                     </div>
                 </div>
-                <div class="p-form__group">
+                <div class="p-form__group row">
                     <label for="min_hwe_kernel" class="p-form__label col-2">Minimum Kernel</label>
-                    <div class="p-form__control col-3">
+                    <div class="p-form__control col-4">
                         <select name="min_hwe_kernel" id="min_hwe_kernel"
                             data-ng-model="machine.min_hwe_kernel"
                             data-ng-options="hwe_kernel[0] as hwe_kernel[1] for hwe_kernel in hwe_kernels">
@@ -39,23 +39,23 @@
                         </select>
                     </div>
                 </div>
-                <div class="p-form__group">
+                <div class="p-form__group row">
                     <label for="zone4" class="p-form__label col-2">Zone</label>
-                    <div class="p-form__control col-3">
+                    <div class="p-form__control col-4">
                         <select name="zone" id="zone4" data-ng-model="machine.zone" data-ng-options="zone as zone.name for zone in zones">
                         </select>
                     </div>
                 </div>
-                <div class="p-form__group">
+                <div class="p-form__group row">
                     <label for="pool-select" class="p-form__label col-2">Resource pool</label>
-                    <div class="p-form__control col-3">
+                    <div class="p-form__control col-4">
                         <select name="pool" id="pool-select" data-ng-model="machine.pool" data-ng-options="pool as pool.name for pool in pools">
                         </select>
                     </div>
                 </div>
-                <div class="p-form__group" data-ng-repeat="mac in machine.macs">
+                <div class="p-form__group row" data-ng-repeat="mac in machine.macs">
                     <label for="mac-address" class="p-form__label col-2"><span data-ng-hide="mac !== machine.macs[0]">MAC Address</span>&nbsp;</label>
-                    <div class="p-form__control p-search-box col-3">
+                    <div class="p-form__control p-search-box col-4">
                         <input type="text" id="mac-address" placeholder="00:00:00:00:00:00"
                             maxlength="17"
                             data-ng-class="{ 'has-error': mac.error }"

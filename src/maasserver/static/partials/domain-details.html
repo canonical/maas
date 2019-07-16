@@ -84,21 +84,21 @@
                     <div class="col-6">
                         <maas-obj-field
                             subtle="false" type="text" key="name" label="Name" placeholder="Name"
-                            label-width="two" input-width="three"></maas-obj-field>
+                            label-width="2" input-width="4"></maas-obj-field>
                         <maas-obj-field
                             subtle="false" type="options" key="rrtype" label="Type"
                             options="type as type for type in supportedRecordTypes"
-                            label-width="two" input-width="three"></maas-obj-field>
+                            label-width="2" input-width="4"></maas-obj-field>
                     </div>
                     <div class="col-6">
                         <maas-obj-field
                             subtle="false" type="text" key="rrdata" label="Data"
                             placeholder="Data"
-                            label-width="two" input-width="three"></maas-obj-field>
+                            label-width="2" input-width="4"></maas-obj-field>
                         <maas-obj-field
                             subtle="false" type="text" key="ttl" label="TTL"
                             placeholder="TTL in seconds (optional)"
-                            label-width="two" input-width="three"></maas-obj-field>
+                            label-width="2" input-width="4"></maas-obj-field>
                         <maas-obj-field type="hidden" key="domain" value="{$ domain.id $}" />
                     </div>
                 </div>
@@ -132,32 +132,34 @@
     </div>
     <div class="form p-form--stacked row" data-ng-if="editSummary != true">
         <div class="col-6">
-            <div class="p-form__group">
-                <div class="p-form__label is-disabled">
+            <div class="p-form__group row">
+                <div class="col-2 is-disabled">
                     <p>Name</p>
                 </div>
-                <div class="p-form__control">
+                <div class="col-4">
                     <p>{$ domain.name $}</p>
                 </div>
             </div>
-            <div class="p-form__group">
-                <div class="p-form__label is-disabled">
+            <div class="p-form__group row">
+                <div class="col-2 is-disabled">
                     <p>TTL</p>
                 </div>
-                <div class="p-form__control">
+                <div class="col-4">
                     <p data-ng-if="domain.ttl">{$ domain.ttl $}</p>
                     <p data-ng-if="!domain.ttl">(default)</p>
                 </div>
             </div>
         </div>
         <div class="col-6">
-            <div class="p-form__group">
-                <div class="p-form__label is-disabled">
+            <div class="p-form__group row">
+                <div class="col-2 is-disabled">
                     <p>Authoritative</p>
                 </div>
-                <div class="p-form__control">
-                    <span data-ng-if="domain.authoritative == false">No</span>
-                    <span data-ng-if="domain.authoritative == true">Yes</span>
+                <div class="col-4">
+                    <p>
+                        <span data-ng-if="domain.authoritative == false">No</span>
+                        <span data-ng-if="domain.authoritative == true">Yes</span>
+                    </p>
                 </div>
             </div>
         </div>
@@ -176,7 +178,7 @@
                 </div>
                 <div class="col-6">
                     <maas-obj-field type="onoffswitch" key="authoritative" label="Authoritative"
-                                    label-width="3" input-width="3"></maas-obj-field>
+                                    label-width="2" input-width="4"></maas-obj-field>
                 </div>
             </div>
             <div class="row">

@@ -38411,7 +38411,7 @@ cachePodParameters.$inject = ["$templateCache"];
 /* @ngInject */
 function cachePodParameters($templateCache) {
   // Inject the power-parameters.html into the template cache.
-  $templateCache.put("directive/templates/pod-parameters.html", ['<maas-obj-field type="options" key="type" label="Type" ', 'placeholder="Select the type" ', 'options="type.name as type.description for type in podTypes" ', 'label-width="2" label-width-tablet="2" ', 'input-width="4" input-width-tablet="3" ', 'ng-if="!hideType">', "</maas-obj-field>", "<div pod-fields></div>"].join(""));
+  $templateCache.put("directive/templates/pod-parameters.html", ['<maas-obj-field type="options" key="type" label="Type" ', 'placeholder="Select the type" ', 'options="type.name as type.description for type in podTypes" ', 'label-width="2"  ', 'input-width="4"  ', 'ng-if="!hideType">', "</maas-obj-field>", "<div pod-fields class='col-6'></div>"].join(""));
 }
 /* @ngInject */
 
@@ -38448,7 +38448,7 @@ function maasPodParameters($compile, GeneralManager, ManagerHelperService) {
         }
 
         if (angular.isObject(type)) {
-          var html = "<maas-obj-field-group>";
+          var html = "";
           angular.forEach(type.fields, function (field) {
             if (field.scope === "bmc") {
               if (field.name === "power_pass") {
@@ -38457,16 +38457,15 @@ function maasPodParameters($compile, GeneralManager, ManagerHelperService) {
                 html += '<maas-obj-field type="text" key="';
               }
 
-              html += field.name + '" label="' + field.label + '" label-width="2" label-width-tablet="2" ' + 'input-width="4" input-width-tablet="3">' + "</maas-obj-field>";
+              html += field.name + '" label="' + field.label + '" label-width="2"  ' + 'input-width="4" >' + "</maas-obj-field>";
             }
           });
 
           if (type.name === "virsh" && attrs.hideSlider !== "true") {
-            html += '<maas-obj-field type="slider" key="' + 'cpu_over_commit_ratio" label="CPU overcommit" ' + 'min="0.1" max="10" label-width="2" step=".1" ' + 'label-width-tablet="2" input-width="4" ' + 'input-width-tablet="3">' + "</maas-obj-field>";
-            html += '<maas-obj-field type="slider" key="' + 'memory_over_commit_ratio" label="' + 'Memory overcommit" min="0.1" max="10" ' + 'label-width="2" label-width-tablet="2" ' + 'step=".1" ' + 'input-width="4" input-width-tablet="3">' + "</maas-obj-field>";
+            html += '<maas-obj-field type="slider" key="' + 'cpu_over_commit_ratio" label="CPU overcommit" ' + 'min="0.1" max="10" label-width="2" step=".1" ' + ' input-width="4" ' + ">" + "</maas-obj-field>";
+            html += '<maas-obj-field type="slider" key="' + 'memory_over_commit_ratio" label="' + 'Memory overcommit" min="0.1" max="10" ' + 'label-width="2"  ' + 'step=".1" ' + 'input-width="4" >' + "</maas-obj-field>";
           }
 
-          html += "</maas-obj-field-group>";
           childScope = scope.$new();
           var ele = angular.element(html);
           fieldsElement.append(ele);
@@ -38728,7 +38727,7 @@ cachePowerParameters.$inject = ["$templateCache"];
 /* @ngInject */
 function cachePowerParameters($templateCache) {
   // Inject the power-parameters.html into the template cache.
-  $templateCache.put("directive/templates/power-parameters.html", "<div class=\"p-form__group u-clearfix\">\n            <label for=\"power-type\"\n                class=\"p-form__label col-2 col-small-2 col-medium-2\"\n                data-ng-class=\"{'is-disabled': !ngModel.editing }\">\n                Power type\n            </label>\n            <div class=\"p-form__control col-3 col-small-2 col-medium-3\">\n                <select name=\"power-type\" id=\"power-type\"\n                    data-ng-disabled=\"ngDisabled || ngModel.in_pod\"\n                    data-ng-class=\"{ invalid: !ngModel.type }\"\n                    data-ng-model=\"ngModel.type\"\n                    data-ng-options=\"type as type.description\n                        for type in maasPowerParameters track by type.name\">\n                    <option value=\"\" disabled selected>\n                        Select your power type\n                    </option>\n                </select>\n            </div>\n        </div>\n        <div class=\"p-form__group u-clearfix\"\n            data-ng-repeat=\"field in ngModel.type.fields\">\n            <label for=\"{$ field.name $}\"\n                class=\"p-form__label col-2 col-small-2 col-medium-2\"\n                data-ng-class=\"{'is-disabled': !ngModel.editing }\"\n                data-ng-if=\"field.name !== 'default_storage_pool' &&\n                    (field.scope !== 'bmc' || !ngModel.in_pod)\">\n                {$ field.label $}\n            </label>\n            <div class=\"p-form__control col-3 col-small-2 col-medium-3\">\n                <maas-power-input field=\"field\"\n                    data-ng-disabled=\"ngDisabled ||\n                        (field.scope === 'bmc' && ngModel.in_pod)\"\n                    data-ng-if=\"field.name !== 'default_storage_pool'\n                        && (field.scope !== 'bmc' || !ngModel.in_pod)\"\n                    data-ng-model=\"ngModel.parameters[field.name]\">\n            </div>\n        </div>");
+  $templateCache.put("directive/templates/power-parameters.html", "<div class=\"p-form__group row\">\n            <label for=\"power-type\"\n                class=\"p-form__label col-2\"\n                data-ng-class=\"{'is-disabled': !ngModel.editing }\">\n                Power type\n            </label>\n            <div class=\"p-form__control col-4\">\n                <select name=\"power-type\" id=\"power-type\"\n                    data-ng-disabled=\"ngDisabled || ngModel.in_pod\"\n                    data-ng-class=\"{ invalid: !ngModel.type }\"\n                    data-ng-model=\"ngModel.type\"\n                    data-ng-options=\"type as type.description\n                        for type in maasPowerParameters track by type.name\">\n                    <option value=\"\" disabled selected>\n                        Select your power type\n                    </option>\n                </select>\n            </div>\n        </div>\n        <div class=\"p-form__group row\"\n            data-ng-repeat=\"field in ngModel.type.fields\">\n            <label for=\"{$ field.name $}\"\n                class=\"p-form__label col-2\"\n                data-ng-class=\"{'is-disabled': !ngModel.editing }\"\n                data-ng-if=\"field.name !== 'default_storage_pool' &&\n                    (field.scope !== 'bmc' || !ngModel.in_pod)\">\n                {$ field.label $}\n            </label>\n            <div class=\"p-form__control col-4\">\n                <maas-power-input field=\"field\"\n                    data-ng-disabled=\"ngDisabled ||\n                        (field.scope === 'bmc' && ngModel.in_pod)\"\n                    data-ng-if=\"field.name !== 'default_storage_pool'\n                        && (field.scope !== 'bmc' || !ngModel.in_pod)\"\n                    data-ng-model=\"ngModel.parameters[field.name]\">\n            </div>\n        </div>");
 }
 /* @ngInject */
 
@@ -61800,7 +61799,7 @@ function maasObjField($compile) {
 
 
       scope.ngDisabled = controller.scope.ngDisabled;
-      element.addClass("p-form__group");
+      element.addClass("p-form__group row");
 
       if (attrs.subtle !== "false") {
         element.addClass("form__group--subtle");

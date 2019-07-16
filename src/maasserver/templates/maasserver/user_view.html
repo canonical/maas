@@ -10,36 +10,36 @@
     <form class="p-form p-form--stacked">
         <div class="row">
             <div class="col-6">
-                <div class="p-form__group">
-                    <p class="p-form__label col-2 col-medium-2">Username</p>
-                    <div class="p-form__control col-4 col-medium-3">
+                <div class="p-form__group row">
+                    <p class="p-form__label col-2">Username</p>
+                    <div class="p-form__control col-4">
                         <p>{{ view_user.username }}</p>
                     </div>
                 </div>
-                <div class="p-form__group">
-                    <p class="p-form__label col-2 col-medium-2">Full name</p>
-                    <div class="p-form__control col-4 col-medium-3">
+                <div class="p-form__group row">
+                    <p class="p-form__label col-2">Full name</p>
+                    <div class="p-form__control col-4">
                         <p>{{ view_user.last_name }}</p>
                     </div>
                 </div>
-                <div class="p-form__group">
-                    <p class="p-form__label col-2 col-medium-2">Email address</p>
-                    <div class="p-form__control col-4 col-medium-3">
+                <div class="p-form__group row">
+                    <p class="p-form__label col-2">Email address</p>
+                    <div class="p-form__control col-4">
                         <p>{{ view_user.email }}</p>
                     </div>
                 </div>
             </div>
             <div class="col-6">
-                <div class="p-form__group">
-                    <p class="p-form__label col-2 col-medium-2">MAAS Keys</p>
-                    <div class="p-form__control col-4 col-medium-3">
+                <div class="p-form__group row">
+                    <p class="p-form__label col-2">MAAS Keys</p>
+                    <div class="p-form__control col-4">
                         <p>{{ user.userprofile.get_authorisation_tokens.count }}
                         key{{ user.userprofile.get_authorisation_tokens.count|pluralize }}</p>
                     </div>
                 </div>
-                <div class="p-form__group">
-                    <p class="p-form__label col-2 col-medium-2">MAAS Administrator</p>
-                    <div class="p-form__control col-4 col-medium-3">
+                <div class="p-form__group row">
+                    <p class="p-form__label col-2">MAAS Administrator</p>
+                    <div class="p-form__control col-4">
                         <p>{{ view_user.is_superuser }}</p>
                     </div>
                 </div>

@@ -131,7 +131,7 @@
                      inline="false" save-on-blur="false" after-save="tabs.pools.cancelAddPool">
         <section class="page-header__section row">
           <hr>
-          <div class="p-form p-form--stacked ng-scope">
+          <div class="p-form p-form--stacked row ng-scope">
             <div class="col-6">
               <maas-obj-field
                 type="text" key="name" label="Name (required)" subtle="false"
@@ -470,15 +470,15 @@
         <add-machine data-ng-show="showMachine()"></add-machine>
         <section class="page-header__section col-12 ng-hide" data-ng-show="showChassis()">
             <h4 class="page-header__dropdown-title">Add chassis</h4>
-            <form action="post" class="p-form p-form--stacked">
+            <form action="post" class="p-form p-form--stacked row">
                 <div class="col-6"
                     data-maas-power-parameters="chassisPowerTypes"
                     data-ng-model="chassis.power">
                 </div>
                 <div class="col-6">
-                    <div class="p-form__group">
+                    <div class="p-form__group row">
                         <label for="domain2" class="p-form__label col-2">Domain</label>
-                        <div class="p-form__control">
+                        <div class="p-form__control col-4">
                             <select name="domain" id="domain2"
                                 data-ng-model="chassis.domain"
                                 data-ng-options="domain as domain.name for domain in domains">
@@ -530,7 +530,7 @@
                     </div>
                     <div class="p-form__group">
                         <label for="domain3" class="p-form__label col-2">Domain</label>
-                        <div class="p-form__control">
+                        <div class="p-form__control col-4">
                             <select name="domain" id="domain3"
                                 data-ng-model="device.domain"
                                 data-ng-options="domain as domain.name for domain in domains">
