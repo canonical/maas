@@ -3,6 +3,7 @@
 @import "tables/patterns_double-row";
 @import "tables/patterns_table-controllers";
 @import "tables/patterns_table-devices";
+@import "tables/patterns_table-dns";
 @import "tables/patterns_table-expanding";
 @import "tables/patterns_table-images";
 @import "tables/patterns_table-machines";
@@ -10,10 +11,13 @@
 @import "tables/patterns_table-pods";
 @import "tables/patterns_table-sortable";
 @import "tables/patterns_table-storage";
+@import "tables/patterns_table-testing";
+@import "tables/patterns_table-zones";
 
 @include maas-b-tables;
 @include maas-double-row;
 @include maas-table-controllers;
+@include maas-table-dns;
 @include maas-table-devices;
 @include maas-table-expanding;
 @include maas-table-images;
@@ -22,6 +26,8 @@
 @include maas-table-pods;
 @include maas-table-sortable;
 @include maas-table-storage;
+@include maas-table-testing;
+@include maas-table-zones;
 
 // Global MAAS table classes
 .p-muted-text {
@@ -39,6 +45,10 @@
   &:hover {
     color: $color-link;
   }
+}
+
+.p-table__row--muted {
+  background-color: $color-light;
 }
 
 .u-hide--br1 {

@@ -309,6 +309,11 @@
     position: relative;
   }
 
+  .p-icon--chevron {
+    @extend %icon;
+    @include vf-icon-chevron($color-mid-dark);
+  }
+
   // XXX Use ems rather than rems for icon sizing
   // Issue: https://github.com/vanilla-framework/vanilla-framework/issues/1599
   [class^="p-icon"] {

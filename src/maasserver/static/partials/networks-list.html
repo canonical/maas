@@ -119,30 +119,32 @@
         </maas-obj-form>
     </div>
 </header>
+
 <div class="p-strip is-shallow u-no-padding--bottom">
     <div class="row">
         <maas-notifications></maas-notifications>
     </div>
 </div>
+
 <section class="p-strip is-shallow">
     <div class="row u-equal-height">
         <div class="col-4">
-            <form class="p-form">
-                <div class="p-form__group row">
-                    <label class="p-form__label col-1 col-medium-2" for="network-filter">Group by</label>
-                    <select name="network-filter" class="p-form__control col-3 col-medium-2" id="networks-groupby" data-ng-model="groupBy" data-ng-change="updateGroupBy()">
-                        <option value="fabric">Fabrics</option>
-                        <option value="space">Spaces</option>
-                    </select>
+            <form class="p-form p-form--inline">
+                <div class="p-form__group">
+                    <label class="p-form__label" for="network-filter">Group by</label>
+                    <div class="p-form__control">
+                        <select name="network-filter" class="p-form__control" id="networks-groupby" data-ng-model="groupBy" data-ng-change="updateGroupBy()">
+                            <option value="fabric">Fabrics</option>
+                            <option value="space">Spaces</option>
+                        </select>
+                    </div>
+                    &emsp;
+                    <div class="p-tooltip--right u-vertically-center">
+                        <i class="p-icon--help u-hide u-show--large">Help:</i>
+                        <span class="p-tooltip__message" role="tooltip">Fabric is a set of consistent interconnected VLANs that are capable of mutual communication.&#xa;Space is a grouping of networks (VLANs and their subnets) that are able to mutually communicate with each other.&#xa;Subnets within a space do not need to belong to the same fabric.</span>
+                    </div>
                 </div>
             </form>
-        </div>
-        <div class="col-1 u-vertically-center u-no-margin--left">
-            &emsp;
-            <div class="p-tooltip--right">
-                <i class="p-icon--help u-hide u-show--large">Help:</i>
-                <span class="p-tooltip__message" role="tooltip">Fabric is a set of consistent interconnected VLANs that are capable of mutual communication.&#xa;Space is a grouping of networks (VLANs and their subnets) that are able to mutually communicate with each other.&#xa;Subnets within a space do not need to belong to the same fabric.</span>
-            </div>
         </div>
     </div>
 </section>

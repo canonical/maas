@@ -20,20 +20,27 @@
                 <h2 class="p-heading--four" data-ng-if="hardware_type.title !== 'null'">{$ hardware_type.title $}</h2>
                 <div data-ng-repeat="(title, results) in hardware_type.results">
                     <h3 class="p-heading--five" data-ng-if="title !== 'null'">{$ title $}</h3>
-                    <table class="p-table-expanding p-table--controllers-commissioning">
+                    <table
+                        class="p-table-expanding"
+                        ng-class="{
+                            'p-table--commissioning': nodeResultsManager._area === 'commissioning',
+                            'p-table--hardware-testing': nodeResultsManager._area === 'testing',
+                        }"
+                    >
                         <thead>
-                            <tr>
-                                <th data-ng-if="nodeResultsManager._area === 'testing'" style="width: 80px">Suppress</th>
-                                <th class="col-3">Name</th>
-                                <th class="col-2">Tags</th>
-                                <th class="col-1">Runtime</th>
-                                <th class="col-3">Date</th>
-                                <th class="col-2">Result</th>
+                            <tr class="p-table__row">
+                                <th data-ng-if="nodeResultsManager._area === 'testing'">Suppress</th>
+                                <th>Name</th>
+                                <th>Tags</th>
+                                <th>Runtime</th>
+                                <th>Date</th>
+                                <th>Result</th>
                                 <th><div class="u-align--right">Actions</div></th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr
+                                class="p-table__row"
                                 data-ng-repeat="result in results"
                                 data-ng-class="{
                                     'is-active': result.results.length > 0 && result.showing_results || result.showing_history,
@@ -42,7 +49,7 @@
                             >
                                 <td
                                     data-ng-if="nodeResultsManager._area === 'testing'"
-                                    style="width: 80px; overflow: visible"
+                                    style="overflow: visible"
                                     aria-label="Suppress"
                                 >
                                     <div class="p-tooltip">

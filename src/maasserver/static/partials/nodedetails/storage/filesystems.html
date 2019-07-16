@@ -1,15 +1,15 @@
 <div class="p-strip is-shallow">
     <h3 class="p-heading--four">Filesystems</h3>
 
-    <table class="p-table-expanding" role="grid">
+    <table class="p-table--filesystems p-table-expanding" role="grid">
         <thead>
-            <tr role="row">
-                <th scope="col" aria-sort="none" class="col-3">Name</th>
-                <th scope="col" aria-sort="none" class="col-1">Size</th>
-                <th scope="col" aria-sort="none" class="col-2">Filesystem</th>
-                <th scope="col" aria-sort="none" class="col-2">Mount point</th>
-                <th scope="col" aria-sort="none" class="col-3">Mount options</th>
-                <th data-ng-if="canEdit()" scope="col" aria-sort="none" class="col-1 u-align--right">Actions</th>
+            <tr role="row" class="p-table__row">
+                <th scope="col" aria-sort="none" class="p-table__cell--name">Name</th>
+                <th scope="col" aria-sort="none" class="p-table__cell--size">Size</th>
+                <th scope="col" aria-sort="none" class="p-table__cell--filesystem">Filesystem</th>
+                <th scope="col" aria-sort="none" class="p-table__cell--mount-point">Mount point</th>
+                <th scope="col" aria-sort="none" class="p-table__cell--mount-options">Mount options</th>
+                <th data-ng-if="canEdit()" scope="col" aria-sort="none" class="p-table__cell--actions u-align--right">Actions</th>
                 <th class="u-hide"><!-- empty cell for validation --></th>
             </tr>
         </thead>
@@ -19,17 +19,17 @@
                     No filesystems defined.
                 </td>
             </tr>
-            <tr data-ng-repeat="filesystem in filesystems" data-ng-class="{ 'is-active': filesystem.$selected }">
-                <td role="gridcell" class="col-3" aria-label="Name" title="{$ filesystem.name $}">{$ filesystem.name $}</td>
-                <td role="gridcell" class="col-1" aria-label="Size" title="{$ filesystem.size_human $}">{$
+            <tr class="p-table__row" data-ng-repeat="filesystem in filesystems" data-ng-class="{ 'is-active': filesystem.$selected }">
+                <td role="gridcell" class="p-table__cell--name" aria-label="Name" title="{$ filesystem.name $}">{$ filesystem.name $}</td>
+                <td role="gridcell" class="p-table__cell--size" aria-label="Size" title="{$ filesystem.size_human $}">{$
                     filesystem.size_human $}</td>
-                <td role="gridcell" class="col-2" aria-label="Filesystem" title="{$ filesystem.fstype $}">{$
+                <td role="gridcell" class="p-table__cell--filesystem" aria-label="Filesystem" title="{$ filesystem.fstype $}">{$
                     filesystem.fstype $}</td>
-                <td role="gridcell" class="col-2" aria-label="Mount point" title="{$ filesystem.mount_point $}">{$
+                <td role="gridcell" class="p-table__cell--mount-point" aria-label="Mount point" title="{$ filesystem.mount_point $}">{$
                     filesystem.mount_point $}</td>
-                <td role="gridcell" class="col-3" aria-label="Mount options" title="{$ filesystem.mount_options $}">{$
+                <td role="gridcell" class="p-table__cell--mount-options" aria-label="Mount options" title="{$ filesystem.mount_options $}">{$
                     filesystem.mount_options $}</td>
-                <td data-ng-if="canEdit()" role="gridcell" class="col-1 p-table--action-cell u-align--right">
+                <td data-ng-if="canEdit()" role="gridcell" class="p-table__cell--actions p-table--action-cell u-align--right">
                     <div class="p-contextual-menu" toggle-ctrl data-ng-if="!isAllStorageDisabled()">
                         <button class="p-button--base p-contextual-menu__toggle" aria-controls="#{$ item.name $}-menu"
                             data-ng-click="toggleMenu()" aria-haspopup="true">

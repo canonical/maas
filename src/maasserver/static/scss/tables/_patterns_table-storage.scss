@@ -142,4 +142,30 @@
       width: 10%;
     }
   }
+
+  .p-table--filesystems .p-table__row {
+    .p-table__cell--name {
+      width: 25%;
+    }
+
+    .p-table__cell--size {
+      width: 15%;
+    }
+
+    .p-table__cell--filesystem {
+      width: 15%;
+    }
+
+    .p-table__cell--mount-point {
+      width: 15%;
+    }
+
+    .p-table__cell--mount-options {
+      width: 15%;
+    }
+
+    .p-table__cell--actions {
+      width: 15%;
+    }
+  }
 }

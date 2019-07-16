@@ -1118,10 +1118,23 @@
                         <table>
                             <thead>
                                 <tr data-ng-if="isDevice" class="p-table--is-device">
-                                    <th>MAC</th>
-                                    <th>Subnet</th>
-                                    <th>IP Address</th>
-                                    <th><div class="u-align--right">Actions</div></th>
+                                    <th class="p-double-row">
+                                        <div>Name,</div>
+                                        <div>MAC</div>
+                                    </th>
+                                    <th>Type</th>
+                                    <th class="p-double-row">
+                                        <div>Fabric,</div>
+                                        <div>VLAN</div>
+                                    </th>
+                                    <th class="p-double-row">
+                                        <div>Subnet,</div>
+                                        <div>Name</div>
+                                    </th>
+                                    <th class="p-double-row">
+                                        <div>IP Address,</div>
+                                        <div>IP Mode</div>
+                                    </th>
                                 </tr>
 
                                 <tr data-ng-if="!isDevice" class="p-table--is-not-device">
@@ -1166,7 +1179,7 @@
                                             </div>
                                         </div>
                                     </td>
-                                    <td aria-label="Boot interface">
+                                    <td aria-label="Boot interface" ng-if="!isDevice">
                                         <span class="u-align--center u-hide u-show--large">
                                             <input type="radio" name="bootInterface" id="{$ interface.name $}" checked
                                                 data-ng-if="!isController && isBootInterface(interface)" class="u-no-margin">

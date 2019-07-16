@@ -1,0 +1,56 @@
+@mixin maas-table-testing {
+  .p-table--commissioning {
+    .p-table__row {
+      th,
+      td {
+        &:nth-child(1) {
+          width: 30%;
+        }
+        &:nth-child(2) {
+          width: 15%;
+        }
+        &:nth-child(3) {
+          width: 10%;
+        }
+        &:nth-child(4) {
+          width: 20%;
+        }
+        &:nth-child(5) {
+          width: 20%;
+        }
+        &:nth-child(6) {
+          width: 5%;
+        }
+      }
+    }
+  }
+
+  .p-table--hardware-testing {
+    .p-table__row {
+      th,
+      td {
+        &:nth-child(1) {
+          width: 10%;
+        }
+        &:nth-child(2) {
+          width: 25%;
+        }
+        &:nth-child(3) {
+          width: 11%;
+        }
+        &:nth-child(4) {
+          width: 10%;
+        }
+        &:nth-child(5) {
+          width: 20%;
+        }
+        &:nth-child(6) {
+          width: 16%;
+        }
+        &:nth-child(7) {
+          width: 8%;
+        }
+      }
+    }
+  }
+}

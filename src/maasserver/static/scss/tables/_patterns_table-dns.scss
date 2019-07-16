@@ -1,0 +1,47 @@
+@mixin maas-table-dns {
+  .p-table--dns {
+    .p-table__row {
+      th,
+      td {
+        &:nth-child(1) {
+          width: 20%;
+        }
+        &:nth-child(2) {
+          width: 20%;
+        }
+        &:nth-child(3) {
+          width: 20%;
+        }
+        &:nth-child(4) {
+          width: 20%;
+        }
+        &:nth-child(5) {
+          width: 20%;
+        }
+      }
+    }
+  }
+
+  .p-table--resource-records {
+    .p-table__row {
+      th,
+      td {
+        &:nth-child(1) {
+          width: 20%;
+        }
+        &:nth-child(2) {
+          width: 20%;
+        }
+        &:nth-child(3) {
+          width: 20%;
+        }
+        &:nth-child(4) {
+          width: 20%;
+        }
+        &:nth-child(5) {
+          width: 20%;
+        }
+      }
+    }
+  }
+}

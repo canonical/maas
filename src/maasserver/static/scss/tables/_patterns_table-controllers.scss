@@ -34,16 +34,19 @@
       th,
       td {
         &:nth-child(1) {
-          width: 30%;
+          width: 20%;
         }
         &:nth-child(2) {
-          width: 25%;
+          width: 20%;
         }
         &:nth-child(3) {
-          width: 25%;
+          width: 20%;
         }
         &:nth-child(4) {
-          width: 15%;
+          width: 20%;
+        }
+        &:nth-child(4) {
+          width: 20%;
         }
       }
     }
@@ -71,32 +74,6 @@
         }
         &:nth-child(7) {
           width: 6%;
-        }
-      }
-    }
-  }
-
-  .p-table--controllers-commissioning {
-    .p-table__row {
-      th,
-      td {
-        &:nth-child(1) {
-          width: 15%;
-        }
-        &:nth-child(2) {
-          width: 15%;
-        }
-        &:nth-child(3) {
-          width: 20%;
-        }
-        &:nth-child(4) {
-          width: 20%;
-        }
-        &:nth-child(5) {
-          width: 25%;
-        }
-        &:nth-child(6) {
-          width: 5%;
         }
       }
     }

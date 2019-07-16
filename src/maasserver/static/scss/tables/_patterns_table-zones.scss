@@ -1,0 +1,28 @@
+@mixin maas-table-zones {
+  .p-table--zones {
+    .p-table__row {
+      th,
+      td {
+        &:nth-child(1) {
+          width: 25%;
+        }
+
+        &:nth-child(2) {
+          width: 30%;
+        }
+
+        &:nth-child(3) {
+          width: 15%;
+        }
+
+        &:nth-child(4) {
+          width: 15%;
+        }
+
+        &:nth-child(5) {
+          width: 15%;
+        }
+      }
+    }
+  }
+}
