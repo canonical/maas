@@ -186,8 +186,8 @@ SUPPORT_SCRIPT = dedent("""\
     fi
     echo ""
     echo "-----BEGIN MODALIASES-----"
-    find /sys -name modalias -print0 2> /dev/null | xargs -0 cat | sort \
-        | uniq -c
+    find /sys/devices/ -name modalias -print0 2> /dev/null | xargs -0 cat \
+        | sort | uniq -c
     echo "-----END MODALIASES-----"
     echo ""
     echo "-----BEGIN SERIAL PORTS-----"
@@ -217,6 +217,11 @@ SUPPORT_SCRIPT = dedent("""\
         lsblk --exclude 1,2,7 -d -P -x MAJ:MIN
         echo ""
         for dev in $(lsblk -n --exclude 1,2,7 --output KNAME); do
+            if [ ! -e "/dev/$dev" ]; then
+                # disk devices are not present in LXD containers
+                echo "$dev device node not found, skipping"
+                continue
+            fi
             echo "$dev:"
             udevadm info -q all -n $dev
             size64="$(blockdev --getsize64 /dev/$dev 2> /dev/null || echo ?)"
@@ -227,8 +232,11 @@ SUPPORT_SCRIPT = dedent("""\
         done
         echo ""
         # Enumerate the mappings that were generated (by device).
-        find /dev/disk -type l | xargs ls -ln | awk '{ print $9, $10, $11 }' \
-            | sort -k2
+        # (/dev/disk is not present in LXD containers, so skip in that case)
+        if [ -d /dev/disk ]; then
+            find /dev/disk -type l | xargs ls -ln \
+                | awk '{ print $9, $10, $11 }' | sort -k2
+        fi
         echo "-----END DETAILED BLOCK DEVICE INFO-----"
     fi
     if [ -x "$(which dmidecode)" ]; then
@@ -407,7 +415,7 @@ def lldpd_capture(reference_file, time_delay):
 
 LIST_MODALIASES_SCRIPT = dedent("""\
     #!/bin/bash
-    find /sys -name modalias -print0 | xargs -0 cat | sort -u
+    find /sys/devices/ -name modalias -print0 | xargs -0 cat | sort -u
     """)
 
 
