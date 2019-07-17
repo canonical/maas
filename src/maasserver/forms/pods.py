@@ -495,6 +495,19 @@ class ComposeMachineForm(forms.Form):
             known_host_interfaces=known_host_interfaces,
         )
 
+    def _pick_interface(self, interfaces):
+            bridge_interfaces = interfaces.filter(
+                type=INTERFACE_TYPE.BRIDGE).order_by('-id')
+            bond_interfaces = interfaces.filter(
+                type=INTERFACE_TYPE.BOND).order_by('-id')
+            bridge_interface = list(bridge_interfaces[:1])
+            if bridge_interface:
+                return bridge_interface[0]
+            bond_interface = list(bond_interfaces[:1])
+            if bond_interface:
+                return bond_interface[0]
+            return interfaces[0]
+
     def _get_requested_machine_interfaces_via_constraints(
             self, interfaces_label_map):
         requested_machine_interfaces = []
@@ -512,11 +525,15 @@ class ComposeMachineForm(forms.Form):
         for label in result.label_map.keys():
             # XXX: We might want to use the "deepest" interface in the
             # heirarchy, to ensure we get a bridge or bond (if configured)
-            # rather than its parent. max() is a good approximation, since
-            # child interfaces will be created after their parents.
+            # rather than its parent. Since child interfaces will be created
+            # after their parents, this is a good approximation.
+            # Search for bridges, followed by bonds, and finally with the
+            # remaining interfaces.
             interface_ids = result.label_map[label][pod_node_id]
-            interface_id = max(interface_ids)
-            interface = Interface.objects.get(id=interface_id)
+            interfaces = Interface.objects.filter(
+                id__in=interface_ids).order_by('-id')
+            interface = self._pick_interface(interfaces)
+
             # Check to see if we have a bootable VLAN,
             # we need at least one.
             if interface.has_bootable_vlan():
