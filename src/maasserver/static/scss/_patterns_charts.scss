@@ -45,6 +45,8 @@
 
     &.is-over {
       background-color: $color-caution;
+      opacity: 1;
+      z-index: 1;
     }
 
     .is-over & {
@@ -55,15 +57,18 @@
   .p-key-list {
     display: flex;
     list-style: none;
-    margin-left: 0;
+    margin-left: $sph-inner;
     padding-left: 0;
     position: relative;
+
+    @media only screen and (min-width: $breakpoint-medium) {
+      justify-content: flex-end;
+    }
   }
 
   // Key inside option selector
   %p-key-list-item--common-properties {
     display: flex;
-    flex: 1;
     padding-right: $sph-inner;
 
     &::before {

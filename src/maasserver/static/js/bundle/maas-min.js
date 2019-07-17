@@ -38983,7 +38983,7 @@ cacheScriptSelect.$inject = ["$templateCache"];
 /* @ngInject */
 function cacheScriptSelect($templateCache) {
   // Inject the script-select.html into the template cache.
-  $templateCache.put("directive/templates/script-select.html", ['<tags-input data-ng-model="ngModel" placeholder="Select scripts" ', 'key-property="id" display-property="name" min-length=1', 'on-tag-adding="onTagAdding($tag)" spellcheck="false"', 'add-from-autocomplete-only="true" on-tag-removed="refocus()"', 'on-tag-adding="onTagAdding($tag)" on-tag-added="refocus()">', '<auto-complete source="getScripts($query)" min-length="0" ', 'load-on-down-arrow="true" load-on-focus="true" ', 'load-on-empty="true" template="script-template" ', 'max-results-to-show="1000">', "</auto-complete>", "</tags-input>", '<script type="text/ng-template" id="script-template">', "<div>", "<p>", "{{data.name}} {{data.tags_string}}", "</p>", '<span class="p-form-help-text">', "{{data.description}}", "</span>", "</div>", "</script>"].join(""));
+  $templateCache.put("directive/templates/script-select.html", ['<tags-input data-ng-model="ngModel" placeholder="Select scripts" ', 'key-property="id" display-property="name" min-length=1', 'on-tag-adding="onTagAdding($tag)" spellcheck="false"', 'add-from-autocomplete-only="true" on-tag-removed="refocus()"', 'on-tag-adding="onTagAdding($tag)" on-tag-added="refocus()">', '<auto-complete source="getScripts($query)" min-length="0" ', 'load-on-down-arrow="true" load-on-focus="true" ', 'load-on-empty="true" template="script-template" ', 'max-results-to-show="1000">', "</auto-complete>", "</tags-input>", '<script type="text/ng-template" id="script-template">', "<div>", "<p>", "{{data.name}} {{data.tags_string}}", "</p>", '<p class="p-form-help-text">', "{{data.description}}", "</p>", "</div>", "</script>"].join(""));
 }
 /* @ngInject */
 
@@ -62225,7 +62225,7 @@ function maasObjField($compile) {
 
 
       if (attrs.subtleText) {
-        var subtleTextElement = $compile(angular.element('<span class="p-form-help-text" ' + 'data-ng-bind="subtleText"></span>'))(scope);
+        var subtleTextElement = $compile(angular.element('<p class="p-form-help-text" ' + 'data-ng-bind="subtleText"></p>'))(scope);
         inputWrapper.append(subtleTextElement);
       }
 

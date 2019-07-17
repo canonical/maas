@@ -1067,8 +1067,7 @@ export function maasObjField($compile) {
       if (attrs.subtleText) {
         var subtleTextElement = $compile(
           angular.element(
-            '<span class="p-form-help-text" ' +
-              'data-ng-bind="subtleText"></span>'
+            '<p class="p-form-help-text" ' + 'data-ng-bind="subtleText"></p>'
           )
         )(scope);
         inputWrapper.append(subtleTextElement);

@@ -215,73 +215,56 @@
   }
 
   .p-table--pod-storage-config {
-    .p-option-selector {
-      &__options {
-        background-color: $color-x-light;
-        border-radius: $border-radius;
-        box-shadow: $box-shadow;
-        position: absolute;
-        top: 2.25rem;
-        width: 100vw;
-        z-index: 10;
+    .p-option-selector__header {
+      display: flex;
+      justify-content: space-between;
 
-        @media (min-width: $breakpoint-small) {
-          width: 70vw;
-        }
-        @media (min-width: $breakpoint-medium) {
-          width: 70vw;
-        }
-        @media (min-width: $breakpoint-large) {
-          width: 750px;
+      &::after {
+        content: none;
+      }
+    }
+
+    .p-option-selector__options {
+      background-color: $color-x-light;
+      border-radius: $border-radius;
+      box-shadow: $box-shadow;
+      position: absolute;
+      top: 2.25rem;
+      width: 200%;
+      z-index: 10;
+    }
+
+    .p-option-selector__option {
+      display: grid;
+
+      &.is-selected {
+        background-position: $sph-inner $sp-large;
+      }
+    }
+
+    .p-option-selector__options-key {
+      padding: 0 $sph-inner;
+    }
+
+    .p-option-selector__option-cell {
+      padding: 0 $sph-inner 0 0;
+
+      &:first-of-type {
+        padding-left: $sp-xxx-large;
+      }
+
+      &:last-of-type {
+        padding-left: $sph-inner;
+
+        @media only screen and (min-width: $breakpoint-medium) {
+          padding-left: 0;
         }
       }
 
-      &__options-key {
-        padding: 0 $sph-inner;
-      }
-
-      &__option-cell {
-        padding: 0 $sph-inner 0 0;
-
-        &:first-child {
-          padding-left: $icon-space;
-
-          width: 70%;
-
-          @media (min-width: $breakpoint-medium) {
-            width: 35%;
-          }
-
-          @media (min-width: $breakpoint-large) {
-            width: 40%;
-          }
-        }
-
-        > * {
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-
-        &:nth-child(2) {
-          width: 30%;
-
-          @media (min-width: $breakpoint-medium) {
-            width: 20%;
-          }
-
-          @media (min-width: $breakpoint-large) {
-            width: 15%;
-          }
-        }
-
-        &:nth-child(3) {
-          width: 100%;
-
-          @media (min-width: $breakpoint-medium) {
-            width: 45%;
-          }
-        }
+      > * {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
     }
   }

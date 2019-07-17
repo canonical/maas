@@ -26,9 +26,9 @@ export function cacheScriptSelect($templateCache) {
       "<p>",
       "{{data.name}} {{data.tags_string}}",
       "</p>",
-      '<span class="p-form-help-text">',
+      '<p class="p-form-help-text">',
       "{{data.description}}",
-      "</span>",
+      "</p>",
       "</div>",
       "</script>"
     ].join("")

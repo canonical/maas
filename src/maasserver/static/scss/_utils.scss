@@ -21,6 +21,11 @@
   flex-wrap: wrap;
 }
 
+.u-flex--space-between {
+  display: flex;
+  justify-content: space-between;
+}
+
 .u-text--light {
   color: $color-mid-dark;
 }
