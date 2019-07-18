@@ -2,7 +2,7 @@
 # Copyright 2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-SQUID="$SNAP/bin/snapcraft-preload $SNAP/usr/sbin/squid"
+SQUID="$SNAP/bin/ld-preload $SNAP/usr/sbin/squid"
 
 # Do not proceed unless maas-proxy.conf exists.
 if [ ! -e "$SNAP_DATA/proxy/maas-proxy.conf" ]; then
@@ -18,7 +18,6 @@ fi
 # Start squid, force kill it when the script is terminated. Squid sometimes
 # (most of the time) just does not want to die.
 trap 'kill -9 $PID; wait $PID' TERM INT
-export LD_PRELOAD="$SNAP/usr/lib/stub_initgroups.so"
 $SQUID -N -d 5 -f "$SNAP_DATA/proxy/maas-proxy.conf" &
 PID=$!
 wait $PID

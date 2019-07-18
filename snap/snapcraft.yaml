@@ -12,7 +12,7 @@ epoch: 1*
 apps:
   supervisor:
     daemon: simple
-    command: bin/run-supervisord
+    command: bin/ld-preload $SNAP/bin/run-supervisord
     plugs:
         - avahi-observe # network discovery
         - block-devices # allows writing, but we need only reading.
@@ -28,7 +28,7 @@ apps:
         - time-control # chrony
 
   maas:
-    command: bin/maas-cli
+    command: bin/ld-preload $SNAP/bin/maas
     plugs:
         - mount-observe  # to read /proc/*/mounts
         - network # for external authentication

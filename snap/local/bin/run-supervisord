@@ -8,8 +8,6 @@ export prometheus_multiproc_dir=/tmp/prometheus
 rm -rf "$prometheus_multiproc_dir"
 mkdir -p "$prometheus_multiproc_dir"
 
-export LD_PRELOAD="$SNAP/usr/lib/stub_initgroups.so"
-
 # Render the supervisord.conf based on the current mode.
 "$SNAP/snap/command-chain/snapcraft-runner" "$SNAP/command-maas.wrapper" config --render
 
