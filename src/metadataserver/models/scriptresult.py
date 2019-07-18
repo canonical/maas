@@ -40,6 +40,7 @@ from metadataserver.enum import (
     RESULT_TYPE,
     SCRIPT_STATUS,
     SCRIPT_STATUS_CHOICES,
+    SCRIPT_STATUS_RUNNING_OR_PENDING,
     SCRIPT_TYPE,
 )
 from metadataserver.fields import (
@@ -237,9 +238,7 @@ class ScriptResult(CleanSave, TimestampedModel):
             # Allow PENDING, APPLYING_NETCONF, INSTALLING, and RUNNING scripts
             # incase the node didn't inform MAAS the Script was being run, it
             # just uploaded results.
-            assert self.status in (
-                SCRIPT_STATUS.PENDING, SCRIPT_STATUS.APPLYING_NETCONF,
-                SCRIPT_STATUS.INSTALLING, SCRIPT_STATUS.RUNNING)
+            assert self.status in SCRIPT_STATUS_RUNNING_OR_PENDING
 
         if timedout:
             self.status = SCRIPT_STATUS.TIMEDOUT
@@ -361,11 +360,8 @@ class ScriptResult(CleanSave, TimestampedModel):
             self.started = datetime.now()
             if 'update_fields' in kwargs:
                 kwargs['update_fields'].append('started')
-        elif self.ended is None and self.status in {
-                SCRIPT_STATUS.PASSED, SCRIPT_STATUS.FAILED,
-                SCRIPT_STATUS.TIMEDOUT, SCRIPT_STATUS.ABORTED,
-                SCRIPT_STATUS.DEGRADED, SCRIPT_STATUS.FAILED_INSTALLING,
-                SCRIPT_STATUS.FAILED_APPLYING_NETCONF, SCRIPT_STATUS.SKIPPED}:
+        elif self.ended is None and self.status not in (
+                SCRIPT_STATUS_RUNNING_OR_PENDING):
             self.ended = datetime.now()
             if 'update_fields' in kwargs:
                 kwargs['update_fields'].append('ended')

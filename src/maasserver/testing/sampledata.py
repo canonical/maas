@@ -38,6 +38,8 @@ from maasserver.utils.orm import (
 from metadataserver.builtin_scripts import load_builtin_scripts
 from metadataserver.enum import (
     SCRIPT_STATUS,
+    SCRIPT_STATUS_FAILED,
+    SCRIPT_STATUS_RUNNING_OR_PENDING,
     SCRIPT_TYPE,
 )
 from metadataserver.fields import Bin
@@ -493,9 +495,8 @@ def populate_main():
                 if script_result.exit_status == 0:
                     script_result.status = SCRIPT_STATUS.PASSED
                 else:
-                    script_result.status = random.choice([
-                        SCRIPT_STATUS.FAILED, SCRIPT_STATUS.TIMEDOUT,
-                        SCRIPT_STATUS.FAILED_INSTALLING])
+                    script_result.status = random.choice(list(
+                        SCRIPT_STATUS_FAILED))
                 script_result.started = factory.make_date()
                 script_result.ended = script_result.started + timedelta(
                     seconds=random.randint(0, 10000))
@@ -511,9 +512,7 @@ def populate_main():
         if status not in [NODE_STATUS.NEW, NODE_STATUS.COMMISSIONING]:
             if status == NODE_STATUS.FAILED_COMMISSIONING:
                 exit_status = random.randint(1, 255)
-                script_status = random.choice([
-                    SCRIPT_STATUS.FAILED, SCRIPT_STATUS.TIMEDOUT,
-                    SCRIPT_STATUS.FAILED_INSTALLING])
+                script_status = random.choice(list(SCRIPT_STATUS_FAILED))
             else:
                 exit_status = 0
                 script_status = SCRIPT_STATUS.PASSED
@@ -534,9 +533,8 @@ def populate_main():
                 script_result.save()
         elif status == NODE_STATUS.COMMISSIONING:
             for script_result in css:
-                script_result.status = random.choice([
-                    SCRIPT_STATUS.PENDING, SCRIPT_STATUS.RUNNING,
-                    SCRIPT_STATUS.INSTALLING])
+                script_result.status = random.choice(list(
+                    SCRIPT_STATUS_RUNNING_OR_PENDING))
                 if script_result.status != SCRIPT_STATUS.PENDING:
                     script_result.started = factory.make_date()
                 script_result.save()
@@ -545,9 +543,7 @@ def populate_main():
         if status not in [NODE_STATUS.NEW, NODE_STATUS.TESTING]:
             if status == NODE_STATUS.FAILED_TESTING:
                 exit_status = random.randint(1, 255)
-                script_status = random.choice([
-                    SCRIPT_STATUS.FAILED, SCRIPT_STATUS.TIMEDOUT,
-                    SCRIPT_STATUS.FAILED_INSTALLING])
+                script_status = random.choice(list(SCRIPT_STATUS_FAILED))
             else:
                 exit_status = 0
                 script_status = SCRIPT_STATUS.PASSED
@@ -568,9 +564,8 @@ def populate_main():
                 script_result.save()
         elif status == NODE_STATUS.TESTING:
             for script_result in tss:
-                script_result.status = random.choice([
-                    SCRIPT_STATUS.PENDING, SCRIPT_STATUS.RUNNING,
-                    SCRIPT_STATUS.INSTALLING])
+                script_result.status = random.choice(list(
+                    SCRIPT_STATUS_RUNNING_OR_PENDING))
                 if script_result.status != SCRIPT_STATUS.PENDING:
                     script_result.started = factory.make_date()
                 script_result.save()

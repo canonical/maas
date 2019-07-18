@@ -182,6 +182,7 @@ from metadataserver.builtin_scripts.tests import test_hooks
 from metadataserver.enum import (
     RESULT_TYPE,
     SCRIPT_STATUS,
+    SCRIPT_STATUS_RUNNING_OR_PENDING,
     SCRIPT_TYPE,
 )
 from metadataserver.models import (
@@ -3627,9 +3628,7 @@ class TestNode(MAASServerTestCase):
                 node.current_testing_script_set,
                 node.current_installation_script_set):
             script_result = factory.make_ScriptResult(script_set)
-            if script_result.status in {
-                    SCRIPT_STATUS.PENDING, SCRIPT_STATUS.INSTALLING,
-                    SCRIPT_STATUS.RUNNING}:
+            if script_result.status in SCRIPT_STATUS_RUNNING_OR_PENDING:
                 updated_script_results.append(script_result)
             else:
                 untouched_script_results.append(script_result)

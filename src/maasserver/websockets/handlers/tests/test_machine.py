@@ -121,6 +121,7 @@ from metadataserver.enum import (
     HARDWARE_TYPE_CHOICES,
     RESULT_TYPE,
     SCRIPT_STATUS,
+    SCRIPT_STATUS_FAILED,
     SCRIPT_TYPE,
 )
 from metadataserver.models.scriptset import get_status_from_qs
@@ -4475,17 +4476,13 @@ class TestMachineHandlerUpdateFilesystem(MAASServerTestCase):
             if idx % 2:
                 non_suppressible_results.append(
                     factory.make_ScriptResult(
-                        status=random.choice([
-                            SCRIPT_STATUS.TIMEDOUT, SCRIPT_STATUS.FAILED,
-                            SCRIPT_STATUS.FAILED_INSTALLING]),
+                        status=random.choice(list(SCRIPT_STATUS_FAILED)),
                         script_set=script_sets[idx],
                         suppressed=True))
             else:
                 suppressible_results.append(
                     factory.make_ScriptResult(
-                        status=random.choice([
-                            SCRIPT_STATUS.TIMEDOUT, SCRIPT_STATUS.FAILED,
-                            SCRIPT_STATUS.FAILED_INSTALLING]),
+                        status=random.choice(list(SCRIPT_STATUS_FAILED)),
                         script_set=script_sets[idx],
                         suppressed=False))
 
@@ -4509,9 +4506,7 @@ class TestMachineHandlerUpdateFilesystem(MAASServerTestCase):
             node = factory.make_Node(owner=owner)
             nodes.append(node)
             factory.make_ScriptResult(
-                status=random.choice([
-                    SCRIPT_STATUS.TIMEDOUT, SCRIPT_STATUS.FAILED,
-                    SCRIPT_STATUS.FAILED_INSTALLING]),
+                status=random.choice(list(SCRIPT_STATUS_FAILED)),
                 script_set=factory.make_ScriptSet(node=node))
 
         queries_one, _ = count_queries(
@@ -4550,14 +4545,10 @@ class TestMachineHandlerUpdateFilesystem(MAASServerTestCase):
             script_set = factory.make_ScriptSet(
                 result_type=script.script_type, node=node)
             script_result = factory.make_ScriptResult(
-                script=script, script_set=script_set, status=random.choice([
-                    SCRIPT_STATUS.TIMEDOUT, SCRIPT_STATUS.FAILED,
-                    SCRIPT_STATUS.FAILED_INSTALLING,
-                    SCRIPT_STATUS.PASSED]))
+                script=script, script_set=script_set, status=random.choice(
+                    list(SCRIPT_STATUS_FAILED.union({SCRIPT_STATUS.PASSED}))))
             if script.script_type == SCRIPT_TYPE.TESTING and (
-                    script_result.status in [
-                    SCRIPT_STATUS.TIMEDOUT, SCRIPT_STATUS.FAILED,
-                    SCRIPT_STATUS.FAILED_INSTALLING]):
+                    script_result.status in SCRIPT_STATUS_FAILED):
                 script_results.append(script_result)
 
         actual = handler.get_latest_failed_testing_script_results(
@@ -4582,9 +4573,7 @@ class TestMachineHandlerUpdateFilesystem(MAASServerTestCase):
             node = factory.make_Node(owner=owner)
             nodes.append(node)
             factory.make_ScriptResult(
-                status=random.choice([
-                    SCRIPT_STATUS.TIMEDOUT, SCRIPT_STATUS.FAILED,
-                    SCRIPT_STATUS.FAILED_INSTALLING]),
+                status=random.choice(list(SCRIPT_STATUS_FAILED)),
                 script_set=factory.make_ScriptSet(
                     node=node,
                     result_type=RESULT_TYPE.TESTING))

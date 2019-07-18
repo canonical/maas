@@ -14,6 +14,8 @@ from metadataserver.enum import (
     RESULT_TYPE,
     SCRIPT_STATUS,
     SCRIPT_STATUS_CHOICES,
+    SCRIPT_STATUS_FAILED,
+    SCRIPT_STATUS_RUNNING,
 )
 from metadataserver.models.scriptresult import ScriptResult
 from provisioningserver.events import EVENT_TYPES
@@ -28,8 +30,8 @@ def emit_script_result_status_transition_event(instance, old_values, **kwargs):
     [old_status] = old_values
 
     if (script_result.script_set.result_type == RESULT_TYPE.TESTING and
-            old_status == SCRIPT_STATUS.PENDING and script_result.status in (
-                SCRIPT_STATUS.INSTALLING, SCRIPT_STATUS.RUNNING)):
+            old_status == SCRIPT_STATUS.PENDING and (
+                script_result.status in SCRIPT_STATUS_RUNNING)):
             storage_name = script_result.parameters.get(
                 'storage', {}).get('value', {}).get('name')
             Event.objects.create_node_event(
@@ -38,9 +40,8 @@ def emit_script_result_status_transition_event(instance, old_values, **kwargs):
                     script_result.name, storage_name) if storage_name else
                 script_result.name)
 
-    elif script_result.status in (
-            SCRIPT_STATUS.FAILED, SCRIPT_STATUS.TIMEDOUT,
-            SCRIPT_STATUS.ABORTED):
+    elif script_result.status in SCRIPT_STATUS_FAILED.union({
+            SCRIPT_STATUS.ABORTED}):
         Event.objects.create_node_event(
             script_result.script_set.node,
             EVENT_TYPES.SCRIPT_DID_NOT_COMPLETE,

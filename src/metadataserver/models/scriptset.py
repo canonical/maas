@@ -51,6 +51,9 @@ from metadataserver.enum import (
     RESULT_TYPE_CHOICES,
     SCRIPT_STATUS,
     SCRIPT_STATUS_CHOICES,
+    SCRIPT_STATUS_FAILED,
+    SCRIPT_STATUS_RUNNING,
+    SCRIPT_STATUS_RUNNING_OR_PENDING,
     SCRIPT_TYPE,
 )
 from metadataserver.models.script import Script
@@ -80,24 +83,9 @@ def get_status_from_qs(qs):
         for script_result in qs:
             if (script_result.status == status and
                     not script_result.suppressed):
-                if status == SCRIPT_STATUS.INSTALLING:
-                    # When a script is installing the set is running.
+                if status in SCRIPT_STATUS_RUNNING:
                     return SCRIPT_STATUS.RUNNING
-                elif status == SCRIPT_STATUS.APPLYING_NETCONF:
-                    # When a network configuration is being applied the set is
-                    # running.
-                    return SCRIPT_STATUS.RUNNING
-                elif status == SCRIPT_STATUS.TIMEDOUT:
-                    # A timeout causes the node to go into a failed status
-                    # so show the set as failed.
-                    return SCRIPT_STATUS.FAILED
-                elif status == SCRIPT_STATUS.FAILED_INSTALLING:
-                    # Installation failure causes the node to go into a
-                    # failed status so show the set as failed.
-                    return SCRIPT_STATUS.FAILED
-                elif status == SCRIPT_STATUS.FAILED_APPLYING_NETCONF:
-                    # Failure to apply network configuration causes the node to
-                    # go into a failed status so show the set as failed.
+                elif status in SCRIPT_STATUS_FAILED:
                     return SCRIPT_STATUS.FAILED
                 else:
                     return status
@@ -317,9 +305,9 @@ class ScriptSetManager(Manager):
         # process to be restarted.
         ScriptResult.objects.exclude(script_set=new_script_set).filter(
             script_set__result_type=new_script_set.result_type,
-            script_set__node=node, status__in=[
-                SCRIPT_STATUS.PENDING, SCRIPT_STATUS.RUNNING,
-                SCRIPT_STATUS.INSTALLING]).update(status=SCRIPT_STATUS.ABORTED)
+            script_set__node=node,
+            status__in=SCRIPT_STATUS_RUNNING_OR_PENDING).update(
+                status=SCRIPT_STATUS.ABORTED)
 
 
 class ScriptSet(CleanSave, Model):

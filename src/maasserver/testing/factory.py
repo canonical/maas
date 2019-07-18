@@ -142,6 +142,7 @@ from metadataserver.enum import (
     SCRIPT_PARALLEL_CHOICES,
     SCRIPT_STATUS,
     SCRIPT_STATUS_CHOICES,
+    SCRIPT_STATUS_RUNNING,
     SCRIPT_TYPE,
     SCRIPT_TYPE_CHOICES,
 )
@@ -844,8 +845,7 @@ class Factory(maastesting.factory.Factory):
             if started is None:
                 started = datetime.now() - timedelta(
                     seconds=random.randint(1, 500))
-            if ended is None and status not in (
-                    SCRIPT_STATUS.RUNNING, SCRIPT_STATUS.INSTALLING):
+            if ended is None and status not in SCRIPT_STATUS_RUNNING:
                 ended = datetime.now()
         return ScriptResult.objects.create(
             script_set=script_set, script=script,

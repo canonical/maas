@@ -87,6 +87,7 @@ from metadataserver.enum import (
     HARDWARE_TYPE,
     SCRIPT_PARALLEL,
     SCRIPT_STATUS,
+    SCRIPT_STATUS_RUNNING_OR_PENDING,
     SCRIPT_TYPE,
     SIGNAL_STATUS,
     SIGNAL_STATUS_CHOICES,
@@ -551,9 +552,8 @@ class VersionIndexHandler(MetadataViewHandler):
         # ScriptSet. If it doesn't create one with only the builtin
         # commissioning Scripts.
         script_set = node.current_commissioning_script_set
-        if script_set is None or script_set.status not in [
-                SCRIPT_STATUS.PENDING, SCRIPT_STATUS.APPLYING_NETCONF,
-                SCRIPT_STATUS.INSTALLING, SCRIPT_STATUS.RUNNING]:
+        if script_set is None or script_set.status not in (
+                SCRIPT_STATUS_RUNNING_OR_PENDING):
             script_set = ScriptSet.objects.create_commissioning_script_set(
                 node, ['none'])
             node.current_commissioning_script_set = script_set
@@ -1030,9 +1030,7 @@ class MAASScriptsHandler(OperationsHandler):
         meta_data = []
         for script_result in script_set:
             # Don't rerun Scripts which have already run.
-            if script_result.status not in (
-                    SCRIPT_STATUS.PENDING, SCRIPT_STATUS.RUNNING,
-                    SCRIPT_STATUS.APPLYING_NETCONF, SCRIPT_STATUS.INSTALLING):
+            if script_result.status not in SCRIPT_STATUS_RUNNING_OR_PENDING:
                 continue
 
             path = os.path.join(prefix, script_result.name)

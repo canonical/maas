@@ -29,6 +29,7 @@ from metadataserver.enum import (
     RESULT_TYPE,
     SCRIPT_STATUS,
     SCRIPT_STATUS_CHOICES,
+    SCRIPT_STATUS_RUNNING_OR_PENDING,
     SCRIPT_TYPE,
 )
 from metadataserver.models import (
@@ -64,13 +65,7 @@ class TestScriptResult(MAASServerTestCase):
         # status tracking is implemented.
         script_result = factory.make_ScriptResult(
             status=factory.pick_choice(
-                SCRIPT_STATUS_CHOICES,
-                [
-                    SCRIPT_STATUS.PENDING,
-                    SCRIPT_STATUS.APPLYING_NETCONF,
-                    SCRIPT_STATUS.INSTALLING,
-                    SCRIPT_STATUS.RUNNING,
-                ]))
+                SCRIPT_STATUS_CHOICES, SCRIPT_STATUS_RUNNING_OR_PENDING))
         self.assertRaises(
             AssertionError, script_result.store_result, random.randint(0, 255))
 

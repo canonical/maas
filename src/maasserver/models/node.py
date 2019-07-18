@@ -181,6 +181,7 @@ from maasserver.worker_user import get_worker_user
 from metadataserver.enum import (
     RESULT_TYPE,
     SCRIPT_STATUS,
+    SCRIPT_STATUS_RUNNING_OR_PENDING,
 )
 from metadataserver.user_data import generate_user_data_for_status
 from netaddr import (
@@ -1974,9 +1975,7 @@ class Node(CleanSave, TimestampedModel):
             return
 
         qs = script_set.scriptresult_set.filter(
-            status__in={
-                SCRIPT_STATUS.PENDING, SCRIPT_STATUS.INSTALLING,
-                SCRIPT_STATUS.RUNNING})
+            status__in=SCRIPT_STATUS_RUNNING_OR_PENDING)
         qs.update(status=SCRIPT_STATUS.ABORTED, updated=now())
 
     @transactional
@@ -3233,9 +3232,7 @@ class Node(CleanSave, TimestampedModel):
                 self.current_testing_script_set,
                 self.current_installation_script_set,
             ],
-            status__in=[
-                SCRIPT_STATUS.PENDING, SCRIPT_STATUS.INSTALLING,
-                SCRIPT_STATUS.RUNNING])
+            status__in=SCRIPT_STATUS_RUNNING_OR_PENDING)
         qs.update(status=script_result_status, updated=now())
 
         new_status = get_failed_status(self.status)
@@ -4517,9 +4514,8 @@ class Node(CleanSave, TimestampedModel):
         self.status = old_status
         self.save()
 
-        self.get_latest_script_results.filter(status__in={
-            SCRIPT_STATUS.PENDING, SCRIPT_STATUS.INSTALLING,
-            SCRIPT_STATUS.RUNNING}).update(
+        self.get_latest_script_results.filter(
+            status__in=SCRIPT_STATUS_RUNNING_OR_PENDING).update(
                 status=SCRIPT_STATUS.ABORTED, updated=now())
 
     @transactional

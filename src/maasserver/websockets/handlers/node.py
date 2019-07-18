@@ -57,6 +57,8 @@ from metadataserver.enum import (
     RESULT_TYPE,
     SCRIPT_STATUS,
     SCRIPT_STATUS_CHOICES,
+    SCRIPT_STATUS_FAILED,
+    SCRIPT_STATUS_RUNNING_OR_PENDING,
 )
 from metadataserver.models.scriptresult import ScriptResult
 from metadataserver.models.scriptset import get_status_from_qs
@@ -160,13 +162,9 @@ class NodeHandler(TimestampedModelHandler):
         tooltip = ''
         for status, scripts in script_statuses.items():
             len_scripts = len(scripts)
-            if status in {
-                    SCRIPT_STATUS.PENDING, SCRIPT_STATUS.RUNNING,
-                    SCRIPT_STATUS.INSTALLING}:
+            if status in SCRIPT_STATUS_RUNNING_OR_PENDING:
                 verb = 'is' if len_scripts == 1 else 'are'
-            elif status in {
-                    SCRIPT_STATUS.PASSED, SCRIPT_STATUS.FAILED,
-                    SCRIPT_STATUS.TIMEDOUT, SCRIPT_STATUS.FAILED_INSTALLING}:
+            elif status in SCRIPT_STATUS_FAILED.union({SCRIPT_STATUS.PASSED}):
                 verb = 'has' if len_scripts == 1 else 'have'
             else:
                 # Covers SCRIPT_STATUS.ABORTED, an else is used incase new
@@ -948,9 +946,7 @@ class NodeHandler(TimestampedModelHandler):
         system_ids = params.get('system_ids')
 
         script_results = ScriptResult.objects.filter(
-            status__in=[
-                SCRIPT_STATUS.FAILED, SCRIPT_STATUS.TIMEDOUT,
-                SCRIPT_STATUS.FAILED_INSTALLING],
+            status__in=SCRIPT_STATUS_FAILED,
             script_set__node__system_id__in=system_ids,
             suppressed=False).defer(
                 'output', 'stdout', 'stderr').prefetch_related(
@@ -994,9 +990,9 @@ class NodeHandler(TimestampedModelHandler):
         for system_id in system_ids:
             # Need to evaluate QuerySet first to get latest script results,
             # then filter by results that have failed
-            node_script_results = [s for s in script_results if s.status in [
-                SCRIPT_STATUS.FAILED, SCRIPT_STATUS.TIMEDOUT,
-                SCRIPT_STATUS.FAILED_INSTALLING] and (
+            node_script_results = [
+                s for s in script_results
+                if s.status in SCRIPT_STATUS_FAILED and (
                     s.script_set.node.system_id == system_id)]
 
             for script_result in node_script_results:

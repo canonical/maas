@@ -17,6 +17,8 @@ from metadataserver.enum import (
     RESULT_TYPE,
     SCRIPT_STATUS,
     SCRIPT_STATUS_CHOICES,
+    SCRIPT_STATUS_FAILED,
+    SCRIPT_STATUS_RUNNING,
 )
 from provisioningserver.events import (
     EVENT_DETAILS,
@@ -31,8 +33,7 @@ class TestStatusTransitionEvent(MAASServerTestCase):
         script_result = factory.make_ScriptResult(
             status=SCRIPT_STATUS.PENDING, script_set=factory.make_ScriptSet(
                 result_type=RESULT_TYPE.TESTING), script=factory.make_Script())
-        script_result.status = random.choice([
-            SCRIPT_STATUS.INSTALLING, SCRIPT_STATUS.RUNNING])
+        script_result.status = random.choice(list(SCRIPT_STATUS_RUNNING))
         script_result.parameters = json.dumps({})
         script_result.save()
 
@@ -55,8 +56,7 @@ class TestStatusTransitionEvent(MAASServerTestCase):
         script_result = factory.make_ScriptResult(
             status=SCRIPT_STATUS.PENDING, script_set=factory.make_ScriptSet(
                 result_type=RESULT_TYPE.TESTING), script=factory.make_Script())
-        script_result.status = random.choice([
-            SCRIPT_STATUS.INSTALLING, SCRIPT_STATUS.RUNNING])
+        script_result.status = random.choice(list(SCRIPT_STATUS_RUNNING))
         script_result.parameters = json.dumps({
             'storage': {
                 'value': {
@@ -86,9 +86,8 @@ class TestStatusTransitionEvent(MAASServerTestCase):
         script_result = factory.make_ScriptResult(
             status=SCRIPT_STATUS.RUNNING, script_set=factory.make_ScriptSet(
                 result_type=RESULT_TYPE.TESTING), script=factory.make_Script())
-        script_result.status = random.choice([
-            SCRIPT_STATUS.FAILED, SCRIPT_STATUS.TIMEDOUT,
-            SCRIPT_STATUS.ABORTED])
+        script_result.status = random.choice(list(
+            SCRIPT_STATUS_FAILED.union({SCRIPT_STATUS.ABORTED})))
         script_result.save()
 
         latest_event = Event.objects.last()

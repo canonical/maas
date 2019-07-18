@@ -28,6 +28,7 @@ from maastesting.matchers import MockCalledOnceWith
 from metadataserver.enum import (
     RESULT_TYPE,
     SCRIPT_STATUS,
+    SCRIPT_STATUS_RUNNING_OR_PENDING,
     SCRIPT_TYPE,
 )
 from metadataserver.models import (
@@ -460,9 +461,7 @@ class TestScriptSetManager(MAASServerTestCase):
         for _ in range(3):
             script_set = factory.make_ScriptSet(
                 node=node, result_type=RESULT_TYPE.COMMISSIONING)
-            for status in [
-                    SCRIPT_STATUS.PENDING, SCRIPT_STATUS.RUNNING,
-                    SCRIPT_STATUS.INSTALLING]:
+            for status in SCRIPT_STATUS_RUNNING_OR_PENDING:
                 factory.make_ScriptResult(script_set=script_set, status=status)
 
         script_set = ScriptSet.objects.create_commissioning_script_set(
@@ -695,9 +694,7 @@ class TestScriptSetManager(MAASServerTestCase):
         for _ in range(3):
             script_set = factory.make_ScriptSet(
                 node=node, result_type=RESULT_TYPE.TESTING)
-            for status in [
-                    SCRIPT_STATUS.PENDING, SCRIPT_STATUS.RUNNING,
-                    SCRIPT_STATUS.INSTALLING]:
+            for status in SCRIPT_STATUS_RUNNING_OR_PENDING:
                 factory.make_ScriptResult(script_set=script_set, status=status)
 
         script_set = ScriptSet.objects.create_testing_script_set(
