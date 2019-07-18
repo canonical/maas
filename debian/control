@@ -217,7 +217,6 @@ Depends: avahi-utils,
          python3-zope.interface,
          syslinux-common,
          tcpdump,
-         uuid-runtime,
          wget,
          ${misc:Depends},
          ${python3:Depends}
