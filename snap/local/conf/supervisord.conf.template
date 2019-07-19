@@ -7,7 +7,6 @@ password=maas
 supervisor.rpcinterface_factory=supervisor.rpcinterface:make_main_rpcinterface
 
 [supervisord]
-user=root
 directory=%(here)s
 logfile=%(here)s/supervisord.log
 pidfile=%(here)s/supervisord.pid
@@ -21,7 +20,7 @@ password=maas
 {{if postgresql}}
 [program:postgresql]
 process_name=postgresql
-command=%(ENV_SNAP)s/bin/postgres -D %(ENV_SNAP_COMMON)s/postgres/data -k %(ENV_SNAP_COMMON)s/postgres/sockets -h ""
+command=%(ENV_SNAP)s/bin/ld-preload %(ENV_SNAP)s/bin/postgres -D %(ENV_SNAP_COMMON)s/postgres/data -k %(ENV_SNAP_COMMON)s/postgres/sockets -h ""
 user=nobody
 stopasgroup=true
 killasgroup=true

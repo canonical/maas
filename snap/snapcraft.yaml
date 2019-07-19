@@ -12,7 +12,9 @@ epoch: 1*
 apps:
   supervisor:
     daemon: simple
-    command: bin/ld-preload $SNAP/bin/run-supervisord
+    command: bin/run-supervisord
+    environment:
+      LD_PRELOAD: $SNAP/usr/lib/stub_initgroups.so
     plugs:
         - avahi-observe # network discovery
         - block-devices # allows writing, but we need only reading.
