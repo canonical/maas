@@ -728,12 +728,21 @@ build/dev-snap: ## Check out a clean version of the working tree.
 build/dev-snap/prime: build/dev-snap
 	cd build/dev-snap && $(snapcraft) prime --destructive-mode
 
+sync-dev-snap: RSYNC=rsync -v -r -u -l -t -W -L
 sync-dev-snap: build/dev-snap/prime
-	rsync -v --exclude 'maastesting' --exclude 'tests' --exclude 'testing' \
-		--exclude '*.pyc' --exclude '__pycache__' -r -u -l -t -W -L \
+	$(RSYNC) --exclude 'maastesting' --exclude 'tests' --exclude 'testing' \
+		--exclude '*.pyc' --exclude '__pycache__' \
 		src/ build/dev-snap/prime/lib/python3.6/site-packages/
-	rsync -v -r -u -l -t -W -L \
+	$(RSYNC) \
 		src/maasserver/static/ build/dev-snap/prime/usr/share/maas/web/static/
+	$(RSYNC) \
+		snap/local/bin/ build/dev-snap/prime/bin/
+	$(RSYNC) \
+		snap/local/bind/ build/dev-snap/prime/usr/share/maas/bind
+	$(RSYNC) \
+		snap/local/conf/ build/dev-snap/prime/usr/share/maas/
+	$(RSYNC) \
+		snap/local/nginx/ build/dev-snap/prime/usr/share/maas/nginx/
 
 #
 # Phony stuff.
