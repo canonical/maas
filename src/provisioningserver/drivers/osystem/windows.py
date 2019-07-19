@@ -18,6 +18,8 @@ from provisioningserver.drivers.osystem import (
 
 
 WINDOWS_CHOICES = {
+    'win2008r2': 'Windows "Server 2008 R2"',
+    'win2008hvr2': 'Windows "Hyper-V Server 2008 R2"',
     'win2012': 'Windows "Server 2012"',
     'win2012r2': 'Windows "Server 2012 R2"',
     'win2012hv': 'Windows "Hyper-V Server 2012"',
@@ -25,11 +27,33 @@ WINDOWS_CHOICES = {
     'win2016': 'Windows "Server 2016"',
     'win2016hv': 'Windows "Hyper-V Server 2016"',
     'win2016nano': 'Windows "Nano Server 2016"',
+    'win2016-core': 'Windows "Server 2016 Core"',
+    'win2016dc': 'Windows "Server 2016 Datacenter"',
+    'win2016dc-core': 'Windows "Server 2016 Datacenter Core"',
+    'win2019': 'Windows "Server 2019"',
+    'win2019-core': 'Windows "Server 2019 Core"',
+    'win2019dc': 'Windows "Server 2019 Datacenter"',
+    'win2019dc-core': 'Windows "Server 2019 Datecenter Core"',
+    'win10ent': 'Windows "10 Enterprise"',
 }
 
-WINDOWS_DEFAULT = 'win2012hvr2'
+WINDOWS_DEFAULT = 'win2019'
 
-REQUIRE_LICENSE_KEY = ['win2012', 'win2012r2', 'win2016']
+REQUIRE_LICENSE_KEY = [
+    'win2008r2',
+    'win2012',
+    'win2012r2',
+    'win2016',
+    'win2016nano',
+    'win2016-core',
+    'win2016dc',
+    'win2016dc-core',
+    'win2019',
+    'win2019-core',
+    'win2019dc',
+    'win2019dc-core',
+    'win10ent',
+]
 
 
 class WindowsOS(OperatingSystem):
