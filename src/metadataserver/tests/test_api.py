@@ -117,7 +117,6 @@ from testtools.matchers import (
     ContainsAll,
     ContainsDict,
     Equals,
-    HasLength,
     KeysEqual,
     StartsWith,
 )
@@ -858,7 +857,7 @@ class TestMetadataCommon(MAASServerTestCase):
         self.assertThat(content, LooksLikeCloudInit)
         self.assertThat(
             yaml.safe_load(content['cloud-init']),
-            KeysEqual("system_info"))
+            KeysEqual("system_info", "runcmd"))
 
     def test_vendor_data_node_without_def_user_includes_no_system_info(self):
         # Test vendor_data includes no system_info when the node has an owner
@@ -874,7 +873,7 @@ class TestMetadataCommon(MAASServerTestCase):
         self.assertThat(content, LooksLikeCloudInit)
         self.assertThat(
             yaml.safe_load(content['cloud-init']),
-            HasLength(0))
+            KeysEqual('runcmd'))
 
     def test_vendor_data_for_node_without_owner_includes_no_system_info(self):
         view_name = self.get_metadata_name('-meta-data')
@@ -886,7 +885,7 @@ class TestMetadataCommon(MAASServerTestCase):
         self.assertThat(content, LooksLikeCloudInit)
         self.assertThat(
             yaml.safe_load(content['cloud-init']),
-            HasLength(0))
+            KeysEqual('runcmd'))
 
     def test_vendor_data_calls_through_to_get_vendor_data(self):
         # i.e. for further information, see `get_vendor_data`.

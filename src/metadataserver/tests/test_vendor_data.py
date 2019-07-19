@@ -5,10 +5,14 @@
 
 __all__ = []
 
+import random
+
+from maasserver.enum import NODE_STATUS
 from maasserver.models import (
     Config,
     NodeMetadata,
 )
+from maasserver.node_status import COMMISSIONING_LIKE_STATUSES
 from maasserver.server_address import get_maas_facing_server_host
 from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import RBACEnabled
@@ -237,7 +241,8 @@ class TestGenerateRackControllerConfiguration(MAASServerTestCase):
             }))
 
     def test_yields_configuration_when_machine_install_kvm_true(self):
-        node = factory.make_Node(osystem='ubuntu', netboot=False)
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYING, osystem='ubuntu', netboot=False)
         node.install_kvm = True
         configuration = get_vendor_data(node, None)
         config = str(dict(configuration))
@@ -271,7 +276,8 @@ class TestGenerateRackControllerConfiguration(MAASServerTestCase):
 
     def test_includes_smt_off_for_install_kvm_on_ppc64(self):
         node = factory.make_Node(
-            osystem='ubuntu', netboot=False, architecture='ppc64el/generic')
+            status=NODE_STATUS.DEPLOYING, osystem='ubuntu', netboot=False,
+            architecture='ppc64el/generic')
         node.install_kvm = True
         configuration = get_vendor_data(node, None)
         config = dict(configuration)
@@ -286,6 +292,26 @@ class TestGenerateRackControllerConfiguration(MAASServerTestCase):
         self.assertThat(
             config['runcmd'], Contains(['chmod', '+x', '/etc/rc.local']))
         self.assertThat(config['runcmd'], Contains(['/etc/rc.local']))
+
+
+class TestGenerateEphemeralNetplanLockRemoval(MAASServerTestCase):
+    """Tests for `generate_ephemeral_netplan_lock_removal`."""
+
+    def test__does_nothing_if_deploying(self):
+        # MAAS transitions a machine from DEPLOYING to DEPLOYED after
+        # user_data has been requested. Make sure deploying nodes don't
+        # get this config.
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
+        configuration = get_vendor_data(node, None)
+        config = dict(configuration)
+        self.assertNotIn('runcmd', config)
+
+    def test__removes_lock_when_ephemeral(self):
+        node = factory.make_Node(
+            status=random.choice(COMMISSIONING_LIKE_STATUSES))
+        configuration = get_vendor_data(node, None)
+        config = dict(configuration)
+        self.assertThat(config['runcmd'], Contains('rm -rf /run/netplan'))
 
 
 class TestGenerateEphemeralDeploymentNetworkConfiguration(MAASServerTestCase):
@@ -303,8 +329,10 @@ class TestGenerateEphemeralDeploymentNetworkConfiguration(MAASServerTestCase):
         config = dict(configuration)
         self.assertThat(
             config['write_files'][0]['path'],
-            Contains("/etc/netplan/config.yaml"))
-        self.assertThat(config['runcmd'], Contains("netplan apply"))
+            Contains("/etc/netplan/50-maas.yaml"))
+        # Make sure netplan's lock is removed before applying the config
+        self.assertEquals(config['runcmd'][0], 'rm -rf /run/netplan')
+        self.assertEquals(config['runcmd'][1], 'netplan apply --debug')
 
 
 class TestGenerateVcenterConfiguration(MAASServerTestCase):
@@ -312,19 +340,24 @@ class TestGenerateVcenterConfiguration(MAASServerTestCase):
 
     def test_does_nothing_if_not_vmware(self):
         mock_get_configs = self.patch(Config.objects, 'get_configs')
-        node = factory.make_Node(owner=factory.make_admin())
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYING, owner=factory.make_admin())
         config = get_vendor_data(node, None)
         self.assertThat(mock_get_configs, MockNotCalled())
         self.assertDictEqual({}, config)
 
     def test_returns_nothing_if_no_values_set(self):
-        node = factory.make_Node(osystem='esxi', owner=factory.make_admin())
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYING, osystem='esxi',
+            owner=factory.make_admin())
         node.nodemetadata_set.create(key='vcenter_registration', value='True')
         config = get_vendor_data(node, None)
         self.assertDictEqual({}, config)
 
     def test_returns_vcenter_yaml(self):
-        node = factory.make_Node(osystem='esxi', owner=factory.make_admin())
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYING, osystem='esxi',
+            owner=factory.make_admin())
         node.nodemetadata_set.create(key='vcenter_registration', value='True')
         vcenter = {
             'vcenter_server': factory.make_name('vcenter_server'),
@@ -343,7 +376,9 @@ class TestGenerateVcenterConfiguration(MAASServerTestCase):
 
     def test_returns_vcenter_yaml_if_rbac_admin(self):
         rbac = self.useFixture(RBACEnabled())
-        node = factory.make_Node(osystem='esxi', owner=factory.make_User())
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYING, osystem='esxi',
+            owner=factory.make_User())
         node.nodemetadata_set.create(key='vcenter_registration', value='True')
         rbac.store.add_pool(node.pool)
         rbac.store.allow(node.owner.username, node.pool, 'admin-machines')
@@ -364,7 +399,9 @@ class TestGenerateVcenterConfiguration(MAASServerTestCase):
 
     def test_returns_nothing_if_rbac_user(self):
         rbac = self.useFixture(RBACEnabled())
-        node = factory.make_Node(osystem='esxi', owner=factory.make_User())
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYING, osystem='esxi',
+            owner=factory.make_User())
         node.nodemetadata_set.create(key='vcenter_registration', value='True')
         rbac.store.add_pool(node.pool)
         rbac.store.allow(node.owner.username, node.pool, 'deploy-machines')
@@ -380,7 +417,7 @@ class TestGenerateVcenterConfiguration(MAASServerTestCase):
         self.assertDictEqual({}, config)
 
     def test_returns_nothing_if_no_user(self):
-        node = factory.make_Node(osystem='esxi')
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYING, osystem='esxi')
         for i in ['server', 'username', 'password', 'datacenter']:
             key = 'vcenter_%s' % i
             Config.objects.set_config(key, factory.make_name(key))
@@ -388,7 +425,9 @@ class TestGenerateVcenterConfiguration(MAASServerTestCase):
         self.assertDictEqual({}, config)
 
     def test_returns_nothing_if_user(self):
-        node = factory.make_Node(osystem='esxi', owner=factory.make_User())
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYING, osystem='esxi',
+            owner=factory.make_User())
         for i in ['server', 'username', 'password', 'datacenter']:
             key = 'vcenter_%s' % i
             Config.objects.set_config(key, factory.make_name(key))
@@ -396,7 +435,9 @@ class TestGenerateVcenterConfiguration(MAASServerTestCase):
         self.assertDictEqual({}, config)
 
     def test_returns_nothing_if_vcenter_registration_not_set(self):
-        node = factory.make_Node(osystem='esxi', owner=factory.make_admin())
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYING, osystem='esxi',
+            owner=factory.make_admin())
         for i in ['server', 'username', 'password', 'datacenter']:
             key = 'vcenter_%s' % i
             Config.objects.set_config(key, factory.make_name(key))
