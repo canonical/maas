@@ -383,9 +383,9 @@ def get_curtin_yaml_config(request, node):
             (node.hostname, node.osystem, node.distro_series))
 
     return (
-        storage_config + [main_config] + archive_config + reporter_config +
-        network_config + swap_config + kernel_config + verbose_config +
-        cloud_config)
+        storage_config + archive_config + reporter_config + network_config +
+        swap_config + kernel_config + verbose_config + cloud_config +
+        [main_config])
 
 
 def get_curtin_merged_config(request, node):
