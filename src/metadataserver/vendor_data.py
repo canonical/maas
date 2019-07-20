@@ -17,6 +17,7 @@ from maasserver.models import (
     Config,
     NodeMetadata,
 )
+from maasserver.node_status import COMMISSIONING_LIKE_STATUSES
 from maasserver.permissions import NodePermission
 from maasserver.preseed import get_network_yaml_settings
 from maasserver.preseed_network import NodeNetworkConfiguration
@@ -34,6 +35,7 @@ def get_vendor_data(node, proxy):
         generate_ntp_configuration(node),
         generate_rack_controller_configuration(node, proxy),
         generate_kvm_pod_configuration(node),
+        generate_ephemeral_netplan_lock_removal(node),
         generate_ephemeral_deployment_network_configuration(node),
         generate_vcenter_configuration(node),
     ))
@@ -110,6 +112,20 @@ def generate_rack_controller_configuration(node, proxy):
         ]
 
 
+def generate_ephemeral_netplan_lock_removal(node):
+    """Remove netplan's interface lock.
+
+    When booting a machine over the network netplan creates a configuration
+    file in /run/netplan for the interface used to boot. This contains the
+    settings used on boot(DHCP), what renderer was used(networkd), and marks
+    the interface as critical. Netplan will ensure interfaces marked critical
+    will always have the specified configuration applied. This overrides
+    anything put in /etc/netplan breaking custom network configuration."""
+
+    if node.status in COMMISSIONING_LIKE_STATUSES:
+        yield 'runcmd', ['rm -rf /run/netplan']
+
+
 def generate_ephemeral_deployment_network_configuration(node):
     """Generate cloud-init network configuration for ephemeral deployment."""
     if node.ephemeral_deployment:
@@ -125,10 +141,13 @@ def generate_ephemeral_deployment_network_configuration(node):
         yield "write_files", [
             {
                 'content': network_config_yaml,
-                'path': "/etc/netplan/config.yaml",
+                'path': "/etc/netplan/50-maas.yaml",
             }
         ]
-        yield "runcmd", ["netplan apply"]
+        yield "runcmd", [
+            "rm -rf /run/netplan",
+            "netplan apply --debug",
+        ]
 
 
 def generate_kvm_pod_configuration(node):
