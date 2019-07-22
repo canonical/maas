@@ -1010,7 +1010,7 @@ export function maasObjField($compile) {
 
       // Errors element.
       var errorsElement = angular.element(
-        '<ul class="p-list u-no-margin--top"></ul>'
+        '<ul class="p-list u-no-margin--bottom"></ul>'
       );
       if (!controller.isTableForm()) {
         errorsElement.addClass("form__error");
@@ -1050,11 +1050,6 @@ export function maasObjField($compile) {
                 "</li>"
             );
           });
-          // Set the input in focus but outside of the current
-          // digest cycle.
-          setTimeout(function() {
-            inputElement.focus();
-          }, 1);
         }
       };
 

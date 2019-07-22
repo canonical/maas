@@ -1,47 +1,53 @@
 <div class="row">
     <div class="col-8">
-        <table class="p-table-expanding" data-ng-if="groupedKeys.length">
+        <table class="p-table--ssh-keys p-table-expanding" data-ng-if="groupedKeys.length">
             <thead>
-                <tr>
-                    <th class="col-2 col-medium-2 col-small-1">Source</th>
-                    <th class="col-2 col-medium-2 col-small-1">ID</th>
-                    <th class="col-2 col-medium-1 col-small-1"><div class="u-align--right">Number of keys</div></th>
-                    <th class="col-2 col-medium-1 col-small-1"></th>
+                <tr class="p-table__row">
+                    <th class="p-table__cell">Source</th>
+                    <th class="p-table__cell">ID</th>
+                    <th class="p-table__cell"><div class="u-align--right">Number of keys</div></th>
+                    <th class="p-table__cell u-align--right">Actions</th>
                 </tr>
             </thead>
             <tbody>
-                <tr data-ng-repeat="group in groupedKeys | orderBy:['source', 'authId']" data-ng-class="{ 'is-active': group.id === openRow }">
-                    <td aria-label="Source" class="col-2 col-medium-2 col-small-1">{$ sourceTitles[group.source] $}</td>
-                    <td data-ng-if="group.source === 'upload'" data-ng-bind-html="trustAsHtml(group.keys[0].display)" class="col-2 col-medium-2 col-small-1">&nbsp;</td>
-                    <td data-ng-if="group.source !== 'upload'" aria-label="ID" class="col-2 col-medium-1">{$ group.authId $}</td>
-                    <td data-ng-if="group.source !== 'upload'" aria-label="Number of keys" class="col-2 col-medium-1 col-small-1">
-                        <div class="u-align--right">{$ group.keys.length $}</div>
+                <tr class="p-table__row" data-ng-repeat="group in groupedKeys | orderBy:['source', 'authId']" data-ng-class="{ 'is-active': group.id === openRow }">
+                    <td class="p-table__cell" aria-label="Source">
+                        <div class="u-fill-container u-vertically-center">{$ sourceTitles[group.source] $}</div>
                     </td>
-                    <td class="col-2 col-medium-2 col-small-1">
+                    <td class="p-table__cell" data-ng-if="group.source === 'upload'" data-ng-bind-html="trustAsHtml(group.keys[0].display)">&nbsp;</td>
+                    <td class="p-table__cell" data-ng-if="group.source !== 'upload'" aria-label="ID">
+                        <div class="u-fill-container u-vertically-center">{$ group.authId $}</div>
+                    </td>
+                    <td class="p-table__cell" data-ng-if="group.source !== 'upload'" aria-label="Number of keys">
+                        <div class="u-fill-container u-vertically-center u-align--right">{$ group.keys.length $}</div>
+                    </td>
+                    <td class="p-table__cell u-no-padding--right">
                         <div class="u-align--right">
-                            <a class="p-tooltip--top-center js-delete-link" data-ng-click="open(group, 'delete')" title="delete SSH key source"><i class="p-icon--delete"></i></a>
-                            <a class="p-button--base u-no-margin--top" style="min-width: 4.2rem;" data-ng-click="open(group, 'view')" aria-label="Show keys" title="Show keys" data-ng-if="group.source !== 'upload' && (openRow !== group.id || rowMode === 'delete')"><i class="p-icon--chevron u-no-margin--right">Open</i></a>
-                            <a class="p-button u-no-margin--top" data-ng-click="close()" aria-label="Hide keys" title="Show keys" data-ng-if="group.source !== 'upload' && openRow === group.id && rowMode === 'view'">Hide</a>
+                            <button class="p-button--base u-no-margin--right" data-ng-click="open(group, 'delete')" title="delete SSH key source">
+                                <i class="p-icon--delete">Delete</i>
+                            </button>
+                            <button class="p-button--base" data-ng-click="open(group, 'view')" aria-label="Show keys" title="Show keys" data-ng-if="group.source !== 'upload' && (openRow !== group.id || rowMode === 'delete')">
+                                <i class="p-icon--chevron">Open</i>
+                            </button>
+                            <button class="p-button--base" data-ng-click="close()" aria-label="Hide keys" title="Show keys" data-ng-if="group.source !== 'upload' && openRow === group.id && rowMode === 'view'">
+                                <i class="p-icon--chevron u-mirror--y">Hide</i>
+                            </button>
                         </div>
                     </td>
-                    <td class="p-table-expanding__panel u-no-margin--left col-2 col-medium-1 col-small-1" data-ng-class="{ 'u-hide': group.id !== openRow || rowMode !== 'view' }">
-                        <hr />
-                        <ul class="p-list u-no-margin--top">
-                            <li data-ng-repeat="key in group.keys" data-ng-bind-html="trustAsHtml(key.display)"></li>
+                    <td class="p-table-expanding__panel u-no-padding--top" data-ng-class="{ 'u-hide': group.id !== openRow || rowMode !== 'view' }">
+                        <ul class="p-list u-no-margin--bottom">
+                            <li class="p-list__item" data-ng-repeat="key in group.keys" data-ng-bind-html="trustAsHtml(key.display)"></li>
                         </ul>
                     </td>
-                    <td class="p-table-expanding__panel col-2 col-medium-1 col-small-1" data-ng-class="{ 'u-hide': group.id !== openRow || rowMode !== 'delete' }">
-                        <hr />
-                        <div class="row u-equal-height">
+                    <td class="p-table-expanding__panel u-no-padding--top" data-ng-class="{ 'u-hide': group.id !== openRow || rowMode !== 'delete' }">
+                        <div class="row">
                             <div class="col-8 u-vertically-center">
                                 <span data-ng-if="group.source !== 'upload'"><span class="p-icon p-icon--warning">Warning:</span> Are you sure you want to remove this key source?</span>
                                 <span data-ng-if="group.source === 'upload'"><span class="p-icon p-icon--warning">Warning:</span> Are you sure you want to remove this key?</span>
                             </div>
-                            <div class="col-4">
-                                <div class="u-align--right">
-                                    <button class="p-button--base" data-ng-click="close()">Cancel</button>
-                                    <button class="p-button--negative" data-ng-click="confirmDelete(group)">Remove</button>
-                                </div>
+                            <div class="col-4 u-align--right">
+                                <button class="p-button--base" data-ng-click="close()">Cancel</button>
+                                <button class="p-button--negative" data-ng-click="confirmDelete(group)">Remove</button>
                             </div>
                         </div>
                     </td>
@@ -51,9 +57,8 @@
     </div>
 </div>
 <div class="row">
-    <div class="col-10">
+    <div class="col-6">
         <form class="p-form">
-          <div class="p-form--inline">
             <div class="p-form__group">
                 <label class="p-form__label" for="source">Source</label>
                 <select class="p-form__control" id="source" data-ng-model="add.source" data-ng-disabled="add.saving">
@@ -64,17 +69,18 @@
             </div>
             <div class="p-form__group" data-ng-if="add.source !== 'upload'">
                 <label class="p-form__label" for="authId">ID</label>
-                <input type="text" id="authId" name="authId" placeholder="User ID" data-ng-model="add.authId" data-ng-disabled="add.saving" class="p-form__control">
+                <input type="text" id="authId" name="authId" placeholder="User ID" data-ng-model="add.authId" data-ng-disabled="add.saving"
+                    class="p-form__control">
             </div>
             <div class="p-form__group" data-ng-if="add.source === 'upload'">
                 <label class="p-form__label" for="key">Public key</label>
-                <textarea id="key" name="key" placeholder="Begins with 'ssh-rsa', 'ssh-dss', 'ssh-ed25519', 'ecdsa-sha2-nistp256', 'ecdsa-sha2-nistp384', or 'ecdsa-sha2-nistp521'" data-ng-model="add.key" data-ng-disabled="add.saving" class="p-form__control"></textarea>
+                <textarea id="key" name="key" data-ng-model="add.key" data-ng-disabled="add.saving" class="p-form__control"></textarea>
+                <p class="p-form-help-text">Begins with 'ssh-rsa', 'ssh-dss', 'ssh-ed25519', 'ecdsa-sha2-nistp256', 'ecdsa-sha2-nistp384', or 'ecdsa-sha2-nistp521'</p>
             </div>
-            <div class="p-form__group">
+            <div class="p-form__group u-align--right">
                 <button type="submit" class="p-button--positive" data-ng-disabled="!canImportKeys()" data-ng-click="importKeys()">Import</button>
             </div>
-          </div>
-          <p data-ng-if="add.error" class="p-form-validation__message"><strong>Error:</strong> {$ add.error $}</p>
-        </form>
     </div>
+    <p data-ng-if="add.error" class="p-form-validation__message"><strong>Error:</strong> {$ add.error $}</p>
+    </form>
 </div>

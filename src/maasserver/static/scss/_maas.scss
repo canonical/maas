@@ -126,7 +126,9 @@
   }
 
   .p-form-help-text {
-    margin-top: 0;
+    .p-form--stacked & {
+      margin-bottom: 1.3rem !important;
+    }
   }
 
   select {

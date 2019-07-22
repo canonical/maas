@@ -31,22 +31,23 @@
         <div class="row" data-ng-if="isSuperUser() && !source.tooMany && showMirrorPath()">
             <div class="col-8">
                 <div class="row">
-                    <div class="col-5  p-form-validation u-no-margin--top" data-ng-class="{ 'is-error': !source.connecting && source.errorMessage }">
+                    <div class="col-5 p-form-validation u-no-margin--top" data-ng-class="{ 'is-error': !source.connecting && source.errorMessage }">
                         <input class="p-form-validation__input" type="text" name="mirrorUrl" placeholder="e.g. http:// or https://" data-ng-model="source.url" data-ng-change="sourceChanged()">
                         <div class="p-form-validation__message" data-ng-if="!source.connecting && source.errorMessage">
-                              <p class="p-notification__response">
+                              <p>
                                   <span class="p-notification__status">Error:</span>{$ source.errorMessage $}
                                   <a class="p-notification__action" data-ng-if="source.source_type === 'maas.io'" data-ng-click="connect()">Retry</a>
                               </p>
                         </div>
                     </div>
                     <div class="col-3">
-                        <button class="p-button--neutral" aria-label="Toggle advanced URL controls" data-ng-click="toggleAdvancedOptions()" >
+                        <button class="p-button--neutral" aria-label="Toggle advanced URL controls" data-ng-click="toggleAdvancedOptions()">
+
                             <span data-ng-if="!isShowingAdvancedOptions()">
-                                Show advanced options <i class="p-icon--plus"></i>
+                                Show advanced options <i class="p-icon--plus p-icon--inline-right"></i>
                             </span>
                             <span data-ng-if="isShowingAdvancedOptions()">
-                                Hide advanced options <i class="p-icon--minus"></i>
+                                Hide advanced options <i class="p-icon--minus p-icon--inline-right"></i>
                             </span>
                         </button>
                     </div>
@@ -70,7 +71,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-4">
+            <div class="col-4 u-align--right">
                 <button class="p-button--positive" data-ng-if="showConnectButton()" data-ng-disabled="isConnectButtonDisabled()" data-ng-click="connect()">Connect</button>
             </div>
         </div>

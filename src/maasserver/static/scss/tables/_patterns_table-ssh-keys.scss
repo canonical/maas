@@ -1,0 +1,23 @@
+@mixin maas-table-ssh-keys {
+  .p-table--ssh-keys {
+    .p-table__row {
+      .p-table__cell {
+        &:nth-child(1) {
+          width: 25%;
+        }
+
+        &:nth-child(2) {
+          width: 25%;
+        }
+
+        &:nth-child(3) {
+          width: 25%;
+        }
+
+        &:nth-child(4) {
+          width: 25%;
+        }
+      }
+    }
+  }
+}

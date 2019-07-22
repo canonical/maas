@@ -62175,7 +62175,7 @@ function maasObjField($compile) {
 
       inputWrapper.append(inputElement); // Errors element.
 
-      var errorsElement = angular.element('<ul class="p-list u-no-margin--top"></ul>');
+      var errorsElement = angular.element('<ul class="p-list u-no-margin--bottom"></ul>');
 
       if (!controller.isTableForm()) {
         errorsElement.addClass("form__error");
@@ -62209,12 +62209,7 @@ function maasObjField($compile) {
           inputElement.addClass("p-form-validation__input");
           angular.forEach(errors, function (error) {
             errorsElement.append('<li class="p-form-validation__message">' + "<strong>Error:</strong> " + error + "</li>");
-          }); // Set the input in focus but outside of the current
-          // digest cycle.
-
-          setTimeout(function () {
-            inputElement.focus();
-          }, 1);
+          });
         }
       }; // Called by controller to see if error is set on field.
 

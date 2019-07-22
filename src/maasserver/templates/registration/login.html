@@ -22,7 +22,7 @@
             </form>
         </div>
     {% else %}
-        <div class="col-8 col-start-large-3">
+        <div class="col-6 col-start-large-4">
             <div class="p-card">
                 <header class="p-card__header">
                     <h1 class="p-heading--four">Welcome</h1>
@@ -43,7 +43,9 @@
                     {% if form.errors %}
                     <p><i class="p-icon--error"></i> <strong>Error:</strong> Your username and password didn't match. Please try again.</p>
                     {% endif %}
-                    <button type="submit" class="p-button--positive">Login</button>
+                    <div class="u-align--right">
+                        <button type="submit" class="p-button--positive u-no-margin--bottom">Login</button>
+                    </div>
                 </form>
                 {% endif %}
 

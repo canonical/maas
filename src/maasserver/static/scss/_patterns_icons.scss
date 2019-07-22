@@ -320,4 +320,12 @@
     height: 1em;
     width: 1em;
   }
+
+  .p-icon--inline-left {
+    margin-right: $sph-inner--small;
+  }
+
+  .p-icon--inline-right {
+    margin-left: $sph-inner--small;
+  }
 }
