@@ -34,6 +34,7 @@ from maasserver.enum import (
     NODE_TYPE_CHOICES,
     POWER_STATE,
 )
+from maasserver.exceptions import StaticIPAddressExhaustion
 from maasserver.models import (
     Config,
     Domain,
@@ -2030,15 +2031,19 @@ class TestMachineAPITransactional(APITransactionTestCase.ForUser):
         machine.osystem = osystem['name']
         machine.distro_series = distro_series
         machine.save()
-        response = self.client.post(
+
+        # Catch the StaticIPAddressExhaustion exception. In a real running
+        # WSGI client the exception will be handled and converted to the
+        # `SERVICE_UNAVAILABLE` HTTP error. With the unit tests client the
+        # error is raised in the post_commit_hooks which are not caught and
+        # handled.
+        self.assertRaises(
+            StaticIPAddressExhaustion, self.client.post,
             TestMachineAPI.get_machine_uri(machine),
             {
                 'op': 'power_on',
                 'distro_series': distro_series,
             })
-        self.assertEqual(
-            http.client.SERVICE_UNAVAILABLE, response.status_code,
-            response.content)
 
 
 class TestSetStorageLayout(APITestCase.ForUser):

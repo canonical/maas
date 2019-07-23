@@ -7171,6 +7171,30 @@ class TestNode_Start(MAASTransactionServerTestCase):
         # isn't ALLOCATED.
         self.assertThat(claim_auto_ips, MockNotCalled())
 
+    def test__sets_deploying_before_claiming_auto_ips(self):
+        user = factory.make_User()
+        node = self.make_acquired_node_with_interface(
+            user, power_state=POWER_STATE.ON)
+
+        post_commit_defer = self.patch(node_module, "post_commit")
+        mock_claim_auto_ips = self.patch(Node, "_claim_auto_ips")
+        mock_claim_auto_ips.return_value = post_commit_defer
+        mock_power_control = self.patch(Node, "_power_control_node")
+        mock_power_control.return_value = post_commit_defer
+
+        node.start(user)
+
+        # Now DEPLOYING.
+        self.assertThat(node.status, Equals(NODE_STATUS.DEPLOYING))
+
+        # Calls _claim_auto_ips.
+        self.assertThat(
+            mock_claim_auto_ips, MockCalledOnceWith(ANY))
+
+        # Calls _power_control_node when power_cycle.
+        self.assertThat(
+            mock_power_control, MockCalledOnceWith(ANY, power_cycle, ANY))
+
     def test__manual_power_type_doesnt_call__power_control_node(self):
         user = factory.make_User()
         node = self.make_acquired_node_with_interface(

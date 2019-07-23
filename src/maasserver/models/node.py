@@ -3757,6 +3757,14 @@ class Node(CleanSave, TimestampedModel):
             for ip in claimed_ips:
                 exclude_addresses.add(str(ip.ip))
 
+    def _claim_auto_ips(self, defer):
+        # XXX blake_r 2019-07-22: This temporary just allocates the IP
+        # auto IP addresses the same as previously. Next iteration will
+        # add the check IP ping check.
+        defer.addCallback(
+            lambda _: deferToDatabase(transactional(self.claim_auto_ips)))
+        return defer
+
     @transactional
     def release_interface_config(self):
         """Release IP addresses on all interface links set to AUTO and
@@ -4592,12 +4600,16 @@ class Node(CleanSave, TimestampedModel):
         # node; the user may choose to start it manually.
         NodeUserData.objects.set_user_data(self, user_data)
 
+        # Auto IP allocation and power on action are attached to the
+        # post commit of the transaction.
+        d = post_commit()
+
         if self.status == NODE_STATUS.ALLOCATED:
             old_status = self.status
             # Claim AUTO IP addresses for the node if it's ALLOCATED.
             # The current state being ALLOCATED is our indication that the node
             # is being deployed for the first time.
-            self.claim_auto_ips()
+            d = self._claim_auto_ips(d)
             set_deployment_timeout = True
             self._start_deployment()
             claimed_ips = True
@@ -4619,7 +4631,6 @@ class Node(CleanSave, TimestampedModel):
             return None
 
         # Request that the node be powered on post-commit.
-        d = post_commit()
         if self.power_state == POWER_STATE.ON and allow_power_cycle:
             d = self._power_control_node(d, power_cycle, power_info)
         else:
