@@ -275,3 +275,7 @@ hooks:
     plugs:
       - mount-observe  # to read /proc/*/mounts
       - network  # to connect to the db for running upgrades
+
+layout:
+  /etc/libvirt:
+    bind: $SNAP/etc/libvirt
