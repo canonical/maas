@@ -28,6 +28,7 @@ from django.db import (
 )
 from django.db.models import (
     CASCADE,
+    DateTimeField,
     ForeignKey,
     IntegerField,
     Manager,
@@ -772,6 +773,10 @@ class StaticIPAddress(CleanSave, TimestampedModel):
     # lease. Time is in seconds.
     lease_time = IntegerField(
         default=0, editable=False, null=False, blank=False)
+
+    # Used to mark a `StaticIPAddress` as temperary until the assignment
+    # can be confirmed to be free in the subnet.
+    temp_expires_on = DateTimeField(null=True, blank=True, editable=False)
 
     objects = StaticIPAddressManager()
 
