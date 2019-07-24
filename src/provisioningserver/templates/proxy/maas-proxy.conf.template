@@ -51,9 +51,9 @@ icon_directory {{snap_path}}/usr/share/squid/icons
 error_directory {{snap_path}}/usr/share/squid-langpack/en
 coredump_dir {{snap_common_path}}/proxy/spool
 cache_dir aufs {{snap_common_path}}/proxy/cache 40000 16 256
-cache_access_log {{snap_common_path}}/log/proxy/access.log
+cache_access_log stdio:{{snap_common_path}}/log/proxy/access.log
 cache_log {{snap_common_path}}/log/proxy/cache.log
-cache_store_log {{snap_common_path}}/log/proxy/store.log
+cache_store_log stdio:{{snap_common_path}}/log/proxy/store.log
 {{else}}
 coredump_dir /var/spool/maas-proxy
 cache_dir aufs /var/spool/maas-proxy 40000 16 256
