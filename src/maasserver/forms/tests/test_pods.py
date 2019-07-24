@@ -1241,6 +1241,156 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
                             attach_options=Equals(MACVLAN_MODE.BRIDGE))),
                 ]))))
 
+    def test__get_machine_with_interfaces_by_subnets_bridge(self):
+        request = MagicMock()
+        cidr1 = "10.0.0.0/24"
+        cidr2 = "192.168.100.0/24"
+        vlan = factory.make_VLAN(dhcp_on=True)
+        subnet = factory.make_Subnet(cidr=cidr2, vlan=vlan)
+        pod_host = factory.make_Machine_with_Interface_on_Subnet(
+            cidr=cidr1)
+        space = factory.make_Space('dmz')
+        pod_host.boot_interface.vlan.space = space
+        pod_host.boot_interface.vlan.save()
+
+        # Create a bridge and non-bridge on the pod_host
+        bridge = factory.make_Interface(
+            iftype=INTERFACE_TYPE.BRIDGE, node=pod_host,
+            subnet=pod_host.boot_interface.vlan.subnet_set.first())
+        non_bridge = factory.make_Interface(node=pod_host, subnet=subnet)
+
+        pod = make_pod_with_hints()
+        pod.ip_address = pod_host.boot_interface.ip_addresses.first()
+        pod.save()
+        interfaces = "eth0:subnet=%s;eth1:subnet=%s" % (cidr1, cidr2)
+        form = ComposeMachineForm(data={
+            'interfaces': interfaces,
+        }, request=request, pod=pod)
+        self.assertTrue(form.is_valid(), form.errors)
+        request_machine = form.get_requested_machine(
+            make_known_host_interfaces(pod))
+        self.assertThat(request_machine, MatchesAll(
+            IsInstance(RequestedMachine),
+            MatchesStructure(
+                interfaces=MatchesListwise([
+                    MatchesAll(
+                        IsInstance(RequestedMachineInterface),
+                        MatchesStructure(
+                            attach_name=Equals(bridge.name),
+                            attach_type=Equals(InterfaceAttachType.BRIDGE),
+                            attach_options=Equals(None))),
+                    MatchesAll(
+                        IsInstance(RequestedMachineInterface),
+                        MatchesStructure(
+                            attach_name=Equals(non_bridge.name),
+                            attach_type=Equals(InterfaceAttachType.MACVLAN),
+                            attach_options=Equals(MACVLAN_MODE.BRIDGE))),
+                ]))))
+
+    def test__get_machine_with_interfaces_by_subnets_bond(self):
+        request = MagicMock()
+        cidr1 = "10.0.0.0/24"
+        cidr2 = "192.168.100.0/24"
+        vlan = factory.make_VLAN(dhcp_on=True)
+        subnet = factory.make_Subnet(cidr=cidr2, vlan=vlan)
+        pod_host = factory.make_Machine_with_Interface_on_Subnet(
+            cidr=cidr1)
+        space = factory.make_Space('dmz')
+        pod_host.boot_interface.vlan.space = space
+        pod_host.boot_interface.vlan.save()
+
+        # Create a bond and non-bond on the pod_host
+        bond_if = factory.make_Interface(
+            node=pod_host,
+            subnet=pod_host.boot_interface.vlan.subnet_set.first())
+        bond = factory.make_Interface(
+            iftype=INTERFACE_TYPE.BOND, node=pod_host, parents=[
+                pod_host.boot_interface, bond_if],
+            subnet=pod_host.boot_interface.vlan.subnet_set.first())
+        non_bond = factory.make_Interface(node=pod_host, subnet=subnet)
+
+        pod = make_pod_with_hints()
+        pod.ip_address = pod_host.boot_interface.ip_addresses.first()
+        pod.save()
+        interfaces = "eth0:subnet=%s;eth1:subnet=%s" % (cidr1, cidr2)
+        form = ComposeMachineForm(data={
+            'interfaces': interfaces,
+        }, request=request, pod=pod)
+        self.assertTrue(form.is_valid(), form.errors)
+        request_machine = form.get_requested_machine(
+            make_known_host_interfaces(pod))
+        self.assertThat(request_machine, MatchesAll(
+            IsInstance(RequestedMachine),
+            MatchesStructure(
+                interfaces=MatchesListwise([
+                    MatchesAll(
+                        IsInstance(RequestedMachineInterface),
+                        MatchesStructure(
+                            attach_name=Equals(bond.name),
+                            attach_type=Equals(InterfaceAttachType.MACVLAN),
+                            attach_options=Equals(MACVLAN_MODE.BRIDGE))),
+                    MatchesAll(
+                        IsInstance(RequestedMachineInterface),
+                        MatchesStructure(
+                            attach_name=Equals(non_bond.name),
+                            attach_type=Equals(InterfaceAttachType.MACVLAN),
+                            attach_options=Equals(MACVLAN_MODE.BRIDGE))),
+                ]))))
+
+    def test__get_machine_with_interfaces_by_subnets_bond_inside_bridge(self):
+        request = MagicMock()
+        cidr1 = "10.0.0.0/24"
+        cidr2 = "192.168.100.0/24"
+        vlan = factory.make_VLAN(dhcp_on=True)
+        subnet = factory.make_Subnet(cidr=cidr2, vlan=vlan)
+        pod_host = factory.make_Machine_with_Interface_on_Subnet(
+            cidr=cidr1)
+        space = factory.make_Space('dmz')
+        pod_host.boot_interface.vlan.space = space
+        pod_host.boot_interface.vlan.save()
+
+        # Create a bond and non-bond on the pod_host
+        bond_if = factory.make_Interface(
+            node=pod_host,
+            subnet=pod_host.boot_interface.vlan.subnet_set.first())
+        bond = factory.make_Interface(
+            iftype=INTERFACE_TYPE.BOND, node=pod_host, parents=[
+                pod_host.boot_interface, bond_if],
+            subnet=pod_host.boot_interface.vlan.subnet_set.first())
+        non_bond = factory.make_Interface(node=pod_host, subnet=subnet)
+        # Create bridge using the bond
+        bridge = factory.make_Interface(
+            iftype=INTERFACE_TYPE.BRIDGE, node=pod_host, parents=[bond],
+            subnet=pod_host.boot_interface.vlan.subnet_set.first())
+
+        pod = make_pod_with_hints()
+        pod.ip_address = pod_host.boot_interface.ip_addresses.first()
+        pod.save()
+        interfaces = "eth0:subnet=%s;eth1:subnet=%s" % (cidr1, cidr2)
+        form = ComposeMachineForm(data={
+            'interfaces': interfaces,
+        }, request=request, pod=pod)
+        self.assertTrue(form.is_valid(), form.errors)
+        request_machine = form.get_requested_machine(
+            make_known_host_interfaces(pod))
+        self.assertThat(request_machine, MatchesAll(
+            IsInstance(RequestedMachine),
+            MatchesStructure(
+                interfaces=MatchesListwise([
+                    MatchesAll(
+                        IsInstance(RequestedMachineInterface),
+                        MatchesStructure(
+                            attach_name=Equals(bridge.name),
+                            attach_type=Equals(InterfaceAttachType.BRIDGE),
+                            attach_options=Equals(None))),
+                    MatchesAll(
+                        IsInstance(RequestedMachineInterface),
+                        MatchesStructure(
+                            attach_name=Equals(non_bond.name),
+                            attach_type=Equals(InterfaceAttachType.MACVLAN),
+                            attach_options=Equals(MACVLAN_MODE.BRIDGE))),
+                ]))))
+
     def test__get_machine_with_interfaces_by_space_as_bridge(self):
         request = MagicMock()
         pod_host = factory.make_Machine_with_Interface_on_Subnet(
