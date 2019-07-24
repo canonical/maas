@@ -42,11 +42,19 @@
   .page-header__controls--discoveries {
     button:last-child {
       margin-left: 1.5rem;
+      position: relative;
+      top: -0.05rem;
     }
 
     .maas-p-switch {
       position: relative;
-      top: 0.4rem;
+      top: 0.14rem;
+      margin-top: 0;
+    }
+
+    .p-form__label {
+      margin-bottom: 0;
+      padding-top: 0;
     }
   }
 }

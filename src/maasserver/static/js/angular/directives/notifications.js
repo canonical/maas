@@ -46,7 +46,7 @@ export function cacheNotifications($templateCache) {
       " 'p-icon--collapse': shown }\"></i></small>",
       "</p>",
       "</a>",
-      '<ul class="p-list--divided" ',
+      '<ul class="p-list--divided u-no-margin--bottom" ',
       "data-ng-class=\"{'u-hide': !shown}\">",
       '<li data-ng-repeat="notification in notifications"',
       ' class="p-list__item">',
