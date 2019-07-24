@@ -1405,11 +1405,11 @@
                                                     <h3 class="p-heading--five">{$ getInterfaceTypeText(interface) $} details</h3>
                                                     <maas-obj-field type="text" key="name" label="Name"
                                                         data-ng-if="interface.type !== 'alias' && interface.type !== 'vlan'" disable-label="false"
-                                                        label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"
+                                                        label-width="2" input-width="4"
                                                         input-class="table__input"></maas-obj-field>
-                                                    <div class="p-form__group">
-                                                        <label for="mac" class="p-form__label">MAC address</label>
-                                                        <div class="p-form__control p-form-validation"
+                                                    <div class="p-form__group row">
+                                                        <label for="mac" class="p-form__label col-2">MAC address</label>
+                                                        <div class="p-form__control col-4 p-form-validation"
                                                             data-ng-class="{ 'is-error': isMACAddressInvalid(editInterface.mac_address) }">
                                                             <input type="text" name="mac" class="p-form-validation__input"
                                                                 placeholder="00:00:00:00:00:00"
@@ -1420,9 +1420,9 @@
                                                             >
                                                         </div>
                                                     </div>
-                                                    <div class="p-form__group u-clearfix" data-ng-if="!isAllNetworkingDisabled(interface)">
-                                                        <label class="p-form__label col-2 col-small-2 col-medium-2">Tags</label>
-                                                        <div class="p-form__control col-3 col-small-2 col-medium-3 tags--inline">
+                                                    <div class="p-form__group row" data-ng-if="!isAllNetworkingDisabled(interface)">
+                                                        <label class="p-form__label col-2">Tags</label>
+                                                        <div class="p-form__control col-4 tags--inline">
                                                             <tags-input data-ng-model="interface.tags" allow-tags-pattern="[\w-]+"></tags-input>
                                                         </div>
                                                     </div>
@@ -1499,19 +1499,21 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="row u-sv2">
+                                        <div class="row">
                                             <hr />
                                         </div>
                                         <div class="row">
-                                            <div class="u-float--left">
+                                            <div class="col-6">
                                                 <maas-obj-errors></maas-obj-errors>
                                             </div>
-                                            <div class="u-float--right">
-                                                <button class="p-button--base u-no-margin--bottom"
-                                                    data-ng-click="editCancel()">Cancel</button>
-                                                <button class="p-button--positive u-no-margin--bottom"
-                                                data-ng-disabled="cannotEditBond(editInterface)"
-                                                maas-obj-save>Save {$ getInterfaceTypeText(interface).toLowerCase() $}</button>
+                                            <div class="col-6">
+                                                <div class="u-align--right">
+                                                    <button class="p-button--base u-no-margin--bottom"
+                                                        data-ng-click="editCancel()">Cancel</button>
+                                                    <button class="p-button--positive u-no-margin--bottom"
+                                                    data-ng-disabled="cannotEditBond(editInterface)"
+                                                    maas-obj-save>Save {$ getInterfaceTypeText(interface).toLowerCase() $}</button>
+                                                </div>
                                             </div>
                                         </div>
                                     </maas-obj-form>
@@ -2757,7 +2759,7 @@
                                         <div class="u-float--left" data-ng-show="newInterface.errorMsg">
                                             <span class="p-icon--error">Error:</span> {$ newInterface.errorMsg $}
                                         </div>
-                                        <div class="u-float--right">
+                                        <div class="u-align--right">
                                             <button class="p-button--base" data-ng-click="cancel()">Cancel</button>
                                             <button class="p-button--positive"
                                                 data-ng-click="addPhysicalInterface()"
