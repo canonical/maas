@@ -7,7 +7,10 @@ __all__ = []
 
 import random
 
-from maasserver.enum import INTERFACE_TYPE
+from maasserver.enum import (
+    INTERFACE_TYPE,
+    IPADDRESS_TYPE,
+)
 from maasserver.forms.parameters import ParametersForm
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -578,8 +581,18 @@ class TestParametersForm(MAASServerTestCase):
 
     def test__input_interface_all(self):
         node = factory.make_Node()
-        for _ in range(3):
-            factory.make_Interface(node=node)
+        subnet = factory.make_Subnet()
+        usable_interfaces = [
+            factory.make_Interface(node=node, subnet=subnet)
+            for _ in range(3)
+        ]
+        # Unconfigured or disabled interfaces
+        factory.make_Interface(node=node, enabled=False)
+        factory.make_Interface(node=node, link_connected=False)
+        discovered = factory.make_Interface(node=node, subnet=subnet)
+        discovered_ip = discovered.ip_addresses.first()
+        discovered_ip.alloc_type = IPADDRESS_TYPE.DISCOVERED
+        discovered_ip.save()
         script = factory.make_Script(parameters={
             'interface': {'type': 'interface'},
         })
@@ -587,8 +600,8 @@ class TestParametersForm(MAASServerTestCase):
             data={'interface': 'all'}, script=script, node=node)
         self.assertTrue(form.is_valid(), form.errors)
         input = form.cleaned_data['input']
-        self.assertEquals(node.interface_set.count(), len(input))
-        for interface in node.interface_set.all():
+        self.assertEquals(len(usable_interfaces), len(input))
+        for interface in usable_interfaces:
             for i in input:
                 if (str(interface.mac_address) ==
                         i['interface']['value']['mac_address']):
@@ -603,9 +616,11 @@ class TestParametersForm(MAASServerTestCase):
 
     def test__input_interface_all_only_includes_children(self):
         node = factory.make_Node(interface=False)
+        subnet = factory.make_Subnet()
         bond = factory.make_Interface(
-            node=node, iftype=INTERFACE_TYPE.BOND, parents=[
-                factory.make_Interface(node=node) for _ in range(2)])
+            node=node, iftype=INTERFACE_TYPE.BOND, subnet=subnet, parents=[
+                factory.make_Interface(node=node)
+                for _ in range(2)])
         script = factory.make_Script(parameters={
             'interface': {'type': 'interface'},
         })
@@ -624,8 +639,9 @@ class TestParametersForm(MAASServerTestCase):
 
     def test__input_interface_id(self):
         node = factory.make_Node()
+        subnet = factory.make_Subnet()
         for _ in range(3):
-            factory.make_Interface(node=node)
+            factory.make_Interface(node=node, subnet=subnet)
         script = factory.make_Script(parameters={
             'interface': {'type': 'interface'},
         })
@@ -681,10 +697,25 @@ class TestParametersForm(MAASServerTestCase):
                 'interface': ['Interface id does not exist'],
             }, form.errors)
 
+    def test__input_interface_id_errors_on_unconfigured_or_disabled(self):
+        node = factory.make_Node()
+        bad_interface = random.choice([
+            factory.make_Interface(node=node, enabled=False),
+            factory.make_Interface(node=node, link_connected=False),
+        ])
+        script = factory.make_Script(parameters={
+            'interface': {'type': 'interface'},
+        })
+        form = ParametersForm(
+            data={'interface': bad_interface.id},
+            script=script, node=node)
+        self.assertFalse(form.is_valid())
+
     def test__input_interface_list(self):
         node = factory.make_Node()
+        subnet = factory.make_Subnet()
         for _ in range(10):
-            factory.make_Interface(node=node)
+            factory.make_Interface(node=node, subnet=subnet)
         script = factory.make_Script(parameters={
             'interface': {'type': 'interface'},
         })
@@ -753,6 +784,20 @@ class TestParametersForm(MAASServerTestCase):
                 'interface': ['Unknown interface for %s(%s)' % (
                     node.fqdn, node.system_id)],
             }, form.errors)
+
+    def test__input_interface_name_errors_on_unconfigured_or_disabled(self):
+        node = factory.make_Node()
+        bad_interface = random.choice([
+            factory.make_Interface(node=node, enabled=False),
+            factory.make_Interface(node=node, link_connected=False),
+        ])
+        script = factory.make_Script(parameters={
+            'interface': {'type': 'interface'},
+        })
+        form = ParametersForm(
+            data={'interface': bad_interface.name},
+            script=script, node=node)
+        self.assertFalse(form.is_valid())
 
     def test__input_url_validates_required(self):
         script = factory.make_Script(parameters={'url': {

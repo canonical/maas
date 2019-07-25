@@ -20,6 +20,7 @@ from django.forms import (
     Field,
     Form,
 )
+from maasserver.enum import IPADDRESS_TYPE
 from maasserver.utils.dns import validate_url
 from maasserver.utils.forms import set_form_error
 from maasserver.utils.mac import is_mac
@@ -43,6 +44,20 @@ class ParametersForm(Form):
         super().__init__(data=data)
         self._node = node
         self._script = script
+
+    def _get_interfaces(self):
+        """Return a queryset of the Interfaces that can be used."""
+        interfaces = self._node.interface_set.filter(
+            children_relationships=None,
+            enabled=True)
+        interfaces = interfaces.exclude(
+            ip_addresses__alloc_type=IPADDRESS_TYPE.DISCOVERED)
+        # Exclude all IPAddresses of type DISCOVERED before checking if an
+        # Interface doesn't have IPAddresses. If done as one excludes
+        # DISCOVERED IPAddresses won't be filtered out before isnull is
+        # checked.
+        return interfaces.exclude(
+            ip_addresses__isnull=True, ip_addresses__ip=None)
 
     def clean_parameters(self):
         """Validate the parameters set in the embedded YAML within the script.
@@ -267,7 +282,7 @@ class ParametersForm(Form):
     def _validate_and_clean_storage_all(
             self, param_name, param, result_params, ret):
         """Validate and clean storage input when set to all."""
-        if not self._node.physicalblockdevice_set.exists():
+        if len(self._node.physicalblockdevice_set) == 0:
             # Use 'all' as a place holder until the disks get added during
             # commissioning.
             clean_param = copy.deepcopy(result_params)
@@ -319,7 +334,7 @@ class ParametersForm(Form):
             qs = self._node.physicalblockdevice_set.filter(
                 Q(name=i) | Q(name=os.path.basename(i)) |
                 Q(model=i) | Q(serial=i) | Q(tags__overlap=[i]))
-            if not qs.exists():
+            if len(qs) == 0:
                 set_form_error(
                     self, param_name, "Unknown storage device for %s(%s)" % (
                         self._node.fqdn, self._node.system_id))
@@ -344,15 +359,15 @@ class ParametersForm(Form):
     def _validate_and_clean_interface_all(
             self, param_name, param, result_params, ret):
         """Validate and clean interface input when set to all."""
-        if not self._node.interface_set.exists():
-            # Use 'all' as a place holder until the disks get added during
+        interfaces = self._get_interfaces()
+        if len(interfaces) == 0:
+            # Use 'all' as a place holder until the Interfaces get added during
             # commissioning.
             clean_param = copy.deepcopy(result_params)
             clean_param[param_name] = param
             ret.append(clean_param)
         else:
-            for interface in self._node.interface_set.filter(
-                    children_relationships=None):
+            for interface in interfaces:
                 clean_param = copy.deepcopy(result_params)
                 clean_param[param_name] = copy.deepcopy(param)
                 clean_param[param_name]['value'] = self._interface_to_dict(
@@ -361,10 +376,9 @@ class ParametersForm(Form):
 
     def _validate_and_clean_interface_id(
             self, param_name, param, result_params, ret):
-        """Validate and clean storage input when id."""
+        """Validate and clean interface input when id."""
         try:
-            interface = self._node.interface_set.get(
-                children_relationships=None, id=int(param['value']))
+            interface = self._get_interfaces().get(id=int(param['value']))
         except ObjectDoesNotExist:
             set_form_error(
                 self, param_name, 'Interface id does not exist')
@@ -381,12 +395,12 @@ class ParametersForm(Form):
         value = param['value']
         for i in value.split(','):
             if ':' in i:
-                # Allow users to specify a disk using the vendor and product.
+                # Allow users to specify an Interface using the vendor and
+                # product.
                 vendor, product = i.split(':')
                 try:
-                    interface = self._node.interface_set.get(
-                        vendor=vendor, product=product,
-                        children_relationships=None)
+                    interface = self._get_interfaces().get(
+                        vendor=vendor, product=product)
                 except ObjectDoesNotExist:
                     pass
                 else:
@@ -397,14 +411,13 @@ class ParametersForm(Form):
                     ret.append(clean_param)
                     continue
 
-            qs = self._node.interface_set.filter(children_relationships=None)
             if is_mac(i):
-                qs = qs.filter(mac_address=i)
+                qs = self._get_interfaces().filter(mac_address=i)
             else:
-                qs = qs.filter(
+                qs = self._get_interfaces().filter(
                     Q(name=i) | Q(vendor=i) | Q(product=i) |
                     Q(tags__overlap=[i]))
-            if not qs.exists():
+            if len(qs) == 0:
                 set_form_error(
                     self, param_name, "Unknown interface for %s(%s)" % (
                         self._node.fqdn, self._node.system_id))
