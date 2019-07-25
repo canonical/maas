@@ -97,6 +97,7 @@ from provisioningserver.utils.fs import (
 )
 from provisioningserver.utils.network import (
     convert_host_to_uri_str,
+    find_mac_via_arp,
     get_all_interfaces_definition,
     resolve_host_to_addrinfo,
 )
@@ -270,6 +271,12 @@ def check_ip_address(request):
         args += ['-I', request['interface']]
     args += [request['ip_address']]
     spawnProcessAndNullifyStdout(protocol, args)
+
+    # This will only occur if the ping was successful and now the MAC address
+    # for that IP address will now be in the ARP cache.
+    done.addCallback(
+        lambda _: deferToThread(find_mac_via_arp, request['ip_address']))
+
     return done
 
 
@@ -808,8 +815,10 @@ class Cluster(RPCProtocol):
             map(check_ip_address, ip_addresses), consumeErrors=True)
 
         def map_results(results):
-            for request, (success, _) in zip(ip_addresses, results):
+            for request, (success, mac_address) in zip(ip_addresses, results):
                 request["used"] = success
+                if success and mac_address:
+                    request["mac_address"] = mac_address
             return {
                 "ip_addresses": ip_addresses,
             }

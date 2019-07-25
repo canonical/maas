@@ -3820,7 +3820,6 @@ class Node(CleanSave, TimestampedModel):
                 return None
             defers = []
             for subnet_id, ips in subnets_to_ips.items():
-                log.msg("subnet: %d ips: %s" % (subnet_id, ips))
                 clients = subnets_to_clients.get(subnet_id)
                 if clients:
                     client = random.choice(clients)
@@ -3894,13 +3893,9 @@ class Node(CleanSave, TimestampedModel):
                                 ip_addresses__subnet_id=ip_obj.subnet_id)
                             rack_interface = rack_interface.order_by('id')
                             rack_interface = rack_interface.first()
-                            # XXX blake_r 2019-06-24 - MAC address is
-                            # currently not returned from the CheckIPs RPC.
-                            # This will change in a follow-up branch to set
-                            # this correctly with a MAC address.
                             rack_interface.update_neighbour({
                                 'ip': ip_obj.ip,
-                                'mac': None,
+                                'mac': ip_result.get('mac_address'),
                                 'time': time.time(),
                             })
                             ip_obj.ip = None

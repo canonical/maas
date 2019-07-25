@@ -7243,6 +7243,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
                     {
                         "ip_address": first_ip.ip,
                         "used": True,
+                        "mac_address": factory.make_mac_address(),
                     }
                 ]
             }),
@@ -7251,6 +7252,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
                     {
                         "ip_address": second_ip.ip,
                         "used": True,
+                        "mac_address": factory.make_mac_address(),
                     }
                 ]
             }),

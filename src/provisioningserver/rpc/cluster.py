@@ -786,6 +786,7 @@ class CheckIPs(amp.Command):
             (b"ip_address", amp.Unicode()),
             (b"interface", amp.Unicode(optional=True)),
             (b"used", amp.Boolean()),
+            (b"mac_address", amp.Unicode(optional=True)),
         ])),
     ]
     errors = {}

@@ -3638,7 +3638,7 @@ class TestClusterProtocol_CheckIPs(
         ip_addresses = [
             {
                 # Always exists, returns exit code of `0`.
-                "ip_address": "127.0.0.1"
+                "ip_address": "127.0.0.1",
             },
             {
                 # Broadcast that `ping` by default doesn't allow ping to
@@ -3646,6 +3646,11 @@ class TestClusterProtocol_CheckIPs(
                 "ip_address": "255.255.255.255",
             }
         ]
+
+        # Fake `find_mac_via_arp` so its always returns a MAC address.
+        fake_mac = factory.make_mac_address()
+        mock_find_mac_via_arp = self.patch(clusterservice, "find_mac_via_arp")
+        mock_find_mac_via_arp.return_value = fake_mac
 
         result = yield call_responder(
             Cluster(), cluster.CheckIPs, {'ip_addresses': ip_addresses})
@@ -3656,11 +3661,13 @@ class TestClusterProtocol_CheckIPs(
                     "ip_address": Equals("127.0.0.1"),
                     "used": Is(True),
                     "interface": Is(None),
+                    "mac_address": Equals(fake_mac),
                 }),
                 MatchesDict({
                     "ip_address": Equals("255.255.255.255"),
                     "used": Is(False),
                     "interface": Is(None),
+                    "mac_address": Is(None),
                 }),
             ])
         }))
