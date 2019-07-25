@@ -5,6 +5,7 @@
 
 __all__ = []
 
+from datetime import datetime
 from random import (
     randint,
     shuffle,
@@ -648,6 +649,25 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
         expected_mapping = {
             node.fqdn: HostnameIPMapping(
                 node.system_id, 30, {staticip.ip}, node.node_type)}
+        self.assertEqual(expected_mapping, mapping)
+
+    def test_get_hostname_ip_mapping_ignores_temp_ip_address(self):
+        subnet = factory.make_Subnet(
+            cidr=str(factory.make_ipv4_network().cidr))
+        node = factory.make_Node_with_Interface_on_Subnet(
+            hostname=factory.make_name('host'), subnet=subnet)
+        iface = node.get_boot_interface()
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, interface=iface,
+            subnet=subnet, temp_expires_on=datetime.utcnow())
+        otherip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED, interface=iface,
+            subnet=subnet)
+        mapping = StaticIPAddress.objects.get_hostname_ip_mapping(
+            node.domain)
+        expected_mapping = {
+            node.fqdn: HostnameIPMapping(
+                node.system_id, 30, {otherip.ip}, node.node_type)}
         self.assertEqual(expected_mapping, mapping)
 
     def test_get_hostname_ip_mapping_prefers_non_ula_addresses(self):

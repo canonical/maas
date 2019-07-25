@@ -5,6 +5,7 @@
 
 __all__ = []
 
+from datetime import datetime
 from operator import itemgetter
 import random
 from unittest.mock import ANY
@@ -1239,6 +1240,14 @@ class TestMakeHostsForSubnet(MAASServerTestCase):
         auto_ip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet,
             interface=auto_with_ip_interface)
+
+        # Make temp AUTO IP with an IP. Should not be in the output.
+        auto_no_temp_ip_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, vlan=subnet.vlan)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet,
+            interface=auto_no_temp_ip_interface,
+            temp_expires_on=datetime.utcnow())
 
         # Make STICKY IP. Should be in the output.
         sticky_ip_interface = factory.make_Interface(

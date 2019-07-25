@@ -406,7 +406,9 @@ class StaticIPAddressManager(Manager):
                 ) AS node ON
                     node_sip_id = staticip.id
             WHERE
-                (staticip.ip IS NOT NULL AND host(staticip.ip) != '') AND
+                (staticip.ip IS NOT NULL AND
+                 host(staticip.ip) != '' AND
+                 staticip.temp_expires_on IS NULL) AND
                 """
 
         query_parms = []
@@ -593,7 +595,8 @@ class StaticIPAddressManager(Manager):
             query_parms = []
         sql_query += """
                 staticip.ip IS NOT NULL AND
-                host(staticip.ip) != ''
+                host(staticip.ip) != '' AND
+                staticip.temp_expires_on IS NULL
             ORDER BY
                 fqdn,
                 is_boot DESC,
@@ -662,7 +665,8 @@ class StaticIPAddressManager(Manager):
             """
         iface_sql_query += """
                 staticip.ip IS NOT NULL AND
-                host(staticip.ip) != ''
+                host(staticip.ip) != '' AND
+                staticip.temp_expires_on IS NULL
             ORDER BY
                 node.hostname,
                 assigned DESC, /* Return all assigned IPs for a node first. */
@@ -776,7 +780,8 @@ class StaticIPAddress(CleanSave, TimestampedModel):
 
     # Used to mark a `StaticIPAddress` as temperary until the assignment
     # can be confirmed to be free in the subnet.
-    temp_expires_on = DateTimeField(null=True, blank=True, editable=False)
+    temp_expires_on = DateTimeField(
+        null=True, blank=True, editable=False, db_index=True)
 
     objects = StaticIPAddressManager()
 

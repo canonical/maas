@@ -533,9 +533,9 @@ DHCP_IPRANGE_DELETE = dedent("""\
     $$ LANGUAGE plpgsql;
     """)
 
-# Triggered when an IP address that has an IP set and is not DISCOVERED is
-# inserted to a subnet on a managed VLAN. Alerts the rack controllers for that
-# VLAN.
+# Triggered when an IP address that has an IP set (not temp) and is not
+# DISCOVERED is inserted to a subnet on a managed VLAN. Alerts the rack
+# controllers for that VLAN.
 DHCP_STATICIPADDRESS_INSERT = dedent("""\
     CREATE OR REPLACE FUNCTION sys_dhcp_staticipaddress_insert()
     RETURNS trigger as $$
@@ -543,7 +543,8 @@ DHCP_STATICIPADDRESS_INSERT = dedent("""\
       vlan maasserver_vlan;
     BEGIN
       -- Update VLAN if DHCP is enabled, IP is set and not DISCOVERED.
-      IF NEW.alloc_type != 6 AND NEW.ip IS NOT NULL AND host(NEW.ip) != '' THEN
+      IF NEW.alloc_type != 6 AND NEW.ip IS NOT NULL AND host(NEW.ip) != '' AND
+        NEW.temp_expires_on IS NULL THEN
         SELECT maasserver_vlan.* INTO vlan
         FROM maasserver_vlan, maasserver_subnet
         WHERE maasserver_subnet.id = NEW.subnet_id AND
@@ -555,9 +556,9 @@ DHCP_STATICIPADDRESS_INSERT = dedent("""\
     $$ LANGUAGE plpgsql;
     """)
 
-# Triggered when an IP address that has an IP set and is not DISCOVERED is
-# updated. If the subnet changes then it alerts the rack controllers of each
-# VLAN if the VLAN differs from the previous VLAN.
+# Triggered when an IP address that has an IP set (not temp) and is not
+# DISCOVERED is updated. If the subnet changes then it alerts the rack
+# controllers of each VLAN if the VLAN differs from the previous VLAN.
 DHCP_STATICIPADDRESS_UPDATE = dedent("""\
     CREATE OR REPLACE FUNCTION sys_dhcp_staticipaddress_update()
     RETURNS trigger as $$
@@ -587,6 +588,8 @@ DHCP_STATICIPADDRESS_UPDATE = dedent("""\
           END IF;
         ELSIF (OLD.ip IS NULL AND NEW.ip IS NOT NULL) OR
           (OLD.ip IS NOT NULL and NEW.ip IS NULL) OR
+          (OLD.temp_expires_on IS NULL AND NEW.temp_expires_on IS NOT NULL) OR
+          (OLD.temp_expires_on IS NOT NULL AND NEW.temp_expires_on IS NULL) OR
           (host(OLD.ip) != host(NEW.ip)) THEN
           -- Assigned IP address has changed.
           SELECT maasserver_vlan.* INTO new_vlan
@@ -610,7 +613,7 @@ DHCP_STATICIPADDRESS_DELETE = dedent("""\
       vlan maasserver_vlan;
     BEGIN
       -- Update VLAN if DHCP is enabled and has an IP address.
-      IF host(OLD.ip) != '' THEN
+      IF host(OLD.ip) != '' AND OLD.temp_expires_on IS NULL THEN
         SELECT maasserver_vlan.* INTO vlan
         FROM maasserver_vlan, maasserver_subnet
         WHERE maasserver_subnet.id = OLD.subnet_id AND
@@ -647,6 +650,7 @@ DHCP_INTERFACE_UPDATE = dedent("""\
           AND ip_link.interface_id = NEW.id
           AND maasserver_staticipaddress.alloc_type != 6
           AND maasserver_staticipaddress.ip IS NOT NULL
+          AND maasserver_staticipaddress.temp_expires_on IS NULL
           AND host(maasserver_staticipaddress.ip) != ''
           AND maasserver_vlan.id = maasserver_subnet.vlan_id)
         LOOP
@@ -684,6 +688,7 @@ DHCP_NODE_UPDATE = dedent("""\
           AND maasserver_interface.node_id = NEW.id
           AND maasserver_staticipaddress.alloc_type != 6
           AND maasserver_staticipaddress.ip IS NOT NULL
+          AND maasserver_staticipaddress.temp_expires_on IS NULL
           AND host(maasserver_staticipaddress.ip) != ''
           AND maasserver_vlan.id = maasserver_subnet.vlan_id)
         LOOP
@@ -996,6 +1001,8 @@ DNS_STATICIPADDRESS_UPDATE = dedent("""\
     BEGIN
       IF ((OLD.ip IS NULL and NEW.ip IS NOT NULL) OR
           (OLD.ip IS NOT NULL and NEW.ip IS NULL) OR
+          (OLD.temp_expires_on IS NULL AND NEW.temp_expires_on IS NOT NULL) OR
+          (OLD.temp_expires_on IS NOT NULL AND NEW.temp_expires_on IS NULL) OR
           (OLD.ip != NEW.ip)) OR
           (OLD.alloc_type != NEW.alloc_type) THEN
         IF EXISTS (
@@ -1021,23 +1028,35 @@ DNS_STATICIPADDRESS_UPDATE = dedent("""\
               (staticipaddress.id = OLD.id OR
                staticipaddress.id = NEW.id))
         THEN
-          IF OLD.ip IS NULL and NEW.ip IS NOT NULL THEN
+          IF OLD.ip IS NULL and NEW.ip IS NOT NULL and
+            NEW.temp_expires_on IS NULL THEN
             PERFORM sys_dns_publish_update(
               'ip ' || host(NEW.ip) || ' allocated');
             RETURN NEW;
-          ELSIF OLD.ip IS NOT NULL and NEW.ip IS NULL THEN
+          ELSIF OLD.ip IS NOT NULL and NEW.ip IS NULL and
+            NEW.temp_expires_on IS NULL THEN
             PERFORM sys_dns_publish_update(
               'ip ' || host(OLD.ip) || ' released');
             RETURN NEW;
-          ELSIF OLD.ip != NEW.ip THEN
+          ELSIF OLD.ip != NEW.ip and NEW.temp_expires_on IS NULL THEN
             PERFORM sys_dns_publish_update(
               'ip ' || host(OLD.ip) || ' changed to ' || host(NEW.ip));
+            RETURN NEW;
+          ELSIF OLD.ip = NEW.ip and OLD.temp_expires_on IS NOT NULL and
+            NEW.temp_expires_on IS NULL THEN
+            PERFORM sys_dns_publish_update(
+              'ip ' || host(NEW.ip) || ' allocated');
+            RETURN NEW;
+          ELSIF OLD.ip = NEW.ip and OLD.temp_expires_on IS NULL and
+            NEW.temp_expires_on IS NOT NULL THEN
+            PERFORM sys_dns_publish_update(
+              'ip ' || host(NEW.ip) || ' released');
             RETURN NEW;
           END IF;
 
           -- Made it this far then only alloc_type has changed. Only send
           -- a notification is the IP address is assigned.
-          IF NEW.ip IS NOT NULL THEN
+          IF NEW.ip IS NOT NULL and NEW.temp_expires_on IS NULL THEN
             PERFORM sys_dns_publish_update(
               'ip ' || host(OLD.ip) || ' alloc_type changed to ' ||
               NEW.alloc_type);
@@ -1069,7 +1088,8 @@ DNS_NIC_IP_LINK = dedent("""\
       SELECT maasserver_staticipaddress.* INTO ip
       FROM maasserver_staticipaddress
       WHERE maasserver_staticipaddress.id = NEW.staticipaddress_id;
-      IF (ip.ip IS NOT NULL AND host(ip.ip) != '' AND EXISTS (
+      IF (ip.ip IS NOT NULL AND ip.temp_expires_on IS NULL AND
+          host(ip.ip) != '' AND EXISTS (
             SELECT maasserver_domain.id
             FROM maasserver_domain
             WHERE
@@ -1106,7 +1126,7 @@ DNS_NIC_IP_UNLINK = dedent("""\
       SELECT maasserver_staticipaddress.* INTO ip
       FROM maasserver_staticipaddress
       WHERE maasserver_staticipaddress.id = OLD.staticipaddress_id;
-      IF (ip.ip IS NOT NULL AND EXISTS (
+      IF (ip.ip IS NOT NULL AND ip.temp_expires_on IS NULL AND EXISTS (
             SELECT maasserver_domain.id
             FROM maasserver_domain
             WHERE

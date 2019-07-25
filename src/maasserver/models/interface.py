@@ -677,7 +677,7 @@ class Interface(CleanSave, TimestampedModel):
                     "mode": link_type,
                 }
                 ip, subnet = ip_address.get_ip_and_subnet()
-                if ip:
+                if ip and ip_address.temp_expires_on is None:
                     link["ip_address"] = "%s" % ip
                 if subnet:
                     link["subnet"] = subnet

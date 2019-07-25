@@ -334,12 +334,16 @@ def make_hosts_for_subnets(subnets, nodes_dhcp_snippets: list=None):
             IPADDRESS_TYPE.STICKY,
             IPADDRESS_TYPE.USER_RESERVED,
             ],
-        subnet__in=subnets, ip__isnull=False).order_by('id')
+        subnet__in=subnets, ip__isnull=False,
+        temp_expires_on__isnull=True).order_by('id')
     hosts = []
     interface_ids = set()
     for sip in sips:
         # Skip blank IP addresses.
         if sip.ip == '':
+            continue
+        # Skip temp IP addresses.
+        if sip.temp_expires_on:
             continue
 
         # Add all interfaces attached to this IP address.

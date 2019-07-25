@@ -961,6 +961,18 @@ class InterfaceTest(MAASServerTestCase):
                 "ip_address": Equals(static_ip),
                 "subnet": Equals(static_subnet),
             }))
+        temp_ip = factory.pick_ip_in_network(
+            static_subnet.get_ipnetwork(), but_not=[static_ip])
+        temp_sip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, ip=temp_ip,
+            subnet=static_subnet, interface=interface,
+            temp_expires_on=datetime.datetime.utcnow())
+        links.append(
+            MatchesDict({
+                "id": Equals(temp_sip.id),
+                "mode": Equals(INTERFACE_LINK_TYPE.AUTO),
+                "subnet": Equals(static_subnet),
+            }))
         link_subnet = factory.make_Subnet()
         link_ip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY, ip="",

@@ -18,6 +18,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='staticipaddress',
             name='temp_expires_on',
-            field=models.DateTimeField(blank=True, editable=False, null=True),
+            field=models.DateTimeField(
+                blank=True, editable=False, null=True, db_index=True),
         ),
     ]

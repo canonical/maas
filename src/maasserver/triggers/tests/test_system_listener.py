@@ -1100,6 +1100,86 @@ class TestDHCPVLANListener(
 
     @wait_for_reactor
     @inlineCallbacks
+    def test_sends_messages_when_ip_address_no_longer_temp(self):
+        primary_rack = yield deferToDatabase(self.create_rack_controller)
+        secondary_rack = yield deferToDatabase(self.create_rack_controller)
+        vlan = yield deferToDatabase(self.create_vlan, params={
+            "dhcp_on": True,
+            "primary_rack": primary_rack,
+            "secondary_rack": secondary_rack,
+        })
+        relay_vlan = yield deferToDatabase(self.create_vlan, params={
+            "relay_vlan": vlan
+        })
+        yield deferToDatabase(self.create_subnet, {
+            "vlan": relay_vlan,
+        })
+        yield deferToDatabase(register_system_triggers)
+        primary_rack_dv = DeferredValue()
+        secondary_rack_dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dhcp_%s" % primary_rack.id,
+            lambda *args: primary_rack_dv.set(args))
+        listener.register(
+            "sys_dhcp_%s" % secondary_rack.id,
+            lambda *args: secondary_rack_dv.set(args))
+        sip = yield deferToDatabase(
+            self.create_staticipaddress, {
+                'temp_expires_on': datetime.utcnow(),
+            }, vlan=relay_vlan)
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.update_staticipaddress, sip.id, params={
+                    'temp_expires_on': None
+                })
+            yield primary_rack_dv.get(timeout=2)
+            yield secondary_rack_dv.get(timeout=2)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_messages_when_ip_address_becomes_temp(self):
+        primary_rack = yield deferToDatabase(self.create_rack_controller)
+        secondary_rack = yield deferToDatabase(self.create_rack_controller)
+        vlan = yield deferToDatabase(self.create_vlan, params={
+            "dhcp_on": True,
+            "primary_rack": primary_rack,
+            "secondary_rack": secondary_rack,
+        })
+        relay_vlan = yield deferToDatabase(self.create_vlan, params={
+            "relay_vlan": vlan
+        })
+        yield deferToDatabase(self.create_subnet, {
+            "vlan": relay_vlan,
+        })
+        yield deferToDatabase(register_system_triggers)
+        primary_rack_dv = DeferredValue()
+        secondary_rack_dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dhcp_%s" % primary_rack.id,
+            lambda *args: primary_rack_dv.set(args))
+        listener.register(
+            "sys_dhcp_%s" % secondary_rack.id,
+            lambda *args: secondary_rack_dv.set(args))
+        sip = yield deferToDatabase(
+            self.create_staticipaddress, vlan=relay_vlan)
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.update_staticipaddress, sip.id, params={
+                    'temp_expires_on': datetime.utcnow()
+                })
+            yield primary_rack_dv.get(timeout=2)
+            yield secondary_rack_dv.get(timeout=2)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
     def test_sends_messages_when_ip_address_deleted(self):
         primary_rack = yield deferToDatabase(self.create_rack_controller)
         secondary_rack = yield deferToDatabase(self.create_rack_controller)
@@ -3263,6 +3343,64 @@ class TestDNSStaticIPAddressListener(
         self.assertThat(
             self.getCapturedPublication().source,
             Equals("ip %s allocated" % new_ip))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_update_on_node_ip_no_longer_temp(self):
+        yield deferToDatabase(register_system_triggers)
+        node = yield deferToDatabase(self.create_node_with_interface)
+        sip = yield deferToDatabase(self.get_node_ip_address, node)
+        new_ip = yield deferToDatabase(
+            lambda sip: factory.pick_ip_in_Subnet(sip.subnet), sip)
+        sip.ip = new_ip
+        sip.temp_expires_on = datetime.utcnow()
+        yield deferToDatabase(sip.save)
+        yield self.capturePublication()
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dns", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.update_staticipaddress, sip.id, {
+                "temp_expires_on": None,
+            })
+            yield dv.get(timeout=2)
+            yield self.assertPublicationUpdated()
+        finally:
+            yield listener.stopService()
+        self.assertThat(
+            self.getCapturedPublication().source,
+            Equals("ip %s allocated" % new_ip))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_update_on_node_ip_becoming_temp(self):
+        yield deferToDatabase(register_system_triggers)
+        node = yield deferToDatabase(self.create_node_with_interface)
+        sip = yield deferToDatabase(self.get_node_ip_address, node)
+        new_ip = yield deferToDatabase(
+            lambda sip: factory.pick_ip_in_Subnet(sip.subnet), sip)
+        sip.ip = new_ip
+        sip.temp_expires_on = None
+        yield deferToDatabase(sip.save)
+        yield self.capturePublication()
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dns", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.update_staticipaddress, sip.id, {
+                "temp_expires_on": datetime.utcnow(),
+            })
+            yield dv.get(timeout=2)
+            yield self.assertPublicationUpdated()
+        finally:
+            yield listener.stopService()
+        self.assertThat(
+            self.getCapturedPublication().source,
+            Equals("ip %s released" % new_ip))
 
     @wait_for_reactor
     @inlineCallbacks
