@@ -11,6 +11,7 @@
 @import "tables/patterns_table-pods";
 @import "tables/patterns_table-ssh-keys";
 @import "tables/patterns_table-sortable";
+@import "tables/patterns_table-static-routes";
 @import "tables/patterns_table-storage";
 @import "tables/patterns_table-testing";
 @import "tables/patterns_table-zones";
@@ -27,6 +28,7 @@
 @include maas-table-pods;
 @include maas-table-sortable;
 @include maas-table-ssh-keys;
+@include maas-table-static-routes;
 @include maas-table-storage;
 @include maas-table-testing;
 @include maas-table-zones;

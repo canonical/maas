@@ -86,14 +86,12 @@
     </header>
     <section class="p-strip">
         <div class="row">
-            <div class="col-12">
-                <div class="col-8">
-                    <h2 class="u-float--left p-heading--four">Subnet summary</h2>
-                </div>
-                <div class="col-4">
-                    <div class="u-align--right" data-ng-if="isSuperUser()">
-                        <button type="button" name="button" class="p-button--neutral" data-ng-click="enterEditSummary()" data-ng-if="editSummary != true">Edit</button>
-                    </div>
+            <div class="col-8">
+                <h2 class="u-float--left p-heading--four">Subnet summary</h2>
+            </div>
+            <div class="col-4">
+                <div class="u-align--right" data-ng-if="isSuperUser()">
+                    <button type="button" name="button" class="p-button--neutral" data-ng-click="enterEditSummary()" data-ng-if="editSummary != true">Edit</button>
                 </div>
             </div>
         </div>
@@ -160,8 +158,10 @@
                         </p>
                     </div>
                     <div class="p-form__control col-4">
-                        <span data-ng-if="subnet.managed == false">Disabled</span>
-                        <span data-ng-if="subnet.managed == true">Enabled</span>
+                        <p>
+                            <span data-ng-if="subnet.managed == false">Disabled</span>
+                            <span data-ng-if="subnet.managed == true">Enabled</span>
+                        </p>
                     </div>
                 </div>
                 <div class="p-form__group row">
@@ -175,8 +175,10 @@
                         </p>
                     </div>
                     <div class="p-form__control col-4">
-                        <span data-ng-if="subnet.active_discovery == false">Disabled</span>
-                        <span data-ng-if="subnet.active_discovery == true">Enabled</span>
+                        <p>
+                            <span data-ng-if="subnet.active_discovery == false">Disabled</span>
+                            <span data-ng-if="subnet.active_discovery == true">Enabled</span>
+                        </p>
                     </div>
                 </div>
                 <div class="p-form__group row">
@@ -195,8 +197,10 @@
                         </p>
                     </div>
                     <div class="p-form__control col-4">
-                        <span data-ng-if="subnet.allow_proxy == false">Disallowed</span>
-                        <span data-ng-if="subnet.allow_proxy == true">Allowed</span>
+                        <p>
+                            <span data-ng-if="subnet.allow_proxy == false">Disallowed</span>
+                            <span data-ng-if="subnet.allow_proxy == true">Allowed</span>
+                        </p>
                     </div>
                 </div>
                 <div class="p-form__group row">
@@ -215,8 +219,10 @@
                         </p>
                     </div>
                     <div class="p-form__control col-4">
-                        <span data-ng-if="subnet.allow_dns == false">Disallowed</span>
-                        <span data-ng-if="subnet.allow_dns == true">Allowed</span>
+                        <p>
+                            <span data-ng-if="subnet.allow_dns == false">Disallowed</span>
+                            <span data-ng-if="subnet.allow_dns == true">Allowed</span>
+                        </p>
                     </div>
                 </div>
                 <div class="p-form__group row">
@@ -274,7 +280,7 @@
                             label-width="2" label-width-tablet="2" input-width="4"
                             label-info="When enabled, MAAS will assume it may take full control of DHCP and&#xa;IP address management on this subnet. When disabled, MAAS will only&#xa;allocate addresses from reserved IP ranges on this subnet, and will not&#xa;include this subnet's dynamic ranges in the DHCP configuration.">
                         </maas-obj-field>
-                        <p class="row" data-ng-if="subnet.$maasForm.getValue('managed') != subnet.managed">
+                        <div class="row" data-ng-if="subnet.$maasForm.getValue('managed') != subnet.managed">
                             <div class="p-notification--caution" data-ng-if="subnet.$maasForm.getValue('managed') == false">
                                 <p class="p-notification__response">
                                     <span class="p-notification__status">Warning:</span> MAAS will now start allocating IP addresses from reserved ranges. If a reserved range has been defined to prevent MAAS from allocating IP addresses, this behavior will change.
@@ -285,7 +291,7 @@
                                     <span class="p-notification__status">Warning:</span> MAAS will now allocate IP addresses from the entire subnet, excluding any reserved ranges.
                                 </p>
                             </div>
-                        </p>
+                        </div>
                         <maas-obj-field data-ng-if="subnet.version === 4" type="onoffswitch" key="active_discovery" label="Active mapping"
                             label-width="2" input-width="4"
                             label-info="When enabled, MAAS will scan this subnet {$ active_discovery_interval | lowercase $}&#xa;to discover hosts that have not been discovered passively."></maas-obj-field>
@@ -337,33 +343,75 @@
             </maas-obj-form>
         </div>
     </section>
-    <section class="p-strip" window-width>
+    <section class="p-strip">
         <div class="row">
             <div class="col-12">
-                <h2 class="p-heading--four">Static Routes</h2>
+                <h2 class="p-heading--four">Utilisation</h2>
             </div>
         </div>
         <div class="row">
-            <table class="p-table-expanding">
+            <div class="col-6">
+                <div class="row">
+                    <div class="col-2">
+                        <p class="p-form__label is-disabled">Subnet addresses</p>
+                    </div>
+                    <div class="col-4">
+                        <p>{$ subnet.statistics.total_addresses $}</p>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-2">
+                        <p class="p-form__label is-disabled">Availability</p>
+                    </div>
+                    <div class="col-4">
+                        <p>{$ subnet.statistics.num_available $} ({$ subnet.statistics.available_string $})</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="row">
+                    <div class="col-2">
+                        <p class="p-form__label is-disabled">Used</p>
+                    </div>
+                    <div class="col-4">
+                        <p>{$ subnet.statistics.usage_string $}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <section class="p-strip" window-width>
+        <div class="row">
+            <div class="col-6">
+                <h2 class="p-heading--four">Static Routes</h2>
+            </div>
+            <div class="col-6" data-ng-if="isSuperUser() && !newStaticRoute">
+                <div class="u-align--right">
+                    <button class="p-button--secondary" data-ng-click="addStaticRoute()">Add static route</button>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <table class="p-table-expanding p-table--static-routes">
                 <thead>
                     <tr>
-                        <th class="col-3">Gateway IP</th>
-                        <th class="col-4">Destination</th>
-                        <th class="col-2">Metric</th>
-                        <th class="col-3"><div class="u-align--right">Actions</div></th>
-                        <th class="u-hide"><!-- empty cell required for validation --></th>
-                        <th class="u-hide"><!-- empty cell required for validation --></th>
+                        <th>Gateway IP</th>
+                        <th>Destination</th>
+                        <th>Metric</th>
+                        <th><div class="u-align--right">Actions</div></th>
+                        <th><!-- empty cell required for validation --></th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr data-ng-repeat="staticRoute in (subnetStaticRoutes = staticRoutes | filterBySubnet:subnet:'source' | orderBy:'gateway_ip')"
                     data-ng-class="{'is-active': isStaticRouteInEditMode(staticRoute) || isStaticRouteInDeleteMode(staticRoute)}">
-                        <td class="col-3" aria-label="Gateway IP" data-ng-if="!isStaticRouteInEditMode(staticRoute)">
+                        <td aria-label="Gateway IP" data-ng-if="!isStaticRouteInEditMode(staticRoute)">
                             <span>{$ staticRoute.gateway_ip $}</span>
                         </td>
-                        <td class="col-4" aria-label="Destination" data-ng-if="!isStaticRouteInEditMode(staticRoute)">{$ getSubnetCIDR(staticRoute.destination) $}</td>
-                        <td class="col-2" aria-label="Metric" data-ng-if="!isStaticRouteInEditMode(staticRoute)">{$ staticRoute.metric $}</td>
-                        <td class="col-3" data-ng-if="!isStaticRouteInEditMode(staticRoute)">
+                        <td aria-label="Destination" data-ng-if="!isStaticRouteInEditMode(staticRoute)">{$ getSubnetCIDR(staticRoute.destination) $}</td>
+                        <td aria-label="Metric" data-ng-if="!isStaticRouteInEditMode(staticRoute)">{$ staticRoute.metric $}</td>
+                        <td data-ng-if="!isStaticRouteInEditMode(staticRoute)">
                             <div class="u-align--right">
                                 <button class="p-button--base is-small" aria-label="Edit static route"
                                     data-ng-click="toggleMenu(); staticRouteToggleEditMode(staticRoute)"
@@ -377,7 +425,7 @@
                                 </button>
                             </div>
                         </td>
-                        <td class="p-table-expanding__panel col-12" data-ng-if="isStaticRouteInDeleteMode(staticRoute)">
+                        <td class="p-table-expanding__panel" data-ng-if="isStaticRouteInDeleteMode(staticRoute)">
                             <div class="u-clearfix" data-ng-if="windowWidth <= 772">
                                 <h2 data-ng-click="staticRouteCancelDelete()" class="u-float--left p-heading--four">Remove {$ staticRoute.gateway_ip $}</h2>
                                 <button class="p-button--base is-small u-float--right" style="width: auto;" data-ng-click="staticRouteCancelDelete()">
@@ -397,7 +445,7 @@
                                 </div>
                             </div>
                         </td>
-                        <td class="p-table-expanding__panel col-12" data-ng-if="isStaticRouteInEditMode(staticRoute)">
+                        <td class="p-table-expanding__panel" data-ng-if="isStaticRouteInEditMode(staticRoute)">
                             <maas-obj-form obj="staticRoute" manager="staticRoutesManager" table-form="true"
                                 save-on-blur="false" after-save="ipRangeClearEditMode">
                                 <div class="u-clearfix" data-ng-if="windowWidth <= 772">
@@ -441,7 +489,7 @@
                         <td col-span="6">No static routes have been added to this subnet.</td>
                     </tr>
                     <tr class="is-active" data-ng-if="newStaticRoute">
-                        <td class="p-table-expanding__panel col-12">
+                        <td class="p-table-expanding__panel">
                             <maas-obj-form obj="newStaticRoute" manager="staticRoutesManager" manager-method="createItem"
                                 table-form="true" save-on-blur="false" after-save="cancelAddStaticRoute">
                                 <div data-ng-if="windowWidth <= 772">
@@ -483,50 +531,6 @@
                 </tbody>
             </table>
         </div>
-        <div class="row" data-ng-if="isSuperUser() && !newStaticRoute">
-            <button class="p-button--secondary" data-ng-click="addStaticRoute()">Add static route</button>
-        </div>
-    </section>
-    <section class="p-strip">
-        <div class="row">
-            <div class="col-12">
-                <h2 class="p-heading--four">Utilisation</h2>
-            </div>
-        </div>
-        <div class="row">
-            <div class="col-6">
-                <div class="row">
-                    <div class="col-2">
-                        <p class="p-form__label is-disabled">Subnet addresses</p>
-                    </div>
-                    <div class="col-4">
-                        <p>{$ subnet.statistics.total_addresses $}</p>
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-2">
-                        <p class="p-form__label is-disabled">Availability</p>
-                    </div>
-                    <div class="col-4">
-                        <p>{$ subnet.statistics.num_available $} ({$ subnet.statistics.available_string $})</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-6">
-                <div class="row">
-                    <!-- XXX mpontillo we don't have data for "Reserved" yet. -->
-                    <!-- <dt class="u-hide ng-hide">Reserved</dt>
-                        <dd class="u-hide ng-hide">10%</dd> -->
-                    <div class="col-2">
-                        <p class="p-form__label is-disabled">Used</p>
-                    </div>
-                    <div class="col-4">
-                        <p>{$ subnet.statistics.usage_string $}</p>
-                    </div>
-                </div>
-            </div>
-        </div>
     </section>
     <section class="p-strip">
         <div class="row">
@@ -536,7 +540,8 @@
     <section class="p-strip">
         <div class="row">
             <div class="col-6">
-                <h2 class="p-heading--four">Used</h2>
+                <!-- inline margin style to align with other tables -->
+                <h2 class="p-heading--four" style="margin-bottom: 1.6rem">Used</h2>
             </div>
             <div class="col-6">
                 <div class="search ng-hide">
@@ -550,25 +555,25 @@
                 <thead>
                     <tr>
                         <th>
-                            <a href="" data-ng-click="sortIPTable(ipSort)" data-ng-class="{'is-sorted': predicate === ipSort, 'sort-asc': reverse === false, 'sort-desc': reverse === true}">IP Address</a>
+                            <span role="columnheader" data-ng-click="sortIPTable(ipSort)" data-ng-class="{'is-sorted': predicate === ipSort, 'sort-asc': reverse === false, 'sort-desc': reverse === true}">IP Address</span>
                         </th>
                         <th>
-                            <a href="" data-ng-click="sortIPTable(allocTypeSort)" data-ng-class="{'is-sorted': predicate === allocTypeSort, 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Type</a>
+                            <span role="columnheader" data-ng-click="sortIPTable(allocTypeSort)" data-ng-class="{'is-sorted': predicate === allocTypeSort, 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Type</span>
                         </th>
                         <th>
-                            <a href="" data-ng-click="sortIPTable('node_summary.hostname')" data-ng-class="{'is-sorted': predicate === 'node_summary.hostname', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Node</a>
+                            <span role="columnheader" data-ng-click="sortIPTable('node_summary.hostname')" data-ng-class="{'is-sorted': predicate === 'node_summary.hostname', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Node</span>
                         </th>
                         <th>
-                            <a href="" data-ng-click="sortIPTable('node_summary.via')" data-ng-class="{'is-sorted': predicate === 'node_summary.via', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Interface</a>
+                            <span role="columnheader" data-ng-click="sortIPTable('node_summary.via')" data-ng-class="{'is-sorted': predicate === 'node_summary.via', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Interface</span>
                         </th>
                         <th>
-                            <a href="" data-ng-click="sortIPTable(nodeTypeSort)" data-ng-class="{'is-sorted': predicate === nodeTypeSort, 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Usage</a>
+                            <span role="columnheader" data-ng-click="sortIPTable(nodeTypeSort)" data-ng-class="{'is-sorted': predicate === nodeTypeSort, 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Usage</span>
                         </th>
                         <th>
-                            <a href="" data-ng-click="sortIPTable(ownerSort)" data-ng-class="{'is-sorted': predicate === ownerSort, 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Owner</a>
+                            <span role="columnheader" data-ng-click="sortIPTable(ownerSort)" data-ng-class="{'is-sorted': predicate === ownerSort, 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Owner</span>
                         </th>
                         <th>
-                            <a href="" data-ng-click="sortIPTable('updated')" data-ng-class="{'is-sorted': predicate === 'updated', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Last seen</a>
+                            <span role="columnheader" data-ng-click="sortIPTable('updated')" data-ng-class="{'is-sorted': predicate === 'updated', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Last seen</span>
                         </th>
                     </tr>
                 </thead>

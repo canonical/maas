@@ -142,9 +142,9 @@
         <div class="col-4">
             <form class="p-form p-form--inline">
                 <div class="p-form__group">
-                    <label class="p-form__label" for="network-filter">Group by</label>
+                    <label class="p-form__label u-no-margin--bottom" for="network-filter">Group by</label>
                     <div class="p-form__control">
-                        <select name="network-filter" class="p-form__control" id="networks-groupby" data-ng-model="groupBy" data-ng-change="updateGroupBy()">
+                        <select name="network-filter" class="p-form__control u-no-margin--bottom" id="networks-groupby" data-ng-model="groupBy" data-ng-change="updateGroupBy()">
                             <option value="fabric">Fabrics</option>
                             <option value="space">Spaces</option>
                         </select>
@@ -177,10 +177,6 @@
             <table class="ng-hide" data-ng-show="groupBy === 'space'">
                 <thead>
                     <tr>
-                        <!-- <th class="ng-hide">
-                            <input class="checkbox" type="checkbox" id="spaces-all" />
-                            <label class="checkbox-label" for="spaces-all"></label>
-                        </th> -->
                         <th>Space</th>
                         <th>VLAN</th>
                         <th>DHCP</th>
@@ -191,12 +187,6 @@
                 </thead>
                 <tbody vs-repeat vs-scroll-parent="window">
                     <tr data-ng-repeat="row in group.spaces.rows">
-                        <!-- <td class="ng-hide">
-                            <div data-ng-if="row.space_name">
-                                <input class="checkbox" type="checkbox" id="space-{$ row.space.id $}" />
-                                <label class="checkbox-label" for="space-{$ row.space.id $}"></label>
-                            </div>
-                        </td> -->
                         <td aria-label="Space" title="{$ row.space_name $}">
                             <a href="#/space/{$ row.space.id $}">{$ row.space_name $}</a>
                         </td>
@@ -204,8 +194,8 @@
                             <a href="#/vlan/{$ row.vlan.id $}" title="{$ row.vlan_name $}">{$ row.vlan_name $}</a>
                         </td>
                         <td aria-label="DHCP">
-                            <p data-ng-if="row.vlan.dhcp_on === true || row.vlan.relay_vlan !== null">Enabled</p>
-                            <p data-ng-if="row.vlan.dhcp_on !== true && row.vlan.relay_vlan === null">Disabled</p>
+                            <div data-ng-if="row.vlan.dhcp_on === true || row.vlan.relay_vlan !== null">Enabled</div>
+                            <div data-ng-if="row.vlan.dhcp_on !== true && row.vlan.relay_vlan === null">Disabled</div>
                         </td>
                         <td aria-label="Fabric">
                             <a href="#/fabric/{$ row.fabric.id $}" title="{$ row.fabric.name $}">{$ row.fabric.name $}</a>
@@ -227,8 +217,8 @@
                             <a href="#/vlan/{$ row.vlan.id $}">{$ row.vlan_name $}</a>
                         </td>
                         <td aria-label="DHCP">
-                            <p data-ng-if="row.vlan.dhcp_on === true || row.vlan.relay_vlan !== null || row.vlan.external_dhcp === true" title="Enabled">Enabled</p>
-                            <p data-ng-if="row.vlan.dhcp_on !== true && row.vlan.relay_vlan === null" title="Disabled">Disabled</p>
+                            <div data-ng-if="row.vlan.dhcp_on === true || row.vlan.relay_vlan !== null || row.vlan.external_dhcp === true" title="Enabled">Enabled</div>
+                            <div data-ng-if="row.vlan.dhcp_on !== true && row.vlan.relay_vlan === null" title="Disabled">Disabled</div>
                         </td>
                         <td title="{$ row.fabric.name $}">
                             <a href="#/fabric/{$ row.fabric.id $}">{$ row.fabric.name $}</a>
@@ -247,10 +237,6 @@
             <table class="u-no-margin--top ng-hide" data-ng-show="groupBy === 'fabric'">
                 <thead>
                     <tr>
-                        <!-- <th class="ng-hide">
-                            <input class="checkbox" type="checkbox" id="fabrics-all" />
-                            <label class="checkbox-label" for="fabrics-all"></label>
-                        </th> -->
                         <th>Fabric</th>
                         <th>VLAN</th>
                         <th>DHCP</th>
@@ -261,12 +247,6 @@
                 </thead>
                 <tbody vs-repeat vs-scroll-parent="window">
                     <tr data-ng-repeat="row in group.fabrics.rows">
-                        <!-- <td class="ng-hide">
-                            <div data-ng-if="row.fabric_name">
-                                <input class="checkbox" type="checkbox" id="fabric-{$ row.fabric.id $}" />
-                                <label class="checkbox-label" for="fabric-{$ row.fabric.id $}"></label>
-                            </div>
-                        </td> -->
                         <td aria-label="Fabric" title="{$ row.fabric_name $}">
                             <a href="#/fabric/{$ row.fabric.id $}">{$ row.fabric_name $}</a>
                         </td>
