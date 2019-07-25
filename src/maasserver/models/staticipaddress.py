@@ -250,7 +250,7 @@ class StaticIPAddressManager(Manager):
 
     def allocate_new(
             self, subnet=None, alloc_type=IPADDRESS_TYPE.AUTO, user=None,
-            requested_address=None, exclude_addresses=[]):
+            requested_address=None, exclude_addresses=None):
         """Return a new StaticIPAddress.
 
         :param subnet: The subnet from which to allocate the address.

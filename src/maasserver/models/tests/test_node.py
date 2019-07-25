@@ -71,6 +71,7 @@ from maasserver.exceptions import (
     NodeStateViolation,
     PodProblem,
     PowerProblem,
+    StaticIPAddressExhaustion,
 )
 from maasserver.models import (
     Bcache,
@@ -96,6 +97,7 @@ from maasserver.models import (
     RegionController,
     RegionRackRPCConnection,
     Service,
+    StaticIPAddress,
     Subnet,
     UnknownInterface,
     VLAN,
@@ -7150,11 +7152,11 @@ class TestNode_Start(MAASTransactionServerTestCase):
         user = factory.make_User()
         node = self.make_acquired_node_with_interface(
             user, power_type="manual")
-        claim_auto_ips = self.patch_autospec(node, "claim_auto_ips")
+        claim_auto_ips = self.patch_autospec(node, "_claim_auto_ips")
         node.start(user)
 
         self.expectThat(
-            claim_auto_ips, MockCalledOnceWith())
+            claim_auto_ips, MockCalledOnceWith(ANY))
 
     def test__only_claims_auto_addresses_when_allocated(self):
         user = factory.make_User()
@@ -7165,11 +7167,297 @@ class TestNode_Start(MAASTransactionServerTestCase):
 
         claim_auto_ips = self.patch_autospec(
             node, "claim_auto_ips", spec_set=False)
-        node.start(user)
+        with post_commit_hooks:
+            node.start(user)
 
         # No calls are made to claim_auto_ips, since the node
         # isn't ALLOCATED.
         self.assertThat(claim_auto_ips, MockNotCalled())
+
+    def test__claims_auto_ip_addresses_assigns_without_no_racks(self):
+        user = factory.make_User()
+        node = self.make_acquired_node_with_interface(
+            user, power_type="manual")
+
+        # No rack controllers are currently connected to the test region
+        # so no IP address checking will be performed.
+        with post_commit_hooks:
+            node.start(user)
+
+        interface = node.get_boot_interface()
+        [ip] = interface.ip_addresses.filter(alloc_type=IPADDRESS_TYPE.AUTO)
+        self.assertThat(ip.ip, Not(Is(None)))
+        self.assertThat(ip.temp_expires_on, Is(None))
+
+    def test__claims_auto_ip_addresses_skips_used_ip_from_rack(self):
+        user = factory.make_User()
+        node = self.make_acquired_node_with_interface(
+            user, power_type="manual")
+        node_interface = node.get_boot_interface()
+        [auto_ip] = node_interface.ip_addresses.filter(
+            alloc_type=IPADDRESS_TYPE.AUTO)
+
+        # Create a rack controller that has an interface on the same subnet
+        # as the node.
+        rack = factory.make_RackController()
+        rack.interface_set.all().delete()
+        rackif = factory.make_Interface(vlan=node_interface.vlan, node=rack)
+        rackif.neighbour_discovery_state = True
+        rackif.save()
+        rackif_ip = factory.pick_ip_in_Subnet(auto_ip.subnet)
+        rackif.link_subnet(
+            INTERFACE_LINK_TYPE.STATIC, auto_ip.subnet, rackif_ip)
+
+        # Mock the rack controller connected to the region controller.
+        client = Mock()
+        client.ident = rack.system_id
+        self.patch(node_module, "getAllClients").return_value = [client]
+
+        # Must be executed in a transaction as `allocate_new` uses savepoints.
+        with transaction.atomic():
+            # Allocate 2 AUTO IP addresses and set the first as temp expired
+            # and free the second IP address.
+            first_ip = StaticIPAddress.objects.allocate_new(
+                subnet=auto_ip.subnet, alloc_type=IPADDRESS_TYPE.AUTO)
+            first_ip.temp_expires_on = (
+                datetime.utcnow() - timedelta(minutes=5))
+            first_ip.save()
+            second_ip = StaticIPAddress.objects.allocate_new(
+                subnet=auto_ip.subnet, alloc_type=IPADDRESS_TYPE.AUTO,
+                exclude_addresses=[first_ip.ip])
+            second_ip.delete()
+
+            # This is the next IP address that will actaully get picked for the
+            # machine as it will be free from the database and will no be
+            # reported as used from the rack controller.
+            third_ip = StaticIPAddress.objects.allocate_new(
+                subnet=auto_ip.subnet, alloc_type=IPADDRESS_TYPE.AUTO,
+                exclude_addresses=[first_ip.ip, second_ip.ip])
+            third_ip.delete()
+
+        # 2 tries will be made on the rack controller, both IP will be
+        # used.
+        client.side_effect = [
+            defer.succeed({
+                "ip_addresses": [
+                    {
+                        "ip_address": first_ip.ip,
+                        "used": True,
+                    }
+                ]
+            }),
+            defer.succeed({
+                "ip_addresses": [
+                    {
+                        "ip_address": second_ip.ip,
+                        "used": True,
+                    }
+                ]
+            }),
+            defer.succeed({
+                "ip_addresses": [
+                    {
+                        "ip_address": third_ip.ip,
+                        "used": False,
+                    }
+                ]
+            })
+        ]
+
+        # No rack controllers are currently connected to the test region
+        # so no IP address checking will be performed.
+        with post_commit_hooks:
+            node.start(user)
+
+        auto_ip = reload_object(auto_ip)
+        self.assertThat(auto_ip.ip, Equals(third_ip.ip))
+        self.assertThat(auto_ip.temp_expires_on, Is(None))
+
+    def test__claims_auto_ip_addresses_retries_on_failure_from_rack(self):
+        user = factory.make_User()
+        node = self.make_acquired_node_with_interface(
+            user, power_type="manual")
+        node_interface = node.get_boot_interface()
+        [auto_ip] = node_interface.ip_addresses.filter(
+            alloc_type=IPADDRESS_TYPE.AUTO)
+
+        # Create a rack controller that has an interface on the same subnet
+        # as the node.
+        rack = factory.make_RackController()
+        rack.interface_set.all().delete()
+        rackif = factory.make_Interface(vlan=node_interface.vlan, node=rack)
+        rackif.neighbour_discovery_state = True
+        rackif.save()
+        rackif_ip = factory.pick_ip_in_Subnet(auto_ip.subnet)
+        rackif.link_subnet(
+            INTERFACE_LINK_TYPE.STATIC, auto_ip.subnet, rackif_ip)
+
+        # Mock the rack controller connected to the region controller.
+        client = Mock()
+        client.ident = rack.system_id
+        self.patch(node_module, "getAllClients").return_value = [client]
+
+        # Must be executed in a transaction as `allocate_new` uses savepoints.
+        with transaction.atomic():
+            first_ip = StaticIPAddress.objects.allocate_new(
+                subnet=auto_ip.subnet, alloc_type=IPADDRESS_TYPE.AUTO)
+            first_ip.temp_expires_on = (
+                datetime.utcnow() - timedelta(minutes=5))
+            first_ip.save()
+
+        # 2 tries will be made on the rack controller, both IP will be
+        # used.
+        client.side_effect = [
+            defer.fail(Exception()),
+            defer.fail(Exception()),
+            defer.succeed({
+                "ip_addresses": [
+                    {
+                        "ip_address": first_ip.ip,
+                        "used": False,
+                    }
+                ]
+            })
+        ]
+
+        # No rack controllers are currently connected to the test region
+        # so no IP address checking will be performed.
+        with post_commit_hooks:
+            node.start(user)
+
+        auto_ip = reload_object(auto_ip)
+        self.assertThat(auto_ip.ip, Equals(first_ip.ip))
+        self.assertThat(auto_ip.temp_expires_on, Is(None))
+
+    def test__claims_auto_ip_addresses_assigns_ip_on_three_failures(self):
+        user = factory.make_User()
+        node = self.make_acquired_node_with_interface(
+            user, power_type="manual")
+        node_interface = node.get_boot_interface()
+        [auto_ip] = node_interface.ip_addresses.filter(
+            alloc_type=IPADDRESS_TYPE.AUTO)
+
+        # Create a rack controller that has an interface on the same subnet
+        # as the node.
+        rack = factory.make_RackController()
+        rack.interface_set.all().delete()
+        rackif = factory.make_Interface(vlan=node_interface.vlan, node=rack)
+        rackif.neighbour_discovery_state = True
+        rackif.save()
+        rackif_ip = factory.pick_ip_in_Subnet(auto_ip.subnet)
+        rackif.link_subnet(
+            INTERFACE_LINK_TYPE.STATIC, auto_ip.subnet, rackif_ip)
+
+        # Mock the rack controller connected to the region controller.
+        client = Mock()
+        client.ident = rack.system_id
+        self.patch(node_module, "getAllClients").return_value = [client]
+
+        # Must be executed in a transaction as `allocate_new` uses savepoints.
+        with transaction.atomic():
+            first_ip = StaticIPAddress.objects.allocate_new(
+                subnet=auto_ip.subnet, alloc_type=IPADDRESS_TYPE.AUTO)
+            first_ip.temp_expires_on = (
+                datetime.utcnow() - timedelta(minutes=5))
+            first_ip.save()
+
+        # 2 tries will be made on the rack controller, both IP will be
+        # used.
+        client.side_effect = [
+            defer.fail(Exception()),
+            defer.fail(Exception()),
+            defer.fail(Exception()),
+        ]
+
+        # No rack controllers are currently connected to the test region
+        # so no IP address checking will be performed.
+        with post_commit_hooks:
+            node.start(user)
+
+        auto_ip = reload_object(auto_ip)
+        self.assertThat(auto_ip.ip, Equals(first_ip.ip))
+        self.assertThat(auto_ip.temp_expires_on, Is(None))
+
+    def test__claims_auto_ip_addresses_fails_after_three_tries(self):
+        user = factory.make_User()
+        node = self.make_acquired_node_with_interface(
+            user, power_type="manual")
+        node_interface = node.get_boot_interface()
+        [auto_ip] = node_interface.ip_addresses.filter(
+            alloc_type=IPADDRESS_TYPE.AUTO)
+
+        # Create a rack controller that has an interface on the same subnet
+        # as the node.
+        rack = factory.make_RackController()
+        rack.interface_set.all().delete()
+        rackif = factory.make_Interface(vlan=node_interface.vlan, node=rack)
+        rackif.neighbour_discovery_state = True
+        rackif.save()
+        rackif_ip = factory.pick_ip_in_Subnet(auto_ip.subnet)
+        rackif.link_subnet(
+            INTERFACE_LINK_TYPE.STATIC, auto_ip.subnet, rackif_ip)
+
+        # Mock the rack controller connected to the region controller.
+        client = Mock()
+        client.ident = rack.system_id
+        self.patch(node_module, "getAllClients").return_value = [client]
+
+        # Must be executed in a transaction as `allocate_new` uses savepoints.
+        with transaction.atomic():
+            # Allocate 2 AUTO IP addresses and set the first as temp expired
+            # and free the second IP address.
+            first_ip = StaticIPAddress.objects.allocate_new(
+                subnet=auto_ip.subnet, alloc_type=IPADDRESS_TYPE.AUTO)
+            first_ip.temp_expires_on = (
+                datetime.utcnow() - timedelta(minutes=5))
+            first_ip.save()
+            second_ip = StaticIPAddress.objects.allocate_new(
+                subnet=auto_ip.subnet, alloc_type=IPADDRESS_TYPE.AUTO,
+                exclude_addresses=[first_ip.ip])
+            second_ip.delete()
+
+            # This is the next IP address that will actaully get picked for the
+            # machine as it will be free from the database and will no be
+            # reported as used from the rack controller.
+            third_ip = StaticIPAddress.objects.allocate_new(
+                subnet=auto_ip.subnet, alloc_type=IPADDRESS_TYPE.AUTO,
+                exclude_addresses=[first_ip.ip, second_ip.ip])
+            third_ip.delete()
+
+        # 2 tries will be made on the rack controller, both IP will be
+        # used.
+        client.side_effect = [
+            defer.succeed({
+                "ip_addresses": [
+                    {
+                        "ip_address": first_ip.ip,
+                        "used": True,
+                    }
+                ]
+            }),
+            defer.succeed({
+                "ip_addresses": [
+                    {
+                        "ip_address": second_ip.ip,
+                        "used": True,
+                    }
+                ]
+            }),
+            defer.succeed({
+                "ip_addresses": [
+                    {
+                        "ip_address": third_ip.ip,
+                        "used": True,
+                    }
+                ]
+            })
+        ]
+
+        # No rack controllers are currently connected to the test region
+        # so no IP address checking will be performed.
+        with ExpectedException(StaticIPAddressExhaustion):
+            with post_commit_hooks:
+                node.start(user)
 
     def test__sets_deploying_before_claiming_auto_ips(self):
         user = factory.make_User()

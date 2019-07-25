@@ -13,6 +13,7 @@ __all__ = [
     ]
 
 from collections import OrderedDict
+from datetime import datetime
 from zlib import crc32
 
 from django.contrib.postgres.fields import ArrayField
@@ -1188,27 +1189,37 @@ class Interface(CleanSave, TimestampedModel):
                 self.get_log_string(), ip_address))
             self.unlink_ip_address(ip_address, clearing_config=clearing_config)
 
-    def claim_auto_ips(self, exclude_addresses=[]):
+    def claim_auto_ips(self, temp_expires_after=None, exclude_addresses=None):
         """Claim IP addresses for this interfaces AUTO IP addresses.
 
+        :param temp_expires_after: Mark the IP address assignments as temporary
+            until a period of time. It is up to the caller to handle the
+            clearing of the `temp_expires_on` once IP address checking has
+            been performed.
         :param exclude_addresses: Exclude the following IP addresses in the
             allocation. Mainly used to ensure that the sub-transaction that
             runs to identify available IP address does not include the already
             allocated IP addresses.
         """
-        exclude_addresses = set(exclude_addresses)
+        if exclude_addresses is None:
+            exclude_addresses = set()
+        else:
+            exclude_addresses = set(exclude_addresses)
         assigned_addresses = []
         for auto_ip in self.ip_addresses.filter(
                 alloc_type=IPADDRESS_TYPE.AUTO):
             if not auto_ip.ip:
                 assigned_ip = self._claim_auto_ip(
-                    auto_ip, exclude_addresses=exclude_addresses)
+                    auto_ip,
+                    temp_expires_after=temp_expires_after,
+                    exclude_addresses=exclude_addresses)
                 if assigned_ip is not None:
                     assigned_addresses.append(assigned_ip)
                     exclude_addresses.add(str(assigned_ip.ip))
         return assigned_addresses
 
-    def _claim_auto_ip(self, auto_ip, exclude_addresses=[]):
+    def _claim_auto_ip(
+            self, auto_ip, temp_expires_after=None, exclude_addresses=None):
         """Claim an IP address for the `auto_ip`."""
         subnet = auto_ip.subnet
         if subnet is None:
@@ -1228,10 +1239,22 @@ class Interface(CleanSave, TimestampedModel):
         # Throw away the newly-allocated address and assign it to the old AUTO
         # address, so that the interface link IDs remain consistent.
         new_ip.delete()
+
+        # Set temp_expires_on when temp_expires_after is provided, meaning the
+        # IP assignment is only temporary until the IP address can be
+        # validated as free.
+        if temp_expires_after is not None:
+            auto_ip.temp_expires_on = (
+                datetime.utcnow() + temp_expires_after)
         auto_ip.save()
-        maaslog.info("Allocated automatic IP address %s for %s." % (
-            auto_ip.ip,
-            self.get_log_string()))
+
+        # Only log the allocation when the assignment is not temporary. Its
+        # the callers responsibility to log this information after the check
+        # is performed.
+        if temp_expires_after is None:
+            maaslog.info("Allocated automatic IP address %s for %s." % (
+                auto_ip.ip,
+                self.get_log_string()))
         return auto_ip
 
     def release_auto_ips(self):

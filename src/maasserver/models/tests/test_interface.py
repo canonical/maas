@@ -3068,6 +3068,33 @@ class TestClaimAutoIPs(MAASTransactionServerTestCase):
         self.assertEqual(
             IPAddress(auto_ips[0].ip) + 1, IPAddress(auto_ips[1].ip))
 
+    def test__claims_all_auto_ip_addresses_with_temp_expires_on(self):
+        with transaction.atomic():
+            interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+            for _ in range(3):
+                subnet = factory.make_ipv4_Subnet_with_IPRanges(
+                    vlan=interface.vlan)
+                factory.make_StaticIPAddress(
+                    alloc_type=IPADDRESS_TYPE.AUTO, ip="",
+                    subnet=subnet, interface=interface)
+        with transaction.atomic():
+            observed = interface.claim_auto_ips(
+                temp_expires_after=datetime.timedelta(minutes=5))
+        # Should now have 3 AUTO with IP addresses assigned.
+        interface = reload_object(interface)
+        assigned_addresses = interface.ip_addresses.filter(
+            alloc_type=IPADDRESS_TYPE.AUTO)
+        assigned_addresses = [
+            ip
+            for ip in assigned_addresses
+            if ip.ip and ip.temp_expires_on
+        ]
+        self.assertEqual(
+            3, len(assigned_addresses),
+            "Should have 3 AUTO IP addresses with an IP address assigned "
+            "and temp_expires_on set.")
+        self.assertItemsEqual(assigned_addresses, observed)
+
 
 class TestCreateAcquiredBridge(MAASServerTestCase):
     """Tests for `Interface.create_acquired_bridge`."""

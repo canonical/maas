@@ -18,7 +18,10 @@ from collections import (
     OrderedDict,
 )
 import copy
-from datetime import timedelta
+from datetime import (
+    datetime,
+    timedelta,
+)
 from functools import partial
 from itertools import count
 import logging
@@ -27,6 +30,7 @@ import random
 import re
 import socket
 from socket import gethostname
+import time
 from typing import List
 from urllib.parse import urlparse
 import uuid
@@ -98,6 +102,7 @@ from maasserver.exceptions import (
     NodeStateViolation,
     NoScriptsFound,
     PowerProblem,
+    StaticIPAddressExhaustion,
     StorageClearProblem,
 )
 from maasserver.fields import (
@@ -211,6 +216,7 @@ from provisioningserver.refresh.node_info_scripts import (
 )
 from provisioningserver.rpc.cluster import (
     AddChassis,
+    CheckIPs,
     DisableAndShutoffRackd,
     IsImportBootImagesRunning,
     RefreshRackControllerInfo,
@@ -246,11 +252,13 @@ from provisioningserver.utils.twisted import (
 from twisted.internet import reactor
 from twisted.internet.defer import (
     Deferred,
+    DeferredList,
     inlineCallbacks,
     succeed,
 )
 from twisted.internet.error import ConnectionDone
 from twisted.internet.threads import deferToThread
+from twisted.python.failure import Failure
 from twisted.python.threadable import isInIOThread
 
 
@@ -3745,24 +3753,200 @@ class Node(CleanSave, TimestampedModel):
                 interface.create_acquired_bridge(
                     bridge_stp=bridge_stp, bridge_fd=bridge_fd)
 
-    def claim_auto_ips(self):
+    def claim_auto_ips(self, temp_expires_after=None):
         """Assign IP addresses to all interface links set to AUTO."""
         exclude_addresses = set()
+        allocated_ips = set()
         # Query for the interfaces again here; if we use the cached
         # interface_set, we could skip a newly-created bridge if it was created
         # at deployment time.
         for interface in Interface.objects.filter(node=self):
             claimed_ips = interface.claim_auto_ips(
+                temp_expires_after=temp_expires_after,
                 exclude_addresses=exclude_addresses)
             for ip in claimed_ips:
                 exclude_addresses.add(str(ip.ip))
+                allocated_ips.add(ip)
+        return allocated_ips
 
     def _claim_auto_ips(self, defer):
-        # XXX blake_r 2019-07-22: This temporary just allocates the IP
-        # auto IP addresses the same as previously. Next iteration will
-        # add the check IP ping check.
+        """Perform claim AUTO IP addresses from the post_commit `defer`."""
+
+        @transactional
+        def clean_expired():
+            """Clean the expired AUTO IP addresses."""
+            ips = StaticIPAddress.objects.filter(
+                temp_expires_on__lte=datetime.utcnow())
+            ips.update(ip=None, temp_expires_on=None)
+
+        @transactional
+        def get_racks_to_check(allocated_ips):
+            """Calculate the rack controllers to perform the IP check on."""
+            # No allocated ips.
+            if not allocated_ips:
+                return None, None
+
+            # Map the allocated IP addresses to the subnets they belong.
+            ip_ids = map(attrgetter('id'), allocated_ips)
+            ips_to_subnet = StaticIPAddress.objects.filter(id__in=ip_ids)
+            subnets_to_ips = defaultdict(set)
+            for ip in ips_to_subnet:
+                subnets_to_ips[ip.subnet_id].add(ip)
+
+            # Map the rack controllers that have an IP address on each subnet
+            # and have an actual connection to this region controller.
+            racks_to_clients = {
+                client.ident: client
+                for client in getAllClients()
+            }
+            subnets_to_clients = {}
+            for subnet_id in subnets_to_ips.keys():
+                usable_racks = set(
+                    RackController.objects.filter(
+                        interface__ip_addresses__subnet=subnet_id,
+                        interface__ip_addresses__ip__isnull=False))
+                subnets_to_clients[subnet_id] = [
+                    racks_to_clients[rack.system_id]
+                    for rack in usable_racks
+                    if rack.system_id in racks_to_clients
+                ]
+
+            return subnets_to_ips, subnets_to_clients
+
+        def perform_ip_checks(result):
+            subnets_to_ips, subnets_to_clients = result
+            # Early-out if no IP addresses where allocated.
+            if subnets_to_ips is None:
+                return None
+            defers = []
+            for subnet_id, ips in subnets_to_ips.items():
+                log.msg("subnet: %d ips: %s" % (subnet_id, ips))
+                clients = subnets_to_clients.get(subnet_id)
+                if clients:
+                    client = random.choice(clients)
+                    d = client(CheckIPs, ip_addresses=[
+                        {'ip_address': ip.ip}
+                        for ip in ips
+                    ])
+
+                    def append_info(res, *, ident=None, ips=None):
+                        return res, ident, ips
+
+                    d.addBoth(
+                        partial(append_info, ident=client.ident, ips=ips))
+                else:
+                    d = succeed((None, None, ips))
+                defers.append(d)
+            return DeferredList(defers)
+
+        @transactional
+        def process_results(results, try_count=0, max_try_count=2):
+            # Early-out if no IP addresses where allocated.
+            if results is None:
+                return False, try_count, max_try_count
+            needs_retry = False
+            for _, result in results:
+                check_result, rack_id, ips = result
+                ip_ids = [ip.id for ip in ips]
+                ip_to_obj = {ip.ip: ip for ip in ips}
+                if check_result is None:
+                    # No rack controllers exists that can perform IP
+                    # address checking. Mark all the IP addresses as
+                    # available.
+                    StaticIPAddress.objects.filter(id__in=ip_ids).update(
+                        temp_expires_on=None)
+                elif isinstance(check_result, Failure):
+                    # Failed to perform IP address checking on the rack
+                    # controller.
+                    if try_count < max_try_count:
+                        # Clear the assigned IP address so new IP can be
+                        # assigned in the next pass.
+                        StaticIPAddress.objects.filter(id__in=ip_ids).update(
+                            ip=None, temp_expires_on=None)
+                        needs_retry = True
+                        log.err(
+                            check_result,
+                            "Performing IP address checking failed, "
+                            "will be retried.")
+                    else:
+                        # Clear the temp_expires_on marking the IP address
+                        # as assigned. Enough tries where performed to verify
+                        # and it always failed.
+                        StaticIPAddress.objects.filter(id__in=ip_ids).update(
+                            temp_expires_on=None)
+                        log.err(
+                            check_result,
+                            "Performing IP address checking failed, "
+                            "will *NOT* be retried. (marking IP addresses "
+                            "as available).")
+                else:
+                    # IP address checking was successful, use the results
+                    # to either mark the assigned IP address no longer
+                    # temporary or to mark the IP address as discovered.
+                    ip_to_obj = {ip.ip: ip for ip in ips}
+                    for ip_result in check_result['ip_addresses']:
+                        ip_obj = ip_to_obj[ip_result['ip_address']]
+                        if ip_result['used']:
+                            # Create a Neighbour reference to the IP address
+                            # so the next loop will not use that IP address.
+                            rack_interface = Interface.objects.filter(
+                                node__system_id=rack_id,
+                                ip_addresses__subnet_id=ip_obj.subnet_id)
+                            rack_interface = rack_interface.order_by('id')
+                            rack_interface = rack_interface.first()
+                            # XXX blake_r 2019-06-24 - MAC address is
+                            # currently not returned from the CheckIPs RPC.
+                            # This will change in a follow-up branch to set
+                            # this correctly with a MAC address.
+                            rack_interface.update_neighbour({
+                                'ip': ip_obj.ip,
+                                'mac': None,
+                                'time': time.time(),
+                            })
+                            ip_obj.ip = None
+                            ip_obj.temp_expires_on = None
+                            ip_obj.save()
+                            needs_retry = True
+                        else:
+                            # IP was free and offically assigned.
+                            ip_obj.temp_expires_on = None
+                            ip_obj.save()
+            return needs_retry, try_count, max_try_count
+
+        def retrier(result):
+            needs_retry, try_count, max_try_count = result
+            if needs_retry:
+                if try_count >= max_try_count:
+                    # Over retry count, IP address allocation is exhausted.
+                    raise StaticIPAddressExhaustion(
+                        "Failed to allocate the required AUTO IP addresses "
+                        "after %d retries." % max_try_count)
+                else:
+                    # Re-loop the whole process again until max_try_count.
+                    d = succeed(None)
+                    d.addCallback(
+                        lambda _: deferToDatabase(
+                            transactional(self.claim_auto_ips),
+                            temp_expires_after=timedelta(minutes=5)))
+                    d.addCallback(partial(deferToDatabase, get_racks_to_check))
+                    d.addCallback(perform_ip_checks)
+                    d.addCallback(partial(
+                        deferToDatabase, process_results,
+                        try_count=(try_count + 1)))
+                    d.addCallback(retrier)
+                    return d
+
         defer.addCallback(
-            lambda _: deferToDatabase(transactional(self.claim_auto_ips)))
+            lambda _: deferToDatabase(clean_expired))
+        defer.addCallback(
+            lambda _: deferToDatabase(
+                transactional(self.claim_auto_ips),
+                temp_expires_after=timedelta(minutes=5)))
+        defer.addCallback(partial(deferToDatabase, get_racks_to_check))
+        defer.addCallback(perform_ip_checks)
+        defer.addCallback(partial(deferToDatabase, process_results))
+        defer.addCallback(retrier)
+
         return defer
 
     @transactional
