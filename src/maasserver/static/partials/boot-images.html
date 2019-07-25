@@ -244,12 +244,14 @@
 </div>
 
 <div data-ng-if="design === 'page' && other.images.length && !source.isNew" data-ng-class="{'p-strip': design === 'page'}">
-    <div class="row">
-        <h2 class="p-heading--four">Other Images</h2>
-        <div data-ng-if="isSuperUser() && !source.tooMany">
-            <div class="col-3" data-ng-repeat="image in other.images | orderBy:['-title']">
-                <input type="checkbox" id="{$ image.name $}" data-ng-checked="image.checked" data-ng-click="toggleOtherSelection(image)" data-ng-disabled="saving">
-                <label for="{$ image.name $}">{$ image.title $}</label>
+    <div class="p-strip">
+        <div class="row">
+            <h2 class="p-heading--four">Other Images</h2>
+            <div data-ng-if="isSuperUser() && !source.tooMany">
+                <div class="col-3" data-ng-repeat="image in other.images | orderBy:['-title']">
+                    <input type="checkbox" id="{$ image.name $}" data-ng-checked="image.checked" data-ng-click="toggleOtherSelection(image)" data-ng-disabled="saving">
+                    <label for="{$ image.name $}" class="u-no-margin--bottom">{$ image.title $}</label>
+                </div>
             </div>
         </div>
     </div>

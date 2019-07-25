@@ -11,13 +11,13 @@
             <maas-boot-images-status></maas-boot-images-status>
         </div>
         <div class="col-medium-2 col-4">
-            <div class="page-header__controls p-form--inline u-align--right" data-ng-if="!loading && isSuperUser() && autoImport">
+            <div class="page-header__controls page-header__controls--images p-form--inline u-align--right" data-ng-if="!loading && isSuperUser() && autoImport">
                 <maas-obj-form obj="autoImport" manager="configManager" inline="true">
                     <maas-obj-field type="onoffswitch" key="value" label="Automatically sync images" label-info="Enables automatic image updates (sync). The region controller
 will check for new images every hour and automatically sync
 them, if available, from the stream configured below.
 Syncing at the rack controller level occurs every 5 minutes and
-cannot be disabled." label-info-icon="help"></maas-obj-field>
+cannot be disabled." label-info-icon="help" label-class="u-no-padding--top"></maas-obj-field>
                 </maas-obj-form>
             </div>
         </div>
