@@ -56,4 +56,54 @@ describe("DHCPSnippetsManager", function() {
       });
     });
   });
+
+  describe("getFilteredSnippets", () => {
+    it("returns snippets if applied to subnets", () => {
+      const snippets = [
+        {
+          id: 1,
+          name: "bar class",
+          subnet: null,
+          subnet_cidr: null
+        },
+        {
+          id: 2,
+          name: "bar class",
+          subnet: 2,
+          subnet_cidr: "172.16.2.0/24"
+        }
+      ];
+
+      const items = ["172.16.2.0/24"];
+
+      const filteredSnippets = [snippets[1]];
+
+      expect(DHCPSnippetsManager.getFilteredSnippets(snippets, items)).toEqual(
+        filteredSnippets
+      );
+    });
+
+    it("returns empty array if applied to subnets", () => {
+      const snippets = [
+        {
+          id: 1,
+          name: "bar class",
+          subnet: null,
+          subnet_cidr: null
+        },
+        {
+          id: 2,
+          name: "bar class",
+          subnet: 1,
+          subnet_cidr: "172.16.1.0/24"
+        }
+      ];
+
+      const items = ["172.16.2.0/24"];
+
+      expect(DHCPSnippetsManager.getFilteredSnippets(snippets, items)).toEqual(
+        []
+      );
+    });
+  });
 });

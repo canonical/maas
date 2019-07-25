@@ -107,6 +107,7 @@ describe("VLANDetailsController", function() {
   // Load any injected managers and services.
   var VLANsManager, SubnetsManager, SpacesManager, FabricsManager;
   var ControllersManager, UsersManager, ManagerHelperService, ErrorService;
+  var DHCPSnippetsManager;
   beforeEach(inject(function($injector) {
     VLANsManager = $injector.get("VLANsManager");
     SubnetsManager = $injector.get("SubnetsManager");
@@ -116,6 +117,7 @@ describe("VLANDetailsController", function() {
     UsersManager = $injector.get("UsersManager");
     ManagerHelperService = $injector.get("ManagerHelperService");
     ErrorService = $injector.get("ErrorService");
+    DHCPSnippetsManager = $injector.get("DHCPSnippetsManager");
   }));
 
   var vlan, fabric, fabric2, primaryController, secondaryController;
@@ -194,7 +196,8 @@ describe("VLANDetailsController", function() {
       SpacesManager,
       FabricsManager,
       ControllersManager,
-      UsersManager
+      UsersManager,
+      DHCPSnippetsManager
     ]);
   });
 

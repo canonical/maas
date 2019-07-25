@@ -535,4 +535,10 @@
         </div>
     </section>
 
+    <section class="p-strip" data-ng-if="vlanDetails.filteredSnippets.length">
+        <div class="row">
+            <h2 class="p-heading--four">DHCP snippets</h2>
+            <maas-dhcp-snippets-table snippets="vlanDetails.filteredSnippets"></maas-dhcp-snippets-table>
+        </div>
+    </section>
 </div>

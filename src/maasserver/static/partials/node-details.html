@@ -2791,6 +2791,12 @@
                 </div>
             </form>
         </div>
+        <div class="row" data-ng-if="filteredSnippets.length">
+            <div class="col-12">
+                <h2 class="p-heading--four">DHCP snippets</h2>
+                <maas-dhcp-snippets-table snippets="filteredSnippets"></maas-dhcp-snippets-table>
+            </div>
+        </div>
     </section>
 
     <section class="p-strip is-shallow" data-ng-if="section.area === 'storage'" data-ng-controller="NodeStorageController">

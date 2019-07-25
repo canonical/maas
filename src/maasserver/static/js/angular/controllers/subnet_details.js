@@ -31,7 +31,8 @@ export function SubnetDetailsController(
   StaticRoutesManager,
   ManagerHelperService,
   ErrorService,
-  ConverterService
+  ConverterService,
+  DHCPSnippetsManager
 ) {
   // Set title and page.
   $rootScope.title = "Loading...";
@@ -60,6 +61,7 @@ export function SubnetDetailsController(
   $scope.newStaticRoute = null;
   $scope.editStaticRoute = null;
   $scope.deleteStaticRoute = null;
+  $scope.snippets = DHCPSnippetsManager.getItems();
 
   $scope.MAP_SUBNET_ACTION = {
     name: "map_subnet",
@@ -391,6 +393,19 @@ export function SubnetDetailsController(
       $scope.subnet.vlan_name = VLANsManager.getName(vlan);
     };
 
+    $scope.snippets.forEach(snippet => {
+      let subnet = SubnetsManager.getItemFromList(snippet.subnet);
+
+      if (subnet) {
+        snippet.subnet_cidr = subnet.cidr;
+      }
+    });
+
+    $scope.filteredSnippets = DHCPSnippetsManager.getFilteredSnippets(
+      $scope.snippets,
+      [$scope.subnet.cidr]
+    );
+
     $scope.$watch("subnet.fabric", updateFabric);
     $scope.$watch("subnet.fabric_name", updateFabric);
     $scope.$watch("subnet.vlan", updateFabric);
@@ -407,7 +422,8 @@ export function SubnetDetailsController(
     VLANsManager,
     UsersManager,
     FabricsManager,
-    StaticRoutesManager
+    StaticRoutesManager,
+    DHCPSnippetsManager
   ]).then(function() {
     $scope.updateActions();
     $scope.active_discovery_data = ConfigsManager.getItemFromList(

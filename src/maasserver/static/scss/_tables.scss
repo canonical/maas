@@ -15,6 +15,7 @@
 @import "tables/patterns_table-storage";
 @import "tables/patterns_table-testing";
 @import "tables/patterns_table-zones";
+@import "tables/patterns_table-dhcp-snippets";
 
 @include maas-b-tables;
 @include maas-double-row;
@@ -32,6 +33,7 @@
 @include maas-table-storage;
 @include maas-table-testing;
 @include maas-table-zones;
+@include maas-table-dhcp-snippets;
 
 // Global MAAS table classes
 .p-muted-text {

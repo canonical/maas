@@ -4,7 +4,7 @@
  * Unit tests for SettingsController.
  */
 
-import { makeInteger, makeName } from "testing/utils";
+import { makeName } from "testing/utils";
 import MockWebSocket from "testing/websocket";
 
 describe("SettingsController", function() {
@@ -46,17 +46,6 @@ describe("SettingsController", function() {
   beforeEach(function() {
     $routeParams = {};
   });
-
-  // Make a fake snippet.
-  var _nextId = 0;
-  function makeSnippet() {
-    return {
-      id: _nextId++,
-      name: makeName("snippet"),
-      enabled: true,
-      value: makeName("value")
-    };
-  }
 
   // Make a fake repository.
   var _nextRepoId = 0;
@@ -107,7 +96,6 @@ describe("SettingsController", function() {
     makeController();
     expect($scope.loading).toBe(true);
     expect($scope.loading).toBe(true);
-    expect($scope.snippetsManager).toBe(DHCPSnippetsManager);
     expect($scope.snippets).toBe(DHCPSnippetsManager.getItems());
     expect($scope.subnets).toBe(SubnetsManager.getItems());
     expect($scope.machines).toBe(MachinesManager.getItems());
@@ -124,10 +112,6 @@ describe("SettingsController", function() {
     );
     expect($scope.packageRepositoriesManager).toBe(PackageRepositoriesManager);
     expect($scope.repositories).toBe(PackageRepositoriesManager.getItems());
-    expect($scope.newSnippet).toBeNull();
-    expect($scope.editSnippet).toBeNull();
-    expect($scope.deleteSnippet).toBeNull();
-    expect($scope.snippetTypes).toEqual(["Global", "Subnet", "Node"]);
     expect($scope.newRepository).toBeNull();
     expect($scope.editRepository).toBeNull();
     expect($scope.deleteRepository).toBeNull();
@@ -348,263 +332,6 @@ describe("SettingsController", function() {
       $scope.newRepository = {};
       $scope.repositoryAddCancel();
       expect($scope.newRepository).toBeNull();
-    });
-  });
-
-  describe("getSubnetName", function() {
-    it("calls SubnetsManager.getName", function() {
-      makeController();
-      var subnet = {};
-      var subnetsName = {};
-      spyOn(SubnetsManager, "getName").and.returnValue(subnetsName);
-      expect($scope.getSubnetName(subnet)).toBe(subnetsName);
-      expect(SubnetsManager.getName).toHaveBeenCalledWith(subnet);
-    });
-  });
-
-  describe("getSnippetTypeText", function() {
-    it("returns 'Node'", function() {
-      makeController();
-      var snippet = makeSnippet();
-      snippet.node = makeName("system_id");
-      expect($scope.getSnippetTypeText(snippet)).toBe("Node");
-    });
-
-    it("returns 'Subnet'", function() {
-      makeController();
-      var snippet = makeSnippet();
-      snippet.subnet = makeInteger();
-      expect($scope.getSnippetTypeText(snippet)).toBe("Subnet");
-    });
-
-    it("returns 'Global'", function() {
-      makeController();
-      var snippet = makeSnippet();
-      expect($scope.getSnippetTypeText(snippet)).toBe("Global");
-    });
-  });
-
-  describe("getSnippetAppliesToObject", function() {
-    it("returns node from MachinesManager", function() {
-      makeController();
-      var system_id = makeName("system_id");
-      var node = {
-        system_id: system_id
-      };
-      var snippet = makeSnippet();
-      snippet.node = system_id;
-      MachinesManager._items = [node];
-      expect($scope.getSnippetAppliesToObject(snippet)).toBe(node);
-    });
-
-    it("returns device from DevicesManager", function() {
-      makeController();
-      var system_id = makeName("system_id");
-      var device = {
-        system_id: system_id
-      };
-      var snippet = makeSnippet();
-      snippet.node = system_id;
-      DevicesManager._items = [device];
-      expect($scope.getSnippetAppliesToObject(snippet)).toBe(device);
-    });
-
-    it("returns controller from ControllersManager", function() {
-      makeController();
-      var system_id = makeName("system_id");
-      var controller = {
-        system_id: system_id
-      };
-      var snippet = makeSnippet();
-      snippet.node = system_id;
-      ControllersManager._items = [controller];
-      expect($scope.getSnippetAppliesToObject(snippet)).toBe(controller);
-    });
-
-    it("returns subnet from SubnetsManager", function() {
-      makeController();
-      var subnet_id = makeInteger(0, 100);
-      var subnet = {
-        id: subnet_id
-      };
-      var snippet = makeSnippet();
-      snippet.subnet = subnet_id;
-      SubnetsManager._items = [subnet];
-      expect($scope.getSnippetAppliesToObject(snippet)).toBe(subnet);
-    });
-  });
-
-  describe("getSnippetAppliesToText", function() {
-    it("returns node.fqdn from MachinesManager", function() {
-      makeController();
-      var system_id = makeName("system_id");
-      var fqdn = makeName("fqdn");
-      var node = {
-        system_id: system_id,
-        fqdn: fqdn
-      };
-      var snippet = makeSnippet();
-      snippet.node = system_id;
-      MachinesManager._items = [node];
-      expect($scope.getSnippetAppliesToText(snippet)).toBe(fqdn);
-    });
-
-    it("returns device.fqdn from DevicesManager", function() {
-      makeController();
-      var system_id = makeName("system_id");
-      var fqdn = makeName("fqdn");
-      var device = {
-        system_id: system_id,
-        fqdn: fqdn
-      };
-      var snippet = makeSnippet();
-      snippet.node = system_id;
-      DevicesManager._items = [device];
-      expect($scope.getSnippetAppliesToText(snippet)).toBe(fqdn);
-    });
-
-    it("returns controller.fqdn from ControllersManager", function() {
-      makeController();
-      var system_id = makeName("system_id");
-      var fqdn = makeName("fqdn");
-      var controller = {
-        system_id: system_id,
-        fqdn: fqdn
-      };
-      var snippet = makeSnippet();
-      snippet.node = system_id;
-      ControllersManager._items = [controller];
-      expect($scope.getSnippetAppliesToText(snippet)).toBe(fqdn);
-    });
-
-    it("returns subnet from SubnetsManager", function() {
-      makeController();
-      var subnet_id = makeInteger(0, 100);
-      var cidr = makeName("cidr");
-      var subnet = {
-        id: subnet_id,
-        cidr: cidr
-      };
-      var snippet = makeSnippet();
-      snippet.subnet = subnet_id;
-      SubnetsManager._items = [subnet];
-      expect($scope.getSnippetAppliesToText(snippet)).toBe(cidr);
-    });
-  });
-
-  describe("snippetEnterRemove", function() {
-    it("clears new and edit and sets delete", function() {
-      makeController();
-      var snippet = makeSnippet();
-      $scope.newSnippet = {};
-      $scope.editSnippet = {};
-      $scope.snippetEnterRemove(snippet);
-      expect($scope.deleteSnippet).toBe(snippet);
-      expect($scope.newSnippet).toBeNull();
-      expect($scope.editSnippet).toBeNull();
-    });
-  });
-
-  describe("snippetExitRemove", function() {
-    it("sets delete to null", function() {
-      makeController();
-      $scope.deleteSnippet = {};
-      $scope.snippetExitRemove();
-      expect($scope.deleteSnippet).toBeNull();
-    });
-  });
-
-  describe("snippetConfirmRemove", function() {
-    it("calls deleteItem and then snippetExitRemove", function() {
-      makeController();
-      var snippet = makeSnippet();
-      var defer = $q.defer();
-      spyOn(DHCPSnippetsManager, "deleteItem").and.returnValue(defer.promise);
-      spyOn($scope, "snippetExitRemove");
-      $scope.deleteSnippet = snippet;
-      $scope.snippetConfirmRemove(snippet);
-      expect(DHCPSnippetsManager.deleteItem).toHaveBeenCalledWith(snippet);
-      defer.resolve();
-      $scope.$digest();
-      expect($scope.snippetExitRemove).toHaveBeenCalled();
-    });
-  });
-
-  describe("snippetEnterEdit", function() {
-    it("clears new and delete and sets edit", function() {
-      $q.defer();
-      makeController();
-      var snippet = makeSnippet();
-
-      $scope.newSnippet = {};
-      $scope.deleteSnippet = {};
-      $scope.snippetEnterEdit(snippet);
-      expect($scope.editSnippet).toBe(snippet);
-      expect($scope.editSnippet.type).toBe($scope.getSnippetTypeText(snippet));
-      expect($scope.newSnippet).toBeNull();
-      expect($scope.deleteSnippet).toBeNull();
-    });
-  });
-
-  describe("snippetExitEdit", function() {
-    it("clears editSnippet", function() {
-      makeController();
-      $scope.editSnippet = {};
-
-      $scope.snippetExitEdit();
-      expect($scope.editSnippet).toBeNull();
-    });
-  });
-
-  describe("snippetToggle", function() {
-    it("calls updateItem", function() {
-      makeController();
-      var snippet = makeSnippet();
-      spyOn(DHCPSnippetsManager, "updateItem").and.returnValue(
-        $q.defer().promise
-      );
-      $scope.snippetToggle(snippet);
-      expect(DHCPSnippetsManager.updateItem).toHaveBeenCalledWith(snippet);
-    });
-
-    it("updateItem reject resets enabled", function() {
-      makeController();
-      var snippet = makeSnippet();
-      let defer = $q.defer();
-      spyOn(DHCPSnippetsManager, "updateItem").and.returnValue(defer.promise);
-      spyOn(console, "log");
-      $scope.snippetToggle(snippet);
-      var errorMsg = makeName("error");
-      defer.reject(errorMsg);
-      $scope.$digest();
-      expect(snippet.enabled).toBe(false);
-      // eslint-disable-next-line no-console
-      expect(console.log).toHaveBeenCalledWith(errorMsg);
-    });
-  });
-
-  describe("snippetAdd", function() {
-    it("sets newSnippet", function() {
-      makeController();
-      $scope.editSnippet = {};
-      $scope.deleteSnippet = {};
-      $scope.snippetAdd();
-      expect($scope.newSnippet).toEqual({
-        name: "",
-        type: "Global",
-        enabled: true
-      });
-      expect($scope.editSnippet).toBeNull();
-      expect($scope.deleteSnippet).toBeNull();
-    });
-  });
-
-  describe("snippetAddCancel", function() {
-    it("newSnippet gets cleared", function() {
-      makeController();
-      $scope.newSnippet = {};
-      $scope.snippetAddCancel();
-      expect($scope.newSnippet).toBeNull();
     });
   });
 });

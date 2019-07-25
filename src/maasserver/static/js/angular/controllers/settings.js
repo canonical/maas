@@ -24,7 +24,6 @@ function SettingsController(
 
   // Initial values.
   $scope.loading = true;
-  $scope.snippetsManager = DHCPSnippetsManager;
   $scope.snippets = DHCPSnippetsManager.getItems();
   $scope.subnets = SubnetsManager.getItems();
   $scope.machines = MachinesManager.getItems();
@@ -37,10 +36,6 @@ function SettingsController(
   );
   $scope.packageRepositoriesManager = PackageRepositoriesManager;
   $scope.repositories = PackageRepositoriesManager.getItems();
-  $scope.newSnippet = null;
-  $scope.editSnippet = null;
-  $scope.deleteSnippet = null;
-  $scope.snippetTypes = ["Global", "Subnet", "Node"];
   $scope.newRepository = null;
   $scope.editRepository = null;
   $scope.deleteRepository = null;
@@ -128,117 +123,6 @@ function SettingsController(
   // Called to cancel addind a new repository.
   $scope.repositoryAddCancel = function() {
     $scope.newRepository = null;
-  };
-
-  // Return the node from either the machines, devices, or controllers
-  // manager.
-  function getNode(system_id) {
-    var node = MachinesManager.getItemFromList(system_id);
-    if (angular.isObject(node)) {
-      return node;
-    }
-    node = DevicesManager.getItemFromList(system_id);
-    if (angular.isObject(node)) {
-      return node;
-    }
-    node = ControllersManager.getItemFromList(system_id);
-    if (angular.isObject(node)) {
-      return node;
-    }
-  }
-
-  // Return the name of the subnet.
-  $scope.getSubnetName = function(subnet) {
-    return SubnetsManager.getName(subnet);
-  };
-
-  // Return the text for the type of snippet.
-  $scope.getSnippetTypeText = function(snippet) {
-    if (angular.isString(snippet.node)) {
-      return "Node";
-    } else if (angular.isNumber(snippet.subnet)) {
-      return "Subnet";
-    } else {
-      return "Global";
-    }
-  };
-
-  // Return the object the snippet applies to.
-  $scope.getSnippetAppliesToObject = function(snippet) {
-    if (angular.isString(snippet.node)) {
-      return getNode(snippet.node);
-    } else if (angular.isNumber(snippet.subnet)) {
-      return SubnetsManager.getItemFromList(snippet.subnet);
-    }
-  };
-
-  // Return the applies to text that is disabled in none edit mode.
-  $scope.getSnippetAppliesToText = function(snippet) {
-    var obj = $scope.getSnippetAppliesToObject(snippet);
-    if (angular.isString(snippet.node) && angular.isObject(obj)) {
-      return obj.fqdn;
-    } else if (angular.isNumber(snippet.subnet) && angular.isObject(obj)) {
-      return SubnetsManager.getName(obj);
-    } else {
-      return "";
-    }
-  };
-
-  // Called to enter remove mode for a DHCP snippet.
-  $scope.snippetEnterRemove = function(snippet) {
-    $scope.newSnippet = null;
-    $scope.editSnippet = null;
-    $scope.deleteSnippet = snippet;
-  };
-
-  // Called to exit remove mode for a DHCP snippet.
-  $scope.snippetExitRemove = function() {
-    $scope.deleteSnippet = null;
-  };
-
-  // Called to confirm the removal of a snippet.
-  $scope.snippetConfirmRemove = function() {
-    DHCPSnippetsManager.deleteItem($scope.deleteSnippet).then(function() {
-      $scope.snippetExitRemove();
-    });
-  };
-
-  // Called to enter edit mode for a DHCP snippet.
-  $scope.snippetEnterEdit = function(snippet) {
-    $scope.newSnippet = null;
-    $scope.deleteSnippet = null;
-    $scope.editSnippet = snippet;
-    $scope.editSnippet.type = $scope.getSnippetTypeText(snippet);
-  };
-
-  // Called to exit edit mode for a DHCP snippet.
-  $scope.snippetExitEdit = function() {
-    $scope.editSnippet = null;
-  };
-
-  // Called when the active toggle is changed.
-  $scope.snippetToggle = function(snippet) {
-    DHCPSnippetsManager.updateItem(snippet).then(null, function(error) {
-      // Revert state change and clear toggling.
-      snippet.enabled = !snippet.enabled;
-      console.log(error); // eslint-disable-line no-console
-    });
-  };
-
-  // Called to start adding a new snippet.
-  $scope.snippetAdd = function() {
-    $scope.editSnippet = null;
-    $scope.deleteSnippet = null;
-    $scope.newSnippet = {
-      name: "",
-      type: "Global",
-      enabled: true
-    };
-  };
-
-  // Called to cancel addind a new snippet.
-  $scope.snippetAddCancel = function() {
-    $scope.newSnippet = null;
   };
 
   // Setup page variables based on section.

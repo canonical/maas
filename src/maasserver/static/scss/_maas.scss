@@ -290,3 +290,25 @@
 .u-no-border--top {
   border-top: 0 !important;
 }
+
+// DHCP snippets table
+maas-dhcp-snippets-table {
+  @extend %maas-element;
+}
+
+.dhcp-checkbox {
+  .p-form__label {
+    float: left;
+    margin-right: 1rem;
+  }
+
+  .dhcp-checkbox__label {
+    &::before {
+      top: 0.5rem;
+    }
+
+    &::after {
+      top: 0.75rem;
+    }
+  }
+}

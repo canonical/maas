@@ -159,6 +159,7 @@ import storageDisksPartitions
 import storageFilesystems from "./directives/nodedetails/storage_filesystems";
 import storageDatastores from "./directives/nodedetails/storage_datastores";
 import maasMachinesTable from "./directives/machines_table";
+import maasDhcpSnippetsTable from "./directives/dhcp_snippets_table";
 import addMachine from "./directives/nodelist/add_machine";
 import nodesListFilter from "./directives/nodelist/nodes_list_filter";
 import maasAccordion from "./directives/accordion";
@@ -650,6 +651,7 @@ angular
   .directive("maasObjHideSaving", maasObjHideSaving)
   .directive("macAddress", macAddress)
   .directive("maasMachinesTable", maasMachinesTable)
+  .directive("maasDhcpSnippetsTable", maasDhcpSnippetsTable)
   .directive("maasNavigationDropdown", maasNavigationDropdown)
   .directive("maasNavigationMobile", maasNavigationMobile)
   .directive("maasNotifications", maasNotifications)

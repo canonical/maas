@@ -37222,61 +37222,63 @@ var _storage_datastores = _interopRequireDefault(__webpack_require__(600));
 
 var _machines_table = _interopRequireDefault(__webpack_require__(601));
 
-var _add_machine = _interopRequireDefault(__webpack_require__(602));
+var _dhcp_snippets_table = _interopRequireDefault(__webpack_require__(602));
 
-var _nodes_list_filter = _interopRequireDefault(__webpack_require__(603));
+var _add_machine = _interopRequireDefault(__webpack_require__(603));
 
-var _accordion = _interopRequireDefault(__webpack_require__(604));
+var _nodes_list_filter = _interopRequireDefault(__webpack_require__(604));
 
-var _boot_images = __webpack_require__(605);
+var _accordion = _interopRequireDefault(__webpack_require__(605));
 
-var _card_loader = _interopRequireDefault(__webpack_require__(606));
+var _boot_images = __webpack_require__(606);
 
-var _code_lines = _interopRequireDefault(__webpack_require__(607));
+var _card_loader = _interopRequireDefault(__webpack_require__(607));
 
-var _contenteditable = _interopRequireDefault(__webpack_require__(608));
+var _code_lines = _interopRequireDefault(__webpack_require__(608));
 
-var _default_os_select = _interopRequireDefault(__webpack_require__(609));
+var _contenteditable = _interopRequireDefault(__webpack_require__(609));
 
-var _enter_blur = _interopRequireDefault(__webpack_require__(610));
+var _default_os_select = _interopRequireDefault(__webpack_require__(610));
 
-var _enter = _interopRequireDefault(__webpack_require__(611));
+var _enter_blur = _interopRequireDefault(__webpack_require__(611));
 
-var _error_toggle = _interopRequireDefault(__webpack_require__(612));
+var _enter = _interopRequireDefault(__webpack_require__(612));
 
-var _ipranges2 = _interopRequireDefault(__webpack_require__(613));
+var _error_toggle = _interopRequireDefault(__webpack_require__(613));
 
-var _maas_obj_form = __webpack_require__(614);
+var _ipranges2 = _interopRequireDefault(__webpack_require__(614));
 
-var _mac_address = _interopRequireDefault(__webpack_require__(615));
+var _maas_obj_form = __webpack_require__(615);
 
-var _navigation_dropdown = _interopRequireDefault(__webpack_require__(616));
+var _mac_address = _interopRequireDefault(__webpack_require__(616));
 
-var _navigation_mobile = _interopRequireDefault(__webpack_require__(617));
+var _navigation_dropdown = _interopRequireDefault(__webpack_require__(617));
 
-var _placeholder = _interopRequireDefault(__webpack_require__(618));
+var _navigation_mobile = _interopRequireDefault(__webpack_require__(618));
 
-var _pref_keys = __webpack_require__(619);
+var _placeholder = _interopRequireDefault(__webpack_require__(619));
 
-var _proxy_settings = _interopRequireDefault(__webpack_require__(620));
+var _pref_keys = __webpack_require__(620);
 
-var _release_name = _interopRequireDefault(__webpack_require__(621));
+var _proxy_settings = _interopRequireDefault(__webpack_require__(621));
 
-var _script_expander = _interopRequireDefault(__webpack_require__(622));
+var _release_name = _interopRequireDefault(__webpack_require__(622));
 
-var _script_results_list = _interopRequireDefault(__webpack_require__(623));
+var _script_expander = _interopRequireDefault(__webpack_require__(623));
 
-var _ssh_keys = _interopRequireDefault(__webpack_require__(624));
+var _script_results_list = _interopRequireDefault(__webpack_require__(624));
 
-var _switches_table = _interopRequireDefault(__webpack_require__(625));
+var _ssh_keys = _interopRequireDefault(__webpack_require__(625));
 
-var _toggle_control = _interopRequireDefault(__webpack_require__(626));
+var _switches_table = _interopRequireDefault(__webpack_require__(626));
 
-var _type = _interopRequireDefault(__webpack_require__(627));
+var _toggle_control = _interopRequireDefault(__webpack_require__(627));
 
-var _version_reloader = _interopRequireDefault(__webpack_require__(628));
+var _type = _interopRequireDefault(__webpack_require__(628));
 
-var _window_width = _interopRequireDefault(__webpack_require__(629));
+var _version_reloader = _interopRequireDefault(__webpack_require__(629));
+
+var _window_width = _interopRequireDefault(__webpack_require__(630));
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -37501,7 +37503,7 @@ angular.module("MAAS", ["ngRoute", "ngCookies", "ngSanitize", "ngTagsInput", "vs
 .factory("PollingManager", _pollingmanager.default).factory("BootResourcesManager", _bootresources.default).factory("ConfigsManager", _configs.default).factory("ControllersManager", _controllers.default).factory("DevicesManager", _devices.default).factory("DHCPSnippetsManager", _dhcpsnippets.default).factory("DiscoveriesManager", _discoveries.default).factory("DomainsManager", _domains.default).factory("EventsManagerFactory", _events.default).factory("FabricsManager", _fabrics.default).factory("GeneralManager", _general.default).factory("getBakery", _login.getBakery).factory("IPRangesManager", _ipranges.default).factory("MachinesManager", _machines.default).factory("NodeResultsManagerFactory", _node_results.default).factory("NotificationsManager", _notifications2.default).factory("PackageRepositoriesManager", _packagerepositories.default).factory("ResourcePoolsManager", _resourcepools.default).factory("ScriptsManager", _scripts.default).factory("ServicesManager", _services.default).factory("SpacesManager", _spaces.default).factory("SSHKeysManager", _sshkeys.default).factory("StaticRoutesManager", _staticroutes.default).factory("SubnetsManager", _subnets.default).factory("SwitchesManager", _switches.default).factory("TagsManager", _tags.default).factory("UsersManager", _users.default).factory("VLANsManager", _vlans.default).factory("ZonesManager", _zones.default) // services
 .service("BrowserService", _browser.default).service("ControllerImageStatusService", _controller_image_status.ControllerImageStatusService).service("ConverterService", _converter.default).service("ErrorService", _error.default).service("JSONService", _json.default).service("LogService", _log.default).service("Manager", _manager.default).service("ManagerHelperService", _managerhelper.default).service("NodesManager", _nodes2.default).service("KVMDeployOSBlacklist", _osblacklist.default).service("PodsManager", _pods.default).service("RegionConnection", _region.default).service("SearchService", _search.default).service("ValidationService", _validation.default) // controllers
 .controller("AddDeviceController", _add_device.default).controller("AddDomainController", _add_domain.default).controller("AddHardwareController", _add_hardware.default).controller("DashboardController", _dashboard.default).controller("DomainDetailsController", _domain_details.default).controller("DomainsListController", _domains_list.default).controller("FabricDetailsController", _fabric_details.default).controller("ImagesController", _images.default).controller("IntroUserController", _intro_user.default).controller("IntroController", _intro.default).controller("NetworksListController", _networks_list.default).controller("NodeNetworkingController", _node_details_networking.NodeNetworkingController).controller("NodeFilesystemsController", _node_details_storage_filesystems.NodeFilesystemsController).controller("NodeAddSpecialFilesystemController", _node_details_storage_filesystems.NodeAddSpecialFilesystemController).controller("NodeStorageController", _node_details_storage.NodeStorageController).controller("NodeDetailsController", _node_details.default).controller("NodeEventsController", _node_events.default).controller("NodeResultController", _node_result.default).controller("NodeResultsController", _node_results2.default).controller("NodesListController", _nodes_list.default).controller("PodDetailsController", _pod_details.default).controller("PodsListController", _pods_list.default).controller("PreferencesController", _prefs.default).controller("SettingsController", _settings.default).controller("SpaceDetailsController", _space_details.default).controller("SubnetDetailsController", _subnet_details.SubnetDetailsController).controller("VLANDetailsController", _vlan_details.VLANDetailsController).controller("ZoneDetailsController", _zone_details.default).controller("ZonesListController", _zones_list.default) // directives
-.directive("storageDisksPartitions", _storage_disks_partitions.default).directive("storageFilesystems", _storage_filesystems.default).directive("storageDatastores", _storage_datastores.default).directive("addMachine", _add_machine.default).directive("nodesListFilter", _nodes_list_filter.default).directive("maasAccordion", _accordion.default).directive("maasActionButton", _action_button.maasActionButton).directive("maasBootImagesStatus", _boot_images.maasBootImagesStatus).directive("maasBootImages", _boot_images.maasBootImages).directive("maasCta", _call_to_action.maasCta).directive("maasCardLoader", _card_loader.default).directive("maasCodeLines", _code_lines.default).directive("contenteditable", _contenteditable.default).directive("maasControllerImageStatus", _controller_image_status.maasControllerImageStatus).directive("maasControllerStatus", _controller_status.maasControllerStatus).directive("maasDblClickOverlay", _dbl_click_overlay.maasDblClickOverlay).directive("maasDefaultOsSelect", _default_os_select.default).directive("maasEnterBlur", _enter_blur.default).directive("maasEnter", _enter.default).directive("maasErrorOverlay", _error_overlay.maasErrorOverlay).directive("maasErrorToggle", _error_toggle.default).directive("maasIpRanges", _ipranges2.default).directive("externalLogin", _login.externalLogin).directive("maasObjForm", _maas_obj_form.maasObjForm).directive("maasObjFieldGroup", _maas_obj_form.maasObjFieldGroup).directive("maasObjField", _maas_obj_form.maasObjField).directive("maasObjSave", _maas_obj_form.maasObjSave).directive("maasObjErrors", _maas_obj_form.maasObjErrors).directive("maasObjSaving", _maas_obj_form.maasObjSaving).directive("maasObjShowSaving", _maas_obj_form.maasObjShowSaving).directive("maasObjHideSaving", _maas_obj_form.maasObjHideSaving).directive("macAddress", _mac_address.default).directive("maasMachinesTable", _machines_table.default).directive("maasNavigationDropdown", _navigation_dropdown.default).directive("maasNavigationMobile", _navigation_mobile.default).directive("maasNotifications", _notifications.maasNotifications).directive("maasOsSelect", _os_select.maasOsSelect).directive("ngPlaceholder", _placeholder.default).directive("maasPodParameters", _pod_parameters.maasPodParameters).directive("maasCoresChart", _cores_chart.maasCoresChart).directive("maasPowerInput", _power_parameters.maasPowerInput).directive("maasPowerParameters", _power_parameters.maasPowerParameters).directive("maasPrefKeys", _pref_keys.maasPrefKeys).directive("maasPrefKeysInject", _pref_keys.maasPrefKeysInject).directive("maasPrefKeysAdd", _pref_keys.maasPrefKeysAdd).directive("maasPrefKey", _pref_keys.maasPrefKey).directive("maasPrefKeyDelete", _pref_keys.maasPrefKeyDelete).directive("maasProxySettings", _proxy_settings.default).directive("maasReleaseName", _release_name.default).directive("maasReleaseOptions", _release_options.maasReleaseOptions).directive("pScriptExpander", _script_expander.default).directive("maasScriptResultsList", _script_results_list.default).directive("maasScriptRunTime", _script_runtime.maasScriptRunTime).directive("maasScriptSelect", _script_select.maasScriptSelect).directive("maasScriptStatus", _script_status.maasScriptStatus).directive("maasSshKeys", _ssh_keys.default).directive("maasSwitchesTable", _switches_table.default).directive("toggleCtrl", _toggle_control.default).directive("ngType", _type.default).directive("maasVersionReloader", _version_reloader.default).directive("windowWidth", _window_width.default);
+.directive("storageDisksPartitions", _storage_disks_partitions.default).directive("storageFilesystems", _storage_filesystems.default).directive("storageDatastores", _storage_datastores.default).directive("addMachine", _add_machine.default).directive("nodesListFilter", _nodes_list_filter.default).directive("maasAccordion", _accordion.default).directive("maasActionButton", _action_button.maasActionButton).directive("maasBootImagesStatus", _boot_images.maasBootImagesStatus).directive("maasBootImages", _boot_images.maasBootImages).directive("maasCta", _call_to_action.maasCta).directive("maasCardLoader", _card_loader.default).directive("maasCodeLines", _code_lines.default).directive("contenteditable", _contenteditable.default).directive("maasControllerImageStatus", _controller_image_status.maasControllerImageStatus).directive("maasControllerStatus", _controller_status.maasControllerStatus).directive("maasDblClickOverlay", _dbl_click_overlay.maasDblClickOverlay).directive("maasDefaultOsSelect", _default_os_select.default).directive("maasEnterBlur", _enter_blur.default).directive("maasEnter", _enter.default).directive("maasErrorOverlay", _error_overlay.maasErrorOverlay).directive("maasErrorToggle", _error_toggle.default).directive("maasIpRanges", _ipranges2.default).directive("externalLogin", _login.externalLogin).directive("maasObjForm", _maas_obj_form.maasObjForm).directive("maasObjFieldGroup", _maas_obj_form.maasObjFieldGroup).directive("maasObjField", _maas_obj_form.maasObjField).directive("maasObjSave", _maas_obj_form.maasObjSave).directive("maasObjErrors", _maas_obj_form.maasObjErrors).directive("maasObjSaving", _maas_obj_form.maasObjSaving).directive("maasObjShowSaving", _maas_obj_form.maasObjShowSaving).directive("maasObjHideSaving", _maas_obj_form.maasObjHideSaving).directive("macAddress", _mac_address.default).directive("maasMachinesTable", _machines_table.default).directive("maasDhcpSnippetsTable", _dhcp_snippets_table.default).directive("maasNavigationDropdown", _navigation_dropdown.default).directive("maasNavigationMobile", _navigation_mobile.default).directive("maasNotifications", _notifications.maasNotifications).directive("maasOsSelect", _os_select.maasOsSelect).directive("ngPlaceholder", _placeholder.default).directive("maasPodParameters", _pod_parameters.maasPodParameters).directive("maasCoresChart", _cores_chart.maasCoresChart).directive("maasPowerInput", _power_parameters.maasPowerInput).directive("maasPowerParameters", _power_parameters.maasPowerParameters).directive("maasPrefKeys", _pref_keys.maasPrefKeys).directive("maasPrefKeysInject", _pref_keys.maasPrefKeysInject).directive("maasPrefKeysAdd", _pref_keys.maasPrefKeysAdd).directive("maasPrefKey", _pref_keys.maasPrefKey).directive("maasPrefKeyDelete", _pref_keys.maasPrefKeyDelete).directive("maasProxySettings", _proxy_settings.default).directive("maasReleaseName", _release_name.default).directive("maasReleaseOptions", _release_options.maasReleaseOptions).directive("pScriptExpander", _script_expander.default).directive("maasScriptResultsList", _script_results_list.default).directive("maasScriptRunTime", _script_runtime.maasScriptRunTime).directive("maasScriptSelect", _script_select.maasScriptSelect).directive("maasScriptStatus", _script_status.maasScriptStatus).directive("maasSshKeys", _ssh_keys.default).directive("maasSwitchesTable", _switches_table.default).directive("toggleCtrl", _toggle_control.default).directive("ngType", _type.default).directive("maasVersionReloader", _version_reloader.default).directive("windowWidth", _window_width.default);
 
 /***/ }),
 /* 502 */
@@ -39191,7 +39193,7 @@ exports.filterEditInterface = filterEditInterface;
 exports.filterSelectedInterfaces = filterSelectedInterfaces;
 exports.filterLinkModes = filterLinkModes;
 exports.NodeNetworkingController = NodeNetworkingController;
-NodeNetworkingController.$inject = ["$scope", "$filter", "FabricsManager", "VLANsManager", "SubnetsManager", "ControllersManager", "GeneralManager", "UsersManager", "ManagerHelperService", "ValidationService", "JSONService", "$log"];
+NodeNetworkingController.$inject = ["$scope", "$filter", "FabricsManager", "VLANsManager", "SubnetsManager", "ControllersManager", "GeneralManager", "UsersManager", "ManagerHelperService", "ValidationService", "JSONService", "DHCPSnippetsManager", "$log"];
 
 /* Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
@@ -39398,7 +39400,7 @@ function filterLinkModes() {
 /* @ngInject */
 
 
-function NodeNetworkingController($scope, $filter, FabricsManager, VLANsManager, SubnetsManager, ControllersManager, GeneralManager, UsersManager, ManagerHelperService, ValidationService, JSONService, $log) {
+function NodeNetworkingController($scope, $filter, FabricsManager, VLANsManager, SubnetsManager, ControllersManager, GeneralManager, UsersManager, ManagerHelperService, ValidationService, JSONService, DHCPSnippetsManager, $log) {
   // Different interface types.
   var INTERFACE_TYPE = {
     PHYSICAL: "physical",
@@ -39480,6 +39482,7 @@ function NodeNetworkingController($scope, $filter, FabricsManager, VLANsManager,
   $scope.newInterfaceLinkMonitoring = null;
   $scope.editInterfaceLinkMonitoring = null;
   $scope.isSaving = false;
+  $scope.snippets = DHCPSnippetsManager.getItems();
   $scope.modes = [{
     mode: LINK_MODE.AUTO,
     text: LINK_MODE_TEXTS[LINK_MODE.AUTO]
@@ -39643,7 +39646,21 @@ function NodeNetworkingController($scope, $filter, FabricsManager, VLANsManager,
     }); // Update the scopes interfaces.
 
     $scope.interfaces = interfaces;
-    $scope.vlanTable = vlanTable; // Update the scope interface links mapping.
+    $scope.vlanTable = vlanTable;
+    $scope.snippets.forEach(function (snippet) {
+      var subnet = SubnetsManager.getItemFromList(snippet.subnet);
+
+      if (subnet) {
+        snippet.subnet_cidr = subnet.cidr;
+      }
+    });
+    var subnetIPs = [];
+    $scope.interfaces.forEach(function (item) {
+      if (item.subnet) {
+        subnetIPs.push(item.subnet.cidr);
+      }
+    });
+    $scope.filteredSnippets = DHCPSnippetsManager.getFilteredSnippets($scope.snippets, subnetIPs); // Update the scope interface links mapping.
 
     $scope.interfaceLinksMap = {};
     angular.forEach($scope.interfaces, function (nic) {
@@ -41310,7 +41327,7 @@ function NodeNetworkingController($scope, $filter, FabricsManager, VLANsManager,
   // are loaded by the parent controller "NodeDetailsController".
 
 
-  ManagerHelperService.loadManagers($scope, [FabricsManager, VLANsManager, SubnetsManager, UsersManager, ControllersManager]).then(function () {
+  ManagerHelperService.loadManagers($scope, [FabricsManager, VLANsManager, SubnetsManager, UsersManager, ControllersManager, DHCPSnippetsManager]).then(function () {
     // GeneralManager is loaded by the parent scope however
     // bond_options may not have been loaded. If it hasn't been
     // loaded, load it.
@@ -43669,7 +43686,7 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.filterSource = filterSource;
 exports.SubnetDetailsController = SubnetDetailsController;
-SubnetDetailsController.$inject = ["$scope", "$rootScope", "$routeParams", "$location", "ConfigsManager", "SubnetsManager", "SpacesManager", "VLANsManager", "UsersManager", "FabricsManager", "StaticRoutesManager", "ManagerHelperService", "ErrorService", "ConverterService"];
+SubnetDetailsController.$inject = ["$scope", "$rootScope", "$routeParams", "$location", "ConfigsManager", "SubnetsManager", "SpacesManager", "VLANsManager", "UsersManager", "FabricsManager", "StaticRoutesManager", "ManagerHelperService", "ErrorService", "ConverterService", "DHCPSnippetsManager"];
 
 /* Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
@@ -43690,7 +43707,7 @@ function filterSource() {
 /* @ngInject */
 
 
-function SubnetDetailsController($scope, $rootScope, $routeParams, $location, ConfigsManager, SubnetsManager, SpacesManager, VLANsManager, UsersManager, FabricsManager, StaticRoutesManager, ManagerHelperService, ErrorService, ConverterService) {
+function SubnetDetailsController($scope, $rootScope, $routeParams, $location, ConfigsManager, SubnetsManager, SpacesManager, VLANsManager, UsersManager, FabricsManager, StaticRoutesManager, ManagerHelperService, ErrorService, ConverterService, DHCPSnippetsManager) {
   // Set title and page.
   $rootScope.title = "Loading..."; // Note: this value must match the top-level tab, in order for
   // highlighting to occur properly.
@@ -43716,6 +43733,7 @@ function SubnetDetailsController($scope, $rootScope, $routeParams, $location, Co
   $scope.newStaticRoute = null;
   $scope.editStaticRoute = null;
   $scope.deleteStaticRoute = null;
+  $scope.snippets = DHCPSnippetsManager.getItems();
   $scope.MAP_SUBNET_ACTION = {
     name: "map_subnet",
     title: "Map subnet"
@@ -44039,6 +44057,14 @@ function SubnetDetailsController($scope, $rootScope, $routeParams, $location, Co
       $scope.subnet.vlan_name = VLANsManager.getName(vlan);
     };
 
+    $scope.snippets.forEach(function (snippet) {
+      var subnet = SubnetsManager.getItemFromList(snippet.subnet);
+
+      if (subnet) {
+        snippet.subnet_cidr = subnet.cidr;
+      }
+    });
+    $scope.filteredSnippets = DHCPSnippetsManager.getFilteredSnippets($scope.snippets, [$scope.subnet.cidr]);
     $scope.$watch("subnet.fabric", updateFabric);
     $scope.$watch("subnet.fabric_name", updateFabric);
     $scope.$watch("subnet.vlan", updateFabric);
@@ -44048,7 +44074,7 @@ function SubnetDetailsController($scope, $rootScope, $routeParams, $location, Co
   } // Load all the required managers.
 
 
-  ManagerHelperService.loadManagers($scope, [ConfigsManager, SubnetsManager, SpacesManager, VLANsManager, UsersManager, FabricsManager, StaticRoutesManager]).then(function () {
+  ManagerHelperService.loadManagers($scope, [ConfigsManager, SubnetsManager, SpacesManager, VLANsManager, UsersManager, FabricsManager, StaticRoutesManager, DHCPSnippetsManager]).then(function () {
     $scope.updateActions();
     $scope.active_discovery_data = ConfigsManager.getItemFromList("active_discovery_interval"); // Find active discovery interval
 
@@ -44090,7 +44116,7 @@ Object.defineProperty(exports, "__esModule", {
 exports.ignoreSelf = ignoreSelf;
 exports.removeNoDHCP = removeNoDHCP;
 exports.VLANDetailsController = VLANDetailsController;
-VLANDetailsController.$inject = ["$scope", "$rootScope", "$routeParams", "$filter", "$location", "$timeout", "VLANsManager", "SubnetsManager", "SpacesManager", "FabricsManager", "ControllersManager", "UsersManager", "ManagerHelperService", "ErrorService", "IPRangesManager"];
+VLANDetailsController.$inject = ["$scope", "$rootScope", "$routeParams", "$filter", "$location", "$timeout", "VLANsManager", "SubnetsManager", "SpacesManager", "FabricsManager", "ControllersManager", "UsersManager", "ManagerHelperService", "ErrorService", "IPRangesManager", "DHCPSnippetsManager"];
 
 /* Copyright 2016 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
@@ -44123,7 +44149,7 @@ function removeNoDHCP() {
 /* @ngInject */
 
 
-function VLANDetailsController($scope, $rootScope, $routeParams, $filter, $location, $timeout, VLANsManager, SubnetsManager, SpacesManager, FabricsManager, ControllersManager, UsersManager, ManagerHelperService, ErrorService, IPRangesManager) {
+function VLANDetailsController($scope, $rootScope, $routeParams, $filter, $location, $timeout, VLANsManager, SubnetsManager, SpacesManager, FabricsManager, ControllersManager, UsersManager, ManagerHelperService, ErrorService, IPRangesManager, DHCPSnippetsManager) {
   var vm = this;
   var filterByVLAN = $filter("filterByVLAN"); // Set title and page.
 
@@ -44165,7 +44191,9 @@ function VLANDetailsController($scope, $rootScope, $routeParams, $filter, $locat
   vm.suggestedRange = null;
   vm.isProvidingDHCP = false;
   vm.DHCPError = null;
-  vm.hideHighAvailabilityNotification = false; // Return true if the authenticated user is super user.
+  vm.hideHighAvailabilityNotification = false;
+  vm.snippets = DHCPSnippetsManager.getItems();
+  vm.filteredSnippets = []; // Return true if the authenticated user is super user.
 
   vm.isSuperUser = function () {
     return UsersManager.isSuperUser();
@@ -44781,6 +44809,17 @@ function VLANDetailsController($scope, $rootScope, $routeParams, $filter, $locat
       subnets.push(row);
     });
     vm.relatedSubnets = subnets;
+    var subnetIPs = subnets.map(function (subnet) {
+      return subnet.subnet.cidr;
+    });
+    vm.snippets.forEach(function (snippet) {
+      var subnet = SubnetsManager.getItemFromList(snippet.subnet);
+
+      if (subnet) {
+        snippet.subnet_cidr = subnet.cidr;
+      }
+    });
+    vm.filteredSnippets = DHCPSnippetsManager.getFilteredSnippets(vm.snippets, subnetIPs);
   }
 
   function updatePossibleActions() {
@@ -44836,7 +44875,7 @@ function VLANDetailsController($scope, $rootScope, $routeParams, $filter, $locat
   } // Load all the required managers.
 
 
-  ManagerHelperService.loadManagers($scope, [VLANsManager, SubnetsManager, SpacesManager, FabricsManager, ControllersManager, UsersManager]).then(function () {
+  ManagerHelperService.loadManagers($scope, [VLANsManager, SubnetsManager, SpacesManager, FabricsManager, ControllersManager, UsersManager, DHCPSnippetsManager]).then(function () {
     // Possibly redirected from another controller that already had
     // this vlan set to active. Only call setActiveItem if not
     // already the activeItem.
@@ -48634,6 +48673,25 @@ function DHCPSnippetsManager(RegionConnection, Manager) {
 
   DHCPSnippetsManager.prototype.create = function (snippet) {
     return RegionConnection.callMethod(this._handler + ".create", snippet, true);
+  }; // Return filtered snippets applied to items
+
+
+  DHCPSnippetsManager.prototype.getFilteredSnippets = function (snippets, subnets) {
+    // should really pass in an array of subnet IPs
+    // the subnet IP should be added to the snippet prior to
+    // being passed into this method
+    if (angular.isUndefined(subnets) || !angular.isArray(subnets)) {
+      return [];
+    }
+
+    if (angular.isUndefined(snippets) || !angular.isArray(snippets)) {
+      return [];
+    }
+
+    var filteredSubnets = snippets.filter(function (snippet) {
+      return subnets.indexOf(snippet.subnet_cidr) !== -1;
+    });
+    return filteredSubnets;
   };
 
   return new DHCPSnippetsManager();
@@ -58087,7 +58145,6 @@ function SettingsController($scope, $rootScope, $routeParams, PackageRepositorie
   $rootScope.page = "settings"; // Initial values.
 
   $scope.loading = true;
-  $scope.snippetsManager = DHCPSnippetsManager;
   $scope.snippets = DHCPSnippetsManager.getItems();
   $scope.subnets = SubnetsManager.getItems();
   $scope.machines = MachinesManager.getItems();
@@ -58098,10 +58155,6 @@ function SettingsController($scope, $rootScope, $routeParams, PackageRepositorie
   $scope.components_to_disable = GeneralManager.getData("components_to_disable");
   $scope.packageRepositoriesManager = PackageRepositoriesManager;
   $scope.repositories = PackageRepositoriesManager.getItems();
-  $scope.newSnippet = null;
-  $scope.editSnippet = null;
-  $scope.deleteSnippet = null;
-  $scope.snippetTypes = ["Global", "Subnet", "Node"];
   $scope.newRepository = null;
   $scope.editRepository = null;
   $scope.deleteRepository = null; // Called when the enabled toggle is changed.
@@ -58189,123 +58242,6 @@ function SettingsController($scope, $rootScope, $routeParams, PackageRepositorie
 
   $scope.repositoryAddCancel = function () {
     $scope.newRepository = null;
-  }; // Return the node from either the machines, devices, or controllers
-  // manager.
-
-
-  function getNode(system_id) {
-    var node = MachinesManager.getItemFromList(system_id);
-
-    if (angular.isObject(node)) {
-      return node;
-    }
-
-    node = DevicesManager.getItemFromList(system_id);
-
-    if (angular.isObject(node)) {
-      return node;
-    }
-
-    node = ControllersManager.getItemFromList(system_id);
-
-    if (angular.isObject(node)) {
-      return node;
-    }
-  } // Return the name of the subnet.
-
-
-  $scope.getSubnetName = function (subnet) {
-    return SubnetsManager.getName(subnet);
-  }; // Return the text for the type of snippet.
-
-
-  $scope.getSnippetTypeText = function (snippet) {
-    if (angular.isString(snippet.node)) {
-      return "Node";
-    } else if (angular.isNumber(snippet.subnet)) {
-      return "Subnet";
-    } else {
-      return "Global";
-    }
-  }; // Return the object the snippet applies to.
-
-
-  $scope.getSnippetAppliesToObject = function (snippet) {
-    if (angular.isString(snippet.node)) {
-      return getNode(snippet.node);
-    } else if (angular.isNumber(snippet.subnet)) {
-      return SubnetsManager.getItemFromList(snippet.subnet);
-    }
-  }; // Return the applies to text that is disabled in none edit mode.
-
-
-  $scope.getSnippetAppliesToText = function (snippet) {
-    var obj = $scope.getSnippetAppliesToObject(snippet);
-
-    if (angular.isString(snippet.node) && angular.isObject(obj)) {
-      return obj.fqdn;
-    } else if (angular.isNumber(snippet.subnet) && angular.isObject(obj)) {
-      return SubnetsManager.getName(obj);
-    } else {
-      return "";
-    }
-  }; // Called to enter remove mode for a DHCP snippet.
-
-
-  $scope.snippetEnterRemove = function (snippet) {
-    $scope.newSnippet = null;
-    $scope.editSnippet = null;
-    $scope.deleteSnippet = snippet;
-  }; // Called to exit remove mode for a DHCP snippet.
-
-
-  $scope.snippetExitRemove = function () {
-    $scope.deleteSnippet = null;
-  }; // Called to confirm the removal of a snippet.
-
-
-  $scope.snippetConfirmRemove = function () {
-    DHCPSnippetsManager.deleteItem($scope.deleteSnippet).then(function () {
-      $scope.snippetExitRemove();
-    });
-  }; // Called to enter edit mode for a DHCP snippet.
-
-
-  $scope.snippetEnterEdit = function (snippet) {
-    $scope.newSnippet = null;
-    $scope.deleteSnippet = null;
-    $scope.editSnippet = snippet;
-    $scope.editSnippet.type = $scope.getSnippetTypeText(snippet);
-  }; // Called to exit edit mode for a DHCP snippet.
-
-
-  $scope.snippetExitEdit = function () {
-    $scope.editSnippet = null;
-  }; // Called when the active toggle is changed.
-
-
-  $scope.snippetToggle = function (snippet) {
-    DHCPSnippetsManager.updateItem(snippet).then(null, function (error) {
-      // Revert state change and clear toggling.
-      snippet.enabled = !snippet.enabled;
-      console.log(error); // eslint-disable-line no-console
-    });
-  }; // Called to start adding a new snippet.
-
-
-  $scope.snippetAdd = function () {
-    $scope.editSnippet = null;
-    $scope.deleteSnippet = null;
-    $scope.newSnippet = {
-      name: "",
-      type: "Global",
-      enabled: true
-    };
-  }; // Called to cancel addind a new snippet.
-
-
-  $scope.snippetAddCancel = function () {
-    $scope.newSnippet = null;
   }; // Setup page variables based on section.
 
 
@@ -59460,6 +59396,174 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.default = void 0;
+DHCPSnippetsTableController.$inject = ["$scope", "$log", "SubnetsManager", "MachinesManager", "DevicesManager", "ControllersManager", "DHCPSnippetsManager"];
+maasDhcpSnippetsTable.$inject = ["$window"];
+
+/* Copyright 2019 Canonical Ltd.  This software is licensed under the
+ * GNU Affero General Public License version 3 (see the file LICENSE).
+ *
+ * DHCP snippets table directive.
+ */
+
+/* @ngInject */
+function maasDhcpSnippetsTable($window) {
+  return {
+    restrict: "E",
+    scope: {
+      snippets: "=",
+      allowAddNew: "=",
+      allowDelete: "="
+    },
+    templateUrl: "static/partials/dhcp-snippets-table.html?v=" + $window.MAAS_config.files_version,
+    controller: DHCPSnippetsTableController
+  };
+}
+/* @ngInject */
+
+
+function DHCPSnippetsTableController($scope, $log, SubnetsManager, MachinesManager, DevicesManager, ControllersManager, DHCPSnippetsManager) {
+  // Initial values.
+  $scope.snippetsManager = DHCPSnippetsManager;
+  $scope.subnets = SubnetsManager.getItems();
+  $scope.machines = MachinesManager.getItems();
+  $scope.devices = DevicesManager.getItems();
+  $scope.controllers = ControllersManager.getItems();
+  $scope.newSnippet = null;
+  $scope.editSnippet = null;
+  $scope.deleteSnippet = null;
+  $scope.snippetTypes = ["Global", "Subnet", "Node"];
+  $scope.MAAS_VERSION_NUMBER = DHCPSnippetsManager.formatMAASVersionNumber(); // Return the text for the type of snippet.
+
+  $scope.getSnippetTypeText = function (snippet) {
+    if (angular.isString(snippet.node)) {
+      return "Node";
+    } else if (angular.isNumber(snippet.subnet)) {
+      return "Subnet";
+    } else {
+      return "Global";
+    }
+  }; // Return the node from either the machines, devices, or controllers manager.
+
+
+  $scope.getNode = function (system_id) {
+    var node = MachinesManager.getItemFromList(system_id);
+
+    if (angular.isObject(node)) {
+      return node;
+    }
+
+    node = DevicesManager.getItemFromList(system_id);
+
+    if (angular.isObject(node)) {
+      return node;
+    }
+
+    node = ControllersManager.getItemFromList(system_id);
+
+    if (angular.isObject(node)) {
+      return node;
+    }
+  }; // Return the object the snippet applies to.
+
+
+  $scope.getSnippetAppliesToObject = function (snippet) {
+    if (angular.isString(snippet.node)) {
+      return $scope.getNode(snippet.node);
+    } else if (angular.isNumber(snippet.subnet)) {
+      return SubnetsManager.getItemFromList(snippet.subnet);
+    }
+  }; // Return the applies to text that is disabled in none edit mode.
+
+
+  $scope.getSnippetAppliesToText = function (snippet) {
+    var obj = $scope.getSnippetAppliesToObject(snippet);
+
+    if (angular.isString(snippet.node) && angular.isObject(obj)) {
+      return obj.fqdn;
+    } else if (angular.isNumber(snippet.subnet) && angular.isObject(obj)) {
+      return SubnetsManager.getName(obj);
+    } else {
+      return "";
+    }
+  }; // Called when the active toggle is changed.
+
+
+  $scope.snippetToggle = function (snippet) {
+    DHCPSnippetsManager.updateItem(snippet).then(null, function (error) {
+      // Revert state change and clear toggling.
+      snippet.enabled = !snippet.enabled;
+      $log.error(error);
+    });
+  }; // Called to enter edit mode for a DHCP snippet.
+
+
+  $scope.snippetEnterEdit = function (snippet) {
+    $scope.newSnippet = null;
+    $scope.deleteSnippet = null;
+    $scope.editSnippet = snippet;
+    $scope.editSnippet.type = $scope.getSnippetTypeText(snippet);
+  }; // Called to exit edit mode for a DHCP snippet.
+
+
+  $scope.snippetExitEdit = function () {
+    $scope.editSnippet = null;
+  }; // Return the name of the subnet.
+
+
+  $scope.getSubnetName = function (subnet) {
+    return SubnetsManager.getName(subnet);
+  }; // Called to exit remove mode for a DHCP snippet.
+
+
+  $scope.snippetExitRemove = function () {
+    $scope.deleteSnippet = null;
+  }; // Called to confirm the removal of a snippet.
+
+
+  $scope.snippetConfirmRemove = function () {
+    DHCPSnippetsManager.deleteItem($scope.deleteSnippet).then(function () {
+      $scope.snippetExitRemove();
+    });
+  }; // Called to enter remove mode for a DHCP snippet.
+
+
+  $scope.snippetEnterRemove = function (snippet) {
+    $scope.newSnippet = null;
+    $scope.editSnippet = null;
+    $scope.deleteSnippet = snippet;
+  }; // Called to cancel addind a new snippet.
+
+
+  $scope.snippetAddCancel = function () {
+    $scope.newSnippet = null;
+  }; // Called to start adding a new snippet.
+
+
+  $scope.snippetAdd = function () {
+    $scope.editSnippet = null;
+    $scope.deleteSnippet = null;
+    $scope.newSnippet = {
+      name: "",
+      type: "Global",
+      enabled: true
+    };
+  };
+}
+
+var _default = maasDhcpSnippetsTable;
+exports.default = _default;
+
+/***/ }),
+/* 603 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
 
 function addMachine() {
   var path = "static/partials/nodelist/add-machine.html";
@@ -59474,7 +59578,7 @@ var _default = addMachine;
 exports.default = _default;
 
 /***/ }),
-/* 603 */
+/* 604 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -59570,7 +59674,7 @@ var _default = nodesListFilter;
 exports.default = _default;
 
 /***/ }),
-/* 604 */
+/* 605 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -59624,7 +59728,7 @@ var _default = maasAccordion;
 exports.default = _default;
 
 /***/ }),
-/* 605 */
+/* 606 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -60627,7 +60731,7 @@ function maasBootImages($timeout, BootResourcesManager, UsersManager, ManagerHel
 }
 
 /***/ }),
-/* 606 */
+/* 607 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -60662,7 +60766,7 @@ var _default = maasCardLoader;
 exports.default = _default;
 
 /***/ }),
-/* 607 */
+/* 608 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -60720,7 +60824,7 @@ var _default = maasCodeLines;
 exports.default = _default;
 
 /***/ }),
-/* 608 */
+/* 609 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -60792,7 +60896,7 @@ var _default = contenteditable;
 exports.default = _default;
 
 /***/ }),
-/* 609 */
+/* 610 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -60908,7 +61012,7 @@ var _default = maasDefaultOsSelect;
 exports.default = _default;
 
 /***/ }),
-/* 610 */
+/* 611 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -60944,7 +61048,7 @@ var _default = maasEnterBlur;
 exports.default = _default;
 
 /***/ }),
-/* 611 */
+/* 612 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -60978,7 +61082,7 @@ var _default = maasEnter;
 exports.default = _default;
 
 /***/ }),
-/* 612 */
+/* 613 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -61059,7 +61163,7 @@ var _default = maasErrorToggle;
 exports.default = _default;
 
 /***/ }),
-/* 613 */
+/* 614 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -61233,7 +61337,7 @@ var _default = maasIpRanges;
 exports.default = _default;
 
 /***/ }),
-/* 614 */
+/* 615 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -62371,7 +62475,7 @@ function maasObjHideSaving() {
 }
 
 /***/ }),
-/* 615 */
+/* 616 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -62432,7 +62536,7 @@ var _default = macAddress;
 exports.default = _default;
 
 /***/ }),
-/* 616 */
+/* 617 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -62472,7 +62576,7 @@ var _default = maasNavigationDropdown;
 exports.default = _default;
 
 /***/ }),
-/* 617 */
+/* 618 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -62507,7 +62611,7 @@ var _default = maasNavigationMobile;
 exports.default = _default;
 
 /***/ }),
-/* 618 */
+/* 619 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -62543,7 +62647,7 @@ var _default = ngPlaceholder;
 exports.default = _default;
 
 /***/ }),
-/* 619 */
+/* 620 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -62694,7 +62798,7 @@ function maasPrefKeyDelete() {
 }
 
 /***/ }),
-/* 620 */
+/* 621 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -62752,7 +62856,7 @@ var _default = maasProxySettings;
 exports.default = _default;
 
 /***/ }),
-/* 621 */
+/* 622 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -62816,7 +62920,7 @@ var _default = maasReleaseName;
 exports.default = _default;
 
 /***/ }),
-/* 622 */
+/* 623 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -62853,7 +62957,7 @@ var _default = pScriptExpander;
 exports.default = _default;
 
 /***/ }),
-/* 623 */
+/* 624 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -62880,7 +62984,7 @@ var _default = maasScriptResultsList;
 exports.default = _default;
 
 /***/ }),
-/* 624 */
+/* 625 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -63065,7 +63169,7 @@ var _default = maasSshKeys;
 exports.default = _default;
 
 /***/ }),
-/* 625 */
+/* 626 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -63243,7 +63347,7 @@ var _default = maasSwitchesTable;
 exports.default = _default;
 
 /***/ }),
-/* 626 */
+/* 627 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -63294,7 +63398,7 @@ var _default = toggleCtrl;
 exports.default = _default;
 
 /***/ }),
-/* 627 */
+/* 628 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -63334,7 +63438,7 @@ var _default = ngType;
 exports.default = _default;
 
 /***/ }),
-/* 628 */
+/* 629 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -63389,7 +63493,7 @@ var _default = maasVersionReloader;
 exports.default = _default;
 
 /***/ }),
-/* 629 */
+/* 630 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";

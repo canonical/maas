@@ -218,6 +218,7 @@ export function NodeNetworkingController(
   ManagerHelperService,
   ValidationService,
   JSONService,
+  DHCPSnippetsManager,
   $log
 ) {
   // Different interface types.
@@ -308,6 +309,7 @@ export function NodeNetworkingController(
   $scope.newInterfaceLinkMonitoring = null;
   $scope.editInterfaceLinkMonitoring = null;
   $scope.isSaving = false;
+  $scope.snippets = DHCPSnippetsManager.getItems();
   $scope.modes = [
     {
       mode: LINK_MODE.AUTO,
@@ -489,6 +491,27 @@ export function NodeNetworkingController(
     // Update the scopes interfaces.
     $scope.interfaces = interfaces;
     $scope.vlanTable = vlanTable;
+
+    $scope.snippets.forEach(snippet => {
+      let subnet = SubnetsManager.getItemFromList(snippet.subnet);
+
+      if (subnet) {
+        snippet.subnet_cidr = subnet.cidr;
+      }
+    });
+
+    let subnetIPs = [];
+
+    $scope.interfaces.forEach(item => {
+      if (item.subnet) {
+        subnetIPs.push(item.subnet.cidr);
+      }
+    });
+
+    $scope.filteredSnippets = DHCPSnippetsManager.getFilteredSnippets(
+      $scope.snippets,
+      subnetIPs
+    );
 
     // Update the scope interface links mapping.
     $scope.interfaceLinksMap = {};
@@ -2207,7 +2230,8 @@ export function NodeNetworkingController(
     VLANsManager,
     SubnetsManager,
     UsersManager,
-    ControllersManager
+    ControllersManager,
+    DHCPSnippetsManager
   ]).then(function() {
     // GeneralManager is loaded by the parent scope however
     // bond_options may not have been loaded. If it hasn't been

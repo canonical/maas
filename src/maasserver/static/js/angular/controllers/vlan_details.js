@@ -44,7 +44,8 @@ export function VLANDetailsController(
   UsersManager,
   ManagerHelperService,
   ErrorService,
-  IPRangesManager
+  IPRangesManager,
+  DHCPSnippetsManager
 ) {
   var vm = this;
 
@@ -94,6 +95,8 @@ export function VLANDetailsController(
   vm.isProvidingDHCP = false;
   vm.DHCPError = null;
   vm.hideHighAvailabilityNotification = false;
+  vm.snippets = DHCPSnippetsManager.getItems();
+  vm.filteredSnippets = [];
 
   // Return true if the authenticated user is super user.
   vm.isSuperUser = function() {
@@ -704,6 +707,21 @@ export function VLANDetailsController(
       subnets.push(row);
     });
     vm.relatedSubnets = subnets;
+
+    let subnetIPs = subnets.map(subnet => subnet.subnet.cidr);
+
+    vm.snippets.forEach(snippet => {
+      let subnet = SubnetsManager.getItemFromList(snippet.subnet);
+
+      if (subnet) {
+        snippet.subnet_cidr = subnet.cidr;
+      }
+    });
+
+    vm.filteredSnippets = DHCPSnippetsManager.getFilteredSnippets(
+      vm.snippets,
+      subnetIPs
+    );
   }
 
   function updatePossibleActions() {
@@ -760,13 +778,15 @@ export function VLANDetailsController(
     SpacesManager,
     FabricsManager,
     ControllersManager,
-    UsersManager
+    UsersManager,
+    DHCPSnippetsManager
   ]).then(function() {
     // Possibly redirected from another controller that already had
     // this vlan set to active. Only call setActiveItem if not
     // already the activeItem.
     var activeVLAN = VLANsManager.getActiveItem();
     var requestedVLAN = parseInt($routeParams.vlan_id, 10);
+
     if (isNaN(requestedVLAN)) {
       ErrorService.raiseError("Invalid VLAN identifier.");
     } else if (

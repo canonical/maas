@@ -74,11 +74,11 @@
 
       + label {
         &::before {
-          top: 0;
+          top: 0.65rem;
         }
 
         &::after {
-          top: $spv-inner--x-small;
+          top: 0.85rem;
         }
       }
     }

@@ -33,6 +33,26 @@ function DHCPSnippetsManager(RegionConnection, Manager) {
     );
   };
 
+  // Return filtered snippets applied to items
+  DHCPSnippetsManager.prototype.getFilteredSnippets = (snippets, subnets) => {
+    // should really pass in an array of subnet IPs
+    // the subnet IP should be added to the snippet prior to
+    // being passed into this method
+    if (angular.isUndefined(subnets) || !angular.isArray(subnets)) {
+      return [];
+    }
+
+    if (angular.isUndefined(snippets) || !angular.isArray(snippets)) {
+      return [];
+    }
+
+    const filteredSubnets = snippets.filter(snippet => {
+      return subnets.indexOf(snippet.subnet_cidr) !== -1;
+    });
+
+    return filteredSubnets;
+  };
+
   return new DHCPSnippetsManager();
 }
 

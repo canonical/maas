@@ -537,6 +537,12 @@
             <maas-ip-ranges subnet="subnet"></maas-ip-ranges>
         </div>
     </section>
+    <section class="p-strip" data-ng-if="filteredSnippets.length">
+        <div class="row">
+            <h2 class="p-heading--four">DHCP snippets</h2>
+            <maas-dhcp-snippets-table snippets="filteredSnippets"></maas-dhcp-snippets-table>
+        </div>
+    </section>
     <section class="p-strip">
         <div class="row">
             <div class="col-6">
