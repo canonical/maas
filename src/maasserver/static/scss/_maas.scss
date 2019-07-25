@@ -284,3 +284,8 @@
   position: relative;
   width: 100%;
 }
+
+// Util to remove top border
+.u-no-border--top {
+  border-top: 0 !important;
+}

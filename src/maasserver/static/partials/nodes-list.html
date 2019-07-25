@@ -58,12 +58,12 @@
             <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
             <div class="page-header__controls" data-ng-show="currentpage === 'devices'">
                 <div data-ng-hide="tabs.devices.selectedItems.length">
-                    <button class="p-button--neutral"
+                    <button class="p-button--neutral u-no-margin--bottom"
                         data-ng-click="addDevice()"
-                        data-ng-hide="addDeviceScope.viewable">Add device</button>
-                    <button class="p-button--neutral ng-hide"
+                        data-ng-if="!addDeviceScope.viewable">Add device</button>
+                    <button class="p-button--neutral u-no-margin--bottom ng-hide"
                         data-ng-click="cancelAddDevice()"
-                        data-ng-show="addDeviceScope.viewable">Cancel add device</button>
+                        data-ng-if="addDeviceScope.viewable">Cancel add device</button>
                 </div>
                 <ul class="p-inline-list u-no-margin--bottom" data-ng-show="tabs.devices.selectedItems.length">
                     <li class="p-inline-list__item">
@@ -190,7 +190,7 @@
                             </div>
                         </form>
                     </div>
-                    <div class="ng-hide" data-ng-show="tabs[tab].actionOption.name === 'test' || tabs[tab].actionOption.name === 'deploy' || tabs[tab].actionOption.name === 'release' || tabs[tab].actionOption.name === 'set-zone' || tabs[tab].actionOption.name === 'set-pool'">
+                    <div class="ng-hide col-8" data-ng-show="tabs[tab].actionOption.name === 'test' || tabs[tab].actionOption.name === 'deploy' || tabs[tab].actionOption.name === 'release' || tabs[tab].actionOption.name === 'set-zone' || tabs[tab].actionOption.name === 'set-pool'">
                         <form class="p-form">
                             <ul class="p-inline-list--settings u-no-margin--left u-no-padding--left ng-hide" data-ng-show="tabs[tab].actionOption.name === 'test'">
                                 <li class="p-inline-list__item">
@@ -516,11 +516,11 @@
         <section class="page-header__section row">
             <hr />
             <h4 class="page-header__dropdown-title">Add device</h4>
-            <form class="p-form p-form--stacked">
+            <form class="p-form p-form--stacked row">
                 <div class="col-6 u-sv3">
-                    <div class="p-form__group">
+                    <div class="p-form__group row">
                         <label for="device-name" class="p-form__label col-2">Name</label>
-                        <div class="p-form__control">
+                        <div class="p-form__control col-4">
                             <div class="p-form-validation" data-ng-class="{ 'is-error': nameHasError() }">
                                 <input type="text" id="device-name" placeholder="Name your device"
                                     class="p-form-validation__input"
@@ -528,7 +528,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="p-form__group">
+                    <div class="p-form__group row">
                         <label for="domain3" class="p-form__label col-2">Domain</label>
                         <div class="p-form__control col-4">
                             <select name="domain" id="domain3"
@@ -587,14 +587,14 @@
                             </div>
                         </td>
                         <td class="p-table__cell">
-                            <a class="p-button--neutral"
+                            <a class="p-button--base"
                                 data-ng-click="deleteInterface(interface)"
-                                data-ng-hide="isPrimaryInterface(interface)">Delete</a>
+                                data-ng-hide="isPrimaryInterface(interface)" title="Delete interface"><i class="p-icon--delete">Delete</i></a>
                         </td>
                     </tr>
                 </tbody>
                 <tfoot>
-                    <tr>
+                    <tr class="u-no-border--top">
                         <td>
                             <button class="p-button--neutral" data-ng-click="addInterface()">+ Add another interface</button>
                         </td>
