@@ -415,7 +415,11 @@ def get_mac_addresses():
         gathered.
     """
     ip_addr = get_ip_addr()
-    return list({iface['mac'] for iface in ip_addr.values() if 'mac' in iface})
+    return list({
+        iface['mac']
+        for iface in ip_addr.values()
+        if iface.get('mac', '00:00:00:00:00:00') != '00:00:00:00:00:00'
+    })
 
 
 def get_machine_default_gateway_ip():

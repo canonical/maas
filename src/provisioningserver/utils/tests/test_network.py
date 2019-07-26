@@ -1458,6 +1458,12 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                 "flags": ["UP"],
                 "inet": ["192.168.124.2/24"],
             },
+            "gretap": {
+                "type": "gretap",
+                "index": 10,
+                "mac": "00:00:00:00:00:00",
+                "flags": ["UP"],
+            },
         }
         iproute_info = {
             "default": {
