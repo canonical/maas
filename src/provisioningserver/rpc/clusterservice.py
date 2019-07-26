@@ -1203,14 +1203,16 @@ class ClusterClientService(TimerService, object):
                 # here as well. What we are actually doing here is replacing
                 # the given host:port in the URL with the answer we got from
                 # socket.getaddrinfo().
-                if family in {AF_INET, AF_INET6}:
+                if family == AF_INET6:
                     if port == 0:
                         netloc = "[%s]" % IPAddress(addr).ipv6()
                     else:
                         netloc = "[%s]:%d" % (IPAddress(addr).ipv6(), port)
+                    url = url_base._replace(netloc=netloc)
+                elif family == AF_INET:
+                    url = url_base
                 else:
                     continue
-                url = url_base._replace(netloc=netloc)
                 url = ascii_url(url.geturl())
                 urls_group.append(url)
             urls.append((urls_group, orig_url))

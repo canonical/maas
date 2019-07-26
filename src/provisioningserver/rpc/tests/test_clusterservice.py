@@ -566,7 +566,7 @@ class TestClusterClientService(MAASTestCase):
             for _ in range(3)
         ]
         expected_urls = [
-            ([b'http://[::ffff:127.0.0.1]:5240/rpc/'],
+            ([b'http://127.0.0.1:5240/rpc/'],
              "http://127.0.0.1:5240/")
             for url in maas_urls
         ]
