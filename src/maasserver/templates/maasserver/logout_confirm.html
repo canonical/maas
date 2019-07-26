@@ -10,7 +10,7 @@
     {% endblock %}
         <div class="p-strip">
             <div class="row">
-                <div class="col-8 col-start-large-3">
+                <div class="col-6 col-start-large-4">
                     <div class="p-card">
                         <header class="p-card__header">
                             <h1 class="p-heading--four">Logout</h1>
@@ -19,10 +19,10 @@
                         <form method="post" class="u-no-margin--top u-align--right">
                             {% csrf_token %}
                             <input type="hidden" name="post" value="yes" />
-                            <a href="{% url 'index' %}" class="p-button--neutral u-no-margin--top">No</a>
-                            <button type="submit" class="p-button--positive"
+                            <a href="{% url 'index' %}" class="p-button--neutral u-no-margin--top u-no-margin--bottom">Cancel</a>
+                            <button type="submit" class="p-button--positive u-no-margin--bottom"
                                     onClick="localStorage.clear()">
-                              Yes
+                              Logout
                             </button>
                         </form>
                     </div>

@@ -16,9 +16,12 @@
                     <p>You'll need a separate API key for each Juju environment.</p>
                     <ul class="p-list" data-maas-pref-keys-inject="key_li">
                         {% for token in user.userprofile.get_authorisation_tokens %}
-                        <li class="u-equal-height js-bundle" data-maas-pref-key="{{ token.key }}">
-                            <div class="col-8 p-code-copyable">
-                                <input type="text" value="{{ token.consumer.key }}:{{ token.key }}:{{ token.secret }}" class="p-code-copyable__input" readonly />
+                        <li class="u-equal-height row js-bundle" data-maas-pref-key="{{ token.key }}" style="margin-bottom: .5rem">
+                            <div class="col-8">
+                                <div class="p-code-copyable u-no-margin--bottom">
+                                    <input type="text" value="{{ token.consumer.key }}:{{ token.key }}:{{ token.secret }}" class="p-code-copyable__input u-no-margin--bottom" readonly />
+                                    <button class="p-code-copyable__action">Copy to clipboard</button>
+                                </div>
                             </div>
                             <div class="col-1 u-vertically-center">
                                 <a class="p-tooltip--top-center" data-maas-pref-key-delete><i class="p-icon--delete"></i><span class="p-tooltip__message" role="tooltip">Delete API key</span></a>
@@ -27,12 +30,18 @@
                         {% endfor %}
                     </ul>
                     <div>
-                        <a class="p-button--neutral u-float--right" data-maas-pref-keys-add>Generate MAAS key</a>
+                        <button class="p-button--neutral u-float--right" data-maas-pref-keys-add>
+                            <span data-ng-if="addingKey">&nbsp;</span>
+                            Generate MAAS key
+                        </button>
                     </div>
                     <script type="text/ng-template" id="key_li">
-                        <li class="u-equal-height js-bundle" data-maas-pref-key="{$ token.key $}">
-                            <div class="col-8 p-code-copyable">
-                                <input type="text" value="{$ token.consumer.key $}:{$ token.key $}:{$ token.secret $}" class="p-code-copyable__input" readonly />
+                        <li class="u-equal-height row js-bundle" data-maas-pref-key="{$ token.key $}" style="margin-bottom: .5rem">
+                            <div class="col-8">
+                                <div class="p-code-copyable u-no-margin--bottom">
+                                    <input type="text" value="{$ token.consumer.key $}:{$ token.key $}:{$ token.secret $}" class="p-code-copyable__input u-no-margin--bottom" readonly />
+                                    <button class="p-code-copyable__action" data-maas-pref-key-copy>Copy to clipboard</button>
+                                </div>
                             </div>
                             <div class="col-1 u-vertically-center">
                                 <a class="p-tooltip--top-center" data-maas-pref-key-delete><i class="p-icon--delete"></i><span class="p-tooltip__message" role="tooltip">Delete API key</span></a>
@@ -109,4 +118,23 @@
     </section>
     {% endif %}
 </div>
+
+<script>
+    function copyCodeSnippet(e) {
+        var clipboardParent = e.currentTarget.previousSibling;
+        var clipboardValue = clipboardParent.previousSibling.value;
+        var el = document.createElement("textarea");
+        el.value = clipboardValue;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand("copy");
+        document.body.removeChild(el);
+    }
+
+    var codeCopyBtns = document.querySelectorAll(".p-code-copyable__action");
+
+    codeCopyBtns.forEach(function(btn) {
+        btn.addEventListener("click", copyCodeSnippet);
+    });
+</script>
 {% endblock %}

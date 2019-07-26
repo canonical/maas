@@ -73,6 +73,7 @@ export function maasPrefKeysAdd() {
         evt.preventDefault();
 
         // Add the spinner.
+        $scope.addingKey = true;
         var spinElement = angular.element(spinner);
         $element.prepend(spinElement);
 
@@ -80,6 +81,7 @@ export function maasPrefKeysAdd() {
         $scope.$apply(function() {
           controller.addKey().then(function() {
             // Remove the spinner.
+            $scope.addingKey = false;
             spinElement.remove();
           });
         });
@@ -128,6 +130,25 @@ export function maasPrefKeyDelete() {
         $scope.$apply(function() {
           controller.deleteKey();
         });
+      });
+    }
+  };
+}
+
+export function maasPrefKeyCopy() {
+  return {
+    restrict: "A",
+    require: "^maasPrefKey",
+    link: function($scope, $element) {
+      $element.on("click", e => {
+        let clipboardParent = e.currentTarget.previousSibling;
+        let clipboardValue = clipboardParent.previousSibling.value;
+        let el = document.createElement("textarea");
+        el.value = clipboardValue;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand("copy");
+        document.body.removeChild(el);
       });
     }
   };

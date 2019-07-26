@@ -73,6 +73,10 @@ $vanilla-2-icon-button-side-padding: $sph-inner--small * 1.5;
     &.is-small {
       padding: calc(#{$spv-nudge} - 1px) $sph-inner;
     }
+
+    &:not(:last-child) {
+      margin-right: 1rem;
+    }
   }
 }
 

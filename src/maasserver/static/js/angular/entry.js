@@ -209,7 +209,8 @@ import {
   maasPrefKeysInject,
   maasPrefKeysAdd,
   maasPrefKey,
-  maasPrefKeyDelete
+  maasPrefKeyDelete,
+  maasPrefKeyCopy
 } from "./directives/pref_keys";
 import maasProxySettings from "./directives/proxy_settings";
 import maasReleaseName from "./directives/release_name";
@@ -666,6 +667,7 @@ angular
   .directive("maasPrefKeysAdd", maasPrefKeysAdd)
   .directive("maasPrefKey", maasPrefKey)
   .directive("maasPrefKeyDelete", maasPrefKeyDelete)
+  .directive("maasPrefKeyCopy", maasPrefKeyCopy)
   .directive("maasProxySettings", maasProxySettings)
   .directive("maasReleaseName", maasReleaseName)
   .directive("maasReleaseOptions", maasReleaseOptions)
