@@ -1161,7 +1161,8 @@ def get_all_interfaces_definition(annotate_with_monitored: bool=True) -> dict:
         name: ipaddr
         for name, ipaddr in get_ip_addr().items()
         if (ipaddr["type"] not in exclude_types and
-            not ipaddr["type"].startswith("unknown-"))
+            not ipaddr["type"].startswith("unknown-") and
+            ipaddr.get('mac', '') != '00:00:00:00:00:00')
     }
     for name, ipaddr in ipaddr_info.items():
         iface_type = "physical"
