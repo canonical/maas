@@ -2135,10 +2135,7 @@ class Node(CleanSave, TimestampedModel):
             testing_scripts=[], script_input=None):
         """Run tests on a node."""
         # Avoid circular imports.
-        from metadataserver.models import (
-            NodeUserData,
-            ScriptSet,
-        )
+        from metadataserver.models import ScriptSet
         from maasserver.models.event import Event
 
         if not user.has_perm(NodePermission.edit, self):
@@ -2185,10 +2182,6 @@ class Node(CleanSave, TimestampedModel):
         # Generate the specific user data for testing this node.
         testing_user_data = generate_user_data_for_status(
             node=self, status=NODE_STATUS.TESTING)
-        # Record the user data for the node. Note that we do this
-        # whether or not we can actually send power commands to the
-        # node; the user may choose to start it manually.
-        NodeUserData.objects.set_user_data(self, testing_user_data)
 
         # We need to mark the node as TESTING now to avoid a race when starting
         # multiple nodes. We hang on to old_status just in case the power
@@ -2202,7 +2195,8 @@ class Node(CleanSave, TimestampedModel):
         self.save()
 
         try:
-            cycling = self._power_cycle()
+            starting = self._start(
+                user, testing_user_data, old_status, allow_power_cycle=True)
         except Exception as error:
             self.status = old_status
             self.enable_ssh = False
@@ -2214,28 +2208,23 @@ class Node(CleanSave, TimestampedModel):
             # deal with it.
             raise
         else:
-            # Don't permit naive mocking of cycling(); it causes too much
+            # Don't permit naive mocking of start(); it causes too much
             # confusion when testing. Return a Deferred from side_effect.
-            assert isinstance(cycling, Deferred) or cycling is None
+            assert isinstance(starting, Deferred) or starting is None
 
-            if cycling is None:
-                cycling = post_commit()
+            if starting is None:
+                starting = post_commit()
                 # MAAS cannot start the node itself.
-                is_cycling = False
+                is_starting = False
             else:
                 # MAAS can direct the node to start.
-                is_cycling = True
+                is_starting = True
 
             post_commit().addCallback(
                 callOutToDatabase, Node._set_status_expires, self.system_id)
 
-            cycling.addCallback(
-                callOut, self._start_testing_async, is_cycling, self.hostname)
-
-            # If there's an error, reset the node's status.
-            cycling.addErrback(
-                callOutToDatabase, Node._set_status, self.system_id,
-                status=old_status)
+            starting.addCallback(
+                callOut, self._start_testing_async, is_starting, self.hostname)
 
             def eb_start(failure, hostname):
                 maaslog.error(
@@ -2243,7 +2232,7 @@ class Node(CleanSave, TimestampedModel):
                     hostname, failure.getErrorMessage())
                 return failure  # Propagate.
 
-            return cycling.addErrback(eb_start, self.hostname)
+            return starting.addErrback(eb_start, self.hostname)
 
     @classmethod
     @asynchronous
@@ -4782,6 +4771,7 @@ class Node(CleanSave, TimestampedModel):
         # Auto IP allocation and power on action are attached to the
         # post commit of the transaction.
         d = post_commit()
+        claimed_ips = False
 
         if self.status == NODE_STATUS.ALLOCATED:
             old_status = self.status
@@ -4792,15 +4782,28 @@ class Node(CleanSave, TimestampedModel):
             set_deployment_timeout = True
             self._start_deployment()
             claimed_ips = True
+        elif self.status in COMMISSIONING_LIKE_STATUSES:
+            if old_status is None:
+                old_status = self.status
+            # Avoid circular dependencies
+            from metadataserver.models import ScriptResult
+            # Claim AUTO IP addresses if a script will be running in the
+            # ephemeral environment which needs network configuration applied.
+            if ScriptResult.objects.filter(
+                    script_set__in=[
+                        self.current_commissioning_script_set,
+                        self.current_testing_script_set],
+                    script__apply_configured_networking=True).exists():
+                d = self._claim_auto_ips(d)
+                claimed_ips = True
+            set_deployment_timeout = False
         elif self.status == NODE_STATUS.DEPLOYED and self.ephemeral_deployment:
             # Ephemeral deployments need to be re-deployed on a power cycle
             # and will already be in a DEPLOYED state.
             set_deployment_timeout = True
             self._start_deployment()
-            claimed_ips = False
         else:
             set_deployment_timeout = False
-            claimed_ips = False
 
         power_info = self.get_effective_power_info()
         if not power_info.can_be_started:

@@ -400,7 +400,7 @@ class TestTest(MAASServerTestCase):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
         script = factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
         enable_ssh = factory.pick_bool()
-        self.patch(node, '_power_cycle').return_value = None
+        self.patch(node, '_start').return_value = None
         admin = factory.make_admin()
         request = factory.make_fake_request('/')
         request.user = admin

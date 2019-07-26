@@ -715,9 +715,10 @@ class TestPowerMixin(APITestCase.ForUser):
         self.assertEqual(POWER_STATE.ON, parsed_result['state'])
 
     def test_POST_test_tests_machine(self):
+        self.patch(
+            node_module.Machine, "_start").return_value = succeed(None)
         factory.make_Script(
             script_type=SCRIPT_TYPE.TESTING, tags=['commissioning'])
-        self.patch(node_module.Node, "_power_cycle").return_value = None
         self.patch(node_module.Node, "_power_control_node").return_value = (
             succeed(None))
         node = factory.make_Node(
@@ -728,9 +729,8 @@ class TestPowerMixin(APITestCase.ForUser):
         self.assertEqual(NODE_STATUS.TESTING, reload_object(node).status)
 
     def test_POST_test_tests_machine_with_options(self):
-        self.patch(node_module.Node, "_power_cycle").return_value = None
-        self.patch(node_module.Node, "_power_control_node").return_value = (
-            succeed(None))
+        self.patch(
+            node_module.Machine, "_start").return_value = succeed(None)
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYED, owner=factory.make_User())
         self.become_admin()

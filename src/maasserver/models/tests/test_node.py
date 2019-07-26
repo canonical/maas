@@ -3281,7 +3281,7 @@ class TestNode(MAASServerTestCase):
         script = factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
         node = factory.make_Node(
             interface=True, status=NODE_STATUS.DEPLOYED, power_type='manual')
-        self.patch(node, '_power_cycle').return_value = None
+        self.patch(node, '_start').return_value = None
         admin = factory.make_admin()
         node.start_testing(admin, testing_scripts=[script.name])
         events = Event.objects.filter(node=node)
@@ -3295,14 +3295,14 @@ class TestNode(MAASServerTestCase):
         script = factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
         node = factory.make_Node(
             interface=True, status=NODE_STATUS.DEPLOYED, power_type='manual')
-        mock_node_power_cycle = self.patch(node, '_power_cycle')
-        mock_node_power_cycle.return_value = None
+        mock_node_start = self.patch(node, '_start')
+        mock_node_start.return_value = None
         admin = factory.make_admin()
         node.start_testing(admin, testing_scripts=[script.name])
         post_commit_hooks.reset()  # Ignore these for now.
         node = reload_object(node)
         self.assertEquals(NODE_STATUS.TESTING, node.status)
-        self.assertThat(mock_node_power_cycle, MockCalledOnce())
+        self.assertThat(mock_node_start, MockCalledOnce())
 
     def test_start_testing_changes_status_and_starts_new_node(self):
         script = factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
@@ -3312,14 +3312,14 @@ class TestNode(MAASServerTestCase):
             node=node, result_type=RESULT_TYPE.COMMISSIONING)
         factory.make_ScriptResult(
             script_set=node.current_commissioning_script_set)
-        mock_node_power_cycle = self.patch(node, '_power_cycle')
-        mock_node_power_cycle.return_value = None
+        mock_node_start = self.patch(node, '_start')
+        mock_node_start.return_value = None
         admin = factory.make_admin()
         node.start_testing(admin, testing_scripts=[script.name])
         post_commit_hooks.reset()  # Ignore these for now.
         node = reload_object(node)
         self.assertEquals(NODE_STATUS.TESTING, node.status)
-        self.assertThat(mock_node_power_cycle, MockCalledOnce())
+        self.assertThat(mock_node_start, MockCalledOnce())
 
     def test_start_testing_sets_options(self):
         script = factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
@@ -3327,7 +3327,7 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(
             interface=True, status=NODE_STATUS.DEPLOYED, power_type='virsh',
             bmc_connected_to=rack)
-        self.patch(node, '_power_cycle').return_value = None
+        self.patch(node, '_start').return_value = None
         admin = factory.make_admin()
         enable_ssh = factory.pick_bool()
         node.start_testing(
@@ -3339,7 +3339,8 @@ class TestNode(MAASServerTestCase):
     def test_start_testing_sets_user_data(self):
         script = factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
         node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
-        self.patch(node, '_power_cycle').return_value = None
+        node_start = self.patch(node, '_start')
+        node_start.side_effect = lambda *args, **kwargs: post_commit()
         user_data = factory.make_string().encode('ascii')
         generate_user_data_for_status = self.patch(
             node_module, 'generate_user_data_for_status')
@@ -3347,14 +3348,14 @@ class TestNode(MAASServerTestCase):
         admin = factory.make_admin()
         node.start_testing(admin, testing_scripts=[script.name])
         post_commit_hooks.reset()  # Ignore these for now.
-        nud = NodeUserData.objects.get(node=node)
-        self.assertEquals(user_data, nud.data)
+        self.assertThat(node_start, MockCalledOnceWith(
+            admin, user_data, NODE_STATUS.DEPLOYED, allow_power_cycle=True))
 
     def test_start_testing_adds_default_testing_script_set(self):
         factory.make_Script(
             script_type=SCRIPT_TYPE.TESTING, tags=['commissioning'])
         node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
-        self.patch(node, '_power_cycle').return_value = None
+        self.patch(node, '_start').return_value = None
 
         with post_commit_hooks:
             node.start_testing(factory.make_admin())
@@ -3365,7 +3366,7 @@ class TestNode(MAASServerTestCase):
 
     def test_start_testing_adds_selected_scripts(self):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
-        self.patch(node, '_power_cycle').return_value = None
+        self.patch(node, '_start').return_value = None
         testing_scripts = [
             factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
             for _ in range(10)
@@ -3395,19 +3396,19 @@ class TestNode(MAASServerTestCase):
         # node, it will revert the node to its previous status.
         admin = factory.make_admin()
         node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
-        mock_node_power_cycle = self.patch(node, '_power_cycle')
-        mock_node_power_cycle.side_effect = factory.make_exception()
+        mock_node_start = self.patch(node, '_start')
+        mock_node_start.side_effect = factory.make_exception()
 
         try:
             with transaction.atomic():
                 node.start_testing(
                     admin, enable_ssh=True, testing_scripts=[script.name])
-        except mock_node_power_cycle.side_effect.__class__:
+        except mock_node_start.side_effect.__class__:
             # We don't care about the error here, so suppress it. It
             # exists only to cause the transaction to abort.
             pass
 
-        self.expectThat(mock_node_power_cycle, MockCalledOnceWith())
+        self.expectThat(mock_node_start, MockCalledOnce())
         self.expectThat(NODE_STATUS.DEPLOYED, Equals(node.status))
         self.assertFalse(node.enable_ssh)
 
@@ -3417,7 +3418,7 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
         mock_maaslog = self.patch(node_module, 'maaslog')
         exception = NoConnectionsAvailable(factory.make_name())
-        self.patch(node, '_power_cycle').side_effect = exception
+        self.patch(node, '_start').side_effect = exception
         self.assertRaises(
             NoConnectionsAvailable,
             node.start_testing, admin, testing_scripts=[script.name])
@@ -3435,7 +3436,7 @@ class TestNode(MAASServerTestCase):
         set_status_expires = self.patch_autospec(
             Node, "_set_status_expires")
 
-        self.patch(node, '_power_cycle').return_value = None
+        self.patch(node, '_start').return_value = None
 
         with post_commit_hooks:
             node.start_testing(admin, testing_scripts=[script.name])
@@ -7484,6 +7485,68 @@ class TestNode_Start(MAASTransactionServerTestCase):
         # Calls _power_control_node when power_cycle.
         self.assertThat(
             mock_power_control, MockCalledOnceWith(ANY, power_cycle, ANY))
+
+    def test__claims_auto_ips_when_script_needs_it(self):
+        user = factory.make_User()
+        node = factory.make_Node_with_Interface_on_Subnet(
+            owner=user, status=random.choice(COMMISSIONING_LIKE_STATUSES))
+        # Validation during start requires an OS to be set
+        ubuntu = factory.make_default_ubuntu_release_bootable()
+        osystem, distro_series = ubuntu.name.split('/')
+        self.patch(
+            boot_images, 'get_common_available_boot_images').return_value = [{
+                'osystem': osystem,
+                'release': distro_series,
+                'purpose': 'xinstall',
+                }]
+        script_result = factory.make_ScriptResult()
+        script_result.script.apply_configured_networking = True
+        script_result.script.save()
+        setattr(
+            node, random.choice([
+                'current_commissioning_script_set',
+                'current_testing_script_set']), script_result.script_set)
+        node.save()
+
+        post_commit_defer = self.patch(node_module, "post_commit")
+        mock_claim_auto_ips = self.patch(Node, "_claim_auto_ips")
+        mock_claim_auto_ips.return_value = post_commit_defer
+        mock_power_control = self.patch(Node, "_power_control_node")
+        mock_power_control.return_value = post_commit_defer
+
+        node._start(user)
+
+        self.assertThat(mock_claim_auto_ips, MockCalledOnceWith(ANY))
+
+    def test__doesnt_claims_auto_ips_when_script_doenst_need_it(self):
+        user = factory.make_User()
+        node = factory.make_Node_with_Interface_on_Subnet(
+            owner=user, status=random.choice(COMMISSIONING_LIKE_STATUSES))
+        # Validation during start requires an OS to be set
+        ubuntu = factory.make_default_ubuntu_release_bootable()
+        osystem, distro_series = ubuntu.name.split('/')
+        self.patch(
+            boot_images, 'get_common_available_boot_images').return_value = [{
+                'osystem': osystem,
+                'release': distro_series,
+                'purpose': 'xinstall',
+                }]
+        script_result = factory.make_ScriptResult()
+        setattr(
+            node, random.choice([
+                'current_commissioning_script_set',
+                'current_testing_script_set']), script_result.script_set)
+        node.save()
+
+        post_commit_defer = self.patch(node_module, "post_commit")
+        mock_claim_auto_ips = self.patch(Node, "_claim_auto_ips")
+        mock_claim_auto_ips.return_value = post_commit_defer
+        mock_power_control = self.patch(Node, "_power_control_node")
+        mock_power_control.return_value = post_commit_defer
+
+        node._start(user)
+
+        self.assertThat(mock_claim_auto_ips, MockNotCalled())
 
     def test__manual_power_type_doesnt_call__power_control_node(self):
         user = factory.make_User()
