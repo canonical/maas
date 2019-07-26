@@ -13,10 +13,10 @@
             <div class="page-header__controls" data-ng-show="isSuperUser()">
                 <button class="p-button--neutral"
                     data-ng-click="addDomain()"
-                    data-ng-hide="addDomainScope.viewable">Add domain</button>
+                    data-ng-if="!addDomainScope.viewable">Add domain</button>
                 <button class="p-button--neutral"
                     data-ng-click="cancelAddDomain()"
-                    data-ng-show="addDomainScope.viewable">Cancel add domain</button>
+                    data-ng-if="addDomainScope.viewable" disabled>Add domain</button>
             </div>
         </div>
     </div>
@@ -25,14 +25,14 @@
         <div class="row">
             <div class="col-6">
                 <form class="p-form p-form--inline row">
-                    <div class="p-form__group p-form-validation" data-ng-class="{ 'is-error': nameHasError() }">
+                    <div class="p-form__group p-form-validation col-3" data-ng-class="{ 'is-error': nameHasError() }">
                         <label for="domain-name" class="p-form__label">Name</label>
                         <div class="p-form__control">
                             <input type="text" id="domain-name" placeholder="Domain name"
                                 data-ng-model="domain.name" class="p-form-validation__input">
                         </div>
                     </div>
-                    <div class="p-form__group p-form-validation" data-ng-class="{ 'is-error': nameHasError() }">
+                    <div class="p-form__group p-form-validation col-3 u-no-margin--left" data-ng-class="{ 'is-error': nameHasError() }">
                         <input type="checkbox" class="checkbox" id="domain-authoritative" data-ng-model="domain.authoritative">
                         <label for="domain-authoritative" class="u-no-margin--top">Authoritative</label>
                     </div>
