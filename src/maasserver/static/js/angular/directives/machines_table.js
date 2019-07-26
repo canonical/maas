@@ -401,6 +401,11 @@ function maasMachinesTable(
     };
 
     $scope.updateGroupedMachines = function(field) {
+      if (field === "none") {
+        $scope.noGrouping = true;
+      } else {
+        $scope.noGrouping = false;
+      }
       if (field === "status") {
         const machines = $scope.groupBy(
           $scope.table.filteredMachines,

@@ -66,15 +66,17 @@
             }"
         >
             <th class="p-table__group-label p-table__col--name p-double-row u-align--left">
-                <input type="checkbox" id="{$ group.label $}" data-ng-click="toggleCheckGroup(group.label)" data-ng-checked="getGroupSelectedState(group.label)" />
-                <label
-                    for="{$ group.label $}"
-                    class="p-checkbox--action u-no-padding--top"
-                    data-ng-class="{'u-no-margin--bottom' : group.label === 'none'}"
-                >
-                    {$ group.label $}
-                </label>
-                <div class="p-muted-text">{$ getGroupCountString(group.label) $}</div>
+                <span data-ng-if="!noGrouping">
+                    <input type="checkbox" id="{$ group.label $}" data-ng-click="toggleCheckGroup(group.label)" data-ng-checked="getGroupSelectedState(group.label)" />
+                    <label
+                        for="{$ group.label $}"
+                        class="p-checkbox--action u-no-padding--top"
+                        data-ng-class="{'u-no-margin--bottom' : group.label === 'none'}"
+                    >
+                        {$ group.label $}
+                    </label>
+                    <div class="p-muted-text">{$ getGroupCountString(group.label) $}</div>
+                </span>
             </th>
             <th class="p-table__col--power" role="columnheader">
                 <button class="p-table__group-toggle p-button--base p-button--narrow" data-ng-click="toggleOpenGroup(group.label)">

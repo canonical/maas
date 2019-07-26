@@ -59078,6 +59078,12 @@ function maasMachinesTable(MachinesManager, NotificationsManager, UsersManager, 
     };
 
     $scope.updateGroupedMachines = function (field) {
+      if (field === "none") {
+        $scope.noGrouping = true;
+      } else {
+        $scope.noGrouping = false;
+      }
+
       if (field === "status") {
         var _machines = $scope.groupBy($scope.table.filteredMachines, function (machine) {
           return machine.status_code;
@@ -61903,7 +61909,11 @@ function maasObjField($compile) {
 
 
       scope.ngDisabled = controller.scope.ngDisabled;
-      element.addClass("p-form__group row");
+      element.addClass("p-form__group");
+
+      if (!attrs.disableRow) {
+        element.addClass("row");
+      }
 
       if (attrs.subtle !== "false") {
         element.addClass("form__group--subtle");

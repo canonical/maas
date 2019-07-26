@@ -168,10 +168,10 @@
             </div>
             <section class="page-header__section row u-no-margin--top" data-ng-hide="isActionError(tab) || hasActionsInProgress(tab)">
                 <div class="row">
-                    <div class="col-10 ng-hide" data-ng-show="tabs[tab].actionOption.name === 'commission'">
+                    <div class="ng-hide" data-ng-show="tabs[tab].actionOption.name === 'commission'">
                         <form>
                             <div class="row">
-                                <div class="col-5">
+                                <div class="col-6">
                                     <input id="{$ tab $}-enableSSH" type="checkbox" data-ng-model="tabs[tab].commissionOptions.enableSSH">
                                     <label for="{$ tab $}-enableSSH">Allow SSH access and prevent machine powering off</label>
                                     <input id="{$ tab $}-skipBMCConfig" type="checkbox" data-ng-model="tabs[tab].commissionOptions.skipBMCConfig">
@@ -179,7 +179,7 @@
                                     <input id="{$ tab $}-skipNetworking" type="checkbox" data-ng-model="tabs[tab].commissionOptions.skipNetworking">
                                     <label for="{$ tab $}-skipNetworking">Retain network configuration</label>
                                 </div>
-                                <div class="col-5">
+                                <div class="col-6">
                                     <input id="{$ tab $}-skipStorage" type="checkbox" data-ng-model="tabs[tab].commissionOptions.skipStorage">
                                     <label for="{$ tab $}-skipStorage">Retain storage configuration</label>
                                     <input id="{$ tab $}-updateFirmware" type="checkbox" data-ng-model="tabs[tab].commissionOptions.updateFirmware">
@@ -200,7 +200,7 @@
                             </ul>
                             <div class="p-form__group ng-hide" data-ng-show="tabs[tab].actionOption.name === 'deploy'">
                                 <div class="row p-form--stacked">
-                                    <div class="col-12">
+                                    <div class="col-6">
                                         <div class="p-strip is-shallow u-no-padding--top">
                                             <div class="p-form__group" data-maas-os-select="osinfo" data-ng-model="tabs[tab].osSelection" style="width: 100%"></div>
                                         </div>
@@ -209,17 +209,19 @@
                                                 <label class="p-form__label u-no-padding--top">Additional install</label>
                                                 <div class="p-form__control" style="width: 70%">
                                                     <input id="{$ tab $}-installKVM" type="checkbox" data-ng-model="tabs[tab].deployOptions.installKVM" ng-disabled="!nodesManager.isModernUbuntu(tabs['machines'].osSelection)">
-                                                    <label for="{$ tab $}-installKVM" class="u-float--left" style="width:auto; margin-right: 1rem;">
+                                                    <label for="{$ tab $}-installKVM" style="width:auto; margin-right: 1rem; float: left;">
                                                         Register as MAAS KVM host
                                                     </label>
-                                                    <span data-ng-if="!nodesManager.isModernUbuntu(tabs['machines'].osSelection)">
-                                                            <i class="p-icon--warning"></i>
-                                                            <strong>Warning:</strong> Ubuntu 18.04 is the minimum required to create a KVM host. <a class="p-link--external" target="_blank" href="https://docs.maas.io/2.5/en/manage-pods-webui#add-a-kvm-host">Learn more</a>.
-                                                    </span>
-                                                    <span data-ng-if="nodesManager.isModernUbuntu(tabs['machines'].osSelection)">
-                                                        <i class="p-icon--information">Information:</i>
-                                                        <a target="_blank" class="p-link--external"
-                                                        href="https://docs.maas.io/2.5/en/manage-pods-webui#add-a-kvm-host">Learn more</a>
+                                                    <span style="display: inline-block; margin-top: .4rem;">
+                                                        <span data-ng-if="!nodesManager.isModernUbuntu(tabs['machines'].osSelection)">
+                                                                <i class="p-icon--warning"></i>
+                                                                <strong>Warning:</strong> Ubuntu 18.04 is the minimum required to create a KVM host. <a class="p-link--external" target="_blank" href="https://docs.maas.io/2.5/en/manage-pods-webui#add-a-kvm-host">Learn more</a>.
+                                                        </span>
+                                                        <span data-ng-if="nodesManager.isModernUbuntu(tabs['machines'].osSelection)">
+                                                            <i class="p-icon--information">Information:</i>
+                                                            <a target="_blank" class="p-link--external"
+                                                            href="https://docs.maas.io/2.5/en/manage-pods-webui#add-a-kvm-host">Learn more</a>
+                                                        </span>
                                                     </span>
                                                 </div>
                                             </div>
@@ -235,12 +237,14 @@
                                     <div data-maas-release-options="tabs[tab].releaseOptions"></div>
                                 </div>
                             </div>
-                            <div class="p-form__group col-5 ng-hide" data-ng-show="tabs[tab].actionOption.name === 'set-zone'">
-                                <label for="{$ tab $}-zone3" class="p-form__label">Select Zone</label>
-                                <div class="p-form__control u-clearfix">
-                                    <select name="zone" id="{$ tab $}-zone3" data-ng-model="tabs[tab].zoneSelection" data-ng-options="zone as zone.name for zone in zones">
-                                        <option value="" disabled="disabled">Choose a zone</option>
-                                    </select>
+                            <div class="row">
+                                <div class="p-form__group col-6 ng-hide" data-ng-show="tabs[tab].actionOption.name === 'set-zone'">
+                                    <label for="{$ tab $}-zone3" class="p-form__label">Select Zone</label>
+                                    <div class="p-form__control u-clearfix">
+                                        <select name="zone" id="{$ tab $}-zone3" data-ng-model="tabs[tab].zoneSelection" data-ng-options="zone as zone.name for zone in zones">
+                                            <option value="" disabled="disabled">Choose a zone</option>
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
                             <div class="ng-hide" data-ng-show="tabs[tab].actionOption.name === 'set-pool'">
@@ -248,11 +252,11 @@
                                     <ul class="p-inline-list--settings u-no-margin--left u-no-padding--left u-no-margin--top">
                                         <li class="p-inline-list__item col-3">
                                             <input type="radio" name="pool-action" id="pool-select" data-ng-model="tabs[tab].poolAction" value="select-pool" checked="checked"></input>
-                                            <label for="pool-select">Select pool</label>
+                                            <label for="pool-select" style="padding-top: 0.6rem">Select pool</label>
                                         </li>
                                         <li class="p-inline-list__item">
                                             <input type="radio" name="pool-action" id="pool-create" data-ng-model="tabs[tab].poolAction" value="create-pool"></input>
-                                            <label for="pool-create">Create pool</label>
+                                            <label for="pool-create" style="padding-top: 0.6rem">Create pool</label>
                                         </li>
                                     </ul>
                                 </div>
@@ -275,7 +279,7 @@
                     </div>
                     <div class="ng-hide" data-ng-show="tabs[tab].actionOption.name === 'tag'">
                         <div class="row p-form--stacked">
-                            <div class="col-8">
+                            <div class="col-6">
                                 <div class="p-form__group u-clearfix">
                                     <label class="p-form__label col-2 col-small-2 col-medium-2">Tag machines</label>
                                     <div class="p-form__control col-3 col-small-2 col-medium-3 tags--inline">
@@ -381,8 +385,8 @@
             </section>
             <section class="page-header__section row" data-ng-hide="isActionError(tab) || hasActionsInProgress(tab)" data-ng-if="tabs[tab].actionOption.name === 'commission' || tabs[tab].actionOption.name ==='test'">
                 <hr />
-                <form class="p-form">
-                    <div class="col-8">
+                <form class="p-form row">
+                    <div class="col-6">
                         <div class="p-form__group hide-create-tag-label">
                             <label for="{$ tab $}-testing-scripts">Hardware tests</label>
                             <span id="{$ tab $}-testing-scripts" data-maas-script-select="script" data-script-type="2" data-ng-model="tabs[tab].testSelection" class="tags--inline"></span>
@@ -392,7 +396,7 @@
             </section>
             <section class="page-header__section row" data-ng-hide="isActionError(tab) || hasActionsInProgress(tab)" data-ng-if="tabs[tab].actionOption.name === 'commission' || tabs[tab].actionOption.name === 'test' && !tabs[tab].actionProgress.showing_confirmation">
                 <hr />
-                <div class="page-header__controls">
+                <div class="page-header__controls u-align--right">
                     <button class="p-button--base" type="button" data-ng-click="actionCancel(tab)">Cancel</button>
                     <button data-ng-class="tabs[tab].actionOption.name === 'delete' ? 'p-button--negative' : 'p-button--positive'" data-ng-click="actionGo(tab)" data-ng-hide="hasActionsFailed(tab)">
                         <span data-ng-if="tabs[tab].actionOption.name === 'commission'">Commission {$ tabs[tab].selectedItems.length $}
@@ -402,7 +406,7 @@
                             <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
                         </span>
                     </button>
-                    <button class="p-button--neutral" data-ng-click="actionGo(tab)" data-ng-show="hasActionsFailed(tab)">Retry</button>
+                    <button class="p-button--neutral" data-ng-click="actionGo(tab)" data-ng-if="hasActionsFailed(tab)">Retry</button>
                 </div>
             </section>
 
@@ -944,7 +948,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                         <maas-obj-field
                           ng-if="tabs.pools.isPoolAction(pool, 'edit')"
                           type="text" key="name" disable-label="true" subtle="false"
-                          placeholder="Name (required)">
+                          placeholder="Name (required)" disable-row="true">
                       </td>
                       <td data-ng-switch on="pool.machine_total_count" class="p-table__cell col-2" aria-label="Machine count">
                       <span data-ng-switch-when="0"> Empty pool</span>
@@ -988,7 +992,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                             </p>
                           </div>
                           <div class="col-6">
-                            <span class="u-float--right">
+                            <div class="u-align--right">
                               <button class="p-button--base" type="button"
                                       data-ng-click="tabs.pools.cancelPoolAction()">
                                 Cancel
@@ -1003,7 +1007,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                                       data-ng-click="tabs.pools.actionConfirmDeletePool()">
                                 Remove
                               </button>
-                            </span>
+                            </div>
                           </div>
                         </div>
                       </td>

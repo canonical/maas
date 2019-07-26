@@ -62,6 +62,7 @@
                             data-ng-model="mac.mac"
                             data-ng-pattern="macAddressRegex"
                             data-ng-change="validateMac(mac)"
+                            class="u-no-margin--bottom"
                             mac-address>
                         <button type="reset" title="Delete MAC" class="p-search-box__button"
                             data-ng-hide="mac === machine.macs[0]" data-ng-click="removeMac(mac)"><i class="p-icon--close"></i></button>
