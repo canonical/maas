@@ -522,8 +522,8 @@ class PodManager(BaseBMCManager):
 
         :param user: The user that should be used in the permission check.
         :type user: User_
-        :param user: Type of access requested.
-        :type user: `PodPermission`
+        :param perm: Type of access requested.
+        :type perm: `PodPermission`
 
         .. _User: https://
            docs.djangoproject.com/en/dev/topics/auth/
@@ -575,6 +575,20 @@ class PodManager(BaseBMCManager):
             return pod
         else:
             raise PermissionDenied()
+
+    def have_rsd(self, user, perm):
+        """Are there any RSD hosts?
+
+        :param user: The user that should be used in the permission check.
+        :type user: User_
+        :param perm: Type of access requested.
+        :type perm: `PodPermission`
+
+        .. _User: https://
+           docs.djangoproject.com/en/dev/topics/auth/
+           #django.contrib.auth.models.User
+        """
+        return self.get_pods(user, perm).filter(power_type='rsd').exists()
 
 
 class Pod(BMC):

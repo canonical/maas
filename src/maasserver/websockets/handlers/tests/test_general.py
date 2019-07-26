@@ -257,3 +257,8 @@ class TestGeneralHandler(MAASServerTestCase):
             "secure_erase": secure_erase,
             "quick_erase": quick_erase,
         }, handler.release_options({}))
+
+    def test_navigation_options(self):
+        handler = GeneralHandler(factory.make_User(), {}, None)
+        self.assertEqual(
+            {"rsd": False}, handler.navigation_options({}))

@@ -21,7 +21,10 @@ from maasserver.models.config import Config
 from maasserver.models.node import Node
 from maasserver.models.packagerepository import PackageRepository
 from maasserver.node_action import ACTIONS_DICT
-from maasserver.permissions import NodePermission
+from maasserver.permissions import (
+    NodePermission,
+    PodPermission,
+)
 from maasserver.utils.osystems import (
     list_all_usable_hwe_kernels,
     list_all_usable_osystems,
@@ -58,6 +61,7 @@ class GeneralHandler(Handler):
             'version',
             'power_types',
             'release_options',
+            'navigation_options',
             ]
 
     def architectures(self, params):
@@ -196,4 +200,11 @@ class GeneralHandler(Handler):
                 "disk_erase_with_secure_erase"),
             "quick_erase": Config.objects.get_config(
                 "disk_erase_with_quick_erase"),
+        }
+
+    def navigation_options(self, params):
+        """Return the options for navigation."""
+        from maasserver.models.bmc import Pod  # circular import
+        return {
+            "rsd": Pod.objects.have_rsd(self.user, PodPermission.view)
         }
