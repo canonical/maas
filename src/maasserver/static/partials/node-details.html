@@ -1475,15 +1475,15 @@
                                             <div class="row">
                                                 <div class="col-6">
                                                     <h3 class="p-heading--five">Advanced options</h3>
-                                                    <div class="p-form__group u-vertically-center" style="min-height: 2.5rem;">
-                                                        <label for="stp" class="p-form__label">
+                                                    <div class="p-form__group row u-vertically-center" style="min-height: 2.5rem;">
+                                                        <label for="stp" class="p-form__label col-2">
                                                             STP
                                                             <span class="p-tooltip--right" aria-describedby="stp">
                                                                 <i class="p-icon--question"></i>
                                                                 <span class="p-tooltip__message" role="tooltip" id="stp">Controls the participation of this bridge in the spanning tree protocol.</span>
                                                             </span>
                                                         </label>
-                                                        <div class="p-form__control">
+                                                        <div class="p-form__control col-4">
                                                             <div class="onoffswitch maas-p-switch">
                                                                 <input id="bridge_stp" type="checkbox" name="bridge_stp" class="onoffswitch-checkbox maas-p-switch--input" data-ng-model="editInterface.bridge_stp">
                                                                 <div class="maas-p-switch--mask"></div>
@@ -1491,8 +1491,8 @@
                                                         </div>
                                                     </div>
                                                     <div class="p-form__group u-vertically-center" data-ng-if="editInterface.bridge_stp">
-                                                        <label for="fd" class="p-form__label">Forward delay (ms)</label>
-                                                        <div class="p-form__control">
+                                                        <label for="fd" class="p-form__label col-2">Forward delay (ms)</label>
+                                                        <div class="p-form__control col-4">
                                                             <input type="text" name="fd" data-ng-model="editInterface.bridge_fd">
                                                         </div>
                                                     </div>
@@ -2591,14 +2591,16 @@
                             </tr>
                             <tr class="is-active ng-hide" data-ng-show="isShowingCreatePhysical()">
                                 <td class="p-table-expanding__panel">
-                                    <div class="row">
-                                        <div class="u-float--left p-form-validation" data-ng-if="!isDevice"
-                                            data-ng-class="{ 'is-error': isInterfaceNameInvalid(newInterface) }">
-                                            <input type="text" class="p-form-validation__input"
-                                                data-ng-model="newInterface.name">
+                                    <div class="row u-hide--medium u-hide--small">
+                                        <div class="col-6">
+                                            <div class="p-form-validation" data-ng-if="!isDevice"
+                                                data-ng-class="{ 'is-error': isInterfaceNameInvalid(newInterface) }">
+                                                <input type="text" class="p-form-validation__input"
+                                                    data-ng-model="newInterface.name">
+                                            </div>
                                         </div>
                                     </div>
-                                    <hr data-ng-if="!isDevice">
+                                    <hr data-ng-if="!isDevice" class="u-hide--medium u-hide--small">
                                     <div class="row" data-ng-if="windowWidth <= 772">
                                         <div class="u-flex--no-wrap">
                                             <h2 data-ng-click="cancel()" class="p-heading--four">New interface</h2>
@@ -2608,24 +2610,24 @@
                                     <div class="p-form p-form--stacked" data-ng-if="!isDevice">
                                         <div class="row">
                                             <div class="col-6" data-ng-if="!isDevice">
-                                                <div class="p-form__group p-form-validation u-hide--large"
+                                                <div class="p-form__group row p-form-validation u-hide--large"
                                                     data-ng-class="{ 'is-error': isInterfaceNameInvalid(newInterface) }">
-                                                    <label for="new-interface-name" class="p-form__label">Name</label>
-                                                    <div class="p-form__control">
+                                                    <label for="new-interface-name" class="p-form__label col-2">Name</label>
+                                                    <div class="p-form__control col-4">
                                                         <input type="text" class="p-form-validation__input" id="new-interface-name"
                                                             data-ng-model="newInterface.name">
                                                     </div>
                                                 </div>
-                                                <div class="p-form__group">
-                                                    <label class="p-form__label">Type</label>
-                                                    <div class="p-form__control">
-                                                        <span class="p-form__control--placeholder">Physical</span>
+                                                <div class="p-form__group row u-no-margin--top">
+                                                    <label class="p-form__label col-2">Type</label>
+                                                    <div class="p-form__control col-4">
+                                                        <p>Physical</p>
                                                     </div>
                                                 </div>
-                                                <div class="p-form__group p-form-validation"
+                                                <div class="p-form__group row p-form-validation u-no-margin--top"
                                                     data-ng-class="{ 'is-error': isMACAddressInvalid(newInterface.mac_address, false) || newInterface.macError }">
-                                                    <label for="mac" class="p-form__label">MAC address</label>
-                                                    <div class="p-form__control">
+                                                    <label for="mac" class="p-form__label col-2">MAC address</label>
+                                                    <div class="p-form__control col-4">
                                                         <input type="text" name="mac" class="p-form-validation__input"
                                                             placeholder="00:00:00:00:00:00"
                                                             data-ng-model="newInterface.mac_address"
@@ -2634,17 +2636,17 @@
                                                             data-ng-pattern="/^([0-9A-F]{2}[::]){5}([0-9A-F]{2})$/gmi" mac-address maxlength="17">
                                                     </div>
                                                 </div>
-                                                <div class="p-form__group u-vertically-center" style="min-height: 2.5rem;">
-                                                    <label class="p-form__label">Tags</label>
-                                                    <div class="p-form__control tags--inline">
+                                                <div class="p-form__group u-no-margin--top row u-vertically-center" style="min-height: 2.5rem;">
+                                                    <label class="p-form__label col-2">Tags</label>
+                                                    <div class="p-form__control col-2 tags--inline">
                                                         <tags-input data-ng-model="newInterface.tags" allow-tags-pattern="[\w-]+"></tags-input>
                                                     </div>
                                                 </div>
                                             </div>
                                             <div class="col-6">
-                                                <div class="p-form__group">
-                                                    <label for="fabric" class="p-form__label">Fabric</label>
-                                                    <div class="p-form__control">
+                                                <div class="p-form__group row">
+                                                    <label for="fabric" class="p-form__label col-2">Fabric</label>
+                                                    <div class="p-form__control col-4">
                                                         <select name="fabric"
                                                             data-ng-model="newInterface.fabric"
                                                             data-ng-change="fabricChanged(newInterface)"
@@ -2652,18 +2654,18 @@
                                                         </select>
                                                     </div>
                                                 </div>
-                                                <div class="p-form__group">
-                                                    <label for="vlan" class="p-form__label">VLAN</label>
-                                                    <div class="p-form__control">
+                                                <div class="p-form__group row u-no-margin--top">
+                                                    <label for="vlan" class="p-form__label col-2">VLAN</label>
+                                                    <div class="p-form__control col-4">
                                                         <select name="vlan"
                                                             data-ng-model="newInterface.vlan"
                                                             data-ng-options="vlan as getVLANText(vlan) for vlan in vlans">
                                                         </select>
                                                     </div>
                                                 </div>
-                                                <div class="p-form__group">
-                                                    <label for="subnet" class="p-form__label">Subnet</label>
-                                                    <div class="p-form__control">
+                                                <div class="p-form__group row u-no-margin--top">
+                                                    <label for="subnet" class="p-form__label col-2">Subnet</label>
+                                                    <div class="p-form__control col-4">
                                                         <select name="subnet"
                                                             data-ng-model="newInterface.subnet"
                                                             data-ng-change="subnetChanged(newInterface)"
@@ -2672,9 +2674,9 @@
                                                         </select>
                                                     </div>
                                                 </div>
-                                                <div class="p-form__group" data-ng-if="!isLinkModeDisabled(newInterface)">
-                                                    <label for="link-mode" class="p-form__label">IP mode</label>
-                                                    <div class="p-form__control">
+                                                <div class="p-form__group row u-no-margin--top" data-ng-if="!isLinkModeDisabled(newInterface)">
+                                                    <label for="link-mode" class="p-form__label col-2">IP mode</label>
+                                                    <div class="p-form__control col-4">
                                                         <select name="link-mode"
                                                             data-ng-model="newInterface.mode"
                                                             data-ng-change="modeChanged(newInterface)"
@@ -2682,10 +2684,10 @@
                                                         </select>
                                                     </div>
                                                 </div>
-                                                <div class="p-form__group p-form-validation" data-ng-if="newInterface.mode == 'static'"
+                                                <div class="p-form__group row u-no-margin--top p-form-validation" data-ng-if="newInterface.mode == 'static'"
                                                     data-ng-class="{ 'is-error': isIPAddressInvalid(newInterface) }">
-                                                    <label for="ip-address" class="p-form__label">IP address</label>
-                                                    <div class="p-form__control">
+                                                    <label for="ip-address" class="p-form__label col-2">IP address</label>
+                                                    <div class="p-form__control col-4">
                                                         <input name="ip-address" type="text"
                                                             class="p-form-validation__input"
                                                             placeholder="IP address (optional)"
@@ -2799,7 +2801,7 @@
         </div>
     </section>
 
-    <section class="p-strip is-shallow" data-ng-if="section.area === 'storage'" data-ng-controller="NodeStorageController">
+    <section class="p-strip is-shallow u-no-padding--bottom" data-ng-if="section.area === 'storage'" data-ng-controller="NodeStorageController">
         <div class="row">
             <div class="col-12">
                 <div class="p-notification--negative" data-ng-if="!has_disks">
@@ -2825,7 +2827,7 @@
         </div>
     </section>
 
-    <section class="p-strip u-no-padding--bottom" data-ng-if="section.area === 'storage'" data-ng-controller="NodeStorageController">
+    <section data-ng-if="section.area === 'storage'" data-ng-controller="NodeStorageController">
         <form>
             <div data-ng-if="canEdit() && (node.status_code === 4 || node.status_code === 10)">
                 <div class="u-fixed-width" data-ng-if="!confirmStorageLayout">
@@ -2835,7 +2837,7 @@
                         </div>
                         <div data-ng-if="!(storageLayoutIsDisabled(osFamily.layouts) && storageLayoutIsDisabled(osFamily.layouts))">
                             <div class="p-contextual-menu" toggle-ctrl>
-                                <button class="p-button--neutral p-contextual-menu__toggle u-no-margin--bottom" data-ng-click="toggleMenu()">
+                                <button class="p-button--neutral p-contextual-menu__toggle u-no-margin--bottom u-no-margin--right" data-ng-click="toggleMenu()">
                                     <span data-ng-if="!updatingStorageLayout">
                                         Change storage layout&nbsp;
                                         <i class="p-icon--chevron" data-ng-class="{'u-rotate':isToggled}"></i>
@@ -2886,7 +2888,7 @@
                                 </p>
                             </div>
                             <div class="p-notification--caution is-subtle" data-ng-if="newLayout.id !== 'lvm' && newLayout.id !== 'vmfs6' && newLayout.id !== 'blank'">
-                                <p class="p-notification__response">
+                                <p class="p-notification__response" style="margin-left: -1rem">
                                     <strong>Are you sure you want to change the storage layout to {$ newLayout.id $}?</strong><br />
                                     Any changes done already will be lost.<br />
                                     The storage layout will be applied to a node when it is deployed.
@@ -2894,9 +2896,10 @@
                             </div>
                         </div>
                         <div class="col-6 u-align--right">
-                            <button class="p-button--base"
+                            <hr>
+                            <button class="p-button--base u-no-margin--bottom"
                                 data-ng-click="closeStorageLayoutConfirm()">Cancel</button>
-                            <button class="p-button--negative"
+                            <button class="p-button--negative u-no-margin--bottom"
                                 data-ng-click="updateStorageLayout(storageLayout)">
                                 Change storage layout
                             </button>
@@ -2905,88 +2908,86 @@
                 </div>
             </div>
 
-            <div class="p-strip">
-                <div class="row" data-ng-if="storageLayout.id === 'vmfs6'">
-                    <div data-ng-controller="NodeFilesystemsController">
-                        <storage-datastores></storage-datastores>
+            <div class="row" data-ng-if="storageLayout.id === 'vmfs6'">
+                <div data-ng-controller="NodeFilesystemsController">
+                    <storage-datastores></storage-datastores>
+                </div>
+            </div>
+
+            <div class="row">
+                <div data-ng-controller="NodeFilesystemsController" data-ng-if="storageLayout.id !== 'vmfs6'">
+                    <storage-filesystems canEdit="canEdit()"></storage-filesystems>
+                </div>
+                <div data-ng-show="cachesets.length">
+                    <div class="row">
+                        <h3 class="p-heading--four">Available cache sets</h3>
+                    </div>
+                    <div class="row">
+                        <table class="p-table-expanding">
+                            <thead>
+                                <tr>
+                                    <th class="col-2">Name</th>
+                                    <th class="col-3">Size</th>
+                                    <th class="col-4">Used by</th>
+                                    <th class="col-2">
+                                        <div class="u-align--right">Actions</div>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr data-ng-repeat="cacheset in cachesets" data-ng-class="{ 'is-active': cacheset.$selected }">
+                                    <td class="col-2" aria-label="Name" title="{$ cacheset.name $}">{$ cacheset.name $}</td>
+                                    <td class="col-3" aria-label="Size" title="{$ cacheset.size_human $}">{$ cacheset.size_human $}</td>
+                                    <td class="col-4" aria-label="Used by" title="{$ cacheset.used_by $}">{$ cacheset.used_by $}</td>
+                                    <td class="col-2 p-table--action-cell">
+                                        <div class="u-align--right">
+                                        <div class="p-contextual-menu" toggle-ctrl data-ng-if="canDeleteCacheSet(cacheset) && !cacheset.$selected">
+                                            <button class="p-button--base is-small p-contextual-menu__toggle" data-ng-click="toggleMenu()">
+                                                <i class="p-icon--contextual-menu u-no-margin--right">Actions</i>
+                                            </button>
+                                            <div class="p-contextual-menu__dropdown" role="menu" data-ng-show="isToggled">
+                                                <button class="p-contextual-menu__link"
+                                                    aria-label="Remove"
+                                                    data-ng-show="canDeleteCacheSet(cacheset)"
+                                                    data-ng-click="toggleMenu(); quickCacheSetDelete(cacheset)">Remove&hellip;</button>
+                                            </div>
+                                        </div>
+                                        </div>
+                                    </td>
+                                    <td class="p-table-expanding__panel col-12" data-ng-if="cacheset.$selected && cachesetsMode === 'delete'">
+                                        <div class="row" data-ng-if="windowWidth <= 772">
+                                            <div class="col-8">
+                                                <h2 data-ng-click="filesystemCancel()" class="p-heading--four">
+                                                    <span data-ng-if="cachesetsMode === 'delete'">Removing {$ cacheset.name $}</span>
+                                                </h2>
+                                            </div>
+                                        </div>
+                                        <div class="row" data-ng-class="{ 'is-active': cachesetsMode !== null && cachesetsMode !== 'multi' }">
+                                            <div data-ng-show="cachesetsMode === 'single' && canDeleteCacheSet(cacheset)">
+                                                <button class="p-button--base"
+                                                    data-ng-show="canDeleteCacheSet(cacheset)"
+                                                    data-ng-click="cacheSetDelete()">Remove</button>
+                                            </div>
+                                            <div class="row ng-hide" data-ng-show="cachesetsMode === 'delete'">
+                                                <div class="col-8">
+                                                    <p><span class="p-icon--warning">Warning:</span> Are you sure you want to delete this cache set?</p>
+                                                </div>
+                                                <div class="col-4">
+                                                    <div class="u-align--right">
+                                                        <button class="p-button--base" type="button" data-ng-click="cacheSetCancel()">Cancel</button>
+                                                        <button class="p-button--negative u-no-margin--top" data-ng-click="cacheSetConfirmDelete(cacheset)">Remove cache set</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
-
-                <div class="row">
-                    <div data-ng-controller="NodeFilesystemsController" data-ng-if="storageLayout.id !== 'vmfs6'">
-                        <storage-filesystems canEdit="canEdit()"></storage-filesystems>
-                    </div>
-                    <div data-ng-show="cachesets.length">
-                        <div class="row">
-                            <h3 class="p-heading--four">Available cache sets</h3>
-                        </div>
-                        <div class="row">
-                            <table class="p-table-expanding">
-                                <thead>
-                                    <tr>
-                                        <th class="col-2">Name</th>
-                                        <th class="col-3">Size</th>
-                                        <th class="col-4">Used by</th>
-                                        <th class="col-2">
-                                            <div class="u-align--right">Actions</div>
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr data-ng-repeat="cacheset in cachesets" data-ng-class="{ 'is-active': cacheset.$selected }">
-                                        <td class="col-2" aria-label="Name" title="{$ cacheset.name $}">{$ cacheset.name $}</td>
-                                        <td class="col-3" aria-label="Size" title="{$ cacheset.size_human $}">{$ cacheset.size_human $}</td>
-                                        <td class="col-4" aria-label="Used by" title="{$ cacheset.used_by $}">{$ cacheset.used_by $}</td>
-                                        <td class="col-2 p-table--action-cell">
-                                            <div class="u-align--right">
-                                            <div class="p-contextual-menu" toggle-ctrl data-ng-if="canDeleteCacheSet(cacheset) && !cacheset.$selected">
-                                                <button class="p-button--base is-small p-contextual-menu__toggle" data-ng-click="toggleMenu()">
-                                                    <i class="p-icon--contextual-menu u-no-margin--right">Actions</i>
-                                                </button>
-                                                <div class="p-contextual-menu__dropdown" role="menu" data-ng-show="isToggled">
-                                                    <button class="p-contextual-menu__link"
-                                                        aria-label="Remove"
-                                                        data-ng-show="canDeleteCacheSet(cacheset)"
-                                                        data-ng-click="toggleMenu(); quickCacheSetDelete(cacheset)">Remove&hellip;</button>
-                                                </div>
-                                            </div>
-                                            </div>
-                                        </td>
-                                        <td class="p-table-expanding__panel col-12" data-ng-if="cacheset.$selected && cachesetsMode === 'delete'">
-                                            <div class="row" data-ng-if="windowWidth <= 772">
-                                                <div class="col-8">
-                                                    <h2 data-ng-click="filesystemCancel()" class="p-heading--four">
-                                                        <span data-ng-if="cachesetsMode === 'delete'">Removing {$ cacheset.name $}</span>
-                                                    </h2>
-                                                </div>
-                                            </div>
-                                            <div class="row" data-ng-class="{ 'is-active': cachesetsMode !== null && cachesetsMode !== 'multi' }">
-                                                <div data-ng-show="cachesetsMode === 'single' && canDeleteCacheSet(cacheset)">
-                                                    <button class="p-button--base"
-                                                        data-ng-show="canDeleteCacheSet(cacheset)"
-                                                        data-ng-click="cacheSetDelete()">Remove</button>
-                                                </div>
-                                                <div class="row ng-hide" data-ng-show="cachesetsMode === 'delete'">
-                                                    <div class="col-8">
-                                                        <p><span class="p-icon--warning">Warning:</span> Are you sure you want to delete this cache set?</p>
-                                                    </div>
-                                                    <div class="col-4">
-                                                        <div class="u-align--right">
-                                                            <button class="p-button--base" type="button" data-ng-click="cacheSetCancel()">Cancel</button>
-                                                            <button class="p-button--negative u-no-margin--top" data-ng-click="cacheSetConfirmDelete(cacheset)">Remove cache set</button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                    <div>
-                        <storage-disks-partitions></storage-disks-partitions>
-                    </div>
+                <div>
+                    <storage-disks-partitions></storage-disks-partitions>
                 </div>
             </div>
         </form>

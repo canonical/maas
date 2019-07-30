@@ -30,16 +30,6 @@
 
 @mixin maas-p-form-stacked {
   .p-form--stacked {
-    .p-form__group {
-      align-items: flex-start;
-    }
-
-    .p-form__label,
-    .p-form__control {
-      flex: 0 0 auto;
-      max-width: none;
-    }
-
     .p-form__label {
       @extend .col-medium-2;
       @extend .col-2;
