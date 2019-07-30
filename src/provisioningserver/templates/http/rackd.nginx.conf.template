@@ -24,6 +24,13 @@ server {
     }
     {{endif}}
 
+
+    location /machine-resources/ {
+	root /snap/maas/current/usr/share/maas;
+	autoindex on;
+	gzip on;
+    }
+
     location /images/ {
         auth_request /log;
 
