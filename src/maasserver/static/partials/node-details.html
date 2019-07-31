@@ -1686,10 +1686,8 @@
                                             <hr />
                                         </div>
                                         <div class="row">
-                                            <div class="u-float--left">
-                                                <maas-obj-errors></maas-obj-errors>
-                                            </div>
-                                            <div class="u-float--right">
+                                            <maas-obj-errors></maas-obj-errors>
+                                            <div class="u-align--right">
                                                 <button class="p-button--base u-no-margin--bottom"
                                                     data-ng-click="editCancel()">Cancel</button>
                                                 <span class="p-tooltip--top-right" aria-describedby="save-bond-tooltip"
@@ -2227,18 +2225,24 @@
                                 <td class="p-double-row">
                                     <div data-ng-if="!isEditing(interface) && ((isDevice && interface.subnet) || (interface.fabric && !interface.discovered[0].subnet_id))" title="{$ getSubnetText(interface.subnet) $}" class="p-double-row__rows-container">
                                         <div class="p-double-row__main-row" aria-label="Subnet CIDR" title="{$ interface.subnet.cidr $}">
-                                            <span data-ng-if="interface.subnet.cidr">
-                                                <a class="p-link--soft" href="/#/subnet/{$ interface.subnet.id $}">{$ interface.subnet.cidr $}</a>
-                                            </span>
-                                            <span data-ng-if="!interface.subnet.cidr">Unconfigured</span>
+                                            <div class="u-text-overflow">
+                                                <span data-ng-if="interface.subnet.cidr">
+                                                    <a class="p-link--soft" href="/#/subnet/{$ interface.subnet.id $}">{$ interface.subnet.cidr $}</a>
+                                                </span>
+                                                <span data-ng-if="!interface.subnet.cidr">Unconfigured</span>
+                                            </div>
                                         </div>
                                         <div data-ng-if="interface.subnet.name" class="p-double-row__muted-row" aria-label="Subnet name" title="{$ interface.subnet.name $}">
-                                            <a class="p-muted-text p-link--muted" href="/#/subnet/{$ interface.subnet.id $}">{$ interface.subnet.name $}</a>
+                                            <div class="u-text-overflow">
+                                                <a class="p-muted-text p-link--muted" href="/#/subnet/{$ interface.subnet.id $}">{$ interface.subnet.name $}</a>
+                                            </div>
                                         </div>
                                     </div>
                                     <div data-ng-if="isAllNetworkingDisabled() && interface.discovered[0].subnet_id" class="p-double-row__rows-container">
                                         <div class="p-double-row__main-row" aria-label="Subnet CIDR" title="{$ getSubnetText(getSubnet(interface.discovered[0].subnet_id)) $}">
-                                            {$ getSubnetText(getSubnet(interface.discovered[0].subnet_id)) $}
+                                            <div class="u-text-overflow">
+                                                {$ getSubnetText(getSubnet(interface.discovered[0].subnet_id)) $}
+                                            </div>
                                         </div>
                                         <div class="p-double-row__muted-row" aria-label="Subnet name" title="">
                                             &nbsp;
@@ -2248,11 +2252,15 @@
                                 <td class="p-double-row">
                                     <div data-ng-if="!isEditing(interface) && !interface.discovered[0].ip_address && interface.fabric" class="p-double-row__rows-container">
                                         <div class="p-double-row__main-row" aria-label="IP address" title="{$ interface.ip_address $}">
-                                            <span data-ng-if="interface.ip_address">{$ interface.ip_address $}</span>
-                                            <span data-ng-if="!interface.ip_address">{$ getLinkModeText(interface) $}</span>
+                                            <div class="u-text-overflow">
+                                                <span data-ng-if="interface.ip_address">{$ interface.ip_address $}</span>
+                                                <span data-ng-if="!interface.ip_address">{$ getLinkModeText(interface) $}</span>
+                                            </div>
                                         </div>
                                         <div class="p-double-row__muted-row" aria-label="Link mode" title="{$ getLinkModeText(interface) $}">
-                                            <span data-ng-if="interface.ip_address">{$ getLinkModeText(interface) $}</span>
+                                            <div class="u-text-overflow">
+                                                <span data-ng-if="interface.ip_address">{$ getLinkModeText(interface) $}</span>
+                                            </div>
                                         </div>
                                     </div>
                                     <div data-ng-if="!isEditing(interface) && interface.discovered[0].ip_address && interface.fabric" class="p-double-row__rows-container">
@@ -2267,7 +2275,7 @@
                                 </td>
                                 <td class="p-table--action-cell u-vertically-center u-align--right">
                                     <div class="p-contextual-menu" toggle-ctrl data-ng-if="(!isAllNetworkingDisabled() || isLimitedEditingAllowed(interface)) && !isEditing(interface) && !(isShowingDeleteConfirm() && isInterfaceSelected(interface))">
-                                        <button class="p-button--base is-small p-contextual-menu__toggle" data-ng-click="toggleMenu()"><i class="p-icon--contextual-menu u-no-margin--right">Actions</i></button>
+                                        <button class="p-button--base is-small p-contextual-menu__toggle u-no-margin--right" data-ng-click="toggleMenu()"><i class="p-icon--contextual-menu u-no-margin--right">Actions</i></button>
                                         <div class="p-contextual-menu__dropdown" role="menu" data-ng-show="isToggled">
                                             <button class="p-contextual-menu__link"
                                                 aria-label="Add Alias or VLAN"
@@ -2417,10 +2425,8 @@
                                                 </div>
                                                 <div class="row u-no-margin--top">
                                                     <hr />
-                                                    <div class="u-float--left">
-                                                        <maas-obj-errors></maas-obj-errors>
-                                                    </div>
-                                                    <div class="u-float--right u-no-margin--top">
+                                                    <maas-obj-errors></maas-obj-errors>
+                                                    <div class="u-align--right u-no-margin--top">
                                                         <button class="p-button--base"
                                                             data-ng-click="editCancel()">Cancel</button>
                                                         <button class="p-button--positive u-no-margin--top"

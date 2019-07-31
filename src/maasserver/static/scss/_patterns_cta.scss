@@ -17,6 +17,10 @@
     margin-bottom: $spv-inner--x-small;
     padding-right: $sph-inner * 2 + map-get($icon-sizes, default);
 
+    .page-header__controls--controllers & {
+      margin-bottom: 1.2rem;
+    }
+
     &::after {
       @extend %p-cta-icon;
       @include vf-icon-chevron($color-mid-dark);

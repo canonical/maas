@@ -82,16 +82,16 @@
             </div>
 
             <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
-            <div class="page-header__controls u-no-margin--top" data-ng-show="currentpage === 'controllers'">
+            <div class="page-header__controls page-header__controls--controllers u-no-margin--top" data-ng-show="currentpage === 'controllers'">
                 <div data-ng-if="!tabs.controllers.selectedItems.length">
                     <button class="p-button--neutral"
                         data-ng-click="tabs.controllers.addController = true"
-                        data-ng-hide="tabs.controllers.addController">Add rack controller</button>
-                    <button class="p-button--neutral ng-hide"
+                        data-ng-if="!tabs.controllers.addController">Add rack controller</button>
+                    <button class="p-button--neutral"
                         data-ng-click="tabs.controllers.addController = false"
-                        data-ng-show="tabs.controllers.addController">Close add rack controller</button>
+                        data-ng-if="tabs.controllers.addController">Close add rack controller</button>
                 </div>
-                <ul class="p-inline-list u-no-margin--top" data-ng-show="tabs.controllers.selectedItems.length">
+                <ul class="p-inline-list u-no-margin--top u-no-margin--bottom" data-ng-show="tabs.controllers.selectedItems.length">
                     <li class="p-inline-list__item">
                         <a data-ng-click="showSelected('controllers')">{$ tabs.controllers.selectedItems.length $} selected&nbsp;</a>
                     </li>
@@ -668,6 +668,10 @@
                         </span>
                         <span data-ng-if="tabs.controllers.actionOption.name === 'import-images'">Import images for {$ tabs.controllers.selectedItems.length $}
                             <span data-ng-pluralize count="tabs.controllers.selectedItems.length" when="{'one': 'controller', 'other': 'controllers'}"></span>
+                        </span>
+                        <span data-ng-if="tabs.controllers.actionOption.name === 'override-failed-testing'">Override failed testing for {$ tabs.controllers.selectedItems.length $}
+                            <span data-ng-pluralize count="tabs.controllers.selectedItems.length"
+                                when="{'one': 'controller', 'other': 'controllers'}"></span>
                         </span>
                     </button>
                 </div>

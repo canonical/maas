@@ -11,7 +11,7 @@ export function cacheCta($templateCache) {
     "directive/templates/cta.html",
     [
       '<div class="p-cta">',
-      '<button class="p-cta__toggle" ',
+      '<button class="p-cta__toggle u-no-margin--right" ',
       'aria-controls="#cta-menu" ',
       'aria-expanded="false" aria-haspopup="true" ',
       'data-ng-click="shown=!shown" ',
