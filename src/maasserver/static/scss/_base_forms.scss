@@ -70,3 +70,19 @@
     margin-right: 0.5rem;
   }
 }
+
+$box-offset-top--smallest-text: -0.15rem;
+
+%checkbox--smallest-text {
+  &::before {
+    top: $box-offset-top--smallest-text;
+  }
+
+  &::after {
+    top: #{$box-offset-top--smallest-text + 0.1875rem};
+  }
+}
+
+table th input[type="checkbox"] + label {
+  @extend %checkbox--smallest-text;
+}
