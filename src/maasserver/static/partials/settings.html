@@ -43,56 +43,8 @@
 <div data-ng-show="!loading && currentpage === 'dhcp'" width-width>
     <section class="p-strip">
         <div class="row" data-ng-if="snippets.length">
-            <!-- XXX 04-01-2016 blake_r: Need to add the ability to show the compiled DHCP configuration.
-            <div class="twelve-col">
-                <div class="four-col last-col align-right">
-                    <a href="" class=" u-float--right">View compiled configuration</a>
-                </div>
-            </div>
-            -->
-            <maas-dhcp-snippets-table snippets="snippets" allow-add-new="true" allow-delete="true"></maas-dhcp-snippets-table>
+            <maas-dhcp-snippets-table snippets="snippets" allow-add-new="true" allow-delete="true" hide-all-snippets-link="true"></maas-dhcp-snippets-table>
         </div>
-
-        <!--
-        XXX 04-01-2016 blake_r: Need to add the ability to show the compiled DHCP configuration.
-        <div class="ng-hide">
-            <div class="twelve-col">
-                <div class="equal-height">
-                    <div class="eight-col">
-                        <h2 class="u-margin--none">Compiled configuration</h2>
-                    </div>
-                    <div class="four-col last-col align-right">
-                        <a href="" class="right margin-top">Download as text</a>
-                    </div>
-                </div>
-                <div class="twelve-col">
-                    <form class="form form--inline">
-                        <div class="form__group">
-                            <label for="" class="u-margin--right-small">Compiled DHCP configuration for</label>
-                            <select name="rack" id="rack">
-                                <option value="">rack-controller-1</option>
-                                <option value="">rack-controller-2</option>
-                                <option value="" selected="selected">rack-controller-3</option>
-                            </select>
-                        </div>
-                        <div class="form__group">
-                            <label for="" class="u-margin--right-small">For</label>
-                            <select name="dhcp" id="dhcp">
-                                <option value="" selected="selected">DHCP v4</option>
-                                <option value="">DHCP v4</option>
-                                <option value="">DHCP v4</option>
-                            </select>
-                        </div>
-                    </form>
-                </div>
-                <div class="twelve-col">
-                    <pre>
-                        <code data-maas-code-lines="getConfigurationData()"></code>
-                    </pre>
-                </div>
-            </div>
-        </div>
-        -->
     </section>
 </div>
 <div data-ng-show="!loading && currentpage === 'repositories'" window-width>

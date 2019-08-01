@@ -190,4 +190,13 @@
     <button class="p-button--neutral" data-ng-disabled="editing" data-ng-if="!newSnippet" data-ng-click="editing || snippetAdd()">Add custom snippet</button>
   </div>
 </div>
-<p><a class="p-link--external" href="https://maas.io/docs/{$ MAAS_VERSION_NUMBER $}/en/installconfig-network-dhcp#dhcp-snippets" target="_blank">About DHCP snippets</a></p>
+<ul class="p-inline-list--middot">
+  <li class="p-inline-list__item" data-ng-if="!hideAllSnippetsLink">
+    <a href="/#/settings/dhcp">All snippets: Settings > DHCP snippets</a>
+  </li>
+  <li class="p-inline-list__item">
+    <a class="p-link--external"
+      href="https://maas.io/docs/{$ MAAS_VERSION_NUMBER $}/en/installconfig-network-dhcp#dhcp-snippets"
+      target="_blank">About DHCP snippets</a>
+  </li>
+</ul>

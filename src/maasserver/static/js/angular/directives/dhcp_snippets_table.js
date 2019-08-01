@@ -11,7 +11,8 @@ function maasDhcpSnippetsTable($window) {
     scope: {
       snippets: "=",
       allowAddNew: "=",
-      allowDelete: "="
+      allowDelete: "=",
+      hideAllSnippetsLink: "="
     },
     templateUrl:
       "static/partials/dhcp-snippets-table.html?v=" +

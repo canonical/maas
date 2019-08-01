@@ -310,6 +310,7 @@ export function NodeNetworkingController(
   $scope.editInterfaceLinkMonitoring = null;
   $scope.isSaving = false;
   $scope.snippets = DHCPSnippetsManager.getItems();
+  $scope.filteredSnippets = [];
   $scope.modes = [
     {
       mode: LINK_MODE.AUTO,
@@ -508,10 +509,9 @@ export function NodeNetworkingController(
       }
     });
 
-    $scope.filteredSnippets = DHCPSnippetsManager.getFilteredSnippets(
-      $scope.snippets,
-      subnetIPs
-    );
+    $scope.filteredSnippets = $scope.snippets.filter(snippet => {
+      return snippet.node === $scope.node.system_id;
+    });
 
     // Update the scope interface links mapping.
     $scope.interfaceLinksMap = {};

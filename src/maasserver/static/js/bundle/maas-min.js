@@ -39483,6 +39483,7 @@ function NodeNetworkingController($scope, $filter, FabricsManager, VLANsManager,
   $scope.editInterfaceLinkMonitoring = null;
   $scope.isSaving = false;
   $scope.snippets = DHCPSnippetsManager.getItems();
+  $scope.filteredSnippets = [];
   $scope.modes = [{
     mode: LINK_MODE.AUTO,
     text: LINK_MODE_TEXTS[LINK_MODE.AUTO]
@@ -39660,7 +39661,9 @@ function NodeNetworkingController($scope, $filter, FabricsManager, VLANsManager,
         subnetIPs.push(item.subnet.cidr);
       }
     });
-    $scope.filteredSnippets = DHCPSnippetsManager.getFilteredSnippets($scope.snippets, subnetIPs); // Update the scope interface links mapping.
+    $scope.filteredSnippets = $scope.snippets.filter(function (snippet) {
+      return snippet.node === $scope.node.system_id;
+    }); // Update the scope interface links mapping.
 
     $scope.interfaceLinksMap = {};
     angular.forEach($scope.interfaces, function (nic) {
@@ -59418,7 +59421,8 @@ function maasDhcpSnippetsTable($window) {
     scope: {
       snippets: "=",
       allowAddNew: "=",
-      allowDelete: "="
+      allowDelete: "=",
+      hideAllSnippetsLink: "="
     },
     templateUrl: "static/partials/dhcp-snippets-table.html?v=" + $window.MAAS_config.files_version,
     controller: DHCPSnippetsTableController
