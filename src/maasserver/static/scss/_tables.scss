@@ -5,6 +5,7 @@
 @import "tables/patterns_table-devices";
 @import "tables/patterns_table-dns";
 @import "tables/patterns_table-expanding";
+@import "tables/patters_table-fabrics";
 @import "tables/patterns_table-images";
 @import "tables/patterns_table-machines";
 @import "tables/patterns_table-network-discovery";
@@ -24,6 +25,7 @@
 @include maas-table-dns;
 @include maas-table-devices;
 @include maas-table-expanding;
+@include maas-table-fabrics;
 @include maas-table-images;
 @include maas-table-machines;
 @include maas-table-network-discovery;

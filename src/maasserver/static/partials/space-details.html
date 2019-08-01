@@ -8,10 +8,10 @@
 <div class="ng-hide u-no-margin--top" data-ng-show="loaded">
     <header class="p-strip--light is-shallow u-no-padding--bottom page-header" media-query="min-width: 769px">
         <div class="row">
-            <div class="col-medium-4 col-8">
+            <div class="col-small-2 col-medium-4 col-8">
                 <h1 class="page-header__title">{$ space.name $}</h1>
             </div>
-            <div class="col-medium-2 col-4">
+            <div class="col-small-2 col-medium-2 col-4">
                 <div class="page-header__controls ng-hide" data-ng-show="isSuperUser() && !isDefaultSpace() && !loading">
                     <button class="p-button--neutral"
                         data-ng-click="deleteButton()"
@@ -56,10 +56,10 @@
     </header>
     <section class="p-strip">
         <div class="row">
-            <div class="col-6">
+            <div class="col-6 col-small-3 col-medium-4">
               <h2 class="p-heading--four">Space summary</h2>
             </div>
-            <div class="col-6">
+            <div class="col-6 col-small-1 col-medium-2">
                 <div class="u-align--right">
                     <button type="button" name="button" class="button--neutral" data-ng-click="enterEditSummary()" data-ng-if="!editSummary">Edit</button>
                 </div>
@@ -68,19 +68,27 @@
         <div class="form p-form--stacked row" data-ng-if="!editSummary">
             <div class="col-6">
                 <div class="p-form__group row">
-                    <div class="p-form__label col-2">
-                        <p><strong>Name</strong></p>
+                    <div class="col-2 col-small-2 col-medium-2">
+                        <div class="p-form__label is-disabled">
+                            <p><strong>Name</strong></p>
+                        </div>
                     </div>
-                    <div class="p-form__control col-4">
-                        <p>{$ space.name $}</p>
+                    <div class="col-4 col-medium-3">
+                        <div class="p-form__control">
+                            <p>{$ space.name $}</p>
+                        </div>
                     </div>
                 </div>
                 <div class="p-form__group">
-                    <div class="p-form__label col-2">
-                        <p><strong>Description</strong></p>
+                    <div class="col-2 col-small-2 col-medium-2">
+                        <div class="p-form__label is-disabled">
+                            <p><strong>Description</strong></p>
+                        </div>
                     </div>
-                    <div class="p-form__control col-4">
-                        <p>{$ space.description $}</p>
+                    <div class="col-4 col-medium-3">
+                        <div class="p-form__control">
+                            <p>{$ space.description $}</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -129,14 +137,24 @@
                     <tbody>
                         <tr data-ng-repeat="row in rows | orderBy:predicate:reverse track by $index">
                             <td class="table-col--50">
-                                <a href="#/subnet/{$ row.subnet.id $}">{$ row.subnet_name $}</a>
+                                <div class="u-text-overflow">
+                                    <a href="#/subnet/{$ row.subnet.id $}">{$ row.subnet_name $}</a>
+                                </div>
                             </td>
-                            <td class="table-col--10">{$ row.subnet.statistics.available_string $}</td>
+                            <td class="table-col--10">
+                                <div class="u-text-overflow">
+                                    {$ row.subnet.statistics.available_string $}
+                                </div>
+                            </td>
                             <td class="table-col--15">
-                                <a href="#/vlan/{$ row.vlan.id $}">{$ row.vlan_name $}</a>
+                                <div class="u-text-overflow">
+                                    <a href="#/vlan/{$ row.vlan.id $}">{$ row.vlan_name $}</a>
+                                </div>
                             </td>
                             <td class="table-col--25">
-                                <a href="#/fabric/{$ row.fabric.id $}">{$ row.fabric_name $}</a>
+                                <div class="u-text-overflow">
+                                    <a href="#/fabric/{$ row.fabric.id $}">{$ row.fabric_name $}</a>
+                                </div>
                             </td>
                         </tr>
                     </tbody>

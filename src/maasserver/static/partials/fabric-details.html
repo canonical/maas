@@ -73,10 +73,10 @@
     <div data-ng-show="!loading">
         <section class="p-strip">
             <div class="row">
-                <div class="col-6">
+                <div class="col-6 col-small-3 col-medium-4">
                     <h2 class="p-heading--four">Fabric summary</h2>
                 </div>
-                <div class="col-6">
+                <div class="col-6 col-small-1 col-medium-2">
                     <div class="u-align--right">
                         <button type="p-button" name="p-button" class="p-button--neutral u-float--right" data-ng-click="enterEditSummary()" data-ng-if="editSummary != true && isSuperUser()">Edit</button>
                     </div>
@@ -85,31 +85,43 @@
             <div class="form p-form--stacked row" data-ng-if="editSummary != true">
                 <div class="col-6">
                     <div class="p-form__group row">
-                        <div class="p-form__label is-disabled col-2">
-                            <div>Name</div>
+                        <div class="col-2 col-small-2 col-medium-2">
+                            <div class="p-form__label is-disabled">
+                                Name
+                            </div>
                         </div>
-                        <div class="p-form__control col-4">
-                            <p>{$ fabric.name $}</p>
+                        <div class="col-4 col-medium-4">
+                            <div class="p-form__control">
+                                <p>{$ fabric.name $}</p>
+                            </div>
                         </div>
                     </div>
                     <div class="p-form__group row">
-                        <div class="p-form__label is-disabled col-2">
-                            <div>Description</div>
+                        <div class="col-2 col-small-2 col-medium-2">
+                            <div class="p-form__label is-disabled">
+                                Description
+                            </div>
                         </div>
-                        <div class="p-form__control col-4">
-                            <p>{$ fabric.description $}</p>
+                        <div class="col-4 col-medium-4">
+                            <div class="p-form__control">
+                                <p>{$ fabric.description $}</p>
+                            </div>
                         </div>
                     </div>
                 </div>
                 <div class="col-6">
                     <div class="p-form__group row">
-                        <div class="p-form__label is-disabled col-2">
-                            <div>Rack controllers</div>
+                        <div class="col-2 col-small-2 col-medium-2">
+                            <div class="p-form__label is-disabled">
+                                Rack controllers
+                            </div>
                         </div>
-                        <div class="p-form__control col-4">
-                            <span data-ng-repeat="rack in racks | orderBy:'hostname' track by rack.system_id">
-                                <a href="#/controller/{$ rack.system_id $}">{$ rack.hostname $}</a><span ng-show="!$last">,</span>
-                            </span>
+                        <div class="col-4 col-medium-4">
+                            <div class="p-form__control">
+                                <span data-ng-repeat="rack in racks | orderBy:'hostname' track by rack.system_id">
+                                    <a href="#/controller/{$ rack.system_id $}">{$ rack.hostname $}</a><span ng-show="!$last">,</span>
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -125,13 +137,17 @@
                         </div>
                         <div class="col-6">
                             <div class="p-form__group row">
-                                <div class="p-form__label is-disabled col-2">
-                                    <p>Rack controllers</p>
+                                <div class="col-2 col-small-2 col-medium-2">
+                                    <div class="p-form__label is-disabled">
+                                        <p>Rack controllers</p>
+                                    </div>
                                 </div>
-                                <div class="p-form__control col-4">
-                                    <span data-ng-repeat="rack in racks | orderBy:'hostname' track by rack.system_id">
-                                        <a href="#/controller/{$ rack.system_id $}">{$ rack.hostname $}</a><span ng-show="!$last">,</span>
-                                    </span>
+                                <div class="col-4 col-small-4 col-medium-4">
+                                    <div class="p-form__control">
+                                        <span data-ng-repeat="rack in racks | orderBy:'hostname' track by rack.system_id">
+                                            <a href="#/controller/{$ rack.system_id $}">{$ rack.hostname $}</a><span ng-show="!$last">,</span>
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -157,7 +173,7 @@
             <div class="row">
                 <div class="col-12">
                     <h2 class="p-heading--four">VLANs on this fabric</h2>
-                    <table class="p-table--mobile-card p-table-expanding">
+                    <table class="p-table--mobile-card p-table-expanding p-table--fabrics">
                         <thead>
                             <tr>
                                 <th class="col-3" data-ng-click="predicate='vlan_name'; reverse = !reverse"
@@ -173,14 +189,24 @@
                         <tbody>
                             <tr data-ng-repeat="row in rows | orderBy:predicate:reverse track by $index">
                                 <td class="col-3" aria-label="VLAN">
-                                    <a href="#/vlan/{$ row.vlan.id $}">{$ row.vlan_name $}</a>
+                                    <div class="u-text-overflow">
+                                        <a href="#/vlan/{$ row.vlan.id $}">{$ row.vlan_name $}</a>
+                                    </div>
                                 </td>
                                 <td class="col-5" aria-label="Subnet">
-                                    <a href="#/subnet/{$ row.subnet.id $}">{$ row.subnet_name $}</a>
+                                    <div class="u-text-overflow">
+                                        <a href="#/subnet/{$ row.subnet.id $}">{$ row.subnet_name $}</a>
+                                    </div>
                                 </td>
-                                <td class="col-2" aria-label="Available">{$ row.subnet.statistics.available_string $}</td>
+                                <td class="col-2" aria-label="Available">
+                                    <div class="u-text-overflow">
+                                        {$ row.subnet.statistics.available_string $}
+                                    </div>
+                                </td>
                                 <td class="col-2" aria-label="Space">
-                                    <a href="#/space/{$ row.space.id $}">{$ row.space_name $}</a>
+                                    <div class="u-text-overflow">
+                                        <a href="#/space/{$ row.space.id $}">{$ row.space_name $}</a>
+                                    </div>
                                 </td>
                             </tr>
                         </tbody>
