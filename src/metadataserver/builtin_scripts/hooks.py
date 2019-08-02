@@ -1,4 +1,4 @@
-# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Builtin script hooks, run upon receipt of ScriptResult"""
@@ -226,10 +226,6 @@ def update_node_network_information(node, output, exit_status):
                     interface.vlan = None
                     interface.save(update_fields=['vlan', 'updated'])
 
-    for iface in Interface.objects.filter(node=node):
-        if iface not in current_interfaces:
-            iface.delete()
-
     # If a machine boots by UUID before commissioning(s390x) no boot_interface
     # will be set as interfaces existed during boot. Set it using the
     # boot_cluster_ip now that the interfaces have been created.
@@ -237,8 +233,27 @@ def update_node_network_information(node, output, exit_status):
         subnet = Subnet.objects.get_best_subnet_for_ip(node.boot_cluster_ip)
         if subnet:
             node.boot_interface = node.interface_set.filter(
+                id__in=[interface.id for interface in current_interfaces],
                 vlan=subnet.vlan).first()
             node.save(update_fields=['boot_interface'])
+
+    # Only configured Interfaces are tested so configuration must be done
+    # before regeneration.
+    node.set_initial_networking_configuration()
+
+    # XXX ltrager 11-16-2017 - Don't regenerate ScriptResults on controllers.
+    # Currently this is not needed saving us 1 database query. However, if
+    # commissioning is ever enabled for controllers regeneration will need
+    # to be allowed on controllers otherwise network testing may break.
+    if node.current_testing_script_set is not None and not node.is_controller:
+        # LP: #1731353 - Regenerate ScriptResults before deleting Interfaces.
+        # This creates a ScriptResult with proper parameters for each interface
+        # on the system. Interfaces no long available will be deleted which
+        # causes a casade delete on their assoicated ScriptResults.
+        node.current_testing_script_set.regenerate(storage=False, network=True)
+
+    Interface.objects.filter(node=node).exclude(
+        id__in=[iface.id for iface in current_interfaces]).delete()
 
 
 def update_node_network_interface_tags(node, output, exit_status):
@@ -591,14 +606,14 @@ def update_node_physical_block_devices(node, output, exit_status):
     # XXX ltrager 11-16-2017 - Don't regenerate ScriptResults on controllers.
     # Currently this is not needed saving us 1 database query. However, if
     # commissioning is ever enabled for controllers regeneration will need
-    # to be allowed on controllers others storage testing may break.
+    # to be allowed on controllers otherwise storage testing may break.
     if node.current_testing_script_set is not None and not node.is_controller:
         # LP: #1731353 - Regenerate ScriptResults before deleting
         # PhyscalBlockDevices. This creates a ScriptResult with proper
         # parameters for each storage device on the system. Storage devices no
-        # long available will be delete which causes a casade delete on their
+        # long available will be deleted which causes a casade delete on their
         # assoicated ScriptResults.
-        node.current_testing_script_set.regenerate()
+        node.current_testing_script_set.regenerate(storage=True, network=False)
 
     # Delete all the previous block devices that are no longer present
     # on the commissioned node.
@@ -609,6 +624,10 @@ def update_node_physical_block_devices(node, output, exit_status):
     if len(delete_block_device_ids) > 0:
         PhysicalBlockDevice.objects.filter(
             id__in=delete_block_device_ids).delete()
+
+    # Layout needs to be set last so removed disks aren't included in the
+    # applied layout.
+    node.set_default_storage_layout()
 
 
 def create_metadata_by_modalias(node, output: bytes, exit_status):

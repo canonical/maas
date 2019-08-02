@@ -496,7 +496,7 @@ class ScriptSet(CleanSave, Model):
                         event_type=EVENT_TYPES.SCRIPT_RESULT_ERROR,
                         event_description=err_msg)
 
-    def regenerate(self):
+    def regenerate(self, storage=True, network=True):
         """Regenerate any ScriptResult which has a storage parameter.
 
         Deletes and recreates ScriptResults for any ScriptResult which has a
@@ -510,23 +510,27 @@ class ScriptSet(CleanSave, Model):
         for script_result in self.scriptresult_set.filter(
                 status=SCRIPT_STATUS.PENDING).exclude(parameters={}).defer(
                     'stdout', 'stderr', 'output', 'result'):
-            # If there are multiple storage devices on the system for every
-            # script which contains a storage type parameter there will be
-            # one ScriptResult per device. If we already know a script must
-            # be regenearted it can be deleted as the device the ScriptResult
-            # is for may no longer exist. Regeneratation below will generate
-            # ScriptResults for each existing storage device.
+            # If there are multiple storage devices or interface on the system
+            # for every script which contains a storage or interface type
+            # parameter there will be one ScriptResult per device. If we
+            # already know a script must be regenearted it can be deleted as
+            # the device the ScriptResult is for may no longer exist.
+            # Regeneratation below will generate ScriptResults for each
+            # existing storage or interface device.
             if script_result.script in regenerate_scripts:
                 script_result.delete()
                 continue
-            # Check if the ScriptResult contains any storage type parameter. If
-            # so remove the value of the storage parameter only and add it to
-            # the list of Scripts which must be regenearted.
+            # Check if the ScriptResult contains any storage or interface type
+            # parameter. If so remove the value of the storage or interface
+            # parameter only and add it to the list of Scripts which must be
+            # regenearted.
             for param_name, param in script_result.parameters.items():
-                if param['type'] == 'storage':
-                    # Remove the storage parameter as the storage device may no
-                    # longer exist. The ParametersForm will set the default
-                    # value(all).
+                if (
+                        (storage and param['type'] == 'storage') or
+                        (network and param['type'] == 'interface')):
+                    # Remove the storage or interface parameter as the storage
+                    # device or interface may no longer exist. The
+                    # ParametersForm will set the default value(all).
                     script_result.parameters.pop(param_name)
                     regenerate_scripts[
                         script_result.script] = script_result.parameters

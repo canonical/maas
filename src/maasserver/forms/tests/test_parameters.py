@@ -603,8 +603,7 @@ class TestParametersForm(MAASServerTestCase):
         self.assertEquals(len(usable_interfaces), len(input))
         for interface in usable_interfaces:
             for i in input:
-                if (str(interface.mac_address) ==
-                        i['interface']['value']['mac_address']):
+                if i['interface']['value']['interface'] == interface:
                     break
             self.assertDictEqual({
                 'name': interface.name,

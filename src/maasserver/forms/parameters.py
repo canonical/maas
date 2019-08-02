@@ -20,7 +20,6 @@ from django.forms import (
     Field,
     Form,
 )
-from maasserver.enum import IPADDRESS_TYPE
 from maasserver.utils.dns import validate_url
 from maasserver.utils.forms import set_form_error
 from maasserver.utils.mac import is_mac
@@ -45,19 +44,14 @@ class ParametersForm(Form):
         self._node = node
         self._script = script
 
-    def _get_interfaces(self):
-        """Return a queryset of the Interfaces that can be used."""
-        interfaces = self._node.interface_set.filter(
-            children_relationships=None,
-            enabled=True)
-        interfaces = interfaces.exclude(
-            ip_addresses__alloc_type=IPADDRESS_TYPE.DISCOVERED)
-        # Exclude all IPAddresses of type DISCOVERED before checking if an
-        # Interface doesn't have IPAddresses. If done as one excludes
-        # DISCOVERED IPAddresses won't be filtered out before isnull is
-        # checked.
-        return interfaces.exclude(
-            ip_addresses__isnull=True, ip_addresses__ip=None)
+    def _get_interfaces(self, *args, **kwargs):
+        """Return a list of configured interfaces."""
+        return [
+            interface for interface in self._node.interface_set.filter(
+                children_relationships=None, enabled=True,
+                *args, **kwargs).prefetch_related('ip_addresses')
+            if interface.is_configured()
+        ]
 
     def clean_parameters(self):
         """Validate the parameters set in the embedded YAML within the script.
@@ -377,16 +371,14 @@ class ParametersForm(Form):
     def _validate_and_clean_interface_id(
             self, param_name, param, result_params, ret):
         """Validate and clean interface input when id."""
-        try:
-            interface = self._get_interfaces().get(id=int(param['value']))
-        except ObjectDoesNotExist:
-            set_form_error(
-                self, param_name, 'Interface id does not exist')
+        interfaces = self._get_interfaces(id=int(param['value']))
+        if len(interfaces) != 1:
+            set_form_error(self, param_name, 'Interface id does not exist')
         else:
             clean_param = copy.deepcopy(result_params)
             clean_param[param_name] = copy.deepcopy(param)
             clean_param[param_name]['value'] = self._interface_to_dict(
-                interface)
+                interfaces[0])
             ret.append(clean_param)
 
     def _validate_and_clean_interface(
@@ -398,31 +390,29 @@ class ParametersForm(Form):
                 # Allow users to specify an Interface using the vendor and
                 # product.
                 vendor, product = i.split(':')
-                try:
-                    interface = self._get_interfaces().get(
-                        vendor=vendor, product=product)
-                except ObjectDoesNotExist:
-                    pass
-                else:
-                    clean_param = copy.deepcopy(result_params)
-                    clean_param[param_name] = copy.deepcopy(param)
-                    clean_param[param_name]['value'] = self._interface_to_dict(
-                        interface)
-                    ret.append(clean_param)
+                interfaces = self._get_interfaces(
+                    vendor=vendor, product=product)
+                if len(interfaces) != 0:
+                    for interface in interfaces:
+                        clean_param = copy.deepcopy(result_params)
+                        clean_param[param_name] = copy.deepcopy(param)
+                        clean_param[param_name]['value'] = (
+                            self._interface_to_dict(interface))
+                        ret.append(clean_param)
                     continue
 
             if is_mac(i):
-                qs = self._get_interfaces().filter(mac_address=i)
+                interfaces = self._get_interfaces(mac_address=i)
             else:
-                qs = self._get_interfaces().filter(
+                interfaces = self._get_interfaces(
                     Q(name=i) | Q(vendor=i) | Q(product=i) |
                     Q(tags__overlap=[i]))
-            if len(qs) == 0:
+            if len(interfaces) == 0:
                 set_form_error(
                     self, param_name, "Unknown interface for %s(%s)" % (
                         self._node.fqdn, self._node.system_id))
                 continue
-            for interface in qs:
+            for interface in interfaces:
                 clean_param = copy.deepcopy(result_params)
                 clean_param[param_name] = copy.deepcopy(param)
                 clean_param[param_name]['value'] = self._interface_to_dict(

@@ -1,4 +1,4 @@
-# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test hooks."""
@@ -19,12 +19,14 @@ from maasserver.enum import (
 )
 from maasserver.fields import MAC
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
+from maasserver.models.config import Config
 from maasserver.models.interface import Interface
 from maasserver.models.nodemetadata import NodeMetadata
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.switch import Switch
 from maasserver.models.tag import Tag
 from maasserver.models.vlan import VLAN
+from maasserver.storage_layouts import get_applied_storage_layout_for_node
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
@@ -1206,7 +1208,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
 
     def test__creates_physical_block_device_with_path_for_missing_serial(self):
         name = factory.make_name('name')
-        size = random.randint(MIN_BLOCK_DEVICE_SIZE, 1000 * 1000 * 1000)
+        size = random.randint(MIN_BLOCK_DEVICE_SIZE + 1, 1000 * 1000 * 1000)
         block_size = random.choice([512, 1024, 4096])
         model = factory.make_name('model')
         serial = ''
@@ -1348,6 +1350,17 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
                 'serial': device['SERIAL'],
                 'model': device['MODEL'],
             }}}, script_result.parameters)
+
+    def test__sets_default_configuration(self):
+        device = self.make_block_device()
+        node = factory.make_Node()
+
+        json_output = json.dumps([device]).encode('utf-8')
+        update_node_physical_block_devices(node, json_output, 0)
+
+        _, layout = get_applied_storage_layout_for_node(node)
+        self.assertEquals(
+            Config.objects.get_config('default_storage_layout'), layout)
 
 
 class TestUpdateNodeNetworkInterfaceTags(MAASServerTestCase):
@@ -1798,7 +1811,8 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
             MatchesStructure.byEquality(
                 alloc_type=IPADDRESS_TYPE.DISCOVERED, subnet=subnet,
                 ip=address))
-        self.assertThat(eth0.ip_addresses.count(), Equals(1))
+        # First IP is DISCOVERED second is AUTO configured.
+        self.assertThat(eth0.ip_addresses.count(), Equals(2))
 
     def test__handles_disconnected_interfaces(self):
         node = factory.make_Node()
@@ -1852,3 +1866,40 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
 
         self.assertIsNotNone(
             node.boot_interface.vlan.subnet_set.filter(id=subnet.id).first())
+
+    def test__regenerates_testing_script_set(self):
+        factory.make_Subnet(cidr='192.168.0.3/24')
+        node = factory.make_Node(boot_cluster_ip='192.168.0.1')
+        script = factory.make_Script(
+            script_type=SCRIPT_TYPE.TESTING,
+            parameters={'interface': {'type': 'interface'}})
+        node.current_testing_script_set = (
+            ScriptSet.objects.create_testing_script_set(
+                node=node, scripts=[script.name]))
+        node.save()
+
+        update_node_network_information(node, self.IP_ADDR_OUTPUT, 0)
+
+        self.assertEquals(1, len(node.get_latest_testing_script_results))
+        # The default network layout only configures the boot interface.
+        script_result = node.get_latest_testing_script_results.get(
+            script=script)
+        self.assertDictEqual({'interface': {
+            'type': 'interface',
+            'value': {
+                'name': node.boot_interface.name,
+                'mac_address': str(node.boot_interface.mac_address),
+                'vendor': node.boot_interface.vendor,
+                'product': node.boot_interface.product,
+                'interface_id': node.boot_interface.id,
+            }}}, script_result.parameters)
+
+    def test__sets_default_configuration(self):
+        factory.make_Subnet(cidr='192.168.0.3/24')
+        node = factory.make_Node(boot_cluster_ip='192.168.0.1')
+
+        update_node_network_information(node, self.IP_ADDR_OUTPUT, 0)
+
+        # 2 devices configured, one for IPv4 one for IPv6.
+        self.assertEquals(2, node.interface_set.filter(
+            ip_addresses__alloc_type=IPADDRESS_TYPE.AUTO).count())

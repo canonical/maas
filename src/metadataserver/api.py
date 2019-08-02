@@ -603,18 +603,6 @@ class VersionIndexHandler(MetadataViewHandler):
                 NODE_TYPE.RACK_CONTROLLER,
                 NODE_TYPE.REGION_CONTROLLER,
                 NODE_TYPE.REGION_AND_RACK_CONTROLLER):
-            # Commissioning was successful, setup the default storage layout
-            # and the initial networking configuration for the node.
-            if status in (SIGNAL_STATUS.TESTING, SIGNAL_STATUS.OK):
-                status = try_or_log_event(
-                    node, status,
-                    "Failed to set default storage layout.",
-                    node.set_default_storage_layout)
-                status = try_or_log_event(
-                    node, status,
-                    "Failed to set default networking configuration.",
-                    node.set_initial_networking_configuration)
-
             # XXX 2014-10-21 newell, bug=1382075
             # Auto detection for IPMI tries to save power parameters
             # for Moonshot and RSD.  This causes issues if the node's power
