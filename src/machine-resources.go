@@ -18,7 +18,7 @@ func main() {
         os.Exit(1)
     }
 
-    data, err := json.MarshalIndent(resources, "", "\t")
+    data, err := json.MarshalIndent(resources, "", "    ")
     if err != nil {
         fmt.Printf("error: %v\n", err)
         os.Exit(1)
