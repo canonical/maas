@@ -4,25 +4,25 @@
 package main
 
 import (
-    "fmt"
-    "os"
-    "encoding/json"
+	"encoding/json"
+	"fmt"
+	"os"
 
-    "github.com/lxc/lxd/lxd/resources"
+	"github.com/lxc/lxd/lxd/resources"
 )
 
 func main() {
-    resources, err := resources.GetResources()
-    if err != nil {
-        fmt.Printf("error: %v\n", err)
-        os.Exit(1)
-    }
+	resources, err := resources.GetResources()
+	if err != nil {
+		fmt.Printf("error: %v\n", err)
+		os.Exit(1)
+	}
 
-    data, err := json.MarshalIndent(resources, "", "    ")
-    if err != nil {
-        fmt.Printf("error: %v\n", err)
-        os.Exit(1)
-    }
+	data, err := json.MarshalIndent(resources, "", "    ")
+	if err != nil {
+		fmt.Printf("error: %v\n", err)
+		os.Exit(1)
+	}
 
-    fmt.Printf("%s\n", data)
+	fmt.Printf("%s\n", data)
 }

@@ -318,7 +318,7 @@ coverage/index.html: bin/coverage .coverage
 
 lint: \
     lint-py lint-py-complexity lint-py-imports \
-    lint-js lint-rst
+    lint-js lint-rst lint-go
         # Only Unix line ends should be accepted
 	@find src/ -type f -exec file "{}" ";" | \
 	    awk '/CRLF/ { print $0; count++ } END {exit count}' || \
@@ -370,12 +370,31 @@ lint-js:
 		bin/yarn lint
 		bin/yarn prettier-check
 
+# Go fmt
+lint-go:
+	@find src/ -name '*.go' -execdir gofmt -l {} + | tee /tmp/gofmt.lint
+	@test ! -s /tmp/gofmt.lint
+
+format.parallel:
+	@$(MAKE) -s -j format
+
 # Apply automated formatting to all Python, Sass and Javascript files.
-format: sources = $(wildcard *.py contrib/*.py) src utilities etc
-format: bin/yarn
+format: format-imports format-lineendings format-js format-go
+
+format-imports: sources = $(wildcard *.py contrib/*.py) src utilities etc
+format-imports:
 	@find $(sources) -name '*.py' -print0 | xargs -r0 utilities/format-imports
+
+# TODO: This should be done in .gitattributes
+format-lineendings:
 	@find src/ -type f -exec file "{}" ";" | grep CRLF | cut -d ':' -f1 | xargs dos2unix
-	bin/yarn prettier
+
+
+format-js: bin/yarn
+	@bin/yarn -s prettier --loglevel warn
+
+format-go:
+	@find src/ -name '*.go' -execdir go fmt {} +
 
 check: clean test
 
@@ -474,6 +493,11 @@ define phony_targets
   force-assets
   force-yarn-update
   format
+  format.parallel
+  format-go
+  format-imports
+  format-lineendings
+  format-js
   harness
   install-dependencies
   assets
@@ -481,6 +505,7 @@ define phony_targets
   lander-styles
   lint
   lint-css
+  lint-go
   lint-js
   lint-py
   lint-py-complexity
