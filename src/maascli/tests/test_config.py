@@ -6,22 +6,12 @@
 __all__ = []
 
 import contextlib
-from contextlib import contextmanager
 import os.path
 import sqlite3
-from unittest.mock import (
-    call,
-    patch,
-)
+from unittest import TestCase
+from unittest.mock import patch
 
-from maascli import (
-    api,
-    utils,
-)
-from maastesting.matchers import (
-    MockCalledOnceWith,
-    MockCallsMatch,
-)
+from maascli import api
 from maastesting.testcase import MAASTestCase
 from twisted.python.filepath import FilePath
 
@@ -88,11 +78,17 @@ class TestProfileConfig(MAASTestCase):
         del config["alice"]
         self.assertEqual(set(), set(config))
 
+    def test_open_no_file_fail(self):
+        config_file = os.path.join(self.make_dir(), "config")
+        with TestCase.assertRaises(self, FileNotFoundError):
+            with api.ProfileConfig.open(config_file):
+                pass
+
     def test_open_and_close(self):
         # ProfileConfig.open() returns a context manager that closes the
         # database on exit.
         config_file = os.path.join(self.make_dir(), "config")
-        config = api.ProfileConfig.open(config_file)
+        config = api.ProfileConfig.open(config_file, create=True)
         self.assertIsInstance(config, contextlib._GeneratorContextManager)
         with config as config:
             self.assertIsInstance(config, api.ProfileConfig)
@@ -105,7 +101,7 @@ class TestProfileConfig(MAASTestCase):
         # ProfileConfig.open() applies restrictive file permissions to newly
         # created configuration databases.
         config_file = os.path.join(self.make_dir(), "config")
-        with api.ProfileConfig.open(config_file):
+        with api.ProfileConfig.open(config_file, create=True):
             perms = FilePath(config_file).getPermissions()
             self.assertEqual("rw-------", perms.shorthand())
 
@@ -118,42 +114,3 @@ class TestProfileConfig(MAASTestCase):
         with api.ProfileConfig.open(config_file):
             perms = FilePath(config_file).getPermissions()
             self.assertEqual("rw-r--r--", perms.shorthand())
-
-    def test_open_permissions_as_user_invoking_sudo(self):
-        # ProfileConfig.open() touches the database as user invoking `sudo`.
-
-        @contextmanager
-        def empty_context():
-            yield  # Do absolutely nothing.
-
-        self.patch_autospec(utils, "sudo_uid").side_effect = empty_context
-        self.patch_autospec(utils, "sudo_gid").side_effect = empty_context
-
-        config_file = os.path.join(self.make_dir(), "config")
-        with api.ProfileConfig.open(config_file):
-            # The sudo_uid and sudo_gid contexts have been used.
-            self.assertThat(utils.sudo_uid, MockCalledOnceWith())
-            self.assertThat(utils.sudo_gid, MockCalledOnceWith())
-
-    def test_open_permissions_as_user_invoking_sudo_retries_if_failed(self):
-        # ProfileConfig.open() touches the database as user invoking `sudo`,
-        # but falls back to the current UID if the operation fails.
-
-        @contextmanager
-        def empty_context():
-            yield  # Do absolutely nothing.
-
-        self.patch_autospec(utils, "sudo_uid").side_effect = empty_context
-        self.patch_autospec(utils, "sudo_gid").side_effect = empty_context
-        self.patch_autospec(api.ProfileConfig, "create_database")
-        api.ProfileConfig.create_database.side_effect = (
-            PermissionError,
-            None
-        )
-        config_file = os.path.join(self.make_dir(), "config")
-        with api.ProfileConfig.open(config_file):
-            self.assertThat(
-                api.ProfileConfig.create_database, MockCallsMatch(
-                    call(config_file),
-                    call(config_file)
-                ))

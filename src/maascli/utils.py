@@ -13,11 +13,8 @@ __all__ = [
     "print_response_content",
     "print_response_headers",
     "safe_name",
-    "sudo_gid",
-    "sudo_uid",
 ]
 
-from contextlib import contextmanager
 from email.message import Message
 from functools import partial
 from inspect import (
@@ -25,11 +22,6 @@ from inspect import (
     getdoc,
 )
 import io
-import os
-from os import (
-    setegid,
-    seteuid,
-)
 import re
 import sys
 from urllib.parse import urlparse
@@ -210,35 +202,3 @@ def dump_response_summary(response, file=None):
     print(file=file)
     print_response_headers(response, file=file)
     print(file=file)
-
-
-@contextmanager
-def sudo_uid():
-    """Context to revert effective UID to that of the user invoking `sudo`."""
-    try:
-        sudo_uid = os.environ["SUDO_UID"]
-    except KeyError:
-        yield  # Not running under sudo.
-    else:
-        orig_euid = os.geteuid()
-        seteuid(int(sudo_uid))
-        try:
-            yield
-        finally:
-            seteuid(orig_euid)
-
-
-@contextmanager
-def sudo_gid():
-    """Context to revert effective GID to that of the user invoking `sudo`."""
-    try:
-        sudo_gid = os.environ["SUDO_GID"]
-    except KeyError:
-        yield  # Not running under sudo.
-    else:
-        orig_egid = os.getegid()
-        setegid(int(sudo_gid))
-        try:
-            yield
-        finally:
-            setegid(orig_egid)

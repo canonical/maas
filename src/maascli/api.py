@@ -473,13 +473,16 @@ profile_help = '\n\n'.join(
 
 def register_api_commands(parser):
     """Register all profiles as subcommands on `parser`."""
-    with ProfileConfig.open() as config:
-        for profile_name in config:
-            profile = config[profile_name]
-            profile_parser = parser.subparsers.add_parser(
-                profile["name"], help="Interact with %(url)s" % profile,
-                description=(
-                    "Issue commands to the MAAS region controller at %(url)s."
-                    % profile),
-                epilog=profile_help)
-            register_resources(profile, profile_parser)
+    try:
+        with ProfileConfig.open() as config:
+            for profile_name in config:
+                profile = config[profile_name]
+                profile_parser = parser.subparsers.add_parser(
+                    profile["name"], help="Interact with %(url)s" % profile,
+                    description=(
+                        "Issue commands to the MAAS region controller at "
+                        "%(url)s." % profile),
+                    epilog=profile_help)
+                register_resources(profile, profile_parser)
+    except FileNotFoundError:
+        return

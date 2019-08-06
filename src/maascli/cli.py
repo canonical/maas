@@ -86,7 +86,7 @@ class cmd_login(Command):
         description = fetch_api_description(options.url, options.insecure)
         # Save the config.
         profile_name = options.profile_name
-        with ProfileConfig.open() as config:
+        with ProfileConfig.open(create=True) as config:
             config[profile_name] = {
                 "credentials": credentials,
                 "description": description,
@@ -121,12 +121,15 @@ class cmd_refresh(Command):
     """
 
     def __call__(self, options):
-        with ProfileConfig.open() as config:
-            for profile_name in config:
-                profile = config[profile_name]
-                url = profile["url"]
-                profile["description"] = fetch_api_description(url)
-                config[profile_name] = profile
+        try:
+            with ProfileConfig.open() as config:
+                for profile_name in config:
+                    profile = config[profile_name]
+                    url = profile["url"]
+                    profile["description"] = fetch_api_description(url)
+                    config[profile_name] = profile
+        except FileNotFoundError:
+            return
 
 
 class cmd_logout(Command):
@@ -153,16 +156,19 @@ class cmd_list(Command):
     """List remote APIs that have been logged-in to."""
 
     def __call__(self, options):
-        with ProfileConfig.open() as config:
-            for profile_name in config:
-                profile = config[profile_name]
-                url = profile["url"]
-                creds = profile["credentials"]
-                if creds is None:
-                    print(profile_name, url)
-                else:
-                    creds = convert_tuple_to_string(creds)
-                    print(profile_name, url, creds)
+        try:
+            with ProfileConfig.open() as config:
+                for profile_name in config:
+                    profile = config[profile_name]
+                    url = profile["url"]
+                    creds = profile["credentials"]
+                    if creds is None:
+                        print(profile_name, url)
+                    else:
+                        creds = convert_tuple_to_string(creds)
+                        print(profile_name, url, creds)
+        except FileNotFoundError:
+            return
 
 
 class cmd_init(Command):
