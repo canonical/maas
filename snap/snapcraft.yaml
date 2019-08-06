@@ -208,6 +208,8 @@ parts:
   machine-resources:
     plugin: make
     source: src
+    build-snaps:
+      - go
     artifacts:
       - '386'
       - 'amd64'
