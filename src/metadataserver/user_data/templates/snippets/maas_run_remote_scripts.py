@@ -91,6 +91,28 @@ def output_and_send(error, send_result=True, *args, **kwargs):
         signal_wrapper(*args, error=error, **kwargs)
 
 
+def output_and_send_scripts(
+        error, scripts, send_result=True, error_is_stderr=False,
+        *args, **kwargs):
+    """output_and_send for multiple scripts."""
+    for script in scripts:
+        script_error = error.format(**script)
+        new_kwargs = copy.deepcopy(kwargs)
+        if error_is_stderr:
+            script_output = '%s\n' % script_error
+            script_output = script_output.encode()
+            # Write output to the filesystem to help with debug.
+            for path in [script['combined_path'], script['stderr_path']]:
+                with open(path, 'ab') as out:
+                    out.write(script_output)
+            new_kwargs['files'] = {
+                script['combined_name']: script_output,
+                script['stderr_name']: script_output,
+            }
+        output_and_send(
+            script_error, send_result, *args, **script['args'], **new_kwargs)
+
+
 def download_and_extract_tar(url, creds, scripts_dir):
     """Download and extract a tar from the given URL.
 
@@ -111,7 +133,7 @@ def download_and_extract_tar(url, creds, scripts_dir):
     return True
 
 
-def run_and_check(cmd, scripts, send_result=True, sudo=False):
+def run_and_check(cmd, scripts, status, send_result=True, sudo=False):
     if sudo:
         cmd = ['sudo', '-En'] + cmd
     proc = Popen(cmd, stdin=DEVNULL, stdout=PIPE, stderr=PIPE)
@@ -122,7 +144,7 @@ def run_and_check(cmd, scripts, send_result=True, sudo=False):
         for script in scripts:
             args = copy.deepcopy(script['args'])
             script['exit_status'] = args['exit_status'] = proc.returncode
-            args['status'] = 'INSTALLING'
+            args['status'] = status
             args['files'] = {
                 scripts[0]['combined_name']: open(
                     scripts[0]['combined_path'], 'rb').read(),
@@ -140,30 +162,28 @@ def run_and_check(cmd, scripts, send_result=True, sudo=False):
 
 
 def _install_apt_dependencies(packages, scripts, send_result=True):
-    for script in scripts:
-        output_and_send(
-            'Installing apt packages for %s' % script['msg_name'],
-            send_result, status='INSTALLING', **script['args'])
-
+    output_and_send_scripts(
+        'Installing apt packages for {msg_name}', scripts, send_result,
+        status='INSTALLING')
     # Check if apt-get update needs to be run
     if not os.path.exists('/var/cache/apt/pkgcache.bin'):
         if not run_and_check(
-                ['apt-get', '-qy', 'update'], scripts, send_result, True):
+                ['apt-get', '-qy', 'update'], scripts, 'INSTALLING',
+                send_result, True):
             return False
 
     if not run_and_check(
-            ['apt-get', '-qy', 'install'] + packages, scripts, send_result,
-            True):
+            ['apt-get', '-qy', 'install'] + packages, scripts, 'INSTALLING',
+            send_result, True):
         return False
 
     return True
 
 
 def _install_snap_dependencies(packages, scripts, send_result=True):
-    for script in scripts:
-        output_and_send(
-            'Installing snap packages for %s' % script['msg_name'],
-            send_result, status='INSTALLING', **script['args'])
+    output_and_send_scripts(
+        'Installing snap packages for {msg_name}', scripts, send_result,
+        status='INSTALLING')
     for pkg in packages:
         if isinstance(pkg, str):
             cmd = ['snap', 'install', pkg]
@@ -181,33 +201,35 @@ def _install_snap_dependencies(packages, scripts, send_result=True):
             # string or dictionary. This should never happen but just
             # incase it does...
             continue
-        if not run_and_check(cmd, scripts, send_result, True):
+        if not run_and_check(cmd, scripts, 'INSTALLING', send_result, True):
             return False
 
     return True
 
 
 def _install_url_dependencies(packages, scripts, send_result=True):
-    for script in scripts:
-        output_and_send(
-            'Downloading and extracting URLs for %s' % script['msg_name'],
-            send_result, status='INSTALLING', **script['args'])
+    output_and_send_scripts(
+        'Downloading and extracting URLs for {msg_name}', scripts, send_result,
+        status='INSTALLING')
     path_regex = re.compile("^Saving to: ['‘](?P<path>.+)['’]$", re.M)
-    os.makedirs(script['download_path'], exist_ok=True)
+    # Install only happens once for all scripts in a group so use the first
+    # script's paths.
+    download_path = scripts[0]['download_path']
+    combined_path = scripts[0]['combined_path']
     for pkg in packages:
         # wget supports multiple protocols, proxying, proper error message,
         # handling user input without protocol information, and getting the
         # filename from the request. Shell out and capture its output
         # instead of implementing all of that here.
         if not run_and_check(
-                ['wget', pkg, '-P', scripts[0]['download_path']], scripts,
+                ['wget', pkg, '-P', download_path], scripts, 'INSTALLING',
                 send_result):
             return False
 
         # Get the filename from the captured output incase the URL does not
         # include a filename. e.g the URL 'ubuntu.com' will create an
         # index.html file.
-        with open(scripts[0]['combined_path'], 'r') as combined:
+        with open(combined_path, 'r') as combined:
             m = path_regex.findall(combined.read())
             if m != []:
                 filename = m[-1]
@@ -217,24 +239,41 @@ def _install_url_dependencies(packages, scripts, send_result=True):
 
         if tarfile.is_tarfile(filename):
             with tarfile.open(filename, 'r|*') as tar:
-                tar.extractall(script['download_path'])
+                tar.extractall(download_path)
         elif zipfile.is_zipfile(filename):
             with zipfile.ZipFile(filename, 'r') as z:
-                z.extractall(script['download_path'])
+                z.extractall(download_path)
         elif filename.endswith('.deb'):
             # Allow dpkg to fail incase it just needs dependencies
             # installed.
-            run_and_check(['dpkg', '-i', filename], scripts, False, True)
+            run_and_check(
+                ['dpkg', '-i', filename], scripts, 'INSTALLING', False, True)
             if not run_and_check(
-                    ['apt-get', 'install', '-qyf'], scripts, send_result,
-                    True):
+                    ['apt-get', 'install', '-qyf'], scripts, 'INSTALLING',
+                    send_result, True):
                 return False
         elif filename.endswith('.snap'):
             if not run_and_check(
-                    ['snap', filename], scripts, send_result, True):
+                    ['snap', filename], scripts, 'INSTALLING', send_result,
+                    True):
                 return False
 
     return True
+
+
+def _clean_logs(scripts):
+    """Remove logs written before running a script."""
+    if not scripts:
+        return
+    # Installing and applying network configuration only happens once for a
+    # group of scripts. Logs are always stored in the first scripts path and
+    # sent as the result in case of failure. If this is called installation
+    # or applying network configuration was successful.
+    for path in [
+            scripts[0]['combined_path'], scripts[0]['stdout_path'],
+            scripts[0]['stderr_path']]:
+        if os.path.exists(path):
+            os.remove(path)
 
 
 def install_dependencies(scripts, send_result=True):
@@ -242,7 +281,12 @@ def install_dependencies(scripts, send_result=True):
 
     If given a list of scripts assumes the package set is the same and signals
     installation status for all script results."""
-    packages = scripts[0].get('packages', {})
+    if scripts:
+        # A group of scripts is given when instance scripts are running. In
+        # this case the packages are all the same.
+        packages = scripts[0].get('packages', {})
+    else:
+        return True
     installers = {
         'apt': _install_apt_dependencies,
         'snap': _install_snap_dependencies,
@@ -257,12 +301,7 @@ def install_dependencies(scripts, send_result=True):
 
     # All went well, clean up the install logs so only script output is
     # captured.
-    for path in [
-            scripts[0]['combined_path'], scripts[0]['stdout_path'],
-            scripts[0]['stderr_path']]:
-        if os.path.exists(path):
-            os.remove(path)
-
+    _clean_logs(scripts)
     return True
 
 
@@ -642,6 +681,8 @@ def run_scripts(url, creds, scripts_dir, out_dir, scripts, send_result=True):
             script_out_dir, script['result_name'])
         script['download_path'] = os.path.join(
             scripts_dir, 'downloads', script['name'])
+        # Make sure the download path always exists
+        os.makedirs(script['download_path'], exist_ok=True)
 
         # The numeric values for hardware_type and parallel are defined in
         # enums in src/metadataserver/enum.py. When running on a node enum.py

@@ -34,6 +34,7 @@ from maastesting.factory import factory
 from maastesting.fixtures import TempDirectory
 from maastesting.matchers import (
     MockAnyCall,
+    MockCalledOnce,
     MockCalledOnceWith,
     MockCallsMatch,
     MockNotCalled,
@@ -45,6 +46,8 @@ from snippets.maas_run_remote_scripts import (
     get_block_devices,
     get_interfaces,
     install_dependencies,
+    output_and_send,
+    output_and_send_scripts,
     parse_parameters,
     run_and_check,
     run_script,
@@ -92,6 +95,13 @@ def make_script(
         out_dir = os.path.join(
             scripts_dir, 'out', '%s.%s' % (name, script_result_id))
 
+        ret['args'] = {
+            'url': factory.make_url(),
+            'creds': factory.make_name('creds'),
+            'script_result_id': script_result_id,
+        }
+        ret['msg_name'] = '%s (id: %s, script_version_id: %s)' % (
+            name, script_result_id, script_version_id)
         ret['combined_name'] = name
         ret['combined_path'] = os.path.join(out_dir, ret['combined_name'])
         ret['combined'] = factory.make_string()
@@ -164,12 +174,75 @@ def make_fake_os_path_exists(testcase, exists=True):
         fake_os_path_exists)
 
 
+class TestOutputAndSend(MAASTestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.stdout_write = self.patch(
+            maas_run_remote_scripts.sys.stdout, 'write')
+        self.stdout_flush = self.patch(
+            maas_run_remote_scripts.sys.stdout, 'flush')
+        self.signal_wrapper = self.patch(
+            maas_run_remote_scripts, 'signal_wrapper')
+
+    def test_output_and_send_outputs(self):
+        error = factory.make_string()
+        output_and_send(error)
+
+        self.assertThat(
+            self.stdout_write, MockCalledOnceWith('%s\n' % error))
+        self.assertThat(self.stdout_flush, MockCalledOnce())
+        self.assertThat(self.signal_wrapper, MockCalledOnceWith(error=error))
+
+    def test_output_and_send_doesnt_send_when_false(self):
+        error = factory.make_string()
+        output_and_send(error, False)
+
+        self.assertThat(
+            self.stdout_write, MockCalledOnceWith('%s\n' % error))
+        self.assertThat(self.stdout_flush, MockCalledOnce())
+        self.assertThat(self.signal_wrapper, MockNotCalled())
+
+    def test_output_and_send_scripts(self):
+        scripts = make_scripts()
+        error = '{msg_name} %s' % factory.make_string()
+        output_and_send_scripts(error, scripts)
+
+        self.assertThat(self.stdout_write, MockCallsMatch(*[
+            call('%s\n' % error.format(**script))
+            for script in scripts
+        ]))
+
+    def test_output_and_send_scripts_sets_error_as_stderr(self):
+        scripts_dir = self.useFixture(TempDirectory()).path
+        scripts = make_scripts(scripts_dir=scripts_dir, with_output=False)
+        error = '{msg_name} %s' % factory.make_string()
+        output_and_send_scripts(error, scripts, error_is_stderr=True)
+
+        self.assertThat(self.signal_wrapper, MockCallsMatch(*[
+            call(error=error.format(**script), **script['args'], files={
+                script['combined_name']: (
+                    b'%s\n' % error.format(**script).encode()),
+                script['stderr_name']: (
+                    b'%s\n' % error.format(**script).encode()),
+                }) for script in scripts
+        ]))
+        for script in scripts:
+            script_error = '%s\n' % error.format(**script)
+            self.assertEquals(
+                script_error, open(script['combined_path'], 'r').read())
+            self.assertEquals(
+                script_error, open(script['stderr_path'], 'r').read())
+
+
 class TestInstallDependencies(MAASTestCase):
 
     def setUp(self):
         super().setUp()
         self.mock_output_and_send = self.patch(
             maas_run_remote_scripts, 'output_and_send')
+        self.mock_output_and_send_scripts = self.patch(
+            maas_run_remote_scripts, 'output_and_send_scripts')
         self.patch(maas_run_remote_scripts.sys.stdout, 'write')
         self.patch(maas_run_remote_scripts.sys.stderr, 'write')
 
@@ -181,7 +254,7 @@ class TestInstallDependencies(MAASTestCase):
         self.assertTrue(run_and_check(
             ['/bin/bash', '-c', 'echo %s;echo %s >&2' % (
                 script['stdout'], script['stderr'])],
-            scripts))
+            scripts, factory.make_name('status')))
         self.assertEquals(
             '%s\n' % script['stdout'], open(script['stdout_path'], 'r').read())
         self.assertEquals(
@@ -194,11 +267,12 @@ class TestInstallDependencies(MAASTestCase):
         scripts_dir = self.useFixture(TempDirectory()).path
         scripts = make_scripts(scripts_dir=scripts_dir, with_output=False)
         script = scripts[0]
+        status = factory.make_name('status')
 
         self.assertFalse(run_and_check(
             ['/bin/bash', '-c', 'echo %s;echo %s >&2;false' % (
                 script['stdout'], script['stderr'])],
-            scripts))
+            scripts, status))
         self.assertEquals(
             '%s\n' % script['stdout'], open(script['stdout_path'], 'r').read())
         self.assertEquals(
@@ -210,7 +284,7 @@ class TestInstallDependencies(MAASTestCase):
             self.assertThat(
                 self.mock_output_and_send, MockAnyCall(
                     'Failed installing package(s) for %s' % script['msg_name'],
-                    exit_status=1, status='INSTALLING', files={
+                    exit_status=1, status=status, **script['args'], files={
                         scripts[0]['combined_name']: ('%s\n%s\n' % (
                             scripts[0]['stdout'],
                             scripts[0]['stderr'])).encode(),
@@ -228,7 +302,7 @@ class TestInstallDependencies(MAASTestCase):
         self.assertTrue(run_and_check(
             ['/bin/bash', '-c', 'echo %s;echo %s >&2;false' % (
                 script['stdout'], script['stderr'])],
-            scripts, False))
+            scripts, factory.make_name('status'), False))
         self.assertEquals(
             '%s\n' % script['stdout'], open(script['stdout_path'], 'r').read())
         self.assertEquals(
@@ -242,12 +316,17 @@ class TestInstallDependencies(MAASTestCase):
         self.patch(maas_run_remote_scripts, 'capture_script_output')
         cmd = factory.make_name('cmd')
 
-        run_and_check([cmd], MagicMock(), False, True)
+        run_and_check(
+            [cmd], MagicMock(), factory.make_name('status'), False, True)
 
         self.assertThat(mock_popen, MockCalledOnceWith(
             ['sudo', '-En', cmd], stdin=DEVNULL, stdout=PIPE, stderr=PIPE))
 
     def test_install_dependencies_does_nothing_when_empty(self):
+        self.assertTrue(install_dependencies([]))
+        self.assertThat(self.mock_output_and_send, MockNotCalled())
+
+    def test_install_dependencies_does_nothing_when_no_packages(self):
         self.assertTrue(install_dependencies(make_scripts()))
         self.assertThat(self.mock_output_and_send, MockNotCalled())
 
@@ -263,11 +342,12 @@ class TestInstallDependencies(MAASTestCase):
 
         self.assertTrue(install_dependencies(scripts))
         for script in scripts:
-            self.assertThat(self.mock_output_and_send, MockAnyCall(
-                'Installing apt packages for %s' % script['msg_name'],
-                True, status='INSTALLING'))
+            self.assertThat(self.mock_output_and_send_scripts, MockAnyCall(
+                'Installing apt packages for {msg_name}', scripts, True,
+                status='INSTALLING'))
             self.assertThat(mock_run_and_check, MockCalledOnceWith(
-                ['apt-get', '-qy', 'install'] + packages, scripts, True, True))
+                ['apt-get', '-qy', 'install'] + packages, scripts,
+                'INSTALLING', True, True))
             # Verify cleanup
             self.assertFalse(os.path.exists(script['combined_path']))
             self.assertFalse(os.path.exists(script['stdout_path']))
@@ -285,13 +365,14 @@ class TestInstallDependencies(MAASTestCase):
 
         self.assertTrue(install_dependencies(scripts))
         self.assertThat(mock_run_and_check, MockAnyCall(
-            ['apt-get', '-qy', 'update'], scripts, True, True))
+            ['apt-get', '-qy', 'update'], scripts, 'INSTALLING', True, True))
         for script in scripts:
-            self.assertThat(self.mock_output_and_send, MockAnyCall(
-                'Installing apt packages for %s' % script['msg_name'],
+            self.assertThat(self.mock_output_and_send_scripts, MockAnyCall(
+                'Installing apt packages for {msg_name}', scripts,
                 True, status='INSTALLING'))
             self.assertThat(mock_run_and_check, MockAnyCall(
-                ['apt-get', '-qy', 'install'] + packages, scripts, True, True))
+                ['apt-get', '-qy', 'install'] + packages, scripts,
+                'INSTALLING', True, True))
             # Verify cleanup
             self.assertFalse(os.path.exists(script['combined_path']))
             self.assertFalse(os.path.exists(script['stdout_path']))
@@ -310,11 +391,12 @@ class TestInstallDependencies(MAASTestCase):
 
         self.assertFalse(install_dependencies(scripts))
         for script in scripts:
-            self.assertThat(self.mock_output_and_send, MockAnyCall(
-                'Installing apt packages for %s' % script['msg_name'],
+            self.assertThat(self.mock_output_and_send_scripts, MockAnyCall(
+                'Installing apt packages for {msg_name}', scripts,
                 True, status='INSTALLING'))
             self.assertThat(mock_run_and_check, MockCalledOnceWith(
-                ['apt-get', '-qy', 'install'] + packages, scripts, True, True))
+                ['apt-get', '-qy', 'install'] + packages, scripts,
+                'INSTALLING', True, True))
 
     def test_install_dependencies_snap_str_list(self):
         mock_run_and_check = self.patch(
@@ -327,8 +409,8 @@ class TestInstallDependencies(MAASTestCase):
 
         self.assertTrue(install_dependencies(scripts))
         for script in scripts:
-            self.assertThat(self.mock_output_and_send, MockAnyCall(
-                'Installing snap packages for %s' % script['msg_name'],
+            self.assertThat(self.mock_output_and_send_scripts, MockAnyCall(
+                'Installing snap packages for {msg_name}', scripts,
                 True, status='INSTALLING'))
             # Verify cleanup
             self.assertFalse(os.path.exists(script['combined_path']))
@@ -337,7 +419,8 @@ class TestInstallDependencies(MAASTestCase):
 
         for package in packages:
             self.assertThat(mock_run_and_check, MockAnyCall(
-                ['snap', 'install', package], scripts, True, True))
+                ['snap', 'install', package], scripts,
+                'INSTALLING', True, True))
 
     def test_install_dependencies_snap_str_dict(self):
         mock_run_and_check = self.patch(
@@ -369,35 +452,36 @@ class TestInstallDependencies(MAASTestCase):
 
         self.assertTrue(install_dependencies(scripts))
         for script in scripts:
-            self.assertThat(self.mock_output_and_send, MockAnyCall(
-                'Installing snap packages for %s' % script['msg_name'],
+            self.assertThat(self.mock_output_and_send_scripts, MockAnyCall(
+                'Installing snap packages for {msg_name}', scripts,
                 True, status='INSTALLING'))
             # Verify cleanup
             self.assertFalse(os.path.exists(script['combined_path']))
             self.assertFalse(os.path.exists(script['stdout_path']))
             self.assertFalse(os.path.exists(script['stderr_path']))
         self.assertThat(mock_run_and_check, MockAnyCall(
-            ['snap', 'install', packages[0]['name']], scripts, True, True))
+            ['snap', 'install', packages[0]['name']], scripts,
+            'INSTALLING', True, True))
         self.assertThat(mock_run_and_check, MockAnyCall(
             [
                 'snap', 'install', packages[1]['name'],
                 '--%s' % packages[1]['channel']
             ],
-            scripts, True, True))
+            scripts, 'INSTALLING', True, True))
         self.assertThat(mock_run_and_check, MockAnyCall(
             [
                 'snap', 'install', packages[2]['name'],
                 '--%s' % packages[2]['channel'],
                 '--%smode' % packages[2]['mode'],
             ],
-            scripts, True, True))
+            scripts, 'INSTALLING', True, True))
         self.assertThat(mock_run_and_check, MockAnyCall(
             [
                 'snap', 'install', packages[3]['name'],
                 '--%s' % packages[3]['channel'],
                 '--%smode' % packages[3]['mode'],
             ],
-            scripts, True, True))
+            scripts, 'INSTALLING', True, True))
 
     def test_install_dependencies_snap_errors(self):
         mock_run_and_check = self.patch(
@@ -411,12 +495,13 @@ class TestInstallDependencies(MAASTestCase):
 
         self.assertFalse(install_dependencies(scripts))
         for script in scripts:
-            self.assertThat(self.mock_output_and_send, MockAnyCall(
-                'Installing snap packages for %s' % script['msg_name'],
+            self.assertThat(self.mock_output_and_send_scripts, MockAnyCall(
+                'Installing snap packages for {msg_name}', scripts,
                 True, status='INSTALLING'))
 
         self.assertThat(mock_run_and_check, MockAnyCall(
-            ['snap', 'install', packages[0]], scripts, True, True))
+            ['snap', 'install', packages[0]], scripts,
+            'INSTALLING', True, True))
 
     def test_install_dependencies_url(self):
         mock_run_and_check = self.patch(
@@ -431,10 +516,10 @@ class TestInstallDependencies(MAASTestCase):
         for package in packages:
             self.assertThat(mock_run_and_check, MockAnyCall(
                 ['wget', package, '-P', scripts[0]['download_path']],
-                scripts, True))
+                scripts, 'INSTALLING', True))
         for script in scripts:
-            self.assertThat(self.mock_output_and_send, MockAnyCall(
-                'Downloading and extracting URLs for %s' % script['msg_name'],
+            self.assertThat(self.mock_output_and_send_scripts, MockAnyCall(
+                'Downloading and extracting URLs for {msg_name}', scripts,
                 True, status='INSTALLING'))
         # Verify cleanup
         self.assertFalse(os.path.exists(scripts[0]['combined_path']))
@@ -453,8 +538,8 @@ class TestInstallDependencies(MAASTestCase):
 
         self.assertFalse(install_dependencies(scripts))
         for script in scripts:
-            self.assertThat(self.mock_output_and_send, MockAnyCall(
-                'Downloading and extracting URLs for %s' % script['msg_name'],
+            self.assertThat(self.mock_output_and_send_scripts, MockAnyCall(
+                'Downloading and extracting URLs for {msg_name}', scripts,
                 True, status='INSTALLING'))
 
     def test_install_dependencies_url_tar(self):
@@ -512,9 +597,9 @@ class TestInstallDependencies(MAASTestCase):
 
         self.assertTrue(install_dependencies(scripts))
         self.assertThat(mock_run_and_check, MockAnyCall(
-            ['dpkg', '-i', deb_file], scripts, False, True))
+            ['dpkg', '-i', deb_file], scripts, 'INSTALLING', False, True))
         self.assertThat(mock_run_and_check, MockAnyCall(
-            ['apt-get', 'install', '-qyf'], scripts, True, True))
+            ['apt-get', 'install', '-qyf'], scripts, 'INSTALLING', True, True))
 
     def test_install_dependencies_url_deb_errors(self):
         mock_run_and_check = self.patch(
@@ -531,9 +616,9 @@ class TestInstallDependencies(MAASTestCase):
 
         self.assertFalse(install_dependencies(scripts))
         self.assertThat(mock_run_and_check, MockAnyCall(
-            ['dpkg', '-i', deb_file], scripts, False, True))
+            ['dpkg', '-i', deb_file], scripts, 'INSTALLING', False, True))
         self.assertThat(mock_run_and_check, MockAnyCall(
-            ['apt-get', 'install', '-qyf'], scripts, True, True))
+            ['apt-get', 'install', '-qyf'], scripts, 'INSTALLING', True, True))
 
     def test_install_dependencies_url_snap(self):
         mock_run_and_check = self.patch(
@@ -549,7 +634,7 @@ class TestInstallDependencies(MAASTestCase):
 
         self.assertTrue(install_dependencies(scripts))
         self.assertThat(mock_run_and_check, MockAnyCall(
-            ['snap', snap_file], scripts, True, True))
+            ['snap', snap_file], scripts, 'INSTALLING', True, True))
 
     def test_install_dependencies_url_snap_errors(self):
         mock_run_and_check = self.patch(
@@ -566,7 +651,7 @@ class TestInstallDependencies(MAASTestCase):
 
         self.assertFalse(install_dependencies(scripts))
         self.assertThat(mock_run_and_check, MockAnyCall(
-            ['snap', snap_file], scripts, True, True))
+            ['snap', snap_file], scripts, 'INSTALLING', True, True))
 
 
 class TestParseParameters(MAASTestCase):
@@ -832,7 +917,9 @@ class TestRunScript(MAASTestCase):
         run_script(script, scripts_dir)
 
         self.assertThat(self.mock_output_and_send, MockCallsMatch(
-            call('Starting %s' % script['msg_name'], **self.args),
+            call(
+                'Starting %s' % script['msg_name'], **script['args'],
+                **self.args),
             call(
                 'Finished %s: None' % script['msg_name'], exit_status=None,
                 files={
@@ -840,7 +927,7 @@ class TestRunScript(MAASTestCase):
                     script['stdout_name']: script['stdout'].encode(),
                     script['stderr_name']: script['stderr'].encode(),
                     script['result_name']: script['result'].encode(),
-                }, **self.args),
+                }, **script['args'], **self.args),
         ))
         self.assertThat(self.mock_capture_script_output, MockCalledOnceWith(
             ANY, script['combined_path'], script['stdout_path'],
@@ -871,14 +958,16 @@ class TestRunScript(MAASTestCase):
         run_script(script, scripts_dir)
 
         self.assertThat(self.mock_output_and_send, MockCallsMatch(
-            call('Starting %s' % script['msg_name'], **self.args),
+            call(
+                'Starting %s' % script['msg_name'], **script['args'],
+                **self.args),
             call(
                 'Finished %s: None' % script['msg_name'], exit_status=None,
                 files={
                     script['combined_name']: script['combined'].encode(),
                     script['stdout_name']: script['stdout'].encode(),
                     script['stderr_name']: script['stderr'].encode(),
-                }, **self.args),
+                }, **script['args'], **self.args),
         ))
         self.assertThat(self.mock_capture_script_output, MockCalledOnceWith(
             ANY, script['combined_path'], script['stdout_path'],
@@ -897,7 +986,9 @@ class TestRunScript(MAASTestCase):
         run_script(script, scripts_dir)
 
         self.assertThat(self.mock_output_and_send, MockCallsMatch(
-            call('Starting %s' % script['msg_name'], **self.args),
+            call(
+                'Starting %s' % script['msg_name'], **script['args'],
+                **self.args),
             call(
                 'Finished %s: None' % script['msg_name'], exit_status=None,
                 files={
@@ -905,7 +996,7 @@ class TestRunScript(MAASTestCase):
                     script['stdout_name']: script['stdout'].encode(),
                     script['stderr_name']: script['stderr'].encode(),
                     script['result_name']: script['result'].encode(),
-                }, **self.args),
+                }, **script['args'], **self.args),
         ))
         self.assertThat(self.mock_capture_script_output, MockCalledOnceWith(
             ANY, script['combined_path'], script['stdout_path'],
@@ -959,13 +1050,15 @@ class TestRunScript(MAASTestCase):
         )
         expected_output = expected_output.encode()
         self.assertThat(self.mock_output_and_send, MockCallsMatch(
-            call('Starting %s' % script['msg_name'], **self.args),
+            call(
+                'Starting %s' % script['msg_name'], **script['args'],
+                **self.args),
             call(
                 'Failed to execute %s: 2' % script['msg_name'], exit_status=2,
                 files={
                     script['combined_name']: expected_output,
                     script['stderr_name']: expected_output,
-                }, **self.args),
+                }, **script['args'], **self.args),
         ))
 
     def test_run_script_errors_bad_params_on_unexecutable_script(self):
@@ -978,13 +1071,15 @@ class TestRunScript(MAASTestCase):
         self.assertFalse(run_script(script, scripts_dir))
 
         self.assertThat(self.mock_output_and_send, MockCallsMatch(
-            call('Starting %s' % script['msg_name'], **self.args),
+            call(
+                'Starting %s' % script['msg_name'], **script['args'],
+                **self.args),
             call(
                 'Failed to execute %s: 8' % script['msg_name'], exit_status=8,
                 files={
                     script['combined_name']: b'[Errno 8] Exec format error',
                     script['stderr_name']: b'[Errno 8] Exec format error',
-                }, **self.args),
+                }, **script['args'], **self.args),
         ))
 
     def test_run_script_errors_bad_params_on_unexecutable_script_no_errno(
@@ -997,13 +1092,15 @@ class TestRunScript(MAASTestCase):
         self.assertFalse(run_script(script, scripts_dir))
 
         self.assertThat(self.mock_output_and_send, MockCallsMatch(
-            call('Starting %s' % script['msg_name'], **self.args),
+            call(
+                'Starting %s' % script['msg_name'], **script['args'],
+                **self.args),
             call(
                 'Failed to execute %s: 2' % script['msg_name'], exit_status=2,
                 files={
                     script['combined_name']: b'Unable to execute script',
                     script['stderr_name']: b'Unable to execute script',
-                }, **self.args),
+                }, **script['args'], **self.args),
         ))
 
     def test_run_script_errors_bad_params_on_unexecutable_script_baderrno(
@@ -1017,13 +1114,15 @@ class TestRunScript(MAASTestCase):
         self.assertFalse(run_script(script, scripts_dir))
 
         self.assertThat(self.mock_output_and_send, MockCallsMatch(
-            call('Starting %s' % script['msg_name'], **self.args),
+            call(
+                'Starting %s' % script['msg_name'], **script['args'],
+                **self.args),
             call(
                 'Failed to execute %s: 2' % script['msg_name'], exit_status=2,
                 files={
                     script['combined_name']: b'[Errno 0] Exec format error',
                     script['stderr_name']: b'[Errno 0] Exec format error',
-                }, **self.args),
+                }, **script['args'], **self.args),
         ))
 
     def test_run_script_timed_out_script(self):
@@ -1039,7 +1138,7 @@ class TestRunScript(MAASTestCase):
         self.assertThat(self.mock_output_and_send, MockCallsMatch(
             call(
                 'Starting %s' % script['msg_name'], status='WORKING',
-                **self.args),
+                **script['args'], **self.args),
             call(
                 'Timeout(%s) expired on %s' % (
                     str(timedelta(seconds=script['timeout_seconds'])),
@@ -1049,7 +1148,7 @@ class TestRunScript(MAASTestCase):
                     script['stdout_name']: script['stdout'].encode(),
                     script['stderr_name']: script['stderr'].encode(),
                     script['result_name']: script['result'].encode(),
-                }, status='TIMEDOUT', **self.args),
+                }, status='TIMEDOUT', **script['args'], **self.args),
         ))
 
 
