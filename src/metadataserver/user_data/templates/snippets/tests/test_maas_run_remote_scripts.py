@@ -41,7 +41,9 @@ from maastesting.matchers import (
 )
 from maastesting.testcase import MAASTestCase
 from snippets import maas_run_remote_scripts
+from snippets.maas_api_helper import SignalException
 from snippets.maas_run_remote_scripts import (
+    CustomNetworking,
     download_and_extract_tar,
     get_block_devices,
     get_interfaces,
@@ -62,7 +64,8 @@ SCRIPT_RESULT_ID = 0
 def make_script(
         scripts_dir=None, with_added_attribs=True, name=None,
         script_version_id=None, timeout_seconds=None, parallel=None,
-        hardware_type=None, with_output=True):
+        hardware_type=None, apply_configured_networking=False,
+        with_output=True):
     if name is None:
         name = factory.make_name('name')
     if script_version_id is None:
@@ -84,8 +87,8 @@ def make_script(
         'timeout_seconds': timeout_seconds,
         'parallel': parallel,
         'hardware_type': hardware_type,
-        'args': {},
         'has_started': factory.pick_bool(),
+        'apply_configured_networking': apply_configured_networking,
     }
     ret['msg_name'] = '%s (id: %s, script_version_id: %s)' % (
         name, script_result_id, script_version_id)
@@ -137,12 +140,14 @@ def make_script(
 
 def make_scripts(
         instance=True, count=3, scripts_dir=None, with_added_attribs=True,
-        with_output=True, parallel=None, hardware_type=None):
+        with_output=True, parallel=None, hardware_type=None,
+        apply_configured_networking=None):
     if instance:
         script = make_script(
             scripts_dir=scripts_dir, with_added_attribs=with_added_attribs,
             with_output=with_output, parallel=parallel,
-            hardware_type=hardware_type)
+            hardware_type=hardware_type,
+            apply_configured_networking=apply_configured_networking)
         return [script] + [
             make_script(
                 scripts_dir=scripts_dir, with_added_attribs=with_added_attribs,
@@ -150,7 +155,9 @@ def make_scripts(
                 script_version_id=script['script_version_id'],
                 timeout_seconds=script['timeout_seconds'],
                 parallel=script['parallel'],
-                hardware_type=script['hardware_type'])
+                hardware_type=script['hardware_type'],
+                apply_configured_networking=script[
+                    'apply_configured_networking'])
             for _ in range(count - 1)
         ]
     else:
@@ -652,6 +659,417 @@ class TestInstallDependencies(MAASTestCase):
         self.assertFalse(install_dependencies(scripts))
         self.assertThat(mock_run_and_check, MockAnyCall(
             ['snap', snap_file], scripts, 'INSTALLING', True, True))
+
+
+class TestCustomNetworking(MAASTestCase):
+
+    def setUp(self):
+        super().setUp()
+
+        self.base_dir = self.useFixture(TempDirectory()).path
+        self.config_dir = os.path.join(self.base_dir, 'config')
+        os.makedirs(self.config_dir, exist_ok=True)
+        self.netplan_dir = os.path.join(self.base_dir, 'netplan')
+        maas_run_remote_scripts.NETPLAN_DIR = self.netplan_dir
+        os.makedirs(self.netplan_dir, exist_ok=True)
+
+        self.mock_output_and_send_scripts = self.patch(
+            maas_run_remote_scripts, 'output_and_send_scripts')
+        self.mock_run_and_check = self.patch(
+            maas_run_remote_scripts, 'run_and_check')
+        self.mock_get_interfaces = self.patch(
+            maas_run_remote_scripts, 'get_interfaces')
+        self.mock_signal = self.patch(
+            maas_run_remote_scripts, 'signal')
+        self.patch(maas_run_remote_scripts.sys.stdout, 'write')
+        self.patch(maas_run_remote_scripts.sys.stderr, 'write')
+        self.patch(maas_run_remote_scripts.time, 'sleep')
+
+    def test_enter_does_nothing_if_not_required(self):
+        custom_networking = CustomNetworking(
+            make_scripts(apply_configured_networking=False),
+            self.config_dir)
+        mock_bring_down_networking = self.patch(
+            custom_networking, '_bring_down_networking')
+        custom_networking.__enter__()
+
+        self.assertThat(self.mock_output_and_send_scripts, MockNotCalled())
+        self.assertThat(mock_bring_down_networking, MockNotCalled())
+
+    def test_enter_raises_filenotfounderror_if_netplan_yaml_missing(self):
+        scripts = make_scripts(apply_configured_networking=True)
+        custom_networking = CustomNetworking(scripts, self.config_dir)
+        mock_bring_down_networking = self.patch(
+            custom_networking, '_bring_down_networking')
+
+        self.assertRaises(FileNotFoundError, custom_networking.__enter__)
+        self.assertThat(self.mock_output_and_send_scripts, MockCallsMatch(
+            call(ANY, scripts, True, status='APPLYING_NETCONF'),
+            call(ANY, scripts, True, error_is_stderr=True, exit_status=1,
+                 status='APPLYING_NETCONF'),
+        ))
+        self.assertThat(mock_bring_down_networking, MockNotCalled())
+
+    def test_enter_applies_custom_networking(self):
+        netplan_yaml_content = factory.make_string()
+        factory.make_file(
+            self.config_dir, 'netplan.yaml', netplan_yaml_content)
+        ephemeral_config_content = factory.make_string()
+        factory.make_file(
+            self.netplan_dir, '50-cloud-init.yaml', ephemeral_config_content)
+        scripts = make_scripts(
+            scripts_dir=self.base_dir, apply_configured_networking=True)
+        custom_networking = CustomNetworking(scripts, self.config_dir)
+        mock_bring_down_networking = self.patch(
+            custom_networking, '_bring_down_networking')
+
+        with custom_networking:
+            # Verify config files where moved into place
+            self.assertEquals(netplan_yaml_content, open(
+                os.path.join(self.netplan_dir, 'netplan.yaml'), 'r').read())
+            self.assertFalse(os.path.exists(os.path.join(
+                self.netplan_dir, '50-cloud-init.yaml')))
+            self.assertEquals(
+                ephemeral_config_content,
+                open(os.path.join(
+                    self.config_dir, 'netplan.bak',
+                    '50-cloud-init.yaml'), 'r').read())
+            # Verify logs from netplan apply where removed
+            for path in ['combined_path', 'stdout_path', 'stderr_path']:
+                self.assertFalse(os.path.exists(scripts[0][path]))
+            # Disable applying ephemeral netplan
+            custom_networking.apply_configured_networking = False
+
+        self.assertThat(self.mock_output_and_send_scripts, MockCalledOnce())
+        self.assertThat(self.mock_run_and_check, MockCalledOnce())
+        self.assertThat(
+            self.mock_get_interfaces, MockCalledOnceWith(clear_cache=True))
+        self.assertThat(self.mock_signal, MockCalledOnce())
+        self.assertThat(mock_bring_down_networking, MockCalledOnce())
+
+    def test_enter_applies_custom_networking_no_send(self):
+        netplan_yaml_content = factory.make_string()
+        factory.make_file(
+            self.config_dir, 'netplan.yaml', netplan_yaml_content)
+        ephemeral_config_content = factory.make_string()
+        factory.make_file(
+            self.netplan_dir, '50-cloud-init.yaml', ephemeral_config_content)
+        scripts = make_scripts(
+            scripts_dir=self.base_dir, apply_configured_networking=True)
+        custom_networking = CustomNetworking(scripts, self.config_dir, False)
+        mock_bring_down_networking = self.patch(
+            custom_networking, '_bring_down_networking')
+
+        with custom_networking:
+            # Verify config files where moved into place
+            self.assertEquals(netplan_yaml_content, open(
+                os.path.join(self.netplan_dir, 'netplan.yaml'), 'r').read())
+            self.assertFalse(os.path.exists(os.path.join(
+                self.netplan_dir, '50-cloud-init.yaml')))
+            self.assertEquals(
+                ephemeral_config_content,
+                open(os.path.join(
+                    self.config_dir, 'netplan.bak',
+                    '50-cloud-init.yaml'), 'r').read())
+            # Verify logs from netplan apply where removed
+            for path in ['combined_path', 'stdout_path', 'stderr_path']:
+                self.assertFalse(os.path.exists(scripts[0][path]))
+            # Disable applying ephemeral netplan
+            custom_networking.apply_configured_networking = False
+
+        self.assertThat(self.mock_output_and_send_scripts, MockCalledOnce())
+        self.assertThat(self.mock_run_and_check, MockCalledOnce())
+        self.assertThat(
+            self.mock_get_interfaces, MockCalledOnceWith(clear_cache=True))
+        self.assertThat(self.mock_signal, MockNotCalled())
+        self.assertThat(mock_bring_down_networking, MockCalledOnce())
+
+    def test_enter_raises_oserror_when_netplan_apply_fails(self):
+        factory.make_file(self.config_dir, 'netplan.yaml')
+        factory.make_file(self.netplan_dir, '50-cloud-init.yaml')
+        scripts = make_scripts(
+            scripts_dir=self.base_dir, apply_configured_networking=True)
+        custom_networking = CustomNetworking(scripts, self.config_dir)
+        mock_apply_ephemeral_netplan = self.patch(
+            custom_networking, '_apply_ephemeral_netplan')
+        mock_bring_down_networking = self.patch(
+            custom_networking, '_bring_down_networking')
+
+        self.mock_run_and_check.return_value = False
+        mock_clean_logs = self.patch(maas_run_remote_scripts, '_clean_logs')
+
+        self.assertRaises(OSError, custom_networking.__enter__)
+        self.assertThat(self.mock_output_and_send_scripts, MockCalledOnce())
+        self.assertThat(mock_apply_ephemeral_netplan, MockCalledOnce())
+        self.assertThat(self.mock_get_interfaces, MockNotCalled())
+        self.assertThat(self.mock_signal, MockNotCalled())
+        self.assertThat(mock_clean_logs, MockNotCalled())
+        self.assertThat(mock_bring_down_networking, MockCalledOnce())
+
+    def test_enter_raises_signalexception_when_signal_fails(self):
+        factory.make_file(self.config_dir, 'netplan.yaml')
+        factory.make_file(self.netplan_dir, '50-cloud-init.yaml')
+        scripts = make_scripts(
+            scripts_dir=self.base_dir, apply_configured_networking=True)
+        custom_networking = CustomNetworking(scripts, self.config_dir)
+        mock_apply_ephemeral_netplan = self.patch(
+            custom_networking, '_apply_ephemeral_netplan')
+        mock_bring_down_networking = self.patch(
+            custom_networking, '_bring_down_networking')
+        self.mock_signal.side_effect = SignalException(
+            factory.make_name('error'))
+        mock_clean_logs = self.patch(maas_run_remote_scripts, '_clean_logs')
+
+        self.assertRaises(SignalException, custom_networking.__enter__)
+        self.assertThat(self.mock_output_and_send_scripts, MockCallsMatch(
+            call(ANY, scripts, True, status='APPLYING_NETCONF'),
+            call(
+                ANY, scripts, True, error_is_stderr=True, exit_status=1,
+                status='APPLYING_NETCONF'),
+        ))
+        self.assertThat(self.mock_run_and_check, MockCalledOnce())
+        self.assertThat(self.mock_get_interfaces, MockCalledOnce())
+        self.assertThat(self.mock_signal, MockCalledOnce())
+        self.assertThat(mock_apply_ephemeral_netplan, MockCalledOnce())
+        self.assertThat(mock_clean_logs, MockNotCalled())
+        self.assertThat(mock_bring_down_networking, MockCalledOnce())
+
+    def test_apply_ephemeral_netplan_does_nothing_if_not_backup_config(self):
+        mock_check_call = self.patch(maas_run_remote_scripts, 'check_call')
+        mock_signal_wrapper = self.patch(
+            maas_run_remote_scripts, 'signal_wrapper')
+        scripts = make_scripts(
+            scripts_dir=self.base_dir, apply_configured_networking=True)
+        custom_networking = CustomNetworking(scripts, factory.make_name())
+        mock_bring_down_networking = self.patch(
+            custom_networking, '_bring_down_networking')
+
+        custom_networking._apply_ephemeral_netplan()
+
+        self.assertThat(mock_check_call, MockNotCalled())
+        self.assertThat(mock_signal_wrapper, MockNotCalled())
+        self.assertThat(self.mock_get_interfaces, MockNotCalled())
+        self.assertThat(mock_bring_down_networking, MockNotCalled())
+
+    def test_apply_ephemeral_netplan(self):
+        mock_check_call = self.patch(maas_run_remote_scripts, 'check_call')
+        mock_signal_wrapper = self.patch(
+            maas_run_remote_scripts, 'signal_wrapper')
+        netplan_yaml_content = factory.make_string()
+        factory.make_file(
+            self.netplan_dir, 'netplan.yaml', netplan_yaml_content)
+        backup_dir = os.path.join(self.config_dir, 'netplan.bak')
+        os.makedirs(backup_dir, exist_ok=True)
+        ephemeral_config_content = factory.make_string()
+        factory.make_file(
+            backup_dir, '50-cloud-init.yaml', ephemeral_config_content)
+        scripts = make_scripts(
+            scripts_dir=self.base_dir, apply_configured_networking=True)
+        custom_networking = CustomNetworking(scripts, self.config_dir)
+        mock_bring_down_networking = self.patch(
+            custom_networking, '_bring_down_networking')
+
+        custom_networking._apply_ephemeral_netplan()
+
+        self.assertFalse(os.path.exists(backup_dir))
+        self.assertEquals(
+            ephemeral_config_content, open(
+                os.path.join(self.netplan_dir, '50-cloud-init.yaml'),
+                'r').read())
+        self.assertThat(mock_check_call, MockCalledOnce())
+        self.assertThat(mock_signal_wrapper, MockCalledOnce())
+        self.assertThat(
+            self.mock_get_interfaces, MockCalledOnceWith(clear_cache=True))
+        self.assertThat(mock_bring_down_networking, MockCalledOnce())
+
+    def test_apply_ephemeral_netplan_no_send(self):
+        mock_check_call = self.patch(maas_run_remote_scripts, 'check_call')
+        mock_signal_wrapper = self.patch(
+            maas_run_remote_scripts, 'signal_wrapper')
+        netplan_yaml_content = factory.make_string()
+        factory.make_file(
+            self.netplan_dir, 'netplan.yaml', netplan_yaml_content)
+        backup_dir = os.path.join(self.config_dir, 'netplan.bak')
+        os.makedirs(backup_dir, exist_ok=True)
+        ephemeral_config_content = factory.make_string()
+        factory.make_file(
+            backup_dir, '50-cloud-init.yaml', ephemeral_config_content)
+        scripts = make_scripts(
+            scripts_dir=self.base_dir, apply_configured_networking=True)
+        custom_networking = CustomNetworking(scripts, self.config_dir, False)
+        mock_bring_down_networking = self.patch(
+            custom_networking, '_bring_down_networking')
+
+        custom_networking._apply_ephemeral_netplan()
+
+        self.assertFalse(os.path.exists(backup_dir))
+        self.assertEquals(
+            ephemeral_config_content, open(
+                os.path.join(self.netplan_dir, '50-cloud-init.yaml'),
+                'r').read())
+        self.assertThat(mock_check_call, MockCalledOnce())
+        self.assertThat(mock_signal_wrapper, MockNotCalled())
+        self.assertThat(
+            self.mock_get_interfaces, MockCalledOnceWith(clear_cache=True))
+        self.assertThat(mock_bring_down_networking, MockCalledOnce())
+
+    def test_apply_ephemeral_netplan_ignores_timeout_expired(self):
+        mock_check_call = self.patch(maas_run_remote_scripts, 'check_call')
+        mock_check_call.side_effect = TimeoutExpired(
+            ['netplan', 'apply', '--debug'], 60)
+        mock_signal_wrapper = self.patch(
+            maas_run_remote_scripts, 'signal_wrapper')
+        netplan_yaml_content = factory.make_string()
+        factory.make_file(
+            self.netplan_dir, 'netplan.yaml', netplan_yaml_content)
+        backup_dir = os.path.join(self.config_dir, 'netplan.bak')
+        os.makedirs(backup_dir, exist_ok=True)
+        ephemeral_config_content = factory.make_string()
+        factory.make_file(
+            backup_dir, '50-cloud-init.yaml', ephemeral_config_content)
+        scripts = make_scripts(
+            scripts_dir=self.base_dir, apply_configured_networking=True)
+        custom_networking = CustomNetworking(scripts, self.config_dir)
+        mock_bring_down_networking = self.patch(
+            custom_networking, '_bring_down_networking')
+
+        custom_networking._apply_ephemeral_netplan()
+
+        self.assertFalse(os.path.exists(backup_dir))
+        self.assertEquals(
+            ephemeral_config_content, open(
+                os.path.join(self.netplan_dir, '50-cloud-init.yaml'),
+                'r').read())
+        self.assertThat(mock_check_call, MockCalledOnce())
+        self.assertThat(mock_signal_wrapper, MockCalledOnce())
+        self.assertThat(
+            self.mock_get_interfaces, MockCalledOnceWith(clear_cache=True))
+        self.assertThat(mock_bring_down_networking, MockCalledOnce())
+
+    def test_apply_ephemeral_netplan_ignores_calledprocesserror(self):
+        mock_check_call = self.patch(maas_run_remote_scripts, 'check_call')
+        mock_check_call.side_effect = CalledProcessError(
+            -1, ['netplan', 'apply', '--debug'])
+        mock_signal_wrapper = self.patch(
+            maas_run_remote_scripts, 'signal_wrapper')
+        netplan_yaml_content = factory.make_string()
+        factory.make_file(
+            self.netplan_dir, 'netplan.yaml', netplan_yaml_content)
+        backup_dir = os.path.join(self.config_dir, 'netplan.bak')
+        os.makedirs(backup_dir, exist_ok=True)
+        ephemeral_config_content = factory.make_string()
+        factory.make_file(
+            backup_dir, '50-cloud-init.yaml', ephemeral_config_content)
+        scripts = make_scripts(
+            scripts_dir=self.base_dir, apply_configured_networking=True)
+        custom_networking = CustomNetworking(scripts, self.config_dir)
+        mock_bring_down_networking = self.patch(
+            custom_networking, '_bring_down_networking')
+
+        custom_networking._apply_ephemeral_netplan()
+
+        self.assertFalse(os.path.exists(backup_dir))
+        self.assertEquals(
+            ephemeral_config_content, open(
+                os.path.join(self.netplan_dir, '50-cloud-init.yaml'),
+                'r').read())
+        self.assertThat(mock_check_call, MockCalledOnce())
+        self.assertThat(mock_signal_wrapper, MockCalledOnce())
+        self.assertThat(
+            self.mock_get_interfaces, MockCalledOnceWith(clear_cache=True))
+        self.assertThat(mock_bring_down_networking, MockCalledOnce())
+
+    def test_exit_does_nothing_not_applying_config(self):
+        scripts = make_scripts(
+            scripts_dir=self.base_dir, apply_configured_networking=False)
+        custom_networking = CustomNetworking(scripts, self.config_dir)
+        mock_apply_ephemeral_netplan = self.patch(
+            custom_networking, '_apply_ephemeral_netplan')
+
+        custom_networking.__exit__(None, None, None)
+
+        self.assertThat(mock_apply_ephemeral_netplan, MockNotCalled())
+
+    def test_exit_applies_ephemeral_netplan(self):
+        scripts = make_scripts(
+            scripts_dir=self.base_dir, apply_configured_networking=True)
+        custom_networking = CustomNetworking(scripts, self.config_dir)
+        mock_apply_ephemeral_netplan = self.patch(
+            custom_networking, '_apply_ephemeral_netplan')
+
+        custom_networking.__exit__(None, None, None)
+
+        self.assertThat(mock_apply_ephemeral_netplan, MockCalledOnce())
+
+    def test_bring_down_networking(self):
+        virtual_devs = [factory.make_name('vdev') for _ in range(3)]
+        physical_devs = [factory.make_name('pdev') for _ in range(3)]
+        mock_listdir = self.patch(maas_run_remote_scripts.os, 'listdir')
+        mock_listdir.side_effect = (
+            ['lo'] + virtual_devs,
+            ['lo'] + physical_devs,
+        )
+        mock_isfile = self.patch(maas_run_remote_scripts.os.path, 'isfile')
+        mock_isfile.return_value = True
+        mock_check_call = self.patch(maas_run_remote_scripts, 'check_call')
+        scripts = make_scripts(
+            scripts_dir=self.base_dir, apply_configured_networking=True)
+        custom_networking = CustomNetworking(scripts, self.config_dir)
+
+        custom_networking._bring_down_networking()
+
+        self.assertThat(mock_check_call, MockCallsMatch(
+            *[
+                call(['ip', 'link', 'delete', dev], timeout=60)
+                for dev in virtual_devs
+            ], *[
+                call(['ip', 'link', 'set', 'down', dev], timeout=60)
+                for dev in physical_devs]))
+
+    def test_bring_down_networking_ignores_non_interfaces(self):
+        virtual_devs = [factory.make_name('vdev') for _ in range(3)]
+        physical_devs = [factory.make_name('pdev') for _ in range(3)]
+        mock_listdir = self.patch(maas_run_remote_scripts.os, 'listdir')
+        mock_listdir.side_effect = (
+            ['lo'] + virtual_devs,
+            ['lo'] + physical_devs,
+        )
+        mock_isfile = self.patch(maas_run_remote_scripts.os.path, 'isfile')
+        mock_isfile.return_value = False
+        mock_check_call = self.patch(maas_run_remote_scripts, 'check_call')
+        scripts = make_scripts(
+            scripts_dir=self.base_dir, apply_configured_networking=True)
+        custom_networking = CustomNetworking(scripts, self.config_dir)
+
+        custom_networking._bring_down_networking()
+
+        self.assertThat(mock_check_call, MockNotCalled())
+
+    def test_bring_down_networking_ignores_errors(self):
+        virtual_devs = [factory.make_name('vdev') for _ in range(3)]
+        physical_devs = [factory.make_name('pdev') for _ in range(3)]
+        mock_listdir = self.patch(maas_run_remote_scripts.os, 'listdir')
+        mock_listdir.side_effect = (
+            ['lo'] + virtual_devs,
+            ['lo'] + physical_devs,
+        )
+        mock_isfile = self.patch(maas_run_remote_scripts.os.path, 'isfile')
+        mock_isfile.return_value = True
+        mock_check_call = self.patch(maas_run_remote_scripts, 'check_call')
+        mock_check_call.side_effect = Exception()
+        scripts = make_scripts(
+            scripts_dir=self.base_dir, apply_configured_networking=True)
+        custom_networking = CustomNetworking(scripts, self.config_dir)
+
+        custom_networking._bring_down_networking()
+
+        self.assertThat(mock_check_call, MockCallsMatch(
+            *[
+                call(['ip', 'link', 'delete', dev], timeout=60)
+                for dev in virtual_devs
+            ], *[
+                call(['ip', 'link', 'set', 'down', dev], timeout=60)
+                for dev in physical_devs]))
 
 
 class TestParseParameters(MAASTestCase):
@@ -1232,6 +1650,8 @@ class TestRunScripts(MAASTestCase):
             'parallel': script['parallel'],
             'hardware_type': script['hardware_type'],
             'has_started': script['has_started'],
+            'apply_configured_networking': script[
+                'apply_configured_networking'],
             'args': script['args'],
         }]
         run_scripts(url, creds, scripts_dir, out_dir, scripts)

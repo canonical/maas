@@ -29,8 +29,10 @@ import json
 import os
 import re
 import shlex
+import shutil
 from subprocess import (
     CalledProcessError,
+    check_call,
     check_output,
     DEVNULL,
     PIPE,
@@ -45,6 +47,7 @@ from threading import (
     Thread,
 )
 import time
+import traceback
 import zipfile
 
 
@@ -67,6 +70,9 @@ except ImportError:
         SignalException,
         capture_script_output,
     )
+
+
+NETPLAN_DIR = '/etc/netplan'
 
 
 def fail(msg):
@@ -305,6 +311,148 @@ def install_dependencies(scripts, send_result=True):
     return True
 
 
+class CustomNetworking:
+
+    def __init__(self, scripts, config_dir, send_result=True):
+        self.scripts = scripts
+        self.config_dir = config_dir
+        self.backup_dir = os.path.join(config_dir, 'netplan.bak')
+        self.netplan_yaml = os.path.join(self.config_dir, 'netplan.yaml')
+        self.send_result = send_result
+        if scripts:
+            self.url = scripts[0]['args']['url']
+            self.creds = scripts[0]['args']['creds']
+            self.apply_configured_networking = scripts[0].get(
+                'apply_configured_networking', False)
+        else:
+            self.url = self.creds = None
+            self.apply_configured_networking = False
+
+    def _bring_down_networking(self):
+        """Bring down all networking.
+
+        netplan applies network settings to your system but does not remove
+        everything. For example if a bond configuration is applied then a
+        basic DHCP configuration is applied and the bond will still be up. Even
+        if IP addresses are removed from an interface they remain up. Bring
+        down networking so when a new configuration is applied its in a clean
+        environment.
+
+        This method doesn't trust get_interfaces() as a user provided
+        script may have changed the network configuration."""
+        for path, cmd in (
+                ('/sys/devices/virtual/net', ['ip', 'link', 'delete']),
+                ('/sys/class/net', ['ip', 'link', 'set', 'down'])):
+            for dev in os.listdir(path):
+                if dev == 'lo':
+                    # lo should always be available and up. netplan will not
+                    # reconfigure lo
+                    continue
+                if not os.path.isfile(os.path.join(path, dev, 'address')):
+                    # This isn't a device if it doesn't have an address.
+                    continue
+                try:
+                    check_call(cmd + [dev], timeout=60)
+                except:
+                    # This is a best effort. netplan apply will be run after
+                    # this which may restore networking.
+                    pass
+
+    def _apply_ephemeral_netplan(self):
+        """Apply netplan config from ephemeral boot."""
+        # If there is no backup_dir the ephemeral network configuration
+        # was already applied.
+        if not os.path.exists(self.backup_dir):
+            return
+
+        applied_netplan_yaml = os.path.join(NETPLAN_DIR, 'netplan.yaml')
+        if os.path.exists(applied_netplan_yaml):
+            os.remove(applied_netplan_yaml)
+        for f in os.listdir(self.backup_dir):
+            shutil.move(os.path.join(self.backup_dir, f), NETPLAN_DIR)
+        os.removedirs(self.backup_dir)
+
+        self._bring_down_networking()
+        try:
+            check_call(['netplan', 'apply', '--debug'], timeout=60)
+        except TimeoutExpired:
+            sys.stderr.write('WARNING: netplan apply --debug timed out!\n')
+            sys.stderr.flush()
+        except CalledProcessError:
+            sys.stderr.write('WARNING: netplan apply --debug failed!\n')
+            sys.stderr.flush()
+        if self.send_result:
+            # Confirm we can still communicate with MAAS.
+            signal_wrapper(
+                self.url, self.creds, 'APPLYING_NETCONF',
+                'ephemeral netplan applied')
+        # The ephemeral environment network configuration only brings up the
+        # PXE interface.
+        get_interfaces(clear_cache=True)
+
+    def __enter__(self):
+        """Apply the user network configuration."""
+        if not self.apply_configured_networking:
+            return self
+        output_and_send_scripts(
+            'Applying custom network configuration for {msg_name}',
+            self.scripts, self.send_result, status='APPLYING_NETCONF')
+
+        if not os.path.exists(self.netplan_yaml):
+            # This should never happen, if it does it means the Metadata
+            # server is sending us incomplete data.
+            output_and_send_scripts(
+                'Unable to apply custom network configuration for {msg_name}.'
+                '\n\nnetplan.yaml is missing from tar.', self.scripts,
+                self.send_result, error_is_stderr=True, exit_status=1,
+                status='APPLYING_NETCONF')
+            raise FileNotFoundError(self.netplan_yaml)
+
+        # Backup existing netplan config
+        os.makedirs(self.backup_dir, exist_ok=True)
+        for f in os.listdir(NETPLAN_DIR):
+            shutil.move(os.path.join(NETPLAN_DIR, f), self.backup_dir)
+        # Place the customized netplan config in
+        shutil.copy2(self.netplan_yaml, NETPLAN_DIR)
+
+        self._bring_down_networking()
+        # Apply the configuration.
+        if not run_and_check(
+                ['netplan', 'apply', '--debug'], self.scripts,
+                'APPLYING_NETCONF', self.send_result, True):
+            self._apply_ephemeral_netplan()
+            raise OSError('netplan failed to apply!')
+
+        # The new network configuration may change what devices are available.
+        # Clear the cache and reload.
+        get_interfaces(clear_cache=True)
+
+        try:
+            # Confirm we can still communicate with MAAS.
+            if self.send_result:
+                signal(
+                    self.url, self.creds, 'APPLYING_NETCONF',
+                    'User netplan config applied')
+        except SignalException:
+            self._apply_ephemeral_netplan()
+            output_and_send_scripts(
+                'Unable to communicate to the MAAS metadata service after '
+                'applying custom network configuration.', self.scripts,
+                self.send_result, error_is_stderr=True, exit_status=1,
+                status='APPLYING_NETCONF')
+            raise
+        else:
+            # Network configuration successfully applied. Clear the logs so
+            # only script output is reported
+            _clean_logs(self.scripts)
+        return self
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        # Only revert networking if custom networking was applied.
+        if self.apply_configured_networking:
+            self._apply_ephemeral_netplan()
+
+
 # Cache the block devices so we only have to query once.
 _block_devices = None
 _block_devices_lock = Lock()
@@ -360,7 +508,9 @@ _interfaces = None
 _interfaces_lock = Lock()
 
 
-def get_interfaces():
+# XXX ltrager 2019-07-26 - clear_cache will be implemented in the next
+# branch.
+def get_interfaces(clear_cache=False):
     """If needed, query /sys for all known interfaces and store."""
     global _interfaces
     global _interfaces_lock
@@ -569,12 +719,19 @@ def run_serial_scripts(scripts, scripts_dir, config_dir, send_result=True):
     """Run scripts serially."""
     fail_count = 0
     for script in scripts:
-        if not install_dependencies([script], send_result):
+        try:
+            with CustomNetworking([script], config_dir, send_result):
+                if not install_dependencies([script], send_result):
+                    fail_count += 1
+                    continue
+                if not run_script(
+                        script=script, scripts_dir=scripts_dir,
+                        send_result=send_result):
+                    fail_count += 1
+        except SignalException:
             fail_count += 1
-            continue
-        if not run_script(
-                script=script, scripts_dir=scripts_dir,
-                send_result=send_result):
+        except:
+            traceback.print_exc()
             fail_count += 1
     return fail_count
 
@@ -590,46 +747,72 @@ def run_instance_scripts(scripts, scripts_dir, config_dir, send_result=True):
                 continue
             if instance_script['name'] == script['name']:
                 instance_scripts.append(instance_script)
-            if not install_dependencies(instance_scripts, send_result):
-                fail_count += len(instance_scripts)
-                continue
-            for instance_script in instance_scripts:
-                instance_script['thread'] = Thread(
-                    target=run_script, name=script['msg_name'],
-                    kwargs={
-                        'script': instance_script,
-                        'scripts_dir': scripts_dir,
-                        'send_result': send_result,
-                    })
-                instance_script['thread'].start()
-            for instance_script in instance_scripts:
-                instance_script['thread'].join()
-                if instance_script.get('exit_status') != 0:
-                    fail_count += 1
+        try:
+            with CustomNetworking(
+                    instance_scripts, config_dir, send_result):
+                if not install_dependencies(instance_scripts, send_result):
+                    fail_count += len(instance_scripts)
+                    continue
+                for instance_script in instance_scripts:
+                    instance_script['thread'] = Thread(
+                        target=run_script, name=script['msg_name'],
+                        kwargs={
+                            'script': instance_script,
+                            'scripts_dir': scripts_dir,
+                            'send_result': send_result,
+                        })
+                    instance_script['thread'].start()
+                for instance_script in instance_scripts:
+                    instance_script['thread'].join()
+                    if instance_script.get('exit_status') != 0:
+                        fail_count += 1
+        except SignalException:
+            fail_count += len(instance_scripts)
+        except:
+            traceback.print_exc()
+            fail_count += len(instance_scripts)
     return fail_count
 
 
 def run_parallel_scripts(scripts, scripts_dir, config_dir, send_result=True):
     """Run scripts in parallel."""
     fail_count = 0
-    # Start scripts which do not have dependencies first so they
-    # can run while other scripts are installing.
-    for script in sorted(scripts, key=lambda i: (
-            len(i.get('packages', {}).keys()), i['name'])):
-        if not install_dependencies([script], send_result):
-            fail_count += 1
-            continue
-        script['thread'] = Thread(
-            target=run_script, name=script['msg_name'], kwargs={
-                'script': script,
-                'scripts_dir': scripts_dir,
-                'send_result': send_result,
-                })
-        script['thread'].start()
+    # Make sure custom networking is only applied when the running script
+    # requests it. Scripts which don't require custom networking(default)
+    # run first.
+    non_netconf_scripts = []
+    netconf_scripts = []
     for script in scripts:
-        script['thread'].join()
-        if script.get('exit_status') != 0:
-            fail_count += 1
+        if script.get('apply_configured_networking'):
+            netconf_scripts.append(script)
+        else:
+            non_netconf_scripts.append(script)
+    for nscripts in [non_netconf_scripts, netconf_scripts]:
+        try:
+            with CustomNetworking(nscripts, config_dir, send_result):
+                # Start scripts which do not have dependencies first so they
+                # can run while other scripts are installing.
+                for script in sorted(nscripts, key=lambda i: (
+                        len(i.get('packages', {}).keys()), i['name'])):
+                    if not install_dependencies([script], send_result):
+                        fail_count += 1
+                        continue
+                    script['thread'] = Thread(
+                        target=run_script, name=script['msg_name'], kwargs={
+                            'script': script,
+                            'scripts_dir': scripts_dir,
+                            'send_result': send_result,
+                            })
+                    script['thread'].start()
+                for script in nscripts:
+                    script['thread'].join()
+                    if script.get('exit_status') != 0:
+                        fail_count += 1
+        except SignalException:
+            fail_count += len(nscripts)
+        except:
+            traceback.print_exec()
+            fail_count += len(nscripts)
     return fail_count
 
 
