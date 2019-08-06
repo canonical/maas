@@ -1056,9 +1056,12 @@ class TestRunScript(MAASTestCase):
 class TestRunScripts(MAASTestCase):
 
     def test_run_scripts(self):
-        mock_install_deps = self.patch(
-            maas_run_remote_scripts, 'install_dependencies')
-        mock_run_script = self.patch(maas_run_remote_scripts, 'run_script')
+        mock_run_serial_scripts = self.patch(
+            maas_run_remote_scripts, 'run_serial_scripts')
+        mock_run_instance_scripts = self.patch(
+            maas_run_remote_scripts, 'run_instance_scripts')
+        mock_run_parallel_scripts = self.patch(
+            maas_run_remote_scripts, 'run_parallel_scripts')
         single_thread = make_scripts(instance=False, parallel=0)
         instance_thread = [
             make_scripts(parallel=1)
@@ -1076,24 +1079,32 @@ class TestRunScripts(MAASTestCase):
 
         run_scripts(url, creds, scripts_dir, out_dir, scripts)
 
-        self.assertEquals(
-            len(single_thread) + len(instance_thread) + len(any_thread),
-            mock_install_deps.call_count)
+        serial_scripts = []
+        instance_scripts = []
+        parallel_scripts = []
+        for script in sorted(
+                scripts, key=lambda i: (
+                    99 if i['hardware_type'] == 0 else i['hardware_type'],
+                    i['name'])):
+            if script['parallel'] == 0:
+                serial_scripts.append(script)
+            elif script['parallel'] == 1:
+                instance_scripts.append(script)
+            elif script['parallel'] == 2:
+                parallel_scripts.append(script)
 
-        expected_calls = [
-            call(script=script, scripts_dir=scripts_dir, send_result=True)
-            for script in sorted(scripts, key=lambda i: (
-                99 if i['hardware_type'] == 0 else i['hardware_type'],
-                i['name']))
-            if script['parallel'] != 2
-        ]
-        expected_calls += [
-            call(script=script, scripts_dir=scripts_dir, send_result=True)
-            for script in sorted(scripts, key=lambda i: (
-                len(i.get('packages', {}).keys()), i['name']))
-            if script['parallel'] == 2
-        ]
-        self.assertThat(mock_run_script, MockCallsMatch(*expected_calls))
+        self.assertThat(
+            mock_run_serial_scripts,
+            MockCalledOnceWith(
+                serial_scripts, scripts_dir, ANY, True))
+        self.assertThat(
+            mock_run_instance_scripts,
+            MockCalledOnceWith(
+                instance_scripts, scripts_dir, ANY, True))
+        self.assertThat(
+            mock_run_parallel_scripts,
+            MockCalledOnceWith(
+                parallel_scripts, scripts_dir, ANY, True))
 
     def test_run_scripts_adds_data(self):
         scripts_dir = factory.make_name('scripts_dir')
@@ -1122,6 +1133,7 @@ class TestRunScripts(MAASTestCase):
             'parallel': script['parallel'],
             'hardware_type': script['hardware_type'],
             'has_started': script['has_started'],
+            'args': script['args'],
         }]
         run_scripts(url, creds, scripts_dir, out_dir, scripts)
         scripts[0].pop('thread', None)
@@ -1193,7 +1205,7 @@ class TestRunScriptsFromMetadata(MAASTestCase):
                 index_json['testing_scripts'], True))
         self.assertThat(self.mock_signal, MockAnyCall(None, None, 'TESTING'))
         self.assertThat(mock_download_and_extract_tar, MockCalledOnceWith(
-            'None/maas-scripts/', None, scripts_dir))
+            'Nonemaas-scripts', None, scripts_dir))
 
     def test_run_scripts_from_metadata_doesnt_run_tests_on_commiss_fail(self):
         scripts_dir = self.useFixture(TempDirectory()).path
@@ -1241,7 +1253,7 @@ class TestRunScriptsFromMetadata(MAASTestCase):
         self.assertThat(self.mock_signal, MockAnyCall(None, None, 'TESTING'))
         self.assertThat(
             mock_download_and_extract_tar,
-            MockCalledOnceWith('None/maas-scripts/', None, scripts_dir))
+            MockCalledOnceWith('Nonemaas-scripts', None, scripts_dir))
         self.assertThat(
             self.mock_run_scripts,
             MockAnyCall(
