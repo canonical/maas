@@ -1,6 +1,5 @@
 name: maas
-version: git
-version-script: utilities/calc-snap-version
+adopt-info: maas
 summary: Metal as a Service
 description: |
   Total automation of your physical servers for amazing data center operational efficiency.
@@ -158,6 +157,7 @@ parts:
     prime:
       - $remove
     override-build: |
+      set -e
       snapcraftctl build
       cp -a ../../snap/src/bin ../../snap/src/sbin $SNAPCRAFT_PART_INSTALL
       ln -s -f ../usr/lib/postgresql/10/bin/initdb $SNAPCRAFT_PART_INSTALL/bin/initdb
@@ -168,6 +168,10 @@ parts:
       # See https://bugs.launchpad.net/snapcraft/+bug/1774410
       ln -s -f ../../../../../../var/lib/ieee-data/oui.txt $SNAPCRAFT_PART_INSTALL/usr/lib/python3/dist-packages/netaddr/eui/oui.txt
       ln -s -f ../../../../../../var/lib/ieee-data/iab.txt $SNAPCRAFT_PART_INSTALL/usr/lib/python3/dist-packages/netaddr/eui/iab.txt
+    override-prime: |
+      set -e
+      snapcraftctl set-version $($SNAPCRAFT_PART_SRC/utilities/calc-snap-version)
+      snapcraftctl prime
 
   region-static:
     plugin: dump
@@ -255,6 +259,7 @@ parts:
       - libperl-dev
       - dpkg-dev
     override-build: |
+      set -e
       HOST_MULTIARCH=$(gcc -print-multiarch)
       ARCH=$(dpkg-architecture -qDEB_HOST_ARCH_BITS)
       if [ $ARCH -eq 64 ]; then
