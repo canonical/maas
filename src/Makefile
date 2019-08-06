@@ -3,22 +3,21 @@
 #
 
 ARCHES := amd64 386 arm arm64 ppc64le s390x
-
-BINARIES = $(addprefix $(BINARY_PREFIX), $(ARCHES))
+BINARIES = $(ARCHES)
 
 .DEFAULT_GOAL := build
 
 deps:
-	go get -v github.com/lxc/lxd/lxd/resources
+	go get -u -v github.com/lxc/lxd/lxd/resources
 .PHONY: deps
 
-build: deps $(BINARIES)
+build: $(BINARIES)
 .PHONY: build
 
 $(BINARY_PREFIX)%: %
 	@true  # to force the rule to execute
 
-$(ARCHES):
+$(ARCHES): deps
 	GOARCH=$@ go build -o $@ machine-resources.go
 .PHONY: $(ARCHES)
 
