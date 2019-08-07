@@ -32,7 +32,8 @@ export function SubnetDetailsController(
   ManagerHelperService,
   ErrorService,
   ConverterService,
-  DHCPSnippetsManager
+  DHCPSnippetsManager,
+  GeneralManager
 ) {
   // Set title and page.
   $rootScope.title = "Loading...";
@@ -40,6 +41,13 @@ export function SubnetDetailsController(
   // Note: this value must match the top-level tab, in order for
   // highlighting to occur properly.
   $rootScope.page = "networks";
+
+  // Set flag for RSD navigation item.
+  if (!$rootScope.showRSDLink) {
+    GeneralManager.getNavigationOptions().then(
+      res => ($rootScope.showRSDLink = res.rsd)
+    );
+  }
 
   // Initial values.
   $scope.loaded = false;

@@ -14,10 +14,18 @@ function NodeResultController(
   ControllersManager,
   NodeResultsManagerFactory,
   ManagerHelperService,
-  ErrorService
+  ErrorService,
+  GeneralManager
 ) {
   // Set the title and page.
   $rootScope.title = "Loading...";
+
+  // Set flag for RSD navigation item.
+  if (!$rootScope.showRSDLink) {
+    GeneralManager.getNavigationOptions().then(
+      res => ($rootScope.showRSDLink = res.rsd)
+    );
+  }
 
   // Initial values.
   $scope.loaded = false;

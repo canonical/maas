@@ -4,6 +4,8 @@
  * Unit tests for ImagesController.
  */
 
+import MockWebSocket from "testing/websocket";
+
 describe("ImagesController", function() {
   // Load the MAAS module.
   beforeEach(angular.mock.module("MAAS"));
@@ -19,12 +21,18 @@ describe("ImagesController", function() {
 
   // Load any injected managers and services.
   var BootResourcesManager, ConfigsManager, UsersManager;
-  var ManagerHelperService;
+  var ManagerHelperService, RegionConnection, webSocket;
   beforeEach(inject(function($injector) {
     BootResourcesManager = $injector.get("BootResourcesManager");
     ConfigsManager = $injector.get("ConfigsManager");
     UsersManager = $injector.get("UsersManager");
     ManagerHelperService = $injector.get("ManagerHelperService");
+    RegionConnection = $injector.get("RegionConnection");
+
+    // Mock buildSocket so an actual connection is not made.
+    webSocket = new MockWebSocket();
+    spyOn(RegionConnection, "buildSocket").and.returnValue(webSocket);
+    spyOn(RegionConnection, "callMethod").and.returnValue($q.defer().promise);
   }));
 
   // Makes the NodesListController

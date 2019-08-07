@@ -80,7 +80,7 @@
             <li class="p-navigation__link" role="menuitem">
               <a href="{% url 'index' %}#/kvm">KVM</a>
             </li>
-            <li class="p-navigation__link" role="menuitem">
+            <li class="p-navigation__link" role="menuitem" data-ng-if="showRSDLink">
               <a href="{% url 'index' %}#/rsd">RSD</a>
             </li>
           </ul>
@@ -137,8 +137,9 @@
           data-ng-class="{ 'is-selected': page === 'rsd' }"
         >
           <a
-            class="{% block nav-active-rsd-list %}{% endblock %} p-dropdown__item"
+            class="{% block nav-active-rsd-list %}{% endblock %} p-dropdown__item u-hide js-rsd-link"
             href="{% url 'index' %}#/rsd"
+            data-ng-if="showRSDLink"
             >RSD</a
           >
         </li>

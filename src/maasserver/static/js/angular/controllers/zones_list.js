@@ -10,11 +10,19 @@ function ZonesListController(
   $rootScope,
   ZonesManager,
   UsersManager,
-  ManagerHelperService
+  ManagerHelperService,
+  GeneralManager
 ) {
   // Set title and page.
   $rootScope.title = "Zones";
   $rootScope.page = "zones";
+
+  // Set flag for RSD navigation item.
+  if (!$rootScope.showRSDLink) {
+    GeneralManager.getNavigationOptions().then(
+      res => ($rootScope.showRSDLink = res.rsd)
+    );
+  }
 
   // Set initial values.
   $scope.zoneManager = ZonesManager;

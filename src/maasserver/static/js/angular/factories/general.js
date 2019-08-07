@@ -442,6 +442,11 @@ function GeneralManager($q, $timeout, RegionConnection, ErrorService) {
     }
   };
 
+  // Get navigation options so navigation can be updated.
+  GeneralManager.prototype.getNavigationOptions = () => {
+    return RegionConnection.callMethod("general.navigation_options");
+  };
+
   return new GeneralManager();
 }
 

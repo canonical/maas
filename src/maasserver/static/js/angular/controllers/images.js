@@ -11,10 +11,18 @@ function ImagesController(
   BootResourcesManager,
   ConfigsManager,
   UsersManager,
-  ManagerHelperService
+  ManagerHelperService,
+  GeneralManager
 ) {
   $rootScope.page = "images";
   $rootScope.title = "Loading...";
+
+  // Set flag for RSD navigation item.
+  if (!$rootScope.showRSDLink) {
+    GeneralManager.getNavigationOptions().then(
+      res => ($rootScope.showRSDLink = res.rsd)
+    );
+  }
 
   $scope.loading = true;
   $scope.bootResources = BootResourcesManager.getData();

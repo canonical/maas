@@ -32,6 +32,13 @@ function PodsListController(
     $rootScope.page = "kvm";
   }
 
+  // Set flag for RSD navigation item.
+  if (!$rootScope.showRSDLink) {
+    GeneralManager.getNavigationOptions().then(
+      res => ($rootScope.showRSDLink = res.rsd)
+    );
+  }
+
   $scope.filteredItems = [];
   $scope.selectedItems = PodsManager.getSelectedItems();
   $scope.predicate = "name";

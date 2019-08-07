@@ -13,7 +13,8 @@ function DomainDetailsController(
   DomainsManager,
   UsersManager,
   ManagerHelperService,
-  ErrorService
+  ErrorService,
+  GeneralManager
 ) {
   // Set title and page.
   $rootScope.title = "Loading...";
@@ -21,6 +22,13 @@ function DomainDetailsController(
   // Note: this value must match the top-level tab, in order for
   // highlighting to occur properly.
   $rootScope.page = "domains";
+
+  // Set flag for RSD navigation item.
+  if (!$rootScope.showRSDLink) {
+    GeneralManager.getNavigationOptions().then(
+      res => ($rootScope.showRSDLink = res.rsd)
+    );
+  }
 
   // Initial values.
   $scope.loaded = false;

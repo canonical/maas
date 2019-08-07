@@ -37495,9 +37495,20 @@ function setupGA($rootScope, $window) {
     $window.ga("send", "pageview", path);
   });
 }
+/* @ngInject */
+// Removes hide class from RSD link which is hidden
+// so it doesn't flash up in the nav before angular is ready
+
+
+function unhideRSDLinks() {
+  var rsdLinks = document.querySelectorAll(".js-rsd-link");
+  rsdLinks.forEach(function (link) {
+    return link.classList.remove("u-hide");
+  });
+}
 
 angular.module("MAAS", ["ngRoute", "ngCookies", "ngSanitize", "ngTagsInput", "vs-repeat"]).config(configureMaas).run(introRedirect).run(setupGA) // template caches
-.run(_action_button.cacheActionButton).run(_call_to_action.cacheCta).run(_controller_status.cacheControllerStatus).run(_dbl_click_overlay.cacheDoubleClickOverlay).run(_error_overlay.cacheErrorOverlay).run(_notifications.cacheNotifications).run(_os_select.cacheOsSelect).run(_pod_parameters.cachePodParameters).run(_cores_chart.cacheCoresChart).run(_power_parameters.cachePowerParameters).run(_release_options.cacheReleaseOptions).run(_script_runtime.cacheScriptRuntime).run(_script_select.cacheScriptSelect).run(_script_status.cacheScriptStatus) // Registration
+.run(_action_button.cacheActionButton).run(_call_to_action.cacheCta).run(_controller_status.cacheControllerStatus).run(_dbl_click_overlay.cacheDoubleClickOverlay).run(_error_overlay.cacheErrorOverlay).run(_notifications.cacheNotifications).run(_os_select.cacheOsSelect).run(_pod_parameters.cachePodParameters).run(_cores_chart.cacheCoresChart).run(_power_parameters.cachePowerParameters).run(_release_options.cacheReleaseOptions).run(_script_runtime.cacheScriptRuntime).run(_script_select.cacheScriptSelect).run(_script_status.cacheScriptStatus).run(unhideRSDLinks) // Registration
 // filters
 .filter("filterByUnusedForInterface", _node_details_networking.filterByUnusedForInterface).filter("removeInterfaceParents", _node_details_networking.removeInterfaceParents).filter("removeDefaultVLANIfVLAN", _node_details_networking.removeDefaultVLANIfVLAN).filter("filterLinkModes", _node_details_networking.filterLinkModes).filter("removeAvailableByNew", _node_details_storage.removeAvailableByNew).filter("datastoresOnly", _node_details_storage.datastoresOnly).filter("filterSource", _subnet_details.filterSource).filter("ignoreSelf", _vlan_details.ignoreSelf).filter("removeNoDHCP", _vlan_details.removeNoDHCP).filter("filterByFabric", _by_fabric.default).filter("filterBySpace", _by_space.filterBySpace).filter("filterByNullSpace", _by_space.filterByNullSpace).filter("filterBySubnet", _by_subnet.filterBySubnet).filter("filterBySubnetOrVlan", _by_subnet.filterBySubnetOrVlan).filter("filterByVLAN", _by_vlan.filterByVLAN).filter("filterControllersByVLAN", _by_vlan.filterControllersByVLAN).filter("formatBytes", _format_bytes.formatBytes).filter("convertGigabyteToBytes", _format_bytes.convertGigabyteToBytes).filter("formatStorageType", _format_storage_type.default).filter("nodesFilter", _nodes.default).filter("orderByDate", _order_by_date.default).filter("range", _range.default).filter("removeDefaultVLAN", _remove_default_vlan.default).filter("filterEditInterface", _node_details_networking.filterEditInterface).filter("filterSelectedInterfaces", _node_details_networking.filterSelectedInterfaces).filter("filterVLANNotOnFabric", _node_details_networking.filterVLANNotOnFabric) // factories
 .factory("PollingManager", _pollingmanager.default).factory("BootResourcesManager", _bootresources.default).factory("ConfigsManager", _configs.default).factory("ControllersManager", _controllers.default).factory("DevicesManager", _devices.default).factory("DHCPSnippetsManager", _dhcpsnippets.default).factory("DiscoveriesManager", _discoveries.default).factory("DomainsManager", _domains.default).factory("EventsManagerFactory", _events.default).factory("FabricsManager", _fabrics.default).factory("GeneralManager", _general.default).factory("getBakery", _login.getBakery).factory("IPRangesManager", _ipranges.default).factory("MachinesManager", _machines.default).factory("NodeResultsManagerFactory", _node_results.default).factory("NotificationsManager", _notifications2.default).factory("PackageRepositoriesManager", _packagerepositories.default).factory("ResourcePoolsManager", _resourcepools.default).factory("ScriptsManager", _scripts.default).factory("ServicesManager", _services.default).factory("SpacesManager", _spaces.default).factory("SSHKeysManager", _sshkeys.default).factory("StaticRoutesManager", _staticroutes.default).factory("SubnetsManager", _subnets.default).factory("SwitchesManager", _switches.default).factory("TagsManager", _tags.default).factory("UsersManager", _users.default).factory("VLANsManager", _vlans.default).factory("ZonesManager", _zones.default) // services
@@ -43689,7 +43700,7 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.filterSource = filterSource;
 exports.SubnetDetailsController = SubnetDetailsController;
-SubnetDetailsController.$inject = ["$scope", "$rootScope", "$routeParams", "$location", "ConfigsManager", "SubnetsManager", "SpacesManager", "VLANsManager", "UsersManager", "FabricsManager", "StaticRoutesManager", "ManagerHelperService", "ErrorService", "ConverterService", "DHCPSnippetsManager"];
+SubnetDetailsController.$inject = ["$scope", "$rootScope", "$routeParams", "$location", "ConfigsManager", "SubnetsManager", "SpacesManager", "VLANsManager", "UsersManager", "FabricsManager", "StaticRoutesManager", "ManagerHelperService", "ErrorService", "ConverterService", "DHCPSnippetsManager", "GeneralManager"];
 
 /* Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
@@ -43710,12 +43721,19 @@ function filterSource() {
 /* @ngInject */
 
 
-function SubnetDetailsController($scope, $rootScope, $routeParams, $location, ConfigsManager, SubnetsManager, SpacesManager, VLANsManager, UsersManager, FabricsManager, StaticRoutesManager, ManagerHelperService, ErrorService, ConverterService, DHCPSnippetsManager) {
+function SubnetDetailsController($scope, $rootScope, $routeParams, $location, ConfigsManager, SubnetsManager, SpacesManager, VLANsManager, UsersManager, FabricsManager, StaticRoutesManager, ManagerHelperService, ErrorService, ConverterService, DHCPSnippetsManager, GeneralManager) {
   // Set title and page.
   $rootScope.title = "Loading..."; // Note: this value must match the top-level tab, in order for
   // highlighting to occur properly.
 
-  $rootScope.page = "networks"; // Initial values.
+  $rootScope.page = "networks"; // Set flag for RSD navigation item.
+
+  if (!$rootScope.showRSDLink) {
+    GeneralManager.getNavigationOptions().then(function (res) {
+      return $rootScope.showRSDLink = res.rsd;
+    });
+  } // Initial values.
+
 
   $scope.loaded = false;
   $scope.subnet = null;
@@ -44119,7 +44137,7 @@ Object.defineProperty(exports, "__esModule", {
 exports.ignoreSelf = ignoreSelf;
 exports.removeNoDHCP = removeNoDHCP;
 exports.VLANDetailsController = VLANDetailsController;
-VLANDetailsController.$inject = ["$scope", "$rootScope", "$routeParams", "$filter", "$location", "$timeout", "VLANsManager", "SubnetsManager", "SpacesManager", "FabricsManager", "ControllersManager", "UsersManager", "ManagerHelperService", "ErrorService", "IPRangesManager", "DHCPSnippetsManager"];
+VLANDetailsController.$inject = ["$scope", "$rootScope", "$routeParams", "$filter", "$location", "$timeout", "VLANsManager", "SubnetsManager", "SpacesManager", "FabricsManager", "ControllersManager", "UsersManager", "ManagerHelperService", "ErrorService", "IPRangesManager", "DHCPSnippetsManager", "GeneralManager"];
 
 /* Copyright 2016 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
@@ -44152,14 +44170,21 @@ function removeNoDHCP() {
 /* @ngInject */
 
 
-function VLANDetailsController($scope, $rootScope, $routeParams, $filter, $location, $timeout, VLANsManager, SubnetsManager, SpacesManager, FabricsManager, ControllersManager, UsersManager, ManagerHelperService, ErrorService, IPRangesManager, DHCPSnippetsManager) {
+function VLANDetailsController($scope, $rootScope, $routeParams, $filter, $location, $timeout, VLANsManager, SubnetsManager, SpacesManager, FabricsManager, ControllersManager, UsersManager, ManagerHelperService, ErrorService, IPRangesManager, DHCPSnippetsManager, GeneralManager) {
   var vm = this;
   var filterByVLAN = $filter("filterByVLAN"); // Set title and page.
 
   $rootScope.title = "Loading..."; // Note: this value must match the top-level tab, in order for
   // highlighting to occur properly.
 
-  $rootScope.page = "networks";
+  $rootScope.page = "networks"; // Set flag for RSD navigation item.
+
+  if (!$rootScope.showRSDLink) {
+    GeneralManager.getNavigationOptions().then(function (res) {
+      return $rootScope.showRSDLink = res.rsd;
+    });
+  }
+
   vm.DELETE_ACTION = {
     name: "delete",
     title: "Delete"
@@ -49652,6 +49677,11 @@ function GeneralManager($q, $timeout, RegionConnection, ErrorService) {
       this._reloadFunc = null;
       this._autoReload = false;
     }
+  }; // Get navigation options so navigation can be updated.
+
+
+  GeneralManager.prototype.getNavigationOptions = function () {
+    return RegionConnection.callMethod("general.navigation_options");
   };
 
   return new GeneralManager();
@@ -52555,7 +52585,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.default = void 0;
-DashboardController.$inject = ["$scope", "$rootScope", "$location", "DiscoveriesManager", "DomainsManager", "MachinesManager", "DevicesManager", "SubnetsManager", "VLANsManager", "ConfigsManager", "ManagerHelperService", "SearchService"];
+DashboardController.$inject = ["$scope", "$rootScope", "$location", "DiscoveriesManager", "DomainsManager", "MachinesManager", "DevicesManager", "SubnetsManager", "VLANsManager", "ConfigsManager", "ManagerHelperService", "SearchService", "GeneralManager"];
 
 /* Copyright 2016 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
@@ -52564,12 +52594,19 @@ DashboardController.$inject = ["$scope", "$rootScope", "$location", "Discoveries
  */
 
 /* @ngInject */
-function DashboardController($scope, $rootScope, $location, DiscoveriesManager, DomainsManager, MachinesManager, DevicesManager, SubnetsManager, VLANsManager, ConfigsManager, ManagerHelperService, SearchService) {
+function DashboardController($scope, $rootScope, $location, DiscoveriesManager, DomainsManager, MachinesManager, DevicesManager, SubnetsManager, VLANsManager, ConfigsManager, ManagerHelperService, SearchService, GeneralManager) {
   // Default device IP options.
   var deviceIPOptions = [["static", "Static"], ["dynamic", "Dynamic"], ["external", "External"]]; // Set title and page.
 
   $rootScope.title = "Dashboard";
-  $rootScope.page = "dashboard"; // Set initial values.
+  $rootScope.page = "dashboard"; // Set flag for RSD navigation item.
+
+  if (!$rootScope.showRSDLink) {
+    GeneralManager.getNavigationOptions().then(function (res) {
+      return $rootScope.showRSDLink = res.rsd;
+    });
+  } // Set initial values.
+
 
   $scope.loaded = false;
   $scope.discoveredDevices = DiscoveriesManager.getItems();
@@ -52869,7 +52906,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.default = void 0;
-DomainDetailsController.$inject = ["$scope", "$rootScope", "$routeParams", "$location", "DomainsManager", "UsersManager", "ManagerHelperService", "ErrorService"];
+DomainDetailsController.$inject = ["$scope", "$rootScope", "$routeParams", "$location", "DomainsManager", "UsersManager", "ManagerHelperService", "ErrorService", "GeneralManager"];
 
 /* Copyright 2016 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
@@ -52878,12 +52915,19 @@ DomainDetailsController.$inject = ["$scope", "$rootScope", "$routeParams", "$loc
  */
 
 /* @ngInject */
-function DomainDetailsController($scope, $rootScope, $routeParams, $location, DomainsManager, UsersManager, ManagerHelperService, ErrorService) {
+function DomainDetailsController($scope, $rootScope, $routeParams, $location, DomainsManager, UsersManager, ManagerHelperService, ErrorService, GeneralManager) {
   // Set title and page.
   $rootScope.title = "Loading..."; // Note: this value must match the top-level tab, in order for
   // highlighting to occur properly.
 
-  $rootScope.page = "domains"; // Initial values.
+  $rootScope.page = "domains"; // Set flag for RSD navigation item.
+
+  if (!$rootScope.showRSDLink) {
+    GeneralManager.getNavigationOptions().then(function (res) {
+      return $rootScope.showRSDLink = res.rsd;
+    });
+  } // Initial values.
+
 
   $scope.loaded = false;
   $scope.domain = null;
@@ -53048,7 +53092,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.default = void 0;
-DomainsListController.$inject = ["$scope", "$rootScope", "DomainsManager", "UsersManager", "ManagerHelperService"];
+DomainsListController.$inject = ["$scope", "$rootScope", "DomainsManager", "UsersManager", "ManagerHelperService", "GeneralManager"];
 
 /* Copyright 2016 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
@@ -53057,11 +53101,18 @@ DomainsListController.$inject = ["$scope", "$rootScope", "DomainsManager", "User
  */
 
 /* @ngInject */
-function DomainsListController($scope, $rootScope, DomainsManager, UsersManager, ManagerHelperService) {
+function DomainsListController($scope, $rootScope, DomainsManager, UsersManager, ManagerHelperService, GeneralManager) {
   // Load the filters that are used inside the controller.
   // Set title and page.
   $rootScope.title = "DNS";
-  $rootScope.page = "domains"; // Set initial values.
+  $rootScope.page = "domains"; // Set flag for RSD navigation item.
+
+  if (!$rootScope.showRSDLink) {
+    GeneralManager.getNavigationOptions().then(function (res) {
+      return $rootScope.showRSDLink = res.rsd;
+    });
+  } // Set initial values.
+
 
   $scope.domains = DomainsManager.getItems();
   $scope.currentpage = "domains";
@@ -53120,7 +53171,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.default = void 0;
-FabricDetailsController.$inject = ["$scope", "$rootScope", "$routeParams", "$filter", "$location", "FabricsManager", "VLANsManager", "SubnetsManager", "SpacesManager", "ControllersManager", "UsersManager", "ManagerHelperService", "ErrorService"];
+FabricDetailsController.$inject = ["$scope", "$rootScope", "$routeParams", "$filter", "$location", "FabricsManager", "VLANsManager", "SubnetsManager", "SpacesManager", "ControllersManager", "UsersManager", "ManagerHelperService", "ErrorService", "GeneralManager"];
 
 /* Copyright 2016 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
@@ -53129,12 +53180,19 @@ FabricDetailsController.$inject = ["$scope", "$rootScope", "$routeParams", "$fil
  */
 
 /* @ngInject */
-function FabricDetailsController($scope, $rootScope, $routeParams, $filter, $location, FabricsManager, VLANsManager, SubnetsManager, SpacesManager, ControllersManager, UsersManager, ManagerHelperService, ErrorService) {
+function FabricDetailsController($scope, $rootScope, $routeParams, $filter, $location, FabricsManager, VLANsManager, SubnetsManager, SpacesManager, ControllersManager, UsersManager, ManagerHelperService, ErrorService, GeneralManager) {
   // Set title and page.
   $rootScope.title = "Loading..."; // Note: this value must match the top-level tab, in order for
   // highlighting to occur properly.
 
-  $rootScope.page = "networks"; // Initial values.
+  $rootScope.page = "networks"; // Set flag for RSD navigation item.
+
+  if (!$rootScope.showRSDLink) {
+    GeneralManager.getNavigationOptions().then(function (res) {
+      return $rootScope.showRSDLink = res.rsd;
+    });
+  } // Initial values.
+
 
   $scope.fabric = null;
   $scope.fabricManager = FabricsManager;
@@ -53307,7 +53365,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.default = void 0;
-ImagesController.$inject = ["$rootScope", "$scope", "BootResourcesManager", "ConfigsManager", "UsersManager", "ManagerHelperService"];
+ImagesController.$inject = ["$rootScope", "$scope", "BootResourcesManager", "ConfigsManager", "UsersManager", "ManagerHelperService", "GeneralManager"];
 
 /* Copyright 2016 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
@@ -53316,9 +53374,16 @@ ImagesController.$inject = ["$rootScope", "$scope", "BootResourcesManager", "Con
  */
 
 /* @ngInject */
-function ImagesController($rootScope, $scope, BootResourcesManager, ConfigsManager, UsersManager, ManagerHelperService) {
+function ImagesController($rootScope, $scope, BootResourcesManager, ConfigsManager, UsersManager, ManagerHelperService, GeneralManager) {
   $rootScope.page = "images";
-  $rootScope.title = "Loading...";
+  $rootScope.title = "Loading..."; // Set flag for RSD navigation item.
+
+  if (!$rootScope.showRSDLink) {
+    GeneralManager.getNavigationOptions().then(function (res) {
+      return $rootScope.showRSDLink = res.rsd;
+    });
+  }
+
   $scope.loading = true;
   $scope.bootResources = BootResourcesManager.getData();
   $scope.configManager = ConfigsManager;
@@ -53549,7 +53614,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.default = void 0;
-NetworksListController.$inject = ["$scope", "$rootScope", "$filter", "$location", "SubnetsManager", "FabricsManager", "SpacesManager", "VLANsManager", "UsersManager", "ManagerHelperService"];
+NetworksListController.$inject = ["$scope", "$rootScope", "$filter", "$location", "SubnetsManager", "FabricsManager", "SpacesManager", "VLANsManager", "UsersManager", "ManagerHelperService", "GeneralManager"];
 
 /* Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
@@ -53558,7 +53623,7 @@ NetworksListController.$inject = ["$scope", "$rootScope", "$filter", "$location"
  */
 
 /* @ngInject */
-function NetworksListController($scope, $rootScope, $filter, $location, SubnetsManager, FabricsManager, SpacesManager, VLANsManager, UsersManager, ManagerHelperService) {
+function NetworksListController($scope, $rootScope, $filter, $location, SubnetsManager, FabricsManager, SpacesManager, VLANsManager, UsersManager, ManagerHelperService, GeneralManager) {
   // Load the filters that are used inside the controller.
   var filterByVLAN = $filter("filterByVLAN");
   var filterByFabric = $filter("filterByFabric");
@@ -53566,8 +53631,15 @@ function NetworksListController($scope, $rootScope, $filter, $location, SubnetsM
   var filterByNullSpace = $filter("filterByNullSpace"); // Set title and page.
 
   $rootScope.title = "Subnets";
-  $rootScope.page = "networks"; // Set the initial value of $scope.groupBy based on the URL
+  $rootScope.page = "networks"; // Set flag for RSD navigation item.
+
+  if (!$rootScope.showRSDLink) {
+    GeneralManager.getNavigationOptions().then(function (res) {
+      return $rootScope.showRSDLink = res.rsd;
+    });
+  } // Set the initial value of $scope.groupBy based on the URL
   // parameters, but default to the 'fabric' groupBy if it's not found.
+
 
   $scope.getURLParameters = function () {
     if (angular.isString($location.search().by)) {
@@ -54028,7 +54100,14 @@ function NodeDetailsController($scope, $rootScope, $routeParams, $location, Devi
     static: "Static"
   }; // Set title and page.
 
-  $rootScope.title = "Loading..."; // Initial values.
+  $rootScope.title = "Loading..."; // Set flag for RSD navigation item.
+
+  if (!$rootScope.showRSDLink) {
+    GeneralManager.getNavigationOptions().then(function (res) {
+      return $rootScope.showRSDLink = res.rsd;
+    });
+  } // Initial values.
+
 
   $scope.MAAS_config = $window.MAAS_config;
   $scope.loaded = false;
@@ -55279,7 +55358,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.default = void 0;
-NodeEventsController.$inject = ["$scope", "$rootScope", "$routeParams", "$location", "MachinesManager", "ControllersManager", "EventsManagerFactory", "ManagerHelperService", "ErrorService"];
+NodeEventsController.$inject = ["$scope", "$rootScope", "$routeParams", "$location", "MachinesManager", "ControllersManager", "EventsManagerFactory", "ManagerHelperService", "ErrorService", "GeneralManager"];
 
 /* Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
@@ -55288,11 +55367,18 @@ NodeEventsController.$inject = ["$scope", "$rootScope", "$routeParams", "$locati
  */
 
 /* @ngInject */
-function NodeEventsController($scope, $rootScope, $routeParams, $location, MachinesManager, ControllersManager, EventsManagerFactory, ManagerHelperService, ErrorService) {
+function NodeEventsController($scope, $rootScope, $routeParams, $location, MachinesManager, ControllersManager, EventsManagerFactory, ManagerHelperService, ErrorService, GeneralManager) {
   // Events manager that is loaded once the node is loaded.
   var eventsManager = null; // Set the title and page.
 
-  $rootScope.title = "Loading..."; // Initial values.
+  $rootScope.title = "Loading..."; // Set flag for RSD navigation item.
+
+  if (!$rootScope.showRSDLink) {
+    GeneralManager.getNavigationOptions().then(function (res) {
+      return $rootScope.showRSDLink = res.rsd;
+    });
+  } // Initial values.
+
 
   $scope.loaded = false;
   $scope.node = null;
@@ -55383,7 +55469,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.default = void 0;
-NodeResultController.$inject = ["$scope", "$rootScope", "$routeParams", "$location", "MachinesManager", "ControllersManager", "NodeResultsManagerFactory", "ManagerHelperService", "ErrorService"];
+NodeResultController.$inject = ["$scope", "$rootScope", "$routeParams", "$location", "MachinesManager", "ControllersManager", "NodeResultsManagerFactory", "ManagerHelperService", "ErrorService", "GeneralManager"];
 
 /* Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
@@ -55392,9 +55478,16 @@ NodeResultController.$inject = ["$scope", "$rootScope", "$routeParams", "$locati
  */
 
 /* @ngInject */
-function NodeResultController($scope, $rootScope, $routeParams, $location, MachinesManager, ControllersManager, NodeResultsManagerFactory, ManagerHelperService, ErrorService) {
+function NodeResultController($scope, $rootScope, $routeParams, $location, MachinesManager, ControllersManager, NodeResultsManagerFactory, ManagerHelperService, ErrorService, GeneralManager) {
   // Set the title and page.
-  $rootScope.title = "Loading..."; // Initial values.
+  $rootScope.title = "Loading..."; // Set flag for RSD navigation item.
+
+  if (!$rootScope.showRSDLink) {
+    GeneralManager.getNavigationOptions().then(function (res) {
+      return $rootScope.showRSDLink = res.rsd;
+    });
+  } // Initial values.
+
 
   $scope.loaded = false;
   $scope.resultLoaded = false;
@@ -55783,7 +55876,14 @@ function NodesListController($q, $scope, $interval, $rootScope, $routeParams, $r
   }; // Set title and page.
 
   $rootScope.title = "Machines";
-  $rootScope.page = "machines"; // Set initial values.
+  $rootScope.page = "machines"; // Set flag for RSD navigation item.
+
+  if (!$rootScope.showRSDLink) {
+    GeneralManager.getNavigationOptions().then(function (res) {
+      return $rootScope.showRSDLink = res.rsd;
+    });
+  } // Set initial values.
+
 
   $scope.MAAS_config = $window.MAAS_config;
   $scope.machines = MachinesManager.getItems();
@@ -56982,6 +57082,13 @@ function PodDetailsController($scope, $rootScope, $location, $routeParams, $filt
   } else {
     $rootScope.page = "kvm";
     $scope.pageType = "KVM";
+  } // Set flag for RSD navigation item.
+
+
+  if (!$rootScope.showRSDLink) {
+    GeneralManager.getNavigationOptions().then(function (res) {
+      return $rootScope.showRSDLink = res.rsd;
+    });
   } // Initial values.
 
 
@@ -57719,6 +57826,13 @@ function PodsListController($scope, $rootScope, $location, PodsManager, UsersMan
   } else {
     $rootScope.title = "KVM";
     $rootScope.page = "kvm";
+  } // Set flag for RSD navigation item.
+
+
+  if (!$rootScope.showRSDLink) {
+    GeneralManager.getNavigationOptions().then(function (res) {
+      return $rootScope.showRSDLink = res.rsd;
+    });
   }
 
   $scope.filteredItems = [];
@@ -58145,7 +58259,14 @@ SettingsController.$inject = ["$scope", "$rootScope", "$routeParams", "PackageRe
 function SettingsController($scope, $rootScope, $routeParams, PackageRepositoriesManager, DHCPSnippetsManager, MachinesManager, ControllersManager, DevicesManager, SubnetsManager, GeneralManager, ManagerHelperService) {
   // Set the title and page.
   $rootScope.title = "Loading...";
-  $rootScope.page = "settings"; // Initial values.
+  $rootScope.page = "settings"; // Set flag for RSD navigation item.
+
+  if (!$rootScope.showRSDLink) {
+    GeneralManager.getNavigationOptions().then(function (res) {
+      return $rootScope.showRSDLink = res.rsd;
+    });
+  } // Initial values.
+
 
   $scope.loading = true;
   $scope.snippets = DHCPSnippetsManager.getItems();
@@ -58424,7 +58545,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.default = void 0;
-ZoneDetailsController.$inject = ["$scope", "$rootScope", "$routeParams", "$location", "ZonesManager", "UsersManager", "ManagerHelperService", "ErrorService"];
+ZoneDetailsController.$inject = ["$scope", "$rootScope", "$routeParams", "$location", "ZonesManager", "UsersManager", "ManagerHelperService", "ErrorService", "GeneralManager"];
 
 /* Copyright 2016 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
@@ -58433,12 +58554,19 @@ ZoneDetailsController.$inject = ["$scope", "$rootScope", "$routeParams", "$locat
  */
 
 /* @ngInject */
-function ZoneDetailsController($scope, $rootScope, $routeParams, $location, ZonesManager, UsersManager, ManagerHelperService, ErrorService) {
+function ZoneDetailsController($scope, $rootScope, $routeParams, $location, ZonesManager, UsersManager, ManagerHelperService, ErrorService, GeneralManager) {
   // Set title and page.
   $rootScope.title = "Loading..."; // Note: this value must match the top-level tab, in order for
   // highlighting to occur properly.
 
-  $rootScope.page = "zones"; // Initial values.
+  $rootScope.page = "zones"; // Set flag for RSD navigation item.
+
+  if (!$rootScope.showRSDLink) {
+    GeneralManager.getNavigationOptions().then(function (res) {
+      return $rootScope.showRSDLink = res.rsd;
+    });
+  } // Initial values.
+
 
   $scope.loaded = false;
   $scope.zone = null;
@@ -58548,7 +58676,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.default = void 0;
-ZonesListController.$inject = ["$scope", "$rootScope", "ZonesManager", "UsersManager", "ManagerHelperService"];
+ZonesListController.$inject = ["$scope", "$rootScope", "ZonesManager", "UsersManager", "ManagerHelperService", "GeneralManager"];
 
 /* Copyright 2016 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
@@ -58557,10 +58685,17 @@ ZonesListController.$inject = ["$scope", "$rootScope", "ZonesManager", "UsersMan
  */
 
 /* @ngInject */
-function ZonesListController($scope, $rootScope, ZonesManager, UsersManager, ManagerHelperService) {
+function ZonesListController($scope, $rootScope, ZonesManager, UsersManager, ManagerHelperService, GeneralManager) {
   // Set title and page.
   $rootScope.title = "Zones";
-  $rootScope.page = "zones"; // Set initial values.
+  $rootScope.page = "zones"; // Set flag for RSD navigation item.
+
+  if (!$rootScope.showRSDLink) {
+    GeneralManager.getNavigationOptions().then(function (res) {
+      return $rootScope.showRSDLink = res.rsd;
+    });
+  } // Set initial values.
+
 
   $scope.zoneManager = ZonesManager;
   $scope.zones = ZonesManager.getItems();

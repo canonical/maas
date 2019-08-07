@@ -4,6 +4,8 @@
  * Unit tests for ZonesListController.
  */
 
+import MockWebSocket from "testing/websocket";
+
 describe("ZonesListController", function() {
   // Load the MAAS module.
   beforeEach(angular.mock.module("MAAS"));
@@ -20,11 +22,17 @@ describe("ZonesListController", function() {
 
   // Load the managers and services.
   var ZonesManager, UsersManager;
-  var ManagerHelperService;
+  var ManagerHelperService, RegionConnection, webSocket;
   beforeEach(inject(function($injector) {
     ZonesManager = $injector.get("ZonesManager");
     UsersManager = $injector.get("UsersManager");
     ManagerHelperService = $injector.get("ManagerHelperService");
+    RegionConnection = $injector.get("RegionConnection");
+
+    // Mock buildSocket so an actual connection is not made.
+    webSocket = new MockWebSocket();
+    spyOn(RegionConnection, "buildSocket").and.returnValue(webSocket);
+    spyOn(RegionConnection, "callMethod").and.returnValue($q.defer().promise);
   }));
 
   // Makes the ZonesListController

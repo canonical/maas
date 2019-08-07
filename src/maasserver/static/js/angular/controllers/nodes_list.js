@@ -42,6 +42,13 @@ function NodesListController(
   $rootScope.title = "Machines";
   $rootScope.page = "machines";
 
+  // Set flag for RSD navigation item.
+  if (!$rootScope.showRSDLink) {
+    GeneralManager.getNavigationOptions().then(
+      res => ($rootScope.showRSDLink = res.rsd)
+    );
+  }
+
   // Set initial values.
   $scope.MAAS_config = $window.MAAS_config;
   $scope.machines = MachinesManager.getItems();

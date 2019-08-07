@@ -15,7 +15,8 @@ function NetworksListController(
   SpacesManager,
   VLANsManager,
   UsersManager,
-  ManagerHelperService
+  ManagerHelperService,
+  GeneralManager
 ) {
   // Load the filters that are used inside the controller.
   var filterByVLAN = $filter("filterByVLAN");
@@ -26,6 +27,13 @@ function NetworksListController(
   // Set title and page.
   $rootScope.title = "Subnets";
   $rootScope.page = "networks";
+
+  // Set flag for RSD navigation item.
+  if (!$rootScope.showRSDLink) {
+    GeneralManager.getNavigationOptions().then(
+      res => ($rootScope.showRSDLink = res.rsd)
+    );
+  }
 
   // Set the initial value of $scope.groupBy based on the URL
   // parameters, but default to the 'fabric' groupBy if it's not found.

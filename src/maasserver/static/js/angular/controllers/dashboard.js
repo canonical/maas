@@ -17,7 +17,8 @@ function DashboardController(
   VLANsManager,
   ConfigsManager,
   ManagerHelperService,
-  SearchService
+  SearchService,
+  GeneralManager
 ) {
   // Default device IP options.
   var deviceIPOptions = [
@@ -29,6 +30,13 @@ function DashboardController(
   // Set title and page.
   $rootScope.title = "Dashboard";
   $rootScope.page = "dashboard";
+
+  // Set flag for RSD navigation item.
+  if (!$rootScope.showRSDLink) {
+    GeneralManager.getNavigationOptions().then(
+      res => ($rootScope.showRSDLink = res.rsd)
+    );
+  }
 
   // Set initial values.
   $scope.loaded = false;

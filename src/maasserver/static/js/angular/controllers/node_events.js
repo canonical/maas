@@ -14,13 +14,21 @@ function NodeEventsController(
   ControllersManager,
   EventsManagerFactory,
   ManagerHelperService,
-  ErrorService
+  ErrorService,
+  GeneralManager
 ) {
   // Events manager that is loaded once the node is loaded.
   var eventsManager = null;
 
   // Set the title and page.
   $rootScope.title = "Loading...";
+
+  // Set flag for RSD navigation item.
+  if (!$rootScope.showRSDLink) {
+    GeneralManager.getNavigationOptions().then(
+      res => ($rootScope.showRSDLink = res.rsd)
+    );
+  }
 
   // Initial values.
   $scope.loaded = false;

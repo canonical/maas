@@ -5,6 +5,7 @@
  */
 
 import { makeInteger, makeName } from "testing/utils";
+import MockWebSocket from "testing/websocket";
 
 describe("DomainDetailsController", function() {
   // Load the MAAS module.
@@ -35,11 +36,18 @@ describe("DomainDetailsController", function() {
 
   // Load any injected managers and services.
   var DomainsManager, UsersManager, ManagerHelperService, ErrorService;
+  var RegionConnection, webSocket;
   beforeEach(inject(function($injector) {
     DomainsManager = $injector.get("DomainsManager");
     UsersManager = $injector.get("UsersManager");
     ManagerHelperService = $injector.get("ManagerHelperService");
     ErrorService = $injector.get("ErrorService");
+    RegionConnection = $injector.get("RegionConnection");
+
+    // Mock buildSocket so an actual connection is not made.
+    webSocket = new MockWebSocket();
+    spyOn(RegionConnection, "buildSocket").and.returnValue(webSocket);
+    spyOn(RegionConnection, "callMethod").and.returnValue($q.defer().promise);
   }));
 
   var domain;

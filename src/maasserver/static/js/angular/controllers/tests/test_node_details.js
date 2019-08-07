@@ -63,6 +63,7 @@ describe("NodeDetailsController", function() {
     // Mock buildSocket so an actual connection is not made.
     webSocket = new MockWebSocket();
     spyOn(RegionConnection, "buildSocket").and.returnValue(webSocket);
+    spyOn(RegionConnection, "callMethod").and.returnValue($q.defer().promise);
   }));
 
   // Make a fake zone.

@@ -22,6 +22,13 @@ function SettingsController(
   $rootScope.title = "Loading...";
   $rootScope.page = "settings";
 
+  // Set flag for RSD navigation item.
+  if (!$rootScope.showRSDLink) {
+    GeneralManager.getNavigationOptions().then(
+      res => ($rootScope.showRSDLink = res.rsd)
+    );
+  }
+
   // Initial values.
   $scope.loading = true;
   $scope.snippets = DHCPSnippetsManager.getItems();

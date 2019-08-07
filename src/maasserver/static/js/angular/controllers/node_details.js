@@ -40,6 +40,13 @@ function NodeDetailsController(
   // Set title and page.
   $rootScope.title = "Loading...";
 
+  // Set flag for RSD navigation item.
+  if (!$rootScope.showRSDLink) {
+    GeneralManager.getNavigationOptions().then(
+      res => ($rootScope.showRSDLink = res.rsd)
+    );
+  }
+
   // Initial values.
   $scope.MAAS_config = $window.MAAS_config;
   $scope.loaded = false;

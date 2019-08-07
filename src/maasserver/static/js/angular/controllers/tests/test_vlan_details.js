@@ -5,6 +5,7 @@
  */
 
 import { makeInteger, makeName } from "testing/utils";
+import MockWebSocket from "testing/websocket";
 
 describe("VLANDetailsController", function() {
   // Load the MAAS module.
@@ -107,7 +108,7 @@ describe("VLANDetailsController", function() {
   // Load any injected managers and services.
   var VLANsManager, SubnetsManager, SpacesManager, FabricsManager;
   var ControllersManager, UsersManager, ManagerHelperService, ErrorService;
-  var DHCPSnippetsManager;
+  var DHCPSnippetsManager, RegionConnection, webSocket;
   beforeEach(inject(function($injector) {
     VLANsManager = $injector.get("VLANsManager");
     SubnetsManager = $injector.get("SubnetsManager");
@@ -118,6 +119,12 @@ describe("VLANDetailsController", function() {
     ManagerHelperService = $injector.get("ManagerHelperService");
     ErrorService = $injector.get("ErrorService");
     DHCPSnippetsManager = $injector.get("DHCPSnippetsManager");
+    RegionConnection = $injector.get("RegionConnection");
+
+    // Mock buildSocket so an actual connection is not made.
+    webSocket = new MockWebSocket();
+    spyOn(RegionConnection, "buildSocket").and.returnValue(webSocket);
+    spyOn(RegionConnection, "callMethod").and.returnValue($q.defer().promise);
   }));
 
   var vlan, fabric, fabric2, primaryController, secondaryController;

@@ -5,6 +5,7 @@
  */
 
 import { makeInteger } from "testing/utils";
+import MockWebSocket from "testing/websocket";
 
 describe("NetworksListController", function() {
   // Load the MAAS module.
@@ -23,7 +24,7 @@ describe("NetworksListController", function() {
 
   // Load the managers and services.
   var SubnetsManager, FabricsManager, SpacesManager, VLANsManager;
-  var UsersManager, ManagerHelperService;
+  var UsersManager, ManagerHelperService, RegionConnection, webSocket;
   beforeEach(inject(function($injector) {
     SubnetsManager = $injector.get("SubnetsManager");
     FabricsManager = $injector.get("FabricsManager");
@@ -31,6 +32,12 @@ describe("NetworksListController", function() {
     VLANsManager = $injector.get("VLANsManager");
     UsersManager = $injector.get("UsersManager");
     ManagerHelperService = $injector.get("ManagerHelperService");
+    RegionConnection = $injector.get("RegionConnection");
+
+    // Mock buildSocket so an actual connection is not made.
+    webSocket = new MockWebSocket();
+    spyOn(RegionConnection, "buildSocket").and.returnValue(webSocket);
+    spyOn(RegionConnection, "callMethod").and.returnValue($q.defer().promise);
   }));
 
   // Makes the SubnetsListController

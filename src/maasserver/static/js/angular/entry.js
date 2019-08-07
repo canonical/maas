@@ -486,6 +486,14 @@ function setupGA($rootScope, $window) {
   });
 }
 
+/* @ngInject */
+// Removes hide class from RSD link which is hidden
+// so it doesn't flash up in the nav before angular is ready
+function unhideRSDLinks() {
+  let rsdLinks = document.querySelectorAll(".js-rsd-link");
+  rsdLinks.forEach(link => link.classList.remove("u-hide"));
+}
+
 angular
   .module("MAAS", [
     "ngRoute",
@@ -512,6 +520,7 @@ angular
   .run(cacheScriptRuntime)
   .run(cacheScriptSelect)
   .run(cacheScriptStatus)
+  .run(unhideRSDLinks)
   // Registration
   // filters
   .filter("filterByUnusedForInterface", filterByUnusedForInterface)

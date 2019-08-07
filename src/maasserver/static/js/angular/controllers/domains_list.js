@@ -10,13 +10,21 @@ function DomainsListController(
   $rootScope,
   DomainsManager,
   UsersManager,
-  ManagerHelperService
+  ManagerHelperService,
+  GeneralManager
 ) {
   // Load the filters that are used inside the controller.
 
   // Set title and page.
   $rootScope.title = "DNS";
   $rootScope.page = "domains";
+
+  // Set flag for RSD navigation item.
+  if (!$rootScope.showRSDLink) {
+    GeneralManager.getNavigationOptions().then(
+      res => ($rootScope.showRSDLink = res.rsd)
+    );
+  }
 
   // Set initial values.
   $scope.domains = DomainsManager.getItems();

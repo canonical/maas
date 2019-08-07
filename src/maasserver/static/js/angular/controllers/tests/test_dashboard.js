@@ -5,6 +5,7 @@
  */
 
 import { makeInteger, makeName } from "testing/utils";
+import MockWebSocket from "testing/websocket";
 
 describe("DashboardController", function() {
   // Load the MAAS module.
@@ -23,7 +24,7 @@ describe("DashboardController", function() {
   // Load any injected managers and services.
   var DiscoveriesManager, DomainsManager, MachinesManager, DevicesManager;
   var SubnetsManager, VLANsManager, ConfigsManager, ManagerHelperService;
-  let SearchService;
+  let SearchService, RegionConnection, webSocket;
   beforeEach(inject(function($injector) {
     DiscoveriesManager = $injector.get("DiscoveriesManager");
     DomainsManager = $injector.get("DomainsManager");
@@ -34,6 +35,12 @@ describe("DashboardController", function() {
     ConfigsManager = $injector.get("ConfigsManager");
     ManagerHelperService = $injector.get("ManagerHelperService");
     SearchService = $injector.get("SearchService");
+    RegionConnection = $injector.get("RegionConnection");
+
+    // Mock buildSocket so an actual connection is not made.
+    webSocket = new MockWebSocket();
+    spyOn(RegionConnection, "buildSocket").and.returnValue(webSocket);
+    spyOn(RegionConnection, "callMethod").and.returnValue($q.defer().promise);
   }));
 
   // Makes the DashboardController

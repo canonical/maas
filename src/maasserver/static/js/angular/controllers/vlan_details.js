@@ -45,7 +45,8 @@ export function VLANDetailsController(
   ManagerHelperService,
   ErrorService,
   IPRangesManager,
-  DHCPSnippetsManager
+  DHCPSnippetsManager,
+  GeneralManager
 ) {
   var vm = this;
 
@@ -57,6 +58,13 @@ export function VLANDetailsController(
   // Note: this value must match the top-level tab, in order for
   // highlighting to occur properly.
   $rootScope.page = "networks";
+
+  // Set flag for RSD navigation item.
+  if (!$rootScope.showRSDLink) {
+    GeneralManager.getNavigationOptions().then(
+      res => ($rootScope.showRSDLink = res.rsd)
+    );
+  }
 
   vm.DELETE_ACTION = {
     name: "delete",

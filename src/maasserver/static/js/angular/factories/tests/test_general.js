@@ -665,4 +665,14 @@ describe("GeneralManager", function() {
       expect(GeneralManager._autoReload).toBe(false);
     });
   });
+
+  describe("getNavigationOptions", () => {
+    it("calls callMethod with action parameter", () => {
+      spyOn(RegionConnection, "callMethod");
+      GeneralManager.getNavigationOptions();
+      expect(RegionConnection.callMethod).toHaveBeenCalledWith(
+        "general.navigation_options"
+      );
+    });
+  });
 });
