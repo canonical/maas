@@ -5,7 +5,7 @@
 # Author: Michael Iatrou <michael.iatrou (at) canonical.com>
 #         Lee Trager <lee.trager (at) canonical.com>
 #
-# Copyright (C) 2017-2018 Canonical
+# Copyright (C) 2017-2019 Canonical
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
@@ -28,8 +28,9 @@
 # name: ntp
 # title: NTP validation
 # description: Run ntp clock set to verify NTP connectivity.
-# tags: [network, ntp]
+# tags: ntp
 # script_type: test
+# hardware_type: network
 # parallel: any
 # timeout: 00:01:00
 # --- End MAAS 1.0 script metadata ---
