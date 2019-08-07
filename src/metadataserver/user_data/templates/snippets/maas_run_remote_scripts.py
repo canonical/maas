@@ -50,6 +50,8 @@ import time
 import traceback
 import zipfile
 
+import yaml
+
 
 try:
     from maas_api_helper import (
@@ -508,23 +510,65 @@ _interfaces = None
 _interfaces_lock = Lock()
 
 
-# XXX ltrager 2019-07-26 - clear_cache will be implemented in the next
-# branch.
 def get_interfaces(clear_cache=False):
-    """If needed, query /sys for all known interfaces and store."""
+    """If needed, read netplan configuration files to get interfaces list.
+
+    Interfaces must be retrieved from the netplan configuration files to allow
+    get_interfaces() to differentiate between configured and unconfigured
+    interfaces. It also allows get_interfaces() to detect interfaces which
+    are configured to change the interface name and/or MAC address."""
     global _interfaces
     global _interfaces_lock
     # Grab lock if cache is blank and double check we really need to fill
     # cache once we get the lock.
-    if _interfaces is None:
+    if _interfaces is None or clear_cache:
         _interfaces_lock.acquire()
+    if clear_cache:
+        _interfaces = None
     if _interfaces is None:
         interfaces = {}
-        for dev in os.listdir('/sys/class/net'):
-            address_path = os.path.join('/sys/class/net', dev, 'address')
-            if os.path.isfile(address_path):
-                with open(address_path, 'r') as f:
-                    interfaces[f.read().strip()] = dev
+        for cfg_file in os.listdir(NETPLAN_DIR):
+            cfg_path = os.path.join(NETPLAN_DIR, cfg_file)
+            try:
+                with open(cfg_path, 'r') as f:
+                    cfg = yaml.safe_load(f)
+            except:
+                # Ignore bad configs, non-files.
+                continue
+            if not isinstance(cfg, dict):
+                continue
+            for value in cfg.get('network', {}).values():
+                if not isinstance(value, dict):
+                    continue
+                for dev, info in value.items():
+                    if 'macaddress' in info:
+                        macaddress = info['macaddress']
+                    elif 'macaddress' in info.get('match', {}):
+                        macaddress = info['match']['macaddress']
+                    else:
+                        continue
+                    # We only care about devices which have addresses. This is
+                    # how we differentiate between a bond and the interfaces
+                    # that make that bond.
+                    if 'addresses' in info:
+                        interfaces[macaddress] = info.get('set-name', dev)
+
+        # XXX ltrager 2019-07-26 - netplan is non-blocking(LP:1838114). Try
+        # to wait until all devices have come up. If this doesn't happen after
+        # 5 seconds continue the error will be reported later.
+        for naptime in (0.1, 0.1, 0.1, 0.2, 0.2, 0.3, 0.5, 0.5, 1, 2):
+            live_devs = os.listdir('/sys/class/net')
+            missing = False
+            for dev in interfaces.values():
+                if dev not in live_devs:
+                    missing = True
+                    break
+            if missing:
+                time.sleep(naptime)
+            else:
+                break
+        if missing:
+            sys.stderr.write('Error: Not all interfaces were brought up!')
         _interfaces = interfaces
 
     if _interfaces_lock.locked():

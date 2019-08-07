@@ -25,8 +25,6 @@ from unittest.mock import (
     ANY,
     call,
     MagicMock,
-    mock_open,
-    patch,
 )
 from zipfile import ZipFile
 
@@ -56,6 +54,7 @@ from snippets.maas_run_remote_scripts import (
     run_scripts,
     run_scripts_from_metadata,
 )
+import yaml
 
 # Unused ScriptResult id, used to make sure number is always unique.
 SCRIPT_RESULT_ID = 0
@@ -1120,14 +1119,73 @@ class TestParseParameters(MAASTestCase):
         self.assertRaises(KeyError, get_block_devices)
 
     def test_get_interfaces(self):
-        eth0_mac = factory.make_mac_address()
-        mock_listdir = self.patch(maas_run_remote_scripts.os, 'listdir')
-        mock_listdir.return_value = ['eth0']
-        self.patch(
-            maas_run_remote_scripts.os.path, 'isfile').return_value = True
+        netplan_dir = self.useFixture(TempDirectory()).path
+        maas_run_remote_scripts.NETPLAN_DIR = netplan_dir
+        # Bonds and bridges copy the MAC address of the first physical
+        # interface by default.
+        br0_mac = bond0_mac = eth0_mac = factory.make_mac_address()
+        eth1_mac = factory.make_mac_address()
+        # Normally all configuration is stored in one config file but netplan
+        # supports loading multiple. Verify maas-run-remote-scripts will read
+        # from multiple.
+        with open(os.path.join(netplan_dir, 'interfaces.yaml'), 'w') as f:
+            f.write(yaml.safe_dump({
+                'network': {
+                    'version': 2,
+                    'ethernets': {
+                        'eth0': {
+                            'match': {
+                                'macaddress': eth0_mac,
+                            },
+                        },
+                        'eth1': {
+                            'match': {
+                                'macaddress': eth1_mac,
+                            },
+                        },
+                    },
+                }
+            }, default_flow_style=False))
+        with open(os.path.join(netplan_dir, 'bonds.yaml'), 'w') as f:
+            f.write(yaml.safe_dump({
+                'network': {
+                    'version': 2,
+                    'bonds': {
+                        'bond0': {
+                            'interfaces': ['eth0', 'eth1'],
+                            'macaddress': bond0_mac,
+                        },
+                    },
+                },
+            }, default_flow_style=False))
+        with open(os.path.join(netplan_dir, 'bridges.yaml'), 'w') as f:
+            f.write(yaml.safe_dump({
+                'network': {
+                    'version': 2,
+                    'bridges': {
+                        'br0': {
+                            'addresses': [
+                                factory.make_ip_address(),
+                                factory.make_ip_address(),
+                            ],
+                            'interfaces': ['bond0'],
+                            'macaddress': br0_mac,
+                            'set-name': 'bridge0',
+                        },
+                    },
+                },
+            }, default_flow_style=False))
+        self.patch(maas_run_remote_scripts.os, 'listdir').side_effect = (
+            ['interfaces.yaml', 'bonds.yaml', 'bridges.yaml'],
+            # Simulate interfaces taking a bit to come up to verify LP:1838114
+            # work around.
+            ['lo', 'eth0', 'eth1'],
+            ['lo', 'eth0', 'eth1', 'bond0', 'bridge0'],
+        )
+        mock_sleep = self.patch(maas_run_remote_scripts.time, 'sleep')
 
-        with patch('builtins.open', mock_open(read_data=eth0_mac)):
-            self.assertDictEqual({eth0_mac: 'eth0'}, get_interfaces())
+        self.assertDictEqual({br0_mac: 'bridge0'}, get_interfaces())
+        self.assertThat(mock_sleep, MockCalledOnceWith(0.1))
 
     def test_get_interfaces_cached(self):
         interfaces = {factory.make_mac_address(): factory.make_name('dev')}
