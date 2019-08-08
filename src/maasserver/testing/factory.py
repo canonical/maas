@@ -323,9 +323,13 @@ class Factory(maastesting.factory.Factory):
             hostname = self.make_string(20)
         if domain is None:
             domain = Domain.objects.get_default_domain()
+        power_type = kwargs.pop('power_type', None)
+        power_params = kwargs.pop('power_param', {})
         device = Device(
             hostname=hostname, domain=domain,
             **kwargs)
+        if power_type is not None:
+            device.set_power_config(power_type, power_params)
         device.save()
         # Add owner data.
         OwnerData.objects.set_owner_data(device, owner_data)
@@ -446,8 +450,7 @@ class Factory(maastesting.factory.Factory):
         if bmc is None:
             # These setters will overwrite the BMC, so don't use them if the
             # BMC was specified.
-            node.power_type = power_type
-            node.power_parameters = power_parameters
+            node.set_power_config(power_type, power_parameters or {})
         self._save_node_unchecked(node)
         # We do not generate random networks by default because the limited
         # number of VLAN identifiers (4,094) makes it very likely to
@@ -477,7 +480,7 @@ class Factory(maastesting.factory.Factory):
 
         # Setup the BMC connected to rack controller if a BMC is created.
         if bmc_connected_to is not None:
-            if node.power_type != "virsh":
+            if power_type != "virsh":
                 raise Exception(
                     "bmc_connected_to requires that power_type set to 'virsh'")
             rack_interface = bmc_connected_to.get_boot_interface()
@@ -504,12 +507,13 @@ class Factory(maastesting.factory.Factory):
             else:
                 ip_address = existing_static_ips[0]
             bmc_ip_address = self.pick_ip_in_Subnet(ip_address.subnet)
-            node.power_parameters = {
+            power_params = {
                 **node.power_parameters,
                 "power_address": "qemu+ssh://user@%s/system" % (
                     factory.ip_to_url_format(bmc_ip_address)),
                 "power_id": factory.make_name("power_id"),
             }
+            node.set_power_config('virsh', power_params)
             node.save()
 
         # Add owner data.

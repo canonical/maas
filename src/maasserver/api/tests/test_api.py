@@ -174,22 +174,19 @@ class TestStoreNodeParameters(APITestCase.ForUser):
     def test_power_type_not_given(self):
         # When power_type is not specified, nothing happens.
         self.request.POST = {}
-        self.node.power_type = ''
+        self.node.set_power_config('', {})
         store_node_power_parameters(self.node, self.request)
         self.assertEqual('', self.node.power_type)
         self.assertEqual({}, self.node.power_parameters)
         self.save.assert_has_calls([])
 
-    def test_power_type_redish(self):
+    def test_power_type_redfish(self):
         power_parameters = {"foo": [1, 2, 3]}
         self.request.POST = {
             "power_type": 'ipmi',
             "power_parameters": json.dumps(power_parameters),
             }
-        self.node.power_type = 'redfish'
-        self.node.instance_power_parameters = {
-            'node_id': '1',
-            }
+        self.node.set_power_config('redfish', {'node_id': '1'})
         store_node_power_parameters(self.node, self.request)
         self.assertEqual('redfish', self.node.power_type)
         self.assertEqual({

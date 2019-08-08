@@ -186,26 +186,20 @@ def store_node_power_parameters(node, request):
         raise ClusterUnavailable(
             "No rack controllers connected to validate the power_type.")
 
-    if power_type in power_types or power_type == UNKNOWN_POWER_TYPE:
-        node.power_type = power_type
-    else:
+    if power_type not in list(power_types) + [UNKNOWN_POWER_TYPE]:
         raise MAASAPIBadRequest("Bad power_type '%s'" % power_type)
 
     power_parameters = request.POST.get("power_parameters", None)
     if power_parameters and not power_parameters.isspace():
         try:
             power_parameters = json.loads(power_parameters)
-            if power_type == 'redfish':
-                node.power_parameters = {
-                    **node.instance_power_parameters,
-                    **power_parameters
-                }
-            else:
-                node.power_parameters = power_parameters
-
         except ValueError:
             raise MAASAPIBadRequest("Failed to parse JSON power_parameters")
-
+        if power_type == 'redfish':
+            power_parameters.update(node.instance_power_parameters)
+    if not power_parameters:
+        power_parameters = {}
+    node.set_power_config(power_type, power_parameters)
     node.save()
 
 

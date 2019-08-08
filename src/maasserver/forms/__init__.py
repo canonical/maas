@@ -362,10 +362,10 @@ class WithPowerTypeMixin:
         type_field_name = 'power_type'
         params_field_name = 'power_parameters'
         type_changed = False
+        power_type = machine.power_type
         if form.data.get(type_field_name) is not None:
-            new_type = form.cleaned_data.get(type_field_name)
-            if machine.power_type != new_type:
-                machine.power_type = new_type
+            power_type = form.cleaned_data.get(type_field_name)
+            if machine.power_type != power_type:
                 type_changed = True
         # Only change parameters if the parameters was passed in
         # the initial data. clean_data will always have parameters, so we
@@ -377,8 +377,8 @@ class WithPowerTypeMixin:
                 not param == '%s_%s' % (params_field_name, SKIP_CHECK_NAME))
         }
         if type_changed or len(initial_parameters) > 0:
-            machine.power_parameters = form.cleaned_data.get(
-                params_field_name)
+            machine.set_power_config(
+                power_type, form.cleaned_data.get(params_field_name))
 
     def clean(self):
         cleaned_data = super(WithPowerTypeMixin, self).clean()

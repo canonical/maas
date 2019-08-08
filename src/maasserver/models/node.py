@@ -1235,25 +1235,56 @@ class Node(CleanSave, TimestampedModel):
     def is_device(self):
         return self.node_type == NODE_TYPE.DEVICE
 
+    def set_power_config(self, power_type, power_params):
+        """Update the power configuration for a node.
+
+        If power_type is not changed, this will update power parameters for the
+        current BMC, so if the BMC is a chassis, the configuration will apply
+        to all connected nodes.
+        """
+        from maasserver.models.bmc import BMC
+
+        old_bmc = self.bmc
+        chassis, bmc_params, node_params = BMC.scope_power_parameters(
+            power_type, power_params)
+        if power_type == self.power_type:
+            if power_type == 'manual':
+                self.bmc.power_parameters = bmc_params
+                self.bmc.save()
+            else:
+                existing_bmc = BMC.objects.filter(
+                    power_type=power_type, power_parameters=bmc_params).first()
+                if existing_bmc and existing_bmc.id != self.bmc_id:
+                    if self.bmc:
+                        # Point all nodes using old BMC at the new one.
+                        for node in self.bmc.node_set.exclude(id=self.id):
+                            node.bmc = existing_bmc
+                            node.save()
+                    self.bmc = existing_bmc
+                elif not existing_bmc:
+                    if self.bmc:
+                        self.bmc.power_parameters = bmc_params
+                    else:
+                        self.bmc = BMC.objects.create(
+                            power_type=power_type, power_parameters=bmc_params)
+                    self.bmc.save()
+        elif chassis:
+            self.bmc, _ = BMC.objects.get_or_create(
+                power_type=power_type, power_parameters=bmc_params)
+        else:
+            self.bmc = BMC.objects.create(
+                power_type=power_type, power_parameters=bmc_params)
+            self.bmc.save()
+
+        self.instance_power_parameters = node_params or {}
+
+        # delete the old bmc if no node is connected to it
+        if old_bmc and old_bmc != self.bmc and not old_bmc.node_set.exists():
+            old_bmc.delete()
+
     @property
     def power_type(self):
         return '' if self.bmc is None else self.bmc.power_type
-
-    @power_type.setter
-    def power_type(self, power_type):
-        # Circular imports.
-        from maasserver.models.bmc import BMC
-        if not power_type and self.bmc is None:
-            return
-        if self.bmc is not None and self.bmc.power_type == power_type:
-            return
-
-        if power_type == 'manual':
-            self.bmc = BMC.objects.create(
-                power_type='manual', power_parameters={})
-        else:
-            self.bmc, _ = BMC.objects.get_or_create(
-                power_type=power_type, power_parameters=self.power_parameters)
 
     @property
     def power_parameters(self):
@@ -1265,48 +1296,6 @@ class Node(CleanSave, TimestampedModel):
         if self.bmc and self.bmc.power_parameters:
             bmc_parameters = self.bmc.power_parameters
         return {**bmc_parameters, **instance_parameters}
-
-    @power_parameters.setter
-    def power_parameters(self, power_params):
-        if not power_params:
-            power_params = {}
-        if self.bmc is None:
-            self.instance_power_parameters = power_params
-            return
-
-        # Circular imports.
-        from maasserver.models.bmc import BMC
-        chassis, bmc_params, node_params = BMC.scope_power_parameters(
-            self.bmc.power_type, power_params)
-        self.instance_power_parameters = node_params
-
-        if self.bmc.power_parameters == bmc_params:
-            return
-
-        if chassis:
-            # Update either our BMC or link this node to another existing
-            # of the same type.
-            another_exists = BMC.objects.filter(
-                power_type=self.bmc.power_type,
-                power_parameters=bmc_params).count() > 0
-            if not another_exists:
-                self.bmc.power_parameters = bmc_params
-                self.bmc.save()
-            else:
-                (bmc, _) = BMC.objects.get_or_create(
-                    power_type=self.bmc.power_type,
-                    power_parameters=bmc_params)
-                # Point all nodes using old BMC at the new one.
-                if self.bmc_id != bmc.id:
-                    for node in self.bmc.node_set.exclude(id=self.id):
-                        node.bmc = bmc
-                        node.save()
-                self.bmc = bmc
-        else:
-            # This power_type is not linked to more than 1 BMC per node, just
-            # update the BMC power parameters.
-            self.bmc.power_parameters = bmc_params
-            self.bmc.save()
 
     @property
     def fqdn(self):
