@@ -352,8 +352,10 @@ class TestInstallDependencies(MAASTestCase):
                 'Installing apt packages for {msg_name}', scripts, True,
                 status='INSTALLING'))
             self.assertThat(mock_run_and_check, MockCalledOnceWith(
-                ['apt-get', '-qy', 'install'] + packages, scripts,
-                'INSTALLING', True, True))
+                [
+                    'apt-get', '-qy', '--no-install-recommends',
+                    'install'] + packages,
+                scripts, 'INSTALLING', True, True))
             # Verify cleanup
             self.assertFalse(os.path.exists(script['combined_path']))
             self.assertFalse(os.path.exists(script['stdout_path']))
@@ -377,8 +379,10 @@ class TestInstallDependencies(MAASTestCase):
                 'Installing apt packages for {msg_name}', scripts,
                 True, status='INSTALLING'))
             self.assertThat(mock_run_and_check, MockAnyCall(
-                ['apt-get', '-qy', 'install'] + packages, scripts,
-                'INSTALLING', True, True))
+                [
+                    'apt-get', '-qy', '--no-install-recommends',
+                    'install'] + packages,
+                scripts, 'INSTALLING', True, True))
             # Verify cleanup
             self.assertFalse(os.path.exists(script['combined_path']))
             self.assertFalse(os.path.exists(script['stdout_path']))
@@ -401,8 +405,10 @@ class TestInstallDependencies(MAASTestCase):
                 'Installing apt packages for {msg_name}', scripts,
                 True, status='INSTALLING'))
             self.assertThat(mock_run_and_check, MockCalledOnceWith(
-                ['apt-get', '-qy', 'install'] + packages, scripts,
-                'INSTALLING', True, True))
+                [
+                    'apt-get', '-qy', '--no-install-recommends',
+                    'install'] + packages,
+                scripts, 'INSTALLING', True, True))
 
     def test_install_dependencies_snap_str_list(self):
         mock_run_and_check = self.patch(
@@ -605,7 +611,8 @@ class TestInstallDependencies(MAASTestCase):
         self.assertThat(mock_run_and_check, MockAnyCall(
             ['dpkg', '-i', deb_file], scripts, 'INSTALLING', False, True))
         self.assertThat(mock_run_and_check, MockAnyCall(
-            ['apt-get', 'install', '-qyf'], scripts, 'INSTALLING', True, True))
+            ['apt-get', 'install', '-qyf', '--no-install-recommends'], scripts,
+            'INSTALLING', True, True))
 
     def test_install_dependencies_url_deb_errors(self):
         mock_run_and_check = self.patch(
@@ -624,7 +631,8 @@ class TestInstallDependencies(MAASTestCase):
         self.assertThat(mock_run_and_check, MockAnyCall(
             ['dpkg', '-i', deb_file], scripts, 'INSTALLING', False, True))
         self.assertThat(mock_run_and_check, MockAnyCall(
-            ['apt-get', 'install', '-qyf'], scripts, 'INSTALLING', True, True))
+            ['apt-get', 'install', '-qyf', '--no-install-recommends'], scripts,
+            'INSTALLING', True, True))
 
     def test_install_dependencies_url_snap(self):
         mock_run_and_check = self.patch(
