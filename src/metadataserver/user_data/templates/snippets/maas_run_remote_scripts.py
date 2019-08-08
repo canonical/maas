@@ -150,10 +150,10 @@ def _install_apt_dependencies(packages, scripts, send_result=True):
         if not run_and_check(
                 ['apt-get', '-qy', 'update'], scripts, send_result, True):
             return False
-
     if not run_and_check(
-            ['apt-get', '-qy', 'install'] + packages, scripts, send_result,
-            True):
+            [
+                'apt-get', '-qy', '--no-install-recommends',
+                'install'] + packages, scripts, send_result, True):
         return False
 
     return True
@@ -226,8 +226,8 @@ def _install_url_dependencies(packages, scripts, send_result=True):
             # installed.
             run_and_check(['dpkg', '-i', filename], scripts, False, True)
             if not run_and_check(
-                    ['apt-get', 'install', '-qyf'], scripts, send_result,
-                    True):
+                    ['apt-get', 'install', '-qyf', '--no-install-recommends'],
+                    scripts, send_result, True):
                 return False
         elif filename.endswith('.snap'):
             if not run_and_check(
