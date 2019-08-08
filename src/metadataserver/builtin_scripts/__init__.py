@@ -1,4 +1,4 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Builtin scripts commited to Script model."""
@@ -31,6 +31,7 @@ class IBuiltinScript(Interface):
     name = Attribute('Name')
     filename = Attribute('Filename')
     substitutes = Attribute('Substitutes')
+    inject_file = Attribute('Inject File')
 
 
 @implementer(IBuiltinScript)
@@ -40,10 +41,16 @@ class BuiltinScript:
     name = attr.ib(default=None, validator=instance_of(str))
     filename = attr.ib(default=None, validator=instance_of(str))
     substitutes = attr.ib(default={}, validator=optional(instance_of(dict)))
+    inject_file = attr.ib(default=None, validator=optional(instance_of(str)))
 
     @property
     def script_path(self):
         return os.path.join(os.path.dirname(__file__), self.filename)
+
+    @property
+    def inject_path(self):
+        return os.path.join(os.path.dirname(__file__), self.inject_file)
+
 
 BUILTIN_SCRIPTS = [
     BuiltinScript(
@@ -89,10 +96,6 @@ BUILTIN_SCRIPTS = [
         filename='memtester.sh',
         ),
     BuiltinScript(
-        name='internet-connectivity',
-        filename='internet_connectivity.sh',
-        ),
-    BuiltinScript(
         name='stress-ng-cpu-long',
         filename='stress-ng-cpu-long.sh',
         ),
@@ -135,6 +138,21 @@ BUILTIN_SCRIPTS = [
         name='fio',
         filename='fio.py',
         ),
+    BuiltinScript(
+        name='internet-connectivity',
+        filename='internet-connectivity.sh',
+        inject_file='base-connectivity.sh',
+        ),
+    BuiltinScript(
+        name='gateway-connectivity',
+        filename='gateway-connectivity.sh',
+        inject_file='base-connectivity.sh',
+        ),
+    BuiltinScript(
+        name='rack-controller-connectivity',
+        filename='rack-controller-connectivity.sh',
+        inject_file='base-connectivity.sh',
+        ),
     ]
 
 
@@ -147,6 +165,9 @@ for script in BUILTIN_SCRIPTS:
 
 def load_builtin_scripts():
     for script in BUILTIN_SCRIPTS:
+        if script.inject_file:
+            with open(script.inject_path, 'r') as f:
+                script.substitutes['inject_file'] = f.read()
         script_content = tempita.Template.from_filename(
             script.script_path, encoding='utf-8')
         script_content = script_content.substitute({
