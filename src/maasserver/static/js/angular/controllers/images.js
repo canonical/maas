@@ -17,13 +17,6 @@ function ImagesController(
   $rootScope.page = "images";
   $rootScope.title = "Loading...";
 
-  // Set flag for RSD navigation item.
-  if (!$rootScope.showRSDLink) {
-    GeneralManager.getNavigationOptions().then(
-      res => ($rootScope.showRSDLink = res.rsd)
-    );
-  }
-
   $scope.loading = true;
   $scope.bootResources = BootResourcesManager.getData();
   $scope.configManager = ConfigsManager;
@@ -51,6 +44,13 @@ function ImagesController(
     if (angular.isArray($scope.bootResources.resources)) {
       $scope.loading = false;
       $rootScope.title = "Images";
+
+      // Set flag for RSD navigation item.
+      if (!$rootScope.showRSDLink) {
+        GeneralManager.getNavigationOptions().then(
+          res => ($rootScope.showRSDLink = res.rsd)
+        );
+      }
     }
   });
 }

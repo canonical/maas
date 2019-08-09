@@ -19,13 +19,6 @@ function DomainsListController(
   $rootScope.title = "DNS";
   $rootScope.page = "domains";
 
-  // Set flag for RSD navigation item.
-  if (!$rootScope.showRSDLink) {
-    GeneralManager.getNavigationOptions().then(
-      res => ($rootScope.showRSDLink = res.rsd)
-    );
-  }
-
   // Set initial values.
   $scope.domains = DomainsManager.getItems();
   $scope.currentpage = "domains";
@@ -72,6 +65,13 @@ function DomainsListController(
     UsersManager
   ]).then(function() {
     $scope.loading = false;
+
+    // Set flag for RSD navigation item.
+    if (!$rootScope.showRSDLink) {
+      GeneralManager.getNavigationOptions().then(
+        res => ($rootScope.showRSDLink = res.rsd)
+      );
+    }
   });
 }
 

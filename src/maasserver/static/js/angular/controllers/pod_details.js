@@ -41,13 +41,6 @@ function PodDetailsController(
     $scope.pageType = "KVM";
   }
 
-  // Set flag for RSD navigation item.
-  if (!$rootScope.showRSDLink) {
-    GeneralManager.getNavigationOptions().then(
-      res => ($rootScope.showRSDLink = res.rsd)
-    );
-  }
-
   // Initial values.
   $scope.loaded = false;
   $scope.pod = null;
@@ -760,6 +753,13 @@ function PodDetailsController(
           $scope.loaded = true;
           $scope.machinesSearch = "pod-id:=" + $scope.pod.id;
           $scope.startWatching();
+
+          // Set flag for RSD navigation item.
+          if (!$rootScope.showRSDLink) {
+            GeneralManager.getNavigationOptions().then(
+              res => ($rootScope.showRSDLink = res.rsd)
+            );
+          }
         },
         function(error) {
           ErrorService.raiseError(error);

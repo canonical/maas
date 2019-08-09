@@ -28,13 +28,6 @@ function NetworksListController(
   $rootScope.title = "Subnets";
   $rootScope.page = "networks";
 
-  // Set flag for RSD navigation item.
-  if (!$rootScope.showRSDLink) {
-    GeneralManager.getNavigationOptions().then(
-      res => ($rootScope.showRSDLink = res.rsd)
-    );
-  }
-
   // Set the initial value of $scope.groupBy based on the URL
   // parameters, but default to the 'fabric' groupBy if it's not found.
   $scope.getURLParameters = function() {
@@ -307,6 +300,13 @@ function NetworksListController(
     UsersManager
   ]).then(function() {
     $scope.loading = false;
+
+    // Set flag for RSD navigation item.
+    if (!$rootScope.showRSDLink) {
+      GeneralManager.getNavigationOptions().then(
+        res => ($rootScope.showRSDLink = res.rsd)
+      );
+    }
 
     $scope.updateActions();
 

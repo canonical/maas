@@ -23,13 +23,6 @@ function DomainDetailsController(
   // highlighting to occur properly.
   $rootScope.page = "domains";
 
-  // Set flag for RSD navigation item.
-  if (!$rootScope.showRSDLink) {
-    GeneralManager.getNavigationOptions().then(
-      res => ($rootScope.showRSDLink = res.rsd)
-    );
-  }
-
   // Initial values.
   $scope.loaded = false;
   $scope.domain = null;
@@ -194,6 +187,13 @@ function DomainDetailsController(
       DomainsManager.setActiveItem(requestedDomain).then(
         function(domain) {
           domainLoaded(domain);
+
+          // Set flag for RSD navigation item.
+          if (!$rootScope.showRSDLink) {
+            GeneralManager.getNavigationOptions().then(
+              res => ($rootScope.showRSDLink = res.rsd)
+            );
+          }
         },
         function(error) {
           ErrorService.raiseError(error);

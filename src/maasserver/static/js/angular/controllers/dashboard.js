@@ -31,13 +31,6 @@ function DashboardController(
   $rootScope.title = "Dashboard";
   $rootScope.page = "dashboard";
 
-  // Set flag for RSD navigation item.
-  if (!$rootScope.showRSDLink) {
-    GeneralManager.getNavigationOptions().then(
-      res => ($rootScope.showRSDLink = res.rsd)
-    );
-  }
-
   // Set initial values.
   $scope.loaded = false;
   $scope.discoveredDevices = DiscoveriesManager.getItems();
@@ -333,6 +326,14 @@ function DashboardController(
     ConfigsManager
   ]).then(function() {
     $scope.loaded = true;
+
+    // Set flag for RSD navigation item.
+    if (!$rootScope.showRSDLink) {
+      GeneralManager.getNavigationOptions().then(
+        res => ($rootScope.showRSDLink = res.rsd)
+      );
+    }
+
     $scope.networkDiscovery = ConfigsManager.getItemFromList(
       "network_discovery"
     );

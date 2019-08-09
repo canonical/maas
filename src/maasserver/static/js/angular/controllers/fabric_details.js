@@ -28,13 +28,6 @@ function FabricDetailsController(
   // highlighting to occur properly.
   $rootScope.page = "networks";
 
-  // Set flag for RSD navigation item.
-  if (!$rootScope.showRSDLink) {
-    GeneralManager.getNavigationOptions().then(
-      res => ($rootScope.showRSDLink = res.rsd)
-    );
-  }
-
   // Initial values.
   $scope.fabric = null;
   $scope.fabricManager = FabricsManager;
@@ -195,6 +188,13 @@ function FabricDetailsController(
       activeFabric.id === requestedFabric
     ) {
       fabricLoaded(activeFabric);
+
+      // Set flag for RSD navigation item.
+      if (!$rootScope.showRSDLink) {
+        GeneralManager.getNavigationOptions().then(
+          res => ($rootScope.showRSDLink = res.rsd)
+        );
+      }
     } else {
       FabricsManager.setActiveItem(requestedFabric).then(
         function(fabric) {

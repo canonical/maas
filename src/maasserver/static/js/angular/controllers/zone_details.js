@@ -23,13 +23,6 @@ function ZoneDetailsController(
   // highlighting to occur properly.
   $rootScope.page = "zones";
 
-  // Set flag for RSD navigation item.
-  if (!$rootScope.showRSDLink) {
-    GeneralManager.getNavigationOptions().then(
-      res => ($rootScope.showRSDLink = res.rsd)
-    );
-  }
-
   // Initial values.
   $scope.loaded = false;
   $scope.zone = null;
@@ -124,6 +117,13 @@ function ZoneDetailsController(
         ZonesManager.setActiveItem(requestedZone).then(
           function(zone) {
             zoneLoaded(zone);
+
+            // Set flag for RSD navigation item.
+            if (!$rootScope.showRSDLink) {
+              GeneralManager.getNavigationOptions().then(
+                res => ($rootScope.showRSDLink = res.rsd)
+              );
+            }
           },
           function(error) {
             ErrorService.raiseError(error);

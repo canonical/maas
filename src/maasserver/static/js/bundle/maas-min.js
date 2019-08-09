@@ -43726,14 +43726,7 @@ function SubnetDetailsController($scope, $rootScope, $routeParams, $location, Co
   $rootScope.title = "Loading..."; // Note: this value must match the top-level tab, in order for
   // highlighting to occur properly.
 
-  $rootScope.page = "networks"; // Set flag for RSD navigation item.
-
-  if (!$rootScope.showRSDLink) {
-    GeneralManager.getNavigationOptions().then(function (res) {
-      return $rootScope.showRSDLink = res.rsd;
-    });
-  } // Initial values.
-
+  $rootScope.page = "networks"; // Initial values.
 
   $scope.loaded = false;
   $scope.subnet = null;
@@ -44116,7 +44109,13 @@ function SubnetDetailsController($scope, $rootScope, $routeParams, $location, Co
       subnetLoaded(activeSubnet);
     } else {
       SubnetsManager.setActiveItem(requestedSubnet).then(function (subnet) {
-        subnetLoaded(subnet);
+        subnetLoaded(subnet); // Set flag for RSD navigation item.
+
+        if (!$rootScope.showRSDLink) {
+          GeneralManager.getNavigationOptions().then(function (res) {
+            return $rootScope.showRSDLink = res.rsd;
+          });
+        }
       }, function (error) {
         ErrorService.raiseError(error);
       });
@@ -44177,14 +44176,7 @@ function VLANDetailsController($scope, $rootScope, $routeParams, $filter, $locat
   $rootScope.title = "Loading..."; // Note: this value must match the top-level tab, in order for
   // highlighting to occur properly.
 
-  $rootScope.page = "networks"; // Set flag for RSD navigation item.
-
-  if (!$rootScope.showRSDLink) {
-    GeneralManager.getNavigationOptions().then(function (res) {
-      return $rootScope.showRSDLink = res.rsd;
-    });
-  }
-
+  $rootScope.page = "networks";
   vm.DELETE_ACTION = {
     name: "delete",
     title: "Delete"
@@ -44916,7 +44908,13 @@ function VLANDetailsController($scope, $rootScope, $routeParams, $filter, $locat
       vlanLoaded(activeVLAN);
     } else {
       VLANsManager.setActiveItem(requestedVLAN).then(function (vlan) {
-        vlanLoaded(vlan);
+        vlanLoaded(vlan); // Set flag for RSD navigation item.
+
+        if (!$rootScope.showRSDLink) {
+          GeneralManager.getNavigationOptions().then(function (res) {
+            return $rootScope.showRSDLink = res.rsd;
+          });
+        }
       }, function (error) {
         ErrorService.raiseError(error);
       });
@@ -52599,14 +52597,7 @@ function DashboardController($scope, $rootScope, $location, DiscoveriesManager, 
   var deviceIPOptions = [["static", "Static"], ["dynamic", "Dynamic"], ["external", "External"]]; // Set title and page.
 
   $rootScope.title = "Dashboard";
-  $rootScope.page = "dashboard"; // Set flag for RSD navigation item.
-
-  if (!$rootScope.showRSDLink) {
-    GeneralManager.getNavigationOptions().then(function (res) {
-      return $rootScope.showRSDLink = res.rsd;
-    });
-  } // Set initial values.
-
+  $rootScope.page = "dashboard"; // Set initial values.
 
   $scope.loaded = false;
   $scope.discoveredDevices = DiscoveriesManager.getItems();
@@ -52878,7 +52869,14 @@ function DashboardController($scope, $rootScope, $location, DiscoveriesManager, 
 
 
   ManagerHelperService.loadManagers($scope, [DiscoveriesManager, DomainsManager, MachinesManager, DevicesManager, SubnetsManager, VLANsManager, ConfigsManager]).then(function () {
-    $scope.loaded = true;
+    $scope.loaded = true; // Set flag for RSD navigation item.
+
+    if (!$rootScope.showRSDLink) {
+      GeneralManager.getNavigationOptions().then(function (res) {
+        return $rootScope.showRSDLink = res.rsd;
+      });
+    }
+
     $scope.networkDiscovery = ConfigsManager.getItemFromList("network_discovery");
     $scope.setMetadata();
     $scope.discoveredDevices.forEach(function (device) {
@@ -52920,14 +52918,7 @@ function DomainDetailsController($scope, $rootScope, $routeParams, $location, Do
   $rootScope.title = "Loading..."; // Note: this value must match the top-level tab, in order for
   // highlighting to occur properly.
 
-  $rootScope.page = "domains"; // Set flag for RSD navigation item.
-
-  if (!$rootScope.showRSDLink) {
-    GeneralManager.getNavigationOptions().then(function (res) {
-      return $rootScope.showRSDLink = res.rsd;
-    });
-  } // Initial values.
-
+  $rootScope.page = "domains"; // Initial values.
 
   $scope.loaded = false;
   $scope.domain = null;
@@ -53070,7 +53061,13 @@ function DomainDetailsController($scope, $rootScope, $routeParams, $location, Do
       domainLoaded(activeDomain);
     } else {
       DomainsManager.setActiveItem(requestedDomain).then(function (domain) {
-        domainLoaded(domain);
+        domainLoaded(domain); // Set flag for RSD navigation item.
+
+        if (!$rootScope.showRSDLink) {
+          GeneralManager.getNavigationOptions().then(function (res) {
+            return $rootScope.showRSDLink = res.rsd;
+          });
+        }
       }, function (error) {
         ErrorService.raiseError(error);
       });
@@ -53105,14 +53102,7 @@ function DomainsListController($scope, $rootScope, DomainsManager, UsersManager,
   // Load the filters that are used inside the controller.
   // Set title and page.
   $rootScope.title = "DNS";
-  $rootScope.page = "domains"; // Set flag for RSD navigation item.
-
-  if (!$rootScope.showRSDLink) {
-    GeneralManager.getNavigationOptions().then(function (res) {
-      return $rootScope.showRSDLink = res.rsd;
-    });
-  } // Set initial values.
-
+  $rootScope.page = "domains"; // Set initial values.
 
   $scope.domains = DomainsManager.getItems();
   $scope.currentpage = "domains";
@@ -53153,7 +53143,13 @@ function DomainsListController($scope, $rootScope, DomainsManager, UsersManager,
   };
 
   ManagerHelperService.loadManagers($scope, [DomainsManager, UsersManager]).then(function () {
-    $scope.loading = false;
+    $scope.loading = false; // Set flag for RSD navigation item.
+
+    if (!$rootScope.showRSDLink) {
+      GeneralManager.getNavigationOptions().then(function (res) {
+        return $rootScope.showRSDLink = res.rsd;
+      });
+    }
   });
 }
 
@@ -53185,14 +53181,7 @@ function FabricDetailsController($scope, $rootScope, $routeParams, $filter, $loc
   $rootScope.title = "Loading..."; // Note: this value must match the top-level tab, in order for
   // highlighting to occur properly.
 
-  $rootScope.page = "networks"; // Set flag for RSD navigation item.
-
-  if (!$rootScope.showRSDLink) {
-    GeneralManager.getNavigationOptions().then(function (res) {
-      return $rootScope.showRSDLink = res.rsd;
-    });
-  } // Initial values.
-
+  $rootScope.page = "networks"; // Initial values.
 
   $scope.fabric = null;
   $scope.fabricManager = FabricsManager;
@@ -53340,7 +53329,13 @@ function FabricDetailsController($scope, $rootScope, $routeParams, $filter, $loc
     if (isNaN(requestedFabric)) {
       ErrorService.raiseError("Invalid fabric identifier.");
     } else if (angular.isObject(activeFabric) && activeFabric.id === requestedFabric) {
-      fabricLoaded(activeFabric);
+      fabricLoaded(activeFabric); // Set flag for RSD navigation item.
+
+      if (!$rootScope.showRSDLink) {
+        GeneralManager.getNavigationOptions().then(function (res) {
+          return $rootScope.showRSDLink = res.rsd;
+        });
+      }
     } else {
       FabricsManager.setActiveItem(requestedFabric).then(function (fabric) {
         fabricLoaded(fabric);
@@ -53376,14 +53371,7 @@ ImagesController.$inject = ["$rootScope", "$scope", "BootResourcesManager", "Con
 /* @ngInject */
 function ImagesController($rootScope, $scope, BootResourcesManager, ConfigsManager, UsersManager, ManagerHelperService, GeneralManager) {
   $rootScope.page = "images";
-  $rootScope.title = "Loading..."; // Set flag for RSD navigation item.
-
-  if (!$rootScope.showRSDLink) {
-    GeneralManager.getNavigationOptions().then(function (res) {
-      return $rootScope.showRSDLink = res.rsd;
-    });
-  }
-
+  $rootScope.title = "Loading...";
   $scope.loading = true;
   $scope.bootResources = BootResourcesManager.getData();
   $scope.configManager = ConfigsManager;
@@ -53403,7 +53391,13 @@ function ImagesController($rootScope, $scope, BootResourcesManager, ConfigsManag
   $scope.$watch("bootResources.resources", function () {
     if (angular.isArray($scope.bootResources.resources)) {
       $scope.loading = false;
-      $rootScope.title = "Images";
+      $rootScope.title = "Images"; // Set flag for RSD navigation item.
+
+      if (!$rootScope.showRSDLink) {
+        GeneralManager.getNavigationOptions().then(function (res) {
+          return $rootScope.showRSDLink = res.rsd;
+        });
+      }
     }
   });
 }
@@ -53631,15 +53625,8 @@ function NetworksListController($scope, $rootScope, $filter, $location, SubnetsM
   var filterByNullSpace = $filter("filterByNullSpace"); // Set title and page.
 
   $rootScope.title = "Subnets";
-  $rootScope.page = "networks"; // Set flag for RSD navigation item.
-
-  if (!$rootScope.showRSDLink) {
-    GeneralManager.getNavigationOptions().then(function (res) {
-      return $rootScope.showRSDLink = res.rsd;
-    });
-  } // Set the initial value of $scope.groupBy based on the URL
+  $rootScope.page = "networks"; // Set the initial value of $scope.groupBy based on the URL
   // parameters, but default to the 'fabric' groupBy if it's not found.
-
 
   $scope.getURLParameters = function () {
     if (angular.isString($location.search().by)) {
@@ -53908,7 +53895,14 @@ function NetworksListController($scope, $rootScope, $filter, $location, SubnetsM
   };
 
   ManagerHelperService.loadManagers($scope, [SubnetsManager, FabricsManager, SpacesManager, VLANsManager, UsersManager]).then(function () {
-    $scope.loading = false;
+    $scope.loading = false; // Set flag for RSD navigation item.
+
+    if (!$rootScope.showRSDLink) {
+      GeneralManager.getNavigationOptions().then(function (res) {
+        return $rootScope.showRSDLink = res.rsd;
+      });
+    }
+
     $scope.updateActions();
     $scope.$watch("[subnets, fabrics, spaces, vlans]", $scope.updateGroupBy, true); // If the route has been updated, a new search string must
     // potentially be rendered.
@@ -54100,14 +54094,7 @@ function NodeDetailsController($scope, $rootScope, $routeParams, $location, Devi
     static: "Static"
   }; // Set title and page.
 
-  $rootScope.title = "Loading..."; // Set flag for RSD navigation item.
-
-  if (!$rootScope.showRSDLink) {
-    GeneralManager.getNavigationOptions().then(function (res) {
-      return $rootScope.showRSDLink = res.rsd;
-    });
-  } // Initial values.
-
+  $rootScope.title = "Loading..."; // Initial values.
 
   $scope.MAAS_config = $window.MAAS_config;
   $scope.loaded = false;
@@ -55322,7 +55309,13 @@ function NodeDetailsController($scope, $rootScope, $routeParams, $location, Devi
     var activeNode = $scope.nodesManager.getActiveItem();
 
     if (angular.isObject(activeNode) && activeNode.system_id === $routeParams.system_id) {
-      nodeLoaded(activeNode);
+      nodeLoaded(activeNode); // Set flag for RSD navigation item.
+
+      if (!$rootScope.showRSDLink) {
+        GeneralManager.getNavigationOptions().then(function (res) {
+          return $rootScope.showRSDLink = res.rsd;
+        });
+      }
     } else {
       $scope.nodesManager.setActiveItem($routeParams.system_id).then(function (node) {
         nodeLoaded(node);
@@ -55371,14 +55364,7 @@ function NodeEventsController($scope, $rootScope, $routeParams, $location, Machi
   // Events manager that is loaded once the node is loaded.
   var eventsManager = null; // Set the title and page.
 
-  $rootScope.title = "Loading..."; // Set flag for RSD navigation item.
-
-  if (!$rootScope.showRSDLink) {
-    GeneralManager.getNavigationOptions().then(function (res) {
-      return $rootScope.showRSDLink = res.rsd;
-    });
-  } // Initial values.
-
+  $rootScope.title = "Loading..."; // Initial values.
 
   $scope.loaded = false;
   $scope.node = null;
@@ -55439,7 +55425,13 @@ function NodeEventsController($scope, $rootScope, $routeParams, $location, Machi
       nodeLoaded(activeNode);
     } else {
       $scope.nodesManager.setActiveItem($routeParams.system_id).then(function (node) {
-        nodeLoaded(node);
+        nodeLoaded(node); // Set flag for RSD navigation item.
+
+        if (!$rootScope.showRSDLink) {
+          GeneralManager.getNavigationOptions().then(function (res) {
+            return $rootScope.showRSDLink = res.rsd;
+          });
+        }
       }, function (error) {
         ErrorService.raiseError(error);
       });
@@ -55480,14 +55472,7 @@ NodeResultController.$inject = ["$scope", "$rootScope", "$routeParams", "$locati
 /* @ngInject */
 function NodeResultController($scope, $rootScope, $routeParams, $location, MachinesManager, ControllersManager, NodeResultsManagerFactory, ManagerHelperService, ErrorService, GeneralManager) {
   // Set the title and page.
-  $rootScope.title = "Loading..."; // Set flag for RSD navigation item.
-
-  if (!$rootScope.showRSDLink) {
-    GeneralManager.getNavigationOptions().then(function (res) {
-      return $rootScope.showRSDLink = res.rsd;
-    });
-  } // Initial values.
-
+  $rootScope.title = "Loading..."; // Initial values.
 
   $scope.loaded = false;
   $scope.resultLoaded = false;
@@ -55550,7 +55535,13 @@ function NodeResultController($scope, $rootScope, $routeParams, $location, Machi
       nodeLoaded(activeNode);
     } else {
       $scope.nodesManager.setActiveItem($routeParams.system_id).then(function (node) {
-        nodeLoaded(node);
+        nodeLoaded(node); // Set flag for RSD navigation item.
+
+        if (!$rootScope.showRSDLink) {
+          GeneralManager.getNavigationOptions().then(function (res) {
+            return $rootScope.showRSDLink = res.rsd;
+          });
+        }
       }, function (error) {
         ErrorService.raiseError(error);
       });
@@ -55876,14 +55867,7 @@ function NodesListController($q, $scope, $interval, $rootScope, $routeParams, $r
   }; // Set title and page.
 
   $rootScope.title = "Machines";
-  $rootScope.page = "machines"; // Set flag for RSD navigation item.
-
-  if (!$rootScope.showRSDLink) {
-    GeneralManager.getNavigationOptions().then(function (res) {
-      return $rootScope.showRSDLink = res.rsd;
-    });
-  } // Set initial values.
-
+  $rootScope.page = "machines"; // Set initial values.
 
   $scope.MAAS_config = $window.MAAS_config;
   $scope.machines = MachinesManager.getItems();
@@ -57000,7 +56984,13 @@ function NodesListController($q, $scope, $interval, $rootScope, $routeParams, $r
 
 
   ManagerHelperService.loadManagers($scope, page_managers.concat([GeneralManager, ZonesManager, UsersManager, ResourcePoolsManager, ServicesManager, TagsManager])).then(function () {
-    $scope.loading = false;
+    $scope.loading = false; // Set flag for RSD navigation item.
+
+    if (!$rootScope.showRSDLink) {
+      GeneralManager.getNavigationOptions().then(function (res) {
+        return $rootScope.showRSDLink = res.rsd;
+      });
+    }
   }); // Stop polling and save the current filter when the scope is destroyed.
 
   $scope.$on("$destroy", function () {
@@ -57082,13 +57072,6 @@ function PodDetailsController($scope, $rootScope, $location, $routeParams, $filt
   } else {
     $rootScope.page = "kvm";
     $scope.pageType = "KVM";
-  } // Set flag for RSD navigation item.
-
-
-  if (!$rootScope.showRSDLink) {
-    GeneralManager.getNavigationOptions().then(function (res) {
-      return $rootScope.showRSDLink = res.rsd;
-    });
   } // Initial values.
 
 
@@ -57781,7 +57764,13 @@ function PodDetailsController($scope, $rootScope, $location, $routeParams, $filt
         $scope.compose.obj.storage[0].pool = $scope.getDefaultStoragePool();
         $scope.loaded = true;
         $scope.machinesSearch = "pod-id:=" + $scope.pod.id;
-        $scope.startWatching();
+        $scope.startWatching(); // Set flag for RSD navigation item.
+
+        if (!$rootScope.showRSDLink) {
+          GeneralManager.getNavigationOptions().then(function (res) {
+            return $rootScope.showRSDLink = res.rsd;
+          });
+        }
       }, function (error) {
         ErrorService.raiseError(error);
       });
@@ -57826,13 +57815,6 @@ function PodsListController($scope, $rootScope, $location, PodsManager, UsersMan
   } else {
     $rootScope.title = "KVM";
     $rootScope.page = "kvm";
-  } // Set flag for RSD navigation item.
-
-
-  if (!$rootScope.showRSDLink) {
-    GeneralManager.getNavigationOptions().then(function (res) {
-      return $rootScope.showRSDLink = res.rsd;
-    });
   }
 
   $scope.filteredItems = [];
@@ -58199,7 +58181,13 @@ function PodsListController($scope, $rootScope, $location, PodsManager, UsersMan
     $scope.pods.forEach(function (pod) {
       pod.default_pool_data = $scope.getDefaultPoolData(pod);
     });
-    $scope.loading = false;
+    $scope.loading = false; // Set flag for RSD navigation item.
+
+    if (!$rootScope.showRSDLink) {
+      GeneralManager.getNavigationOptions().then(function (res) {
+        return $rootScope.showRSDLink = res.rsd;
+      });
+    }
   });
 }
 
@@ -58259,14 +58247,7 @@ SettingsController.$inject = ["$scope", "$rootScope", "$routeParams", "PackageRe
 function SettingsController($scope, $rootScope, $routeParams, PackageRepositoriesManager, DHCPSnippetsManager, MachinesManager, ControllersManager, DevicesManager, SubnetsManager, GeneralManager, ManagerHelperService) {
   // Set the title and page.
   $rootScope.title = "Loading...";
-  $rootScope.page = "settings"; // Set flag for RSD navigation item.
-
-  if (!$rootScope.showRSDLink) {
-    GeneralManager.getNavigationOptions().then(function (res) {
-      return $rootScope.showRSDLink = res.rsd;
-    });
-  } // Initial values.
-
+  $rootScope.page = "settings"; // Initial values.
 
   $scope.loading = true;
   $scope.snippets = DHCPSnippetsManager.getItems();
@@ -58379,7 +58360,13 @@ function SettingsController($scope, $rootScope, $routeParams, PackageRepositorie
 
 
   ManagerHelperService.loadManagers($scope, [PackageRepositoriesManager, DHCPSnippetsManager, MachinesManager, DevicesManager, ControllersManager, SubnetsManager, GeneralManager]).then(function () {
-    $scope.loading = false;
+    $scope.loading = false; // Set flag for RSD navigation item.
+
+    if (!$rootScope.showRSDLink) {
+      GeneralManager.getNavigationOptions().then(function (res) {
+        return $rootScope.showRSDLink = res.rsd;
+      });
+    }
   });
 }
 
@@ -58559,14 +58546,7 @@ function ZoneDetailsController($scope, $rootScope, $routeParams, $location, Zone
   $rootScope.title = "Loading..."; // Note: this value must match the top-level tab, in order for
   // highlighting to occur properly.
 
-  $rootScope.page = "zones"; // Set flag for RSD navigation item.
-
-  if (!$rootScope.showRSDLink) {
-    GeneralManager.getNavigationOptions().then(function (res) {
-      return $rootScope.showRSDLink = res.rsd;
-    });
-  } // Initial values.
-
+  $rootScope.page = "zones"; // Initial values.
 
   $scope.loaded = false;
   $scope.zone = null;
@@ -58654,7 +58634,13 @@ function ZoneDetailsController($scope, $rootScope, $routeParams, $location, Zone
       zoneLoaded(activeZone);
     } else {
       ZonesManager.setActiveItem(requestedZone).then(function (zone) {
-        zoneLoaded(zone);
+        zoneLoaded(zone); // Set flag for RSD navigation item.
+
+        if (!$rootScope.showRSDLink) {
+          GeneralManager.getNavigationOptions().then(function (res) {
+            return $rootScope.showRSDLink = res.rsd;
+          });
+        }
       }, function (error) {
         ErrorService.raiseError(error);
       });
@@ -58688,14 +58674,7 @@ ZonesListController.$inject = ["$scope", "$rootScope", "ZonesManager", "UsersMan
 function ZonesListController($scope, $rootScope, ZonesManager, UsersManager, ManagerHelperService, GeneralManager) {
   // Set title and page.
   $rootScope.title = "Zones";
-  $rootScope.page = "zones"; // Set flag for RSD navigation item.
-
-  if (!$rootScope.showRSDLink) {
-    GeneralManager.getNavigationOptions().then(function (res) {
-      return $rootScope.showRSDLink = res.rsd;
-    });
-  } // Set initial values.
-
+  $rootScope.page = "zones"; // Set initial values.
 
   $scope.zoneManager = ZonesManager;
   $scope.zones = ZonesManager.getItems();
@@ -58724,7 +58703,13 @@ function ZonesListController($scope, $rootScope, ZonesManager, UsersManager, Man
   };
 
   ManagerHelperService.loadManagers($scope, [ZonesManager, UsersManager]).then(function () {
-    $scope.loading = false;
+    $scope.loading = false; // Set flag for RSD navigation item.
+
+    if (!$rootScope.showRSDLink) {
+      GeneralManager.getNavigationOptions().then(function (res) {
+        return $rootScope.showRSDLink = res.rsd;
+      });
+    }
   });
 }
 

@@ -42,13 +42,6 @@ function NodesListController(
   $rootScope.title = "Machines";
   $rootScope.page = "machines";
 
-  // Set flag for RSD navigation item.
-  if (!$rootScope.showRSDLink) {
-    GeneralManager.getNavigationOptions().then(
-      res => ($rootScope.showRSDLink = res.rsd)
-    );
-  }
-
   // Set initial values.
   $scope.MAAS_config = $window.MAAS_config;
   $scope.machines = MachinesManager.getItems();
@@ -1245,6 +1238,13 @@ function NodesListController(
     ])
   ).then(function() {
     $scope.loading = false;
+
+    // Set flag for RSD navigation item.
+    if (!$rootScope.showRSDLink) {
+      GeneralManager.getNavigationOptions().then(
+        res => ($rootScope.showRSDLink = res.rsd)
+      );
+    }
   });
 
   // Stop polling and save the current filter when the scope is destroyed.

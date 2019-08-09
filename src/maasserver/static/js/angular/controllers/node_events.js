@@ -23,13 +23,6 @@ function NodeEventsController(
   // Set the title and page.
   $rootScope.title = "Loading...";
 
-  // Set flag for RSD navigation item.
-  if (!$rootScope.showRSDLink) {
-    GeneralManager.getNavigationOptions().then(
-      res => ($rootScope.showRSDLink = res.rsd)
-    );
-  }
-
   // Initial values.
   $scope.loaded = false;
   $scope.node = null;
@@ -95,6 +88,13 @@ function NodeEventsController(
         $scope.nodesManager.setActiveItem($routeParams.system_id).then(
           function(node) {
             nodeLoaded(node);
+
+            // Set flag for RSD navigation item.
+            if (!$rootScope.showRSDLink) {
+              GeneralManager.getNavigationOptions().then(
+                res => ($rootScope.showRSDLink = res.rsd)
+              );
+            }
           },
           function(error) {
             ErrorService.raiseError(error);
