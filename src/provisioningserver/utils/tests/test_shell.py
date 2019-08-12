@@ -6,6 +6,7 @@
 __all__ = []
 
 import os
+import random
 from subprocess import CalledProcessError
 
 from fixtures import EnvironmentVariable
@@ -53,6 +54,14 @@ class TestCallAndCheck(MAASTestCase):
         self.assertEqual(1, error.returncode)
         self.assertEqual(command, error.cmd)
         self.assertEqual(message, error.output)
+
+    def test__passes_timeout_to_communicate(self):
+        command = factory.make_name('command')
+        process = self.patch_popen()
+        timeout = random.randint(1, 10)
+        call_and_check(command, timeout=timeout)
+        self.assertThat(
+            process.communicate, MockCalledOnceWith(timeout=timeout))
 
     def test__reports_stderr_on_failure(self):
         nonfile = os.path.join(self.make_dir(), factory.make_name('nonesuch'))

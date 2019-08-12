@@ -10,6 +10,7 @@ import os
 import random
 from textwrap import dedent
 from unittest.mock import (
+    call,
     Mock,
     sentinel,
 )
@@ -18,6 +19,7 @@ from fixtures import FakeLogger
 from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
+    MockCallsMatch,
     MockNotCalled,
 )
 from maastesting.runtest import MAASTwistedRunTest
@@ -50,6 +52,7 @@ from twisted.internet import reactor
 from twisted.internet.defer import (
     CancelledError,
     DeferredLock,
+    fail,
     inlineCallbacks,
     succeed,
 )
@@ -452,6 +455,42 @@ class TestServiceMonitor(MAASTestCase):
             yield service_monitor.reloadService(fake_service.name, if_on=True)
 
     @inlineCallbacks
+    def test__killService_performs_kill_then_ensureService(self):
+        fake_service = make_fake_service(SERVICE_STATE.ON)
+        service_monitor = self.make_service_monitor([fake_service])
+        mock_performServiceAction = self.patch(
+            service_monitor, "_performServiceAction")
+        mock_performServiceAction.return_value = succeed(None)
+        mock_ensureService = self.patch(service_monitor, "ensureService")
+        mock_ensureService.return_value = succeed(
+            ServiceState(SERVICE_STATE.ON, "running"))
+        yield service_monitor.killService(fake_service.name)
+        self.assertThat(
+            mock_performServiceAction,
+            MockCalledOnceWith(fake_service, "kill"))
+        self.assertThat(
+            mock_ensureService,
+            MockCalledOnceWith(fake_service.name))
+
+    @inlineCallbacks
+    def test__killService_doesnt_fail_on_ServiceActionError(self):
+        fake_service = make_fake_service(SERVICE_STATE.ON)
+        service_monitor = self.make_service_monitor([fake_service])
+        mock_performServiceAction = self.patch(
+            service_monitor, "_performServiceAction")
+        mock_performServiceAction.return_value = fail(ServiceActionError())
+        mock_ensureService = self.patch(service_monitor, "ensureService")
+        mock_ensureService.return_value = succeed(
+            ServiceState(SERVICE_STATE.ON, "running"))
+        yield service_monitor.killService(fake_service.name)
+        self.assertThat(
+            mock_performServiceAction,
+            MockCalledOnceWith(fake_service, "kill"))
+        self.assertThat(
+            mock_ensureService,
+            MockCalledOnceWith(fake_service.name))
+
+    @inlineCallbacks
     def test___execCmd_times_out(self):
         monitor = ServiceMonitor(make_fake_service())
         with ExpectedException(ServiceActionError):
@@ -535,14 +574,42 @@ class TestServiceMonitor(MAASTestCase):
         mock_getProcessOutputAndValue = self.patch(
             service_monitor_module, "getProcessOutputAndValue")
         mock_getProcessOutputAndValue.return_value = succeed((b"", b"", 0))
+        extra_opts = ('--extra', factory.make_name('extra'))
         yield service_monitor._execSupervisorServiceAction(
-            service_name, action)
+            service_name, action, extra_opts=extra_opts)
         cmd = os.path.join(snap_path, 'bin', 'run-supervisorctl')
-        cmd = cmd, action, service_name
+        cmd = (cmd, action) + extra_opts + (service_name,)
         self.assertThat(
             mock_getProcessOutputAndValue, MockCalledOnceWith(
                 # The environment contains LC_ALL and LANG too.
                 cmd[0], cmd[1:], env=get_env_with_bytes_locale()))
+
+    @inlineCallbacks
+    def test___execSupervisorServiceAction_emulates_kill(self):
+        snap_path = factory.make_name("path")
+        self.patch(snappy, "get_snap_path").return_value = snap_path
+        service_monitor = self.make_service_monitor()
+        service_name = factory.make_name("service")
+        fake_pid = random.randint(1, 100)
+        mock_getProcessOutputAndValue = self.patch(
+            service_monitor_module, "getProcessOutputAndValue")
+        mock_getProcessOutputAndValue.side_effect = [
+            succeed((("%s" % fake_pid).encode('utf-8'), b"", 0)),
+            succeed((b"", b"", 0)),
+        ]
+        extra_opts = ('-s', factory.make_name('SIGKILL'))
+        yield service_monitor._execSupervisorServiceAction(
+            service_name, 'kill', extra_opts=extra_opts)
+        cmd = os.path.join(snap_path, 'bin', 'run-supervisorctl')
+        self.assertThat(
+            mock_getProcessOutputAndValue, MockCallsMatch(
+                call(
+                    cmd, ("pid", service_name),
+                    env=get_env_with_bytes_locale()),
+                call(
+                    "kill", extra_opts + ("%s" % fake_pid,),
+                    env=get_env_with_bytes_locale()),
+            ))
 
     @inlineCallbacks
     def test___execSupervisorServiceAction_decodes_stdout_and_stderr(self):
@@ -579,13 +646,16 @@ class TestServiceMonitor(MAASTestCase):
             service_monitor, "_execSystemDServiceAction")
         mock_execSystemDServiceAction.return_value = (0, "", "")
         action = factory.make_name("action")
+        extra_opts = ('--option', factory.make_name("option"))
+        setattr(service, '%s_extra_opts' % action, extra_opts)
         yield service_monitor._performServiceAction(service, action)
         self.assertThat(service_lock.run, MockCalledOnceWith(
             service_monitor._execSystemDServiceAction,
-            service.service_name, action))
+            service.service_name, action, extra_opts=extra_opts))
         self.assertThat(
             mock_execSystemDServiceAction,
-            MockCalledOnceWith(service.service_name, action))
+            MockCalledOnceWith(
+                service.service_name, action, extra_opts=extra_opts))
 
     @inlineCallbacks
     def test___performServiceAction_holds_lock_perform_supervisor_action(self):
@@ -599,13 +669,16 @@ class TestServiceMonitor(MAASTestCase):
             service_monitor, "_execSupervisorServiceAction")
         mock_execSupervisorServiceAction.return_value = (0, "", "")
         action = factory.make_name("action")
+        extra_opts = ('--option', factory.make_name("option"))
+        setattr(service, '%s_extra_opts' % action, extra_opts)
         yield service_monitor._performServiceAction(service, action)
         self.assertThat(service_lock.run, MockCalledOnceWith(
             service_monitor._execSupervisorServiceAction,
-            service.service_name, action))
+            service.service_name, action, extra_opts=extra_opts))
         self.assertThat(
             mock_execSupervisorServiceAction,
-            MockCalledOnceWith(service.service_name, action))
+            MockCalledOnceWith(
+                service.service_name, action, extra_opts=extra_opts))
 
     @inlineCallbacks
     def test___performServiceAction_raises_ServiceActionError_if_fails(self):

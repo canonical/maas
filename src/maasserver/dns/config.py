@@ -54,7 +54,7 @@ def dns_force_reload():
     DNSPublication(source="Force reload").save()
 
 
-def dns_update_all_zones(reload_retry=False):
+def dns_update_all_zones(reload_retry=False, reload_timeout=2):
     """Update all zone files for all domains.
 
     Serving these zone files means updating BIND's configuration to include
@@ -96,12 +96,12 @@ def dns_update_all_zones(reload_retry=False):
     # actually needed but it seems safer to maintain this behaviour until we
     # have a better understanding.
     if reload_retry:
-        bind_reload_with_retries()
+        reloaded = bind_reload_with_retries(timeout=reload_timeout)
     else:
-        bind_reload()
+        reloaded = bind_reload(timeout=reload_timeout)
 
     # Return the current serial and list of domain names.
-    return serial, [
+    return serial, reloaded, [
         domain.name
         for domain in domains
     ]

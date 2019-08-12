@@ -212,7 +212,7 @@ class TestRegionControllerService(MAASServerTestCase):
         service = self.make_service(sentinel.listener)
         service.needsDNSUpdate = True
         dns_result = (
-            random.randint(1, 1000), [
+            random.randint(1, 1000), True, [
                 factory.make_name('domain')
                 for _ in range(3)
             ])
@@ -231,6 +231,46 @@ class TestRegionControllerService(MAASServerTestCase):
             mock_msg,
             MockCalledOnceWith(
                 "Reloaded DNS configuration; regiond started."))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_process_zones_kills_bind_on_failed_reload(self):
+        service = self.make_service(sentinel.listener)
+        service.needsDNSUpdate = True
+        service.retryOnFailure = True
+        dns_result_0 = (
+            random.randint(1, 1000), False, [
+                factory.make_name('domain')
+                for _ in range(3)
+            ])
+        dns_result_1 = (dns_result_0[0], True, dns_result_0[2])
+        mock_dns_update_all_zones = self.patch(
+            region_controller, "dns_update_all_zones")
+        mock_dns_update_all_zones.side_effect = [dns_result_0, dns_result_1]
+
+        service._checkSerialCalled = False
+        orig_checkSerial = service._checkSerial
+
+        def _checkSerial(result):
+            if service._checkSerialCalled:
+                return dns_result_1
+            service._checkSerialCalled = True
+            return orig_checkSerial(result)
+
+        mock_check_serial = self.patch(service, "_checkSerial")
+        mock_check_serial.side_effect = _checkSerial
+        mock_killService = self.patch(
+            region_controller.service_monitor, 'killService')
+        mock_killService.return_value = succeed(None)
+        service.startProcessing()
+        yield service.processingDefer
+        self.assertThat(
+            mock_dns_update_all_zones, MockCallsMatch(call(), call()))
+        self.assertThat(
+            mock_check_serial,
+            MockCallsMatch(call(dns_result_0), call(dns_result_1)))
+        self.assertThat(
+            mock_killService, MockCalledOnceWith("bind9"))
 
     @wait_for_reactor
     @inlineCallbacks
@@ -348,7 +388,7 @@ class TestRegionControllerService(MAASServerTestCase):
         service.needsProxyUpdate = True
         service.needsRBACUpdate = True
         dns_result = (
-            random.randint(1, 1000), [
+            random.randint(1, 1000), True, [
                 factory.make_name('domain')
                 for _ in range(3)
             ])
@@ -407,7 +447,7 @@ class TestRegionControllerService(MAASServerTestCase):
             succeed(([self.make_soa_result(result_serial)], [], [])),
         ]
         # Error should not be raised.
-        return service._checkSerial((formatted_serial, dns_names))
+        return service._checkSerial((formatted_serial, True, dns_names))
 
     @wait_for_reactor
     @inlineCallbacks
@@ -425,7 +465,7 @@ class TestRegionControllerService(MAASServerTestCase):
         mock_lookup.side_effect = lambda *args: succeed(([], [], []))
         # Error should not be raised.
         with ExpectedException(DNSReloadError):
-            yield service._checkSerial((formatted_serial, dns_names))
+            yield service._checkSerial((formatted_serial, True, dns_names))
 
     @wait_for_reactor
     @inlineCallbacks
@@ -443,7 +483,7 @@ class TestRegionControllerService(MAASServerTestCase):
         mock_lookup.side_effect = ValueError()
         # Error should not be raised.
         with ExpectedException(DNSReloadError):
-            yield service._checkSerial((formatted_serial, dns_names))
+            yield service._checkSerial((formatted_serial, True, dns_names))
 
     @wait_for_reactor
     @inlineCallbacks
@@ -461,7 +501,7 @@ class TestRegionControllerService(MAASServerTestCase):
         mock_lookup.side_effect = TimeoutError()
         # Error should not be raised.
         with ExpectedException(DNSReloadError):
-            yield service._checkSerial((formatted_serial, dns_names))
+            yield service._checkSerial((formatted_serial, True, dns_names))
 
     def test__getRBACClient_returns_None_when_no_url(self):
         service = self.make_service(sentinel.listener)
@@ -565,7 +605,7 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
         service.needsDNSUpdate = True
         service.previousSerial = publications[0].serial
         dns_result = (
-            publications[-1].serial, [
+            publications[-1].serial, True, [
                 factory.make_name('domain')
                 for _ in range(3)
             ])
@@ -602,7 +642,7 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
         service.needsDNSUpdate = True
         service.previousSerial = publications[0].serial
         dns_result = (
-            publications[-1].serial, [
+            publications[-1].serial, True, [
                 factory.make_name('domain')
                 for _ in range(3)
             ])

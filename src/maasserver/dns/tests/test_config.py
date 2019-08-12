@@ -62,6 +62,7 @@ from testtools.matchers import (
     Equals,
     FileContains,
     HasLength,
+    Is,
     MatchesSetwise,
     MatchesStructure,
 )
@@ -307,7 +308,8 @@ class TestDNSConfigModifications(TestDNSServer):
         bind_reload_with_retries = self.patch_autospec(
             dns_config_module, "bind_reload_with_retries")
         dns_update_all_zones(reload_retry=True)
-        self.assertThat(bind_reload_with_retries, MockCalledOnceWith())
+        self.assertThat(
+            bind_reload_with_retries, MockCalledOnceWith(timeout=2))
 
     def test_dns_update_all_zones_passes_upstream_dns_parameter(self):
         self.patch(settings, 'DNS_CONNECT', True)
@@ -377,8 +379,9 @@ class TestDNSConfigModifications(TestDNSServer):
         self.patch(
             dns_config_module,
             "current_zone_serial").return_value = fake_serial
-        serial, domains = dns_update_all_zones()
+        serial, reloaded, domains = dns_update_all_zones()
         self.assertThat(serial, Equals(fake_serial))
+        self.assertThat(reloaded, Is(True))
         self.assertThat(domains, MatchesSetwise(*[
             Equals(domain.name)
             for domain in Domain.objects.filter(authoritative=True)
