@@ -50,6 +50,9 @@ class DNSServiceOnRack(ToggleableService):
     service_name = "bind9"
     snap_service_name = "bind9"
 
+    # Pass SIGKILL directly to parent.
+    kill_extra_opts = ('-s', 'SIGKILL')
+
 
 class ProxyServiceOnRack(ToggleableService):
     """Monitored proxy service on a rack controller host."""

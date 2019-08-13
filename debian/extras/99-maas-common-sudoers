@@ -18,10 +18,11 @@ maas ALL= NOPASSWD: /bin/systemctl restart chrony
 maas ALL= NOPASSWD: /bin/systemctl start chrony
 maas ALL= NOPASSWD: /bin/systemctl status chrony
 
-# Control of the DNS server: MAAS needs to track status and start it
-# again if stopped manually.
+# Control of the DNS server: MAAS needs to track status, start it
+# again if stopped manually, or if MAAS must brutally kill it!
 maas ALL= NOPASSWD: /bin/systemctl status bind9
 maas ALL= NOPASSWD: /bin/systemctl start bind9
+maas ALL= NOPASSWD: /bin/systemctl kill -s SIGKILL bind9
 
 # Control of the Proxy server: MAAS needs to reconfigure it after editing
 # its configuration file, start it and stop it.

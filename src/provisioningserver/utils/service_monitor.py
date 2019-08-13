@@ -413,6 +413,26 @@ class ServiceMonitor:
             raise ServiceActionError(error_msg)
         yield self._performServiceAction(service, "reload")
 
+    @asynchronous
+    @inlineCallbacks
+    def killService(self, name):
+        """Kill service.
+
+        Service will be killed then its state will be ensured to be in its
+        expected state. This is a way of getting a broken related service to be
+        responsive.
+        """
+        service = self.getServiceByName(name)
+        try:
+            yield self._performServiceAction(service, "kill")
+        except ServiceActionError:
+            # Kill action is allowed to fail, as its possible the service is
+            # already dead or not responding to correct signals to check
+            # the current status.
+            pass
+        state = yield self.ensureService(name)
+        return state
+
     @inlineCallbacks
     def _execCmd(self, cmd, env, timeout=8, retries=3):
         """Execute the `cmd` with the `env`."""
@@ -468,14 +488,46 @@ class ServiceMonitor:
         return self._execCmd(cmd, env)
 
     @asynchronous
-    def _execSupervisorServiceAction(self, service_name, action):
+    def _execSupervisorServiceAction(
+            self, service_name, action, extra_opts=None):
         """Perform the action with the run-supervisorctl command.
 
         :return: tuple (exit code, std-output, std-error)
         """
         env = get_env_with_bytes_locale()
         cmd = os.path.join(snappy.get_snap_path(), "bin", "run-supervisorctl")
-        cmd = (cmd, action, service_name)
+
+        # supervisord doesn't support native kill like systemd. Emulate this
+        # behaviour by getting the PID of the process and then killing the PID.
+        if action == 'kill':
+
+            def _kill_pid(result):
+                exit_code, stdout, _ = result
+                if exit_code != 0:
+                    return result
+                try:
+                    pid = int(stdout.strip())
+                except ValueError:
+                    pid = 0
+                if pid == 0:
+                    # supervisorctl returns 0 when the process is already dead
+                    # or we where not able to get the actual pid. Nothing to
+                    # do, as its already dead.
+                    return 0, "", ""
+                cmd = ('kill',)
+                if extra_opts:
+                    cmd += extra_opts
+                cmd += ('%s' % pid,)
+                return self._execCmd(cmd, env)
+
+            d = self._execCmd((cmd, 'pid', service_name), env)
+            d.addCallback(_kill_pid)
+            return d
+
+        cmd = (cmd, action)
+        if extra_opts is not None:
+            cmd += extra_opts
+        cmd += (service_name,)
         return self._execCmd(cmd, env)
 
     @inlineCallbacks
@@ -488,8 +540,9 @@ class ServiceMonitor:
         else:
             exec_action = self._execSystemDServiceAction
             service_name = service.service_name
+        extra_opts = getattr(service, '%s_extra_opts' % action, None)
         exit_code, output, error = yield lock.run(
-            exec_action, service_name, action)
+            exec_action, service_name, action, extra_opts=extra_opts)
         if exit_code != 0:
             error_msg = (
                 "Service '%s' failed to %s: %s" % (
