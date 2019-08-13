@@ -3455,6 +3455,17 @@ class TestNode(MAASServerTestCase):
         self.assertThat(
             clear_status_expires, MockCalledOnceWith(node.system_id))
 
+    def test_start_testing_prevents_unconfigured_interfaces(self):
+        script = factory.make_Script(
+            script_type=SCRIPT_TYPE.TESTING, parameters={
+                'interface': {'type': 'interface'}})
+        admin = factory.make_admin()
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
+        self.assertRaises(
+            ValidationError,
+            node.start_testing, admin, testing_scripts=[script.name])
+        self.assertFalse(ScriptSet.objects.filter(node=node).exists())
+
     def test_start_testing_prevents_destructive_tests_on_deployed(self):
         script = factory.make_Script(
             script_type=SCRIPT_TYPE.TESTING, destructive=True)

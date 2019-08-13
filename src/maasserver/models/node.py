@@ -2150,12 +2150,25 @@ class Node(CleanSave, TimestampedModel):
         # Create a new ScriptSet for the tests to be run.
         script_set = ScriptSet.objects.create_testing_script_set(
             self, testing_scripts, script_input)
-        if NODE_STATUS.DEPLOYED in (self.status, self.previous_status):
-            qs = script_set.scriptresult_set.filter(script__destructive=True)
-            if qs.exists():
+        # Additional validation for when starting testing and not
+        # commissioning + testing.
+        for script_result in script_set:
+            for parameter in script_result.parameters.values():
+                # If no interface is configured the ParametersForm sets a place
+                # holder, 'all'. This works when commissioning as the default
+                # network settings will be applied.
+                if (parameter['type'] == 'interface' and
+                        parameter['value'] == 'all'):
+                    script_set.delete()
+                    raise ValidationError(
+                        'An interface must be configured to run '
+                        'network testing!')
+            if (NODE_STATUS.DEPLOYED in (self.status, self.previous_status) and
+                    script_result.script.destructive):
                 script_set.delete()
                 raise ValidationError(
                     'Unable to run destructive test while deployed!')
+
         self.current_testing_script_set = script_set
 
         self._register_request_event(

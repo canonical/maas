@@ -778,6 +778,23 @@ class TestPowerMixin(APITestCase.ForUser):
         response = self.client.post(self.get_node_uri(node), {'op': 'test'})
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
 
+    def test_POST_test_deletes_scriptset_on_failure(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.READY, owner=factory.make_User())
+        script = factory.make_Script(
+            script_type=SCRIPT_TYPE.TESTING, parameters={
+                'interface': {'type': 'interface'}})
+        self.become_admin()
+        response = self.client.post(self.get_node_uri(node), {
+            'op': 'test',
+            'testing_scripts': script.name,
+        })
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+        self.assertEqual(
+            b'An interface must be configured to run network testing!',
+            response.content)
+        self.assertFalse(node.scriptset_set.exists())
+
     def test_POST_override_failed_testing(self):
         node = factory.make_Node(
             status=NODE_STATUS.FAILED_TESTING, owner=factory.make_User(),
