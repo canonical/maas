@@ -12,6 +12,10 @@ from django.db.models import Count
 from django.http import HttpRequest
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT
+from maasserver.forms import (
+    EditUserForm,
+    NewUserCreationForm,
+)
 from maasserver.models.user import SYSTEM_USERS
 from maasserver.permissions import (
     NodePermission,
@@ -21,6 +25,7 @@ from maasserver.permissions import (
 from maasserver.websockets.base import (
     Handler,
     HandlerDoesNotExistError,
+    HandlerPermissionError,
 )
 from provisioningserver.events import EVENT_TYPES
 
@@ -30,10 +35,14 @@ class UserHandler(Handler):
     class Meta:
         queryset = User.objects.filter(is_active=True).annotate(
             sshkeys_count=Count('sshkey'))
+        form_requires_request = False
         pk = 'id'
         allowed_methods = [
+            'create',
+            'delete',
             'list',
             'get',
+            'update',
             'auth_user',
             'mark_intro_complete',
             'create_authorisation_token',
@@ -64,9 +73,9 @@ class UserHandler(Handler):
             # only the user in it.
             return users.filter(username=self.user.username)
 
-    def get_object(self, params):
+    def get_object(self, params, permission=None):
         """Get object by using the `pk` in `params`."""
-        obj = super(UserHandler, self).get_object(params)
+        obj = super().get_object(params, permission=permission)
         if self.user.is_superuser:
             # Super user can get any user.
             return obj
@@ -75,6 +84,62 @@ class UserHandler(Handler):
             return obj
         else:
             raise HandlerDoesNotExistError(params[self._meta.pk])
+
+    def get_form_class(self, action):
+        """Pick the right form for the given action."""
+        forms = {
+            "create": NewUserCreationForm,
+            "update": EditUserForm,
+        }
+        return forms.get(action)
+
+    def create_audit_event(self, event_type, description):
+        """Create an audit event for this user"""
+        request = HttpRequest()
+        request.user = self.user
+        return create_audit_event(
+            event_type, ENDPOINT.UI, request, None, description)
+
+    def create(self, params):
+        """Create a new user, and log an event for it."""
+        try:
+            result = super().create(params=params)
+        except HandlerDoesNotExistError:
+            raise HandlerPermissionError()
+        self.create_audit_event(
+            EVENT_TYPES.AUTHORISATION,
+            "Created {} '{}'.".format(
+                'admin' if params['is_superuser'] else 'user',
+                params['username']))
+        return result
+
+    def update(self, params):
+        """Update a user, and log an event for it."""
+        try:
+            result = super().update(params=params)
+        except HandlerDoesNotExistError:
+            raise HandlerPermissionError()
+        self.create_audit_event(
+            EVENT_TYPES.AUTHORISATION,
+            ("Updated user profile (username: {username}, "
+             "full name: {last_name}, "
+             "email: {email}, administrator: {is_superuser})").format(
+                 **params))
+        return result
+
+    def delete(self, params):
+        """Delete a user, and log an event for it."""
+        try:
+            user = self.get_object(
+                params, permission=self._meta.delete_permission)
+            self.create_audit_event(
+                EVENT_TYPES.AUTHORISATION,
+                "Deleted {} '{}'.".format(
+                    'admin' if user.is_superuser else 'user', user.username))
+            result = super().delete(params=params)
+        except HandlerDoesNotExistError:
+            raise HandlerPermissionError()
+        return result
 
     def dehydrate(self, obj, data, for_list=False):
         data["sshkeys_count"] = obj.sshkeys_count
@@ -142,11 +207,7 @@ class UserHandler(Handler):
         This is only for the authenticated user. This cannot be performed on
         a different user.
         """
-        request = HttpRequest()
-        request.user = self.user
         profile = self.user.userprofile
         profile.delete_authorisation_token(params['key'])
-        create_audit_event(
-            EVENT_TYPES.AUTHORISATION, ENDPOINT.UI,
-            request, None, "Deleted token.")
+        self.create_audit_event(EVENT_TYPES.AUTHORISATION, "Deleted token.")
         return {}

@@ -16,14 +16,31 @@ from maasserver.permissions import (
 from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import RBACForceOffFixture
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.websockets.base import HandlerDoesNotExistError
+from maasserver.utils.orm import reload_object
+from maasserver.views.tests.test_settings import (
+    make_password_params,
+    make_user_attribute_params,
+    subset_dict,
+    user_attributes,
+)
+from maasserver.websockets.base import (
+    HandlerDoesNotExistError,
+    HandlerPermissionError,
+)
 from maasserver.websockets.handlers.user import UserHandler
 from maastesting.djangotestcase import count_queries
 from piston3.models import Token
 from provisioningserver.events import AUDIT
+from testtools.testcase import TestCase
 
 
 class TestUserHandler(MAASServerTestCase):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # testtools' assertRaises predates unittest's which has
+        # support for context-manager
+        self.assertRaises = super(TestCase, self).assertRaises
 
     def dehydrate_user(self, user, sshkeys_count=0, for_self=False):
         data = {
@@ -142,3 +159,160 @@ class TestUserHandler(MAASServerTestCase):
         event = Event.objects.filter(type__level=AUDIT).last()
         self.assertIsNotNone(event)
         self.assertEqual(event.description, "Deleted token.")
+
+    def test_create_as_unprivileged(self):
+        unpriv_user = factory.make_User()
+        handler = UserHandler(unpriv_user, {}, None)
+
+        params = {
+            'username': factory.make_string(),
+            'last_name': factory.make_string(30),
+            'email': factory.make_email_address(),
+            'is_superuser': factory.pick_bool(),
+        }
+        password = factory.make_string()
+        params.update(make_password_params(password))
+
+        with self.assertRaises(HandlerPermissionError):
+            handler.create(params)
+
+    def test_create_as_admin(self):
+        admin_user = factory.make_admin()
+        handler = UserHandler(admin_user, {}, None)
+
+        params = {
+            'username': factory.make_string(),
+            'last_name': factory.make_string(30),
+            'email': factory.make_email_address(),
+            'is_superuser': factory.pick_bool(),
+        }
+        password = factory.make_string()
+        params.update(make_password_params(password))
+
+        handler.create(params)
+
+        user = User.objects.get(username=params['username'])
+        self.assertAttributes(user, subset_dict(params, user_attributes))
+        self.assertTrue(user.check_password(password))
+        self.assertTrue(user.userprofile.is_local)
+
+    def test_create_as_admin_event_log(self):
+        admin_user = factory.make_admin()
+        handler = UserHandler(admin_user, {}, None)
+        params = {
+            'username': factory.make_string(),
+            'last_name': factory.make_string(30),
+            'email': factory.make_email_address(),
+            'is_superuser': False,
+        }
+        password = factory.make_string()
+        params.update(make_password_params(password))
+
+        handler.create(params)
+
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertIsNotNone(event)
+        self.assertEqual(
+            event.description, "Created user '{username}'.".format(**params))
+
+    def test_delete_as_unprivileged(self):
+        unpriv_user = factory.make_User()
+        handler = UserHandler(unpriv_user, {}, None)
+        user = factory.make_User()
+
+        with self.assertRaises(HandlerPermissionError):
+            handler.delete({'id': user.id})
+
+    def test_delete_as_admin(self):
+        admin_user = factory.make_admin()
+        handler = UserHandler(admin_user, {}, None)
+        user = factory.make_User()
+
+        handler.delete({'id': user.id})
+
+        self.assertItemsEqual([], User.objects.filter(id=user.id))
+
+    def test_delete_as_admin_event_log(self):
+        admin_user = factory.make_admin()
+        handler = UserHandler(admin_user, {}, None)
+        user = factory.make_User()
+
+        handler.delete({'id': user.id})
+
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertIsNotNone(event)
+        self.assertEqual(
+            event.description, "Deleted user '{}'.".format(user.username))
+
+    def test_update_other_as_unprivileged(self):
+        unpriv_user = factory.make_User()
+        handler = UserHandler(unpriv_user, {}, None)
+        user = factory.make_User()
+        params = make_user_attribute_params(user)
+        params.update({
+            'id': user.id,
+            'last_name': factory.make_name('Newname'),
+            'email': 'new-{}@example.com'.format(factory.make_string()),
+            'is_superuser': True,
+            'username': factory.make_name('newname'),
+        })
+
+        with self.assertRaises(HandlerPermissionError):
+            handler.update(params)
+
+    def test_update_self_as_unprivileged(self):
+        user = factory.make_User()
+        handler = UserHandler(user, {}, None)
+        params = make_user_attribute_params(user)
+        params.update({
+            'id': user.id,
+            'last_name': factory.make_name('Newname'),
+            'email': 'new-{}@example.com'.format(factory.make_string()),
+            'is_superuser': True,
+            'username': factory.make_name('newname'),
+        })
+
+        handler.update(params)
+        self.assertAttributes(
+            reload_object(user), subset_dict(params, user_attributes))
+
+    def test_update_other_as_admin(self):
+        admin_user = factory.make_admin()
+        handler = UserHandler(admin_user, {}, None)
+        user = factory.make_User()
+        params = make_user_attribute_params(user)
+        params.update({
+            'id': user.id,
+            'last_name': factory.make_name('Newname'),
+            'email': 'new-{}@example.com'.format(factory.make_string()),
+            'is_superuser': True,
+            'username': factory.make_name('newname'),
+        })
+
+        handler.update(params)
+
+        self.assertAttributes(
+            reload_object(user), subset_dict(params, user_attributes))
+
+    def test_update_as_admin_event_log(self):
+        admin_user = factory.make_admin()
+        handler = UserHandler(admin_user, {}, None)
+        user = factory.make_User()
+        params = make_user_attribute_params(user)
+        params.update({
+            'id': user.id,
+            'last_name': factory.make_name('Newname'),
+            'email': 'new-{}@example.com'.format(factory.make_string()),
+            'is_superuser': True,
+            'username': factory.make_name('newname'),
+        })
+
+        handler.update(params)
+
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertIsNotNone(event)
+        self.assertEqual(
+            event.description,
+            ("Updated user profile (username: {username}, "
+             "full name: {last_name}, "
+             "email: {email}, administrator: True)").format(**params))
