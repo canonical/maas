@@ -41,6 +41,7 @@ from maastesting.testcase import MAASTestCase
 from snippets import maas_run_remote_scripts
 from snippets.maas_api_helper import SignalException
 from snippets.maas_run_remote_scripts import (
+    _check_link_connected,
     CustomNetworking,
     download_and_extract_tar,
     get_block_devices,
@@ -115,7 +116,8 @@ def make_script(
         ret['stderr'] = factory.make_string()
         ret['result_name'] = '%s.yaml' % name
         ret['result_path'] = os.path.join(out_dir, ret['result_name'])
-        ret['result'] = factory.make_string()
+        ret['result'] = yaml.safe_dump(
+            {factory.make_string(): factory.make_string()})
         ret['download_path'] = os.path.join(scripts_dir, 'downloads', name)
 
         if os.path.exists(scripts_dir):
@@ -1127,6 +1129,7 @@ class TestParseParameters(MAASTestCase):
         self.assertRaises(KeyError, get_block_devices)
 
     def test_get_interfaces(self):
+        maas_run_remote_scripts._interfaces = None
         netplan_dir = self.useFixture(TempDirectory()).path
         maas_run_remote_scripts.NETPLAN_DIR = netplan_dir
         # Bonds and bridges copy the MAC address of the first physical
@@ -1193,7 +1196,9 @@ class TestParseParameters(MAASTestCase):
         mock_sleep = self.patch(maas_run_remote_scripts.time, 'sleep')
 
         self.assertDictEqual({br0_mac: 'bridge0'}, get_interfaces())
-        self.assertThat(mock_sleep, MockCalledOnceWith(0.1))
+        # This should only be called once but sometimes unittest catches
+        # sleeps from itself which cause the lander to fail.
+        self.assertThat(mock_sleep, MockAnyCall(0.1))
 
     def test_get_interfaces_cached(self):
         interfaces = {factory.make_mac_address(): factory.make_name('dev')}
@@ -1380,6 +1385,388 @@ class TestParseParameters(MAASTestCase):
         self.assertRaises(KeyError, parse_parameters, script, scripts_dir)
 
 
+class TestCheckLinkConnected(MAASTestCase):
+
+    def test_only_runs_with_network_script(self):
+        script = make_script(
+            hardware_type=random.randint(0, 3),
+            apply_configured_networking=True)
+        mac_address = factory.make_mac_address()
+        maas_run_remote_scripts._interfaces = {mac_address: 'eth0'}
+        script['parameters'] = {
+            'interface': {
+                'type': 'interface',
+                'value': {
+                    'name': 'eth0',
+                    'mac_address': mac_address,
+                },
+            }
+        }
+        mock_join = self.patch(maas_run_remote_scripts.os.path, 'join')
+
+        _check_link_connected(script)
+
+        self.assertThat(mock_join, MockNotCalled())
+
+    def test_only_runs_when_network_settings_applied(self):
+        script = make_script(
+            hardware_type=4,
+            apply_configured_networking=False)
+        mac_address = factory.make_mac_address()
+        maas_run_remote_scripts._interfaces = {mac_address: 'eth0'}
+        script['parameters'] = {
+            'interface': {
+                'type': 'interface',
+                'value': {
+                    'name': 'eth0',
+                    'mac_address': mac_address,
+                },
+            }
+        }
+        mock_join = self.patch(maas_run_remote_scripts.os.path, 'join')
+
+        _check_link_connected(script)
+
+        self.assertThat(mock_join, MockNotCalled())
+
+    def test_only_runs_with_interface_param(self):
+        script = make_script(
+            hardware_type=4,
+            apply_configured_networking=True)
+        mock_join = self.patch(maas_run_remote_scripts.os.path, 'join')
+
+        _check_link_connected(script)
+
+        self.assertThat(mock_join, MockNotCalled())
+
+    def test_does_nothing_when_interface_is_not_found(self):
+        script = make_script(
+            hardware_type=4,
+            apply_configured_networking=True)
+        mac_address = factory.make_mac_address()
+        maas_run_remote_scripts._interfaces = {
+            factory.make_mac_address(): 'eth1'}
+        script['parameters'] = {
+            'interface': {
+                'type': 'interface',
+                'value': {
+                    'name': 'eth0',
+                    'mac_address': mac_address,
+                },
+            }
+        }
+        mock_join = self.patch(maas_run_remote_scripts.os.path, 'join')
+
+        _check_link_connected(script)
+
+        self.assertThat(mock_join, MockNotCalled())
+
+    def test_does_nothing_when_link_is_up(self):
+        scripts_dir = self.useFixture(TempDirectory()).path
+        script = make_script(
+            scripts_dir=scripts_dir, hardware_type=4,
+            apply_configured_networking=True)
+        mac_address = factory.make_mac_address()
+        maas_run_remote_scripts._interfaces = {mac_address: 'eth0'}
+        script['parameters'] = {
+            'interface': {
+                'type': 'interface',
+                'value': {
+                    'name': 'eth0',
+                    'mac_address': mac_address,
+                },
+            }
+        }
+        operstate_path = os.path.join(scripts_dir, 'operstate')
+        with open(operstate_path, 'w') as f:
+            f.write('up\n')
+        mock_join = self.patch(maas_run_remote_scripts.os.path, 'join')
+        mock_join.return_value = operstate_path
+        mock_exists = self.patch(maas_run_remote_scripts.os.path, 'exists')
+
+        _check_link_connected(script)
+
+        self.assertThat(mock_exists, MockNotCalled())
+
+    def test_check_link_connected_reports_link_down_on_failure(self):
+        scripts_dir = self.useFixture(TempDirectory()).path
+        script = make_script(
+            scripts_dir=scripts_dir, hardware_type=4,
+            apply_configured_networking=True)
+        script['exit_status'] = 1
+        os.remove(script['result_path'])
+        mac_address = factory.make_mac_address()
+        maas_run_remote_scripts._interfaces = {mac_address: 'eth0'}
+        script['parameters'] = {
+            'interface': {
+                'type': 'interface',
+                'value': {
+                    'name': 'eth0',
+                    'mac_address': mac_address,
+                },
+            }
+        }
+        operstate_path = os.path.join(scripts_dir, 'operstate')
+        with open(operstate_path, 'w') as f:
+            f.write('down\n')
+        mock_join = self.patch(maas_run_remote_scripts.os.path, 'join')
+        mock_join.return_value = operstate_path
+
+        _check_link_connected(script)
+
+        with open(script['result_path'], 'r') as f:
+            self.assertDictEqual(
+                {'link_connected': False}, yaml.safe_load(f.read()))
+
+    def test_check_link_connected_does_nothing_on_pass(self):
+        scripts_dir = self.useFixture(TempDirectory()).path
+        script = make_script(
+            scripts_dir=scripts_dir, hardware_type=4,
+            apply_configured_networking=True)
+        script['exit_status'] = 0
+        os.remove(script['result_path'])
+        mac_address = factory.make_mac_address()
+        maas_run_remote_scripts._interfaces = {mac_address: 'eth0'}
+        script['parameters'] = {
+            'interface': {
+                'type': 'interface',
+                'value': {
+                    'name': 'eth0',
+                    'mac_address': mac_address,
+                },
+            }
+        }
+        operstate_path = os.path.join(scripts_dir, 'operstate')
+        with open(operstate_path, 'w') as f:
+            f.write('down\n')
+        mock_join = self.patch(maas_run_remote_scripts.os.path, 'join')
+        mock_join.return_value = operstate_path
+
+        _check_link_connected(script)
+
+        self.assertFalse(os.path.exists(script['result_path']))
+
+    def test_check_link_connected_does_nothing_on_bad_yaml_file(self):
+        scripts_dir = self.useFixture(TempDirectory()).path
+        script = make_script(
+            scripts_dir=scripts_dir, hardware_type=4,
+            apply_configured_networking=True)
+        script['exit_status'] = 1
+        os.remove(script['result_path'])
+        bad_yaml = factory.make_bytes()
+        with open(script['result_path'], 'wb') as f:
+            f.write(bad_yaml)
+        mac_address = factory.make_mac_address()
+        maas_run_remote_scripts._interfaces = {mac_address: 'eth0'}
+        script['parameters'] = {
+            'interface': {
+                'type': 'interface',
+                'value': {
+                    'name': 'eth0',
+                    'mac_address': mac_address,
+                },
+            }
+        }
+        operstate_path = os.path.join(scripts_dir, 'operstate')
+        with open(operstate_path, 'w') as f:
+            f.write('down\n')
+        mock_join = self.patch(maas_run_remote_scripts.os.path, 'join')
+        mock_join.return_value = operstate_path
+
+        _check_link_connected(script)
+
+        with open(script['result_path'], 'rb') as f:
+            self.assertEqual(bad_yaml, f.read())
+
+    def test_check_link_connected_handles_empty_result_file(self):
+        scripts_dir = self.useFixture(TempDirectory()).path
+        script = make_script(
+            scripts_dir=scripts_dir, hardware_type=4,
+            apply_configured_networking=True)
+        script['exit_status'] = 1
+        os.remove(script['result_path'])
+        with open(script['result_path'], 'w') as f:
+            f.write('')
+        mac_address = factory.make_mac_address()
+        maas_run_remote_scripts._interfaces = {mac_address: 'eth0'}
+        script['parameters'] = {
+            'interface': {
+                'type': 'interface',
+                'value': {
+                    'name': 'eth0',
+                    'mac_address': mac_address,
+                },
+            }
+        }
+        operstate_path = os.path.join(scripts_dir, 'operstate')
+        with open(operstate_path, 'w') as f:
+            f.write('down\n')
+        mock_join = self.patch(maas_run_remote_scripts.os.path, 'join')
+        mock_join.return_value = operstate_path
+
+        _check_link_connected(script)
+
+        with open(script['result_path'], 'r') as f:
+            self.assertDictEqual(
+                {'link_connected': False}, yaml.safe_load(f.read()))
+
+    def test_check_link_connected_does_nothing_with_nondict_result(self):
+        scripts_dir = self.useFixture(TempDirectory()).path
+        script = make_script(
+            scripts_dir=scripts_dir, hardware_type=4,
+            apply_configured_networking=True)
+        script['exit_status'] = 1
+        os.remove(script['result_path'])
+        nondict_result = factory.make_string()
+        with open(script['result_path'], 'w') as f:
+            f.write(nondict_result)
+        mac_address = factory.make_mac_address()
+        maas_run_remote_scripts._interfaces = {mac_address: 'eth0'}
+        script['parameters'] = {
+            'interface': {
+                'type': 'interface',
+                'value': {
+                    'name': 'eth0',
+                    'mac_address': mac_address,
+                },
+            }
+        }
+        operstate_path = os.path.join(scripts_dir, 'operstate')
+        with open(operstate_path, 'w') as f:
+            f.write('down\n')
+        mock_join = self.patch(maas_run_remote_scripts.os.path, 'join')
+        mock_join.return_value = operstate_path
+
+        _check_link_connected(script)
+
+        with open(script['result_path'], 'r') as f:
+            self.assertEqual(nondict_result, f.read())
+
+    def test_check_link_connected_does_nothing_when_link_connected_def(self):
+        scripts_dir = self.useFixture(TempDirectory()).path
+        script = make_script(
+            scripts_dir=scripts_dir, hardware_type=4,
+            apply_configured_networking=True)
+        script['exit_status'] = 1
+        os.remove(script['result_path'])
+        with open(script['result_path'], 'w') as f:
+            f.write(yaml.safe_dump({'link_connected': True}))
+        mac_address = factory.make_mac_address()
+        maas_run_remote_scripts._interfaces = {mac_address: 'eth0'}
+        script['parameters'] = {
+            'interface': {
+                'type': 'interface',
+                'value': {
+                    'name': 'eth0',
+                    'mac_address': mac_address,
+                },
+            }
+        }
+        operstate_path = os.path.join(scripts_dir, 'operstate')
+        with open(operstate_path, 'w') as f:
+            f.write('down\n')
+        mock_join = self.patch(maas_run_remote_scripts.os.path, 'join')
+        mock_join.return_value = operstate_path
+
+        _check_link_connected(script)
+
+        with open(script['result_path'], 'r') as f:
+            self.assertDictEqual(
+                {'link_connected': True}, yaml.safe_load(f.read()))
+
+    def test_check_link_connected_does_nothing_when_yaml_passed(self):
+        scripts_dir = self.useFixture(TempDirectory()).path
+        script = make_script(
+            scripts_dir=scripts_dir, hardware_type=4,
+            apply_configured_networking=True)
+        script['exit_status'] = 1
+        os.remove(script['result_path'])
+        with open(script['result_path'], 'w') as f:
+            f.write(yaml.safe_dump({'status': 'passed'}))
+        mac_address = factory.make_mac_address()
+        maas_run_remote_scripts._interfaces = {mac_address: 'eth0'}
+        script['parameters'] = {
+            'interface': {
+                'type': 'interface',
+                'value': {
+                    'name': 'eth0',
+                    'mac_address': mac_address,
+                },
+            }
+        }
+        operstate_path = os.path.join(scripts_dir, 'operstate')
+        with open(operstate_path, 'w') as f:
+            f.write('down\n')
+        mock_join = self.patch(maas_run_remote_scripts.os.path, 'join')
+        mock_join.return_value = operstate_path
+
+        _check_link_connected(script)
+
+        with open(script['result_path'], 'r') as f:
+            self.assertDictEqual(
+                {'status': 'passed'}, yaml.safe_load(f.read()))
+
+    def test_check_link_connected_does_nothing_when_script_passed(self):
+        scripts_dir = self.useFixture(TempDirectory()).path
+        script = make_script(
+            scripts_dir=scripts_dir, hardware_type=4,
+            apply_configured_networking=True)
+        script['exit_status'] = 0
+        mac_address = factory.make_mac_address()
+        maas_run_remote_scripts._interfaces = {mac_address: 'eth0'}
+        script['parameters'] = {
+            'interface': {
+                'type': 'interface',
+                'value': {
+                    'name': 'eth0',
+                    'mac_address': mac_address,
+                },
+            }
+        }
+        operstate_path = os.path.join(scripts_dir, 'operstate')
+        with open(operstate_path, 'w') as f:
+            f.write('down\n')
+        mock_join = self.patch(maas_run_remote_scripts.os.path, 'join')
+        mock_join.return_value = operstate_path
+
+        _check_link_connected(script)
+
+        with open(script['result_path'], 'r') as f:
+            self.assertDictEqual(
+                yaml.safe_load(script['result']),
+                yaml.safe_load(f.read()))
+
+    def test_check_link_connected_appends_yaml(self):
+        scripts_dir = self.useFixture(TempDirectory()).path
+        script = make_script(
+            scripts_dir=scripts_dir, hardware_type=4,
+            apply_configured_networking=True)
+        script['exit_status'] = 1
+        mac_address = factory.make_mac_address()
+        maas_run_remote_scripts._interfaces = {mac_address: 'eth0'}
+        script['parameters'] = {
+            'interface': {
+                'type': 'interface',
+                'value': {
+                    'name': 'eth0',
+                    'mac_address': mac_address,
+                },
+            }
+        }
+        operstate_path = os.path.join(scripts_dir, 'operstate')
+        with open(operstate_path, 'w') as f:
+            f.write('down\n')
+        mock_join = self.patch(maas_run_remote_scripts.os.path, 'join')
+        mock_join.return_value = operstate_path
+
+        _check_link_connected(script)
+
+        with open(script['result_path'], 'r') as f:
+            self.assertDictEqual(
+                {'link_connected': False, **yaml.safe_load(script['result'])},
+                yaml.safe_load(f.read()))
+
+
 class TestRunScript(MAASTestCase):
 
     def setUp(self):
@@ -1388,6 +1775,8 @@ class TestRunScript(MAASTestCase):
             maas_run_remote_scripts, 'output_and_send')
         self.mock_capture_script_output = self.patch(
             maas_run_remote_scripts, 'capture_script_output')
+        self.mock_check_link_connected = self.patch(
+            maas_run_remote_scripts, '_check_link_connected')
         self.args = {
             'status': 'WORKING',
             'send_result': True,
@@ -1416,6 +1805,8 @@ class TestRunScript(MAASTestCase):
         self.assertThat(self.mock_capture_script_output, MockCalledOnceWith(
             ANY, script['combined_path'], script['stdout_path'],
             script['stderr_path'], script['timeout_seconds']))
+        self.assertThat(
+            self.mock_check_link_connected, MockCalledOnceWith(script))
 
     def test_run_script_sets_env(self):
         scripts_dir = self.useFixture(TempDirectory()).path
@@ -1433,6 +1824,8 @@ class TestRunScript(MAASTestCase):
         self.assertEquals(str(script['timeout_seconds']), env['RUNTIME'])
         self.assertEquals(str(script['has_started']), env['HAS_STARTED'])
         self.assertIn('PATH', env)
+        self.assertThat(
+            self.mock_check_link_connected, MockCalledOnceWith(script))
 
     def test_run_script_only_sends_result_when_avail(self):
         scripts_dir = self.useFixture(TempDirectory()).path
@@ -1456,6 +1849,8 @@ class TestRunScript(MAASTestCase):
         self.assertThat(self.mock_capture_script_output, MockCalledOnceWith(
             ANY, script['combined_path'], script['stdout_path'],
             script['stderr_path'], script['timeout_seconds']))
+        self.assertThat(
+            self.mock_check_link_connected, MockCalledOnceWith(script))
 
     def test_run_script_uses_timeout_from_parameter(self):
         scripts_dir = self.useFixture(TempDirectory()).path
@@ -1485,6 +1880,8 @@ class TestRunScript(MAASTestCase):
         self.assertThat(self.mock_capture_script_output, MockCalledOnceWith(
             ANY, script['combined_path'], script['stdout_path'],
             script['stderr_path'], script['parameters']['runtime']['value']))
+        self.assertThat(
+            self.mock_check_link_connected, MockCalledOnceWith(script))
 
     def test_run_script_errors_with_bad_param(self):
         fake_block_devices = [{
@@ -1544,6 +1941,7 @@ class TestRunScript(MAASTestCase):
                     script['stderr_name']: expected_output,
                 }, **script['args'], **self.args),
         ))
+        self.assertThat(self.mock_check_link_connected, MockNotCalled())
 
     def test_run_script_errors_bad_params_on_unexecutable_script(self):
         # Regression test for LP:1669246
@@ -1563,8 +1961,11 @@ class TestRunScript(MAASTestCase):
                 files={
                     script['combined_name']: b'[Errno 8] Exec format error',
                     script['stderr_name']: b'[Errno 8] Exec format error',
+                    script['result_name']: script['result'].encode(),
                 }, **script['args'], **self.args),
         ))
+        self.assertThat(
+            self.mock_check_link_connected, MockCalledOnceWith(script))
 
     def test_run_script_errors_bad_params_on_unexecutable_script_no_errno(
             self):
@@ -1584,8 +1985,11 @@ class TestRunScript(MAASTestCase):
                 files={
                     script['combined_name']: b'Unable to execute script',
                     script['stderr_name']: b'Unable to execute script',
+                    script['result_name']: script['result'].encode(),
                 }, **script['args'], **self.args),
         ))
+        self.assertThat(
+            self.mock_check_link_connected, MockCalledOnceWith(script))
 
     def test_run_script_errors_bad_params_on_unexecutable_script_baderrno(
             self):
@@ -1606,8 +2010,11 @@ class TestRunScript(MAASTestCase):
                 files={
                     script['combined_name']: b'[Errno 0] Exec format error',
                     script['stderr_name']: b'[Errno 0] Exec format error',
+                    script['result_name']: script['result'].encode(),
                 }, **script['args'], **self.args),
         ))
+        self.assertThat(
+            self.mock_check_link_connected, MockCalledOnceWith(script))
 
     def test_run_script_timed_out_script(self):
         scripts_dir = self.useFixture(TempDirectory()).path
@@ -1626,7 +2033,7 @@ class TestRunScript(MAASTestCase):
             call(
                 'Timeout(%s) expired on %s' % (
                     str(timedelta(seconds=script['timeout_seconds'])),
-                    script['msg_name']),
+                    script['msg_name']), exit_status=124,
                 files={
                     script['combined_name']: script['combined'].encode(),
                     script['stdout_name']: script['stdout'].encode(),
@@ -1634,6 +2041,8 @@ class TestRunScript(MAASTestCase):
                     script['result_name']: script['result'].encode(),
                 }, status='TIMEDOUT', **script['args'], **self.args),
         ))
+        self.assertThat(
+            self.mock_check_link_connected, MockCalledOnceWith(script))
 
 
 class TestRunScripts(MAASTestCase):

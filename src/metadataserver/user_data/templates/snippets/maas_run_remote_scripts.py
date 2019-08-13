@@ -644,6 +644,69 @@ def parse_parameters(script, scripts_dir):
     return ret
 
 
+def _check_link_connected(script):
+    # Only check if a link is connected if its a network script
+    # which applies configured networking and has an interface parameter.
+    if (script['hardware_type'] != 4 or not
+            script.get('apply_configured_networking')):
+        return
+    interface = None
+    for param in script.get('parameters', {}).values():
+        try:
+            if param['type'] == 'interface':
+                interface = get_interfaces()[param['value']['mac_address']]
+                break
+        except KeyError:
+            # The parameter's keys should be validated by parse_parameters
+            # above. Ignore the missing value if something went wrong.
+            return
+    if not interface:
+        return
+
+    operstate_path = os.path.join('/sys/class/net', interface, 'operstate')
+    with open(operstate_path, 'r') as f:
+        link_connected = (f.read().strip() == 'up')
+
+    # MAAS only allows testing an interface which is connected. If its still
+    # connected there is nothing to report.
+    if link_connected:
+        return
+
+    if os.path.exists(script['result_path']):
+        try:
+            with open(script['result_path'], 'r') as f:
+                result = yaml.safe_load(f.read())
+        except:
+            # Ignore errors reading the file so MAAS can report the error
+            # to the user.
+            return
+        if not result or (isinstance(result, str) and not result.strip()):
+            # Handle empty result files
+            result = {}
+        elif not isinstance(result, dict):
+            # The script created an invalid result file. Ignore it so MAAS can
+            # report the error to the user.
+            return
+        # Don't override link_connected if the script set it.
+        if 'link_connected' in result:
+            return
+        # If the test passed don't report link_connected status.
+        if result.get('status') == 'passed':
+            return
+        elif script['exit_status'] == 0:
+            return
+        os.remove(script['result_path'])
+    else:
+        # If the test passed don't report link_connected status.
+        if script['exit_status'] == 0:
+            return
+        result = {}
+
+    result['link_connected'] = link_connected
+    with open(script['result_path'], 'w') as f:
+        yaml.safe_dump(result, f)
+
+
 def run_script(script, scripts_dir, send_result=True):
     args = copy.deepcopy(script['args'])
     args['status'] = 'WORKING'
@@ -712,6 +775,7 @@ def run_script(script, scripts_dir, send_result=True):
         else:
             # 2 is the return code bash gives when it can't execute.
             script['exit_status'] = args['exit_status'] = 2
+        _check_link_connected(script)
         stderr = str(e).encode()
         if stderr == b'':
             stderr = b'Unable to execute script'
@@ -719,6 +783,9 @@ def run_script(script, scripts_dir, send_result=True):
             script['combined_name']: stderr,
             script['stderr_name']: stderr,
         }
+        if os.path.exists(script['result_path']):
+            args['files'][script['result_name']] = open(
+                script['result_path'], 'rb').read()
         output_and_send(
             'Failed to execute %s: %d' % (
                 script['msg_name'], args['exit_status']), **args)
@@ -726,7 +793,10 @@ def run_script(script, scripts_dir, send_result=True):
         sys.stdout.flush()
         return False
     except TimeoutExpired:
+        # 124 is the exit status from the timeout command.
+        script['exit_status'] = args['exit_status'] = 124
         args['status'] = 'TIMEDOUT'
+        _check_link_connected(script)
         args['files'] = {
             script['combined_name']: open(
                 script['combined_path'], 'rb').read(),
@@ -743,6 +813,7 @@ def run_script(script, scripts_dir, send_result=True):
         return False
     else:
         script['exit_status'] = args['exit_status'] = proc.returncode
+        _check_link_connected(script)
         args['files'] = {
             script['combined_name']: open(
                 script['combined_path'], 'rb').read(),

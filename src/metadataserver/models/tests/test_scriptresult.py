@@ -214,6 +214,21 @@ class TestScriptResult(MAASServerTestCase):
         self.assertEquals(exit_status, script_result.exit_status)
         self.assertDictEqual(status_yaml, script_result.read_results())
 
+    def test_store_result_yaml_can_set_interface_link_connected(self):
+        node = factory.make_Node_with_Interface_on_Subnet()
+        script_set = factory.make_ScriptSet(node=node)
+        script = factory.make_Script(
+            parameters={'interface': {'type': 'interface'}})
+        script_result = factory.make_ScriptResult(
+            status=SCRIPT_STATUS.RUNNING,
+            script=script, script_set=script_set,
+            interface=node.boot_interface)
+
+        script_result.store_result(
+            0, result=yaml.safe_dump({'link_connected': False}).encode())
+
+        self.assertFalse(reload_object(node.boot_interface).link_connected)
+
     def test_store_result_stores_script_version(self):
         script = factory.make_Script()
         old_version = script.script
@@ -582,6 +597,30 @@ class TestScriptResult(MAASServerTestCase):
                 ValidationError,
                 'status must be "passed", "failed", "degraded", '
                 '"timedout", or "skipped".'):
+            script_result.read_results()
+
+    def test_read_results_errors_with_link_connected_and_no_interface(self):
+        result = {'link_connected': factory.pick_bool()}
+        script_result = factory.make_ScriptResult(
+            result=yaml.safe_dump(result).encode())
+        with self.assertRaisesRegex(
+                ValidationError,
+                'link_connected may only be specified if the Script accepts '
+                'an interface parameter.'):
+            script_result.read_results()
+
+    def test_read_results_errors_with_link_connected_non_boolean(self):
+        node = factory.make_Node_with_Interface_on_Subnet()
+        script_set = factory.make_ScriptSet(node=node)
+        script = factory.make_Script(
+            parameters={'interface': {'type': 'interface'}})
+        result = {'link_connected': factory.make_name('link_connected')}
+        script_result = factory.make_ScriptResult(
+            script=script, script_set=script_set,
+            interface=node.boot_interface,
+            result=yaml.safe_dump(result).encode())
+        with self.assertRaisesRegex(
+                ValidationError, 'link_connected must be a boolean'):
             script_result.read_results()
 
     def test_read_results_errors_when_dict_keys_not_str(self):

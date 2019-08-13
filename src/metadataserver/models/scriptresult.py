@@ -204,6 +204,15 @@ class ScriptResult(CleanSave, TimestampedModel):
                 'status must be "passed", "failed", "degraded", '
                 '"timedout", or "skipped".')
 
+        link_connected = parsed_yaml.get('link_connected')
+        if link_connected is not None:
+            if not self.interface:
+                raise ValidationError(
+                    'link_connected may only be specified if the Script '
+                    'accepts an interface parameter.')
+            if not isinstance(link_connected, bool):
+                raise ValidationError('link_connected must be a boolean')
+
         results = parsed_yaml.get('results')
         if results is None:
             # Results are not defined.
@@ -286,6 +295,11 @@ class ScriptResult(CleanSave, TimestampedModel):
                     self.status = SCRIPT_STATUS.TIMEDOUT
                 elif status == 'skipped':
                     self.status = SCRIPT_STATUS.SKIPPED
+
+                link_connected = parsed_yaml.get('link_connected')
+                if self.interface and isinstance(link_connected, bool):
+                    self.interface.link_connected = link_connected
+                    self.interface.save(update_fields=['link_connected'])
 
         if self.script:
             if script_version_id is not None:
