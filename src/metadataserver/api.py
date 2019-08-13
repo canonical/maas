@@ -1087,8 +1087,14 @@ class MAASScriptsHandler(OperationsHandler):
             if (md_item['apply_configured_networking'] and
                     NETPLAN_TAR_PATH not in tar.getnames()):
                 node = script_result.script_set.node
+                # Testing is always done in the commissioning environment.
+                configs = Config.objects.get_configs([
+                    'commissioning_osystem',
+                    'commissioning_distro_series',
+                ])
                 network_yaml_settings = get_network_yaml_settings(
-                    node.get_osystem(), node.get_distro_series())
+                    configs['commissioning_osystem'],
+                    configs['commissioning_distro_series'])
                 network_config = NodeNetworkConfiguration(
                     node, version=network_yaml_settings.version,
                     source_routing=network_yaml_settings.source_routing)

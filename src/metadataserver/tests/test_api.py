@@ -47,6 +47,7 @@ from maasserver.exceptions import (
     Unauthorized,
 )
 from maasserver.models import (
+    Config,
     NodeMetadata,
     Event,
     SSHKey,
@@ -1282,8 +1283,13 @@ class TestMAASScripts(MAASServerTestCase):
 
         if contains_network_config:
             node = script_result.script_set.node
+            configs = Config.objects.get_configs([
+                'commissioning_osystem',
+                'commissioning_distro_series',
+            ])
             network_yaml_settings = get_network_yaml_settings(
-                node.get_osystem(), node.get_distro_series())
+                configs['commissioning_osystem'],
+                configs['commissioning_distro_series'])
             network_config = NodeNetworkConfiguration(
                 node, version=network_yaml_settings.version,
                 source_routing=network_yaml_settings.source_routing)
@@ -1614,7 +1620,9 @@ class TestMAASScripts(MAASServerTestCase):
 
     def test__contains_netplan_yaml_with_apply_config_networking(self):
         start_time = floor(time.time())
-        node = factory.make_Node(status=NODE_STATUS.TESTING)
+        node = factory.make_Node(
+            status=NODE_STATUS.TESTING, osystem=factory.make_name('osystem'),
+            distro_series=factory.make_name('distro_series'))
         script_set = factory.make_ScriptSet(result_type=RESULT_TYPE.TESTING)
         node.current_testing_script_set = script_set
         node.save()
