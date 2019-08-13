@@ -57852,8 +57852,9 @@ function PodsListController($scope, $rootScope, $location, PodsManager, UsersMan
   $scope.pools = ResourcePoolsManager.getItems(); // Called to update `allViewableChecked`.
 
   function updateAllViewableChecked() {
-    // Not checked when no pods.
-    if ($scope.pods.length === 0) {
+    var pods = $scope.filterPods($scope.pods); // Not checked when no pods.
+
+    if (pods.length === 0) {
       $scope.allViewableChecked = false;
       return;
     } // Loop through all filtered pods and see if all are checked.
@@ -57861,8 +57862,8 @@ function PodsListController($scope, $rootScope, $location, PodsManager, UsersMan
 
     var i;
 
-    for (i = 0; i < $scope.pods.length; i++) {
-      if (!$scope.pods[i].$selected) {
+    for (i = 0; i < pods.length; i++) {
+      if (!pods[i].$selected) {
         $scope.allViewableChecked = false;
         return;
       }
@@ -57930,12 +57931,14 @@ function PodsListController($scope, $rootScope, $location, PodsManager, UsersMan
 
 
   $scope.toggleCheckAll = function () {
+    var pods = $scope.filterPods($scope.pods);
+
     if ($scope.allViewableChecked) {
-      angular.forEach($scope.pods, function (pod) {
+      angular.forEach(pods, function (pod) {
         PodsManager.unselectItem(pod.id);
       });
     } else {
-      angular.forEach($scope.pods, function (pod) {
+      angular.forEach(pods, function (pod) {
         PodsManager.selectItem(pod.id);
       });
     }
@@ -58174,6 +58177,16 @@ function PodsListController($scope, $rootScope, $location, PodsManager, UsersMan
 
 
   ManagerHelperService.loadManagers($scope, [PodsManager, UsersManager, GeneralManager, ZonesManager, ResourcePoolsManager]).then(function () {
+    // Deselct all pods/rsd on route change
+    // otherwise you can perform actions on pods from rsd page
+    // or actions on rsd from pods page
+    $rootScope.$on("$routeChangeStart", function () {
+      angular.forEach($scope.pods, function (pod) {
+        return PodsManager.unselectItem(pod.id);
+      });
+      $scope.allViewableChecked = false;
+    });
+
     if ($location.search().addItem) {
       $scope.addPod();
     }

@@ -65,7 +65,21 @@
             <div class="col-12" data-ng-if="hasActionsInProgress()">
                 <p>
                     <i class="p-icon--spinner u-animation--spin"></i>
-                    Finished performing {$ action.option.sentence $} on {$ action.progress.completed $} of {$ action.progress.total $} KVMs.
+                    <span data-ng-if="action.option.sentence === 'delete'">
+                        Deleting {$ action.progress.total $}
+                        <span data-ng-if="page === 'kvm'" data-ng-pluralize count="selectedItems.length" when="{'one': 'KVM', 'other': 'KVMs'}"></span>
+                        <span data-ng-if="page === 'rsd'" data-ng-pluralize count="selectedItems.length" when="{'one': 'RSD', 'other': 'RSDs'}"></span>
+                    </span>
+                    <span data-ng-if="action.option.sentence === 'refresh'">
+                        Refreshing {$ action.progress.total $}
+                        <span data-ng-if="page === 'kvm'" data-ng-pluralize count="selectedItems.length" when="{'one': 'KVM', 'other': 'KVMs'}"></span>
+                        <span data-ng-if="page === 'rsd'" data-ng-pluralize count="selectedItems.length" when="{'one': 'RSD', 'other': 'RSDs'}"></span>
+                    </span>
+                    <span data-ng-if="action.option.sentence !== 'delete' || action.option.sentence !== 'refresh'">
+                        Finished performing {$ action.option.sentence $} on {$ action.progress.completed $} of {$ action.progress.total $}
+                        <span data-ng-if="page === 'kvm'" data-ng-pluralize count="selectedItems.length" when="{'one': 'KVM', 'other': 'KVMs'}"></span>
+                        <span data-ng-if="page === 'rsd'" data-ng-pluralize count="selectedItems.length" when="{'one': 'RSD', 'other': 'RSDs'}"></span>
+                    </span>
                 </p>
             </div>
         </div>
