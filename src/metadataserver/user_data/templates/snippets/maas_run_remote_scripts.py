@@ -141,7 +141,9 @@ def download_and_extract_tar(url, creds, scripts_dir):
     return True
 
 
-def run_and_check(cmd, scripts, status, send_result=True, sudo=False):
+def run_and_check(
+        cmd, scripts, status, send_result=True, sudo=False,
+        failure_hook=None):
     if sudo:
         cmd = ['sudo', '-En'] + cmd
     proc = Popen(cmd, stdin=DEVNULL, stdout=PIPE, stderr=PIPE)
@@ -149,6 +151,8 @@ def run_and_check(cmd, scripts, status, send_result=True, sudo=False):
         proc, scripts[0]['combined_path'], scripts[0]['stdout_path'],
         scripts[0]['stderr_path'])
     if proc.returncode != 0 and send_result:
+        if failure_hook is not None:
+            failure_hook()
         for script in scripts:
             args = copy.deepcopy(script['args'])
             script['exit_status'] = args['exit_status'] = proc.returncode
@@ -422,8 +426,8 @@ class CustomNetworking:
         # Apply the configuration.
         if not run_and_check(
                 ['netplan', 'apply', '--debug'], self.scripts,
-                'APPLYING_NETCONF', self.send_result, True):
-            self._apply_ephemeral_netplan()
+                'APPLYING_NETCONF', self.send_result, True,
+                lambda: self._apply_ephemeral_netplan()):
             raise OSError('netplan failed to apply!')
 
         # The new network configuration may change what devices are available.

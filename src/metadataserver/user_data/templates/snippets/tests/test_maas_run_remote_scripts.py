@@ -330,6 +330,19 @@ class TestInstallDependencies(MAASTestCase):
         self.assertThat(mock_popen, MockCalledOnceWith(
             ['sudo', '-En', cmd], stdin=DEVNULL, stdout=PIPE, stderr=PIPE))
 
+    def test_run_and_check_calls_hook_on_failure(self):
+        scripts_dir = self.useFixture(TempDirectory()).path
+        scripts = make_scripts(scripts_dir=scripts_dir, with_output=False)
+        script = scripts[0]
+        status = factory.make_name('status')
+        mock_failure_hook = MagicMock()
+
+        self.assertFalse(run_and_check(
+            ['/bin/bash', '-c', 'echo %s;echo %s >&2;false' % (
+                script['stdout'], script['stderr'])],
+            scripts, status, failure_hook=mock_failure_hook))
+        self.assertThat(mock_failure_hook, MockCalledOnceWith())
+
     def test_install_dependencies_does_nothing_when_empty(self):
         self.assertTrue(install_dependencies([]))
         self.assertThat(self.mock_output_and_send, MockNotCalled())
@@ -799,8 +812,6 @@ class TestCustomNetworking(MAASTestCase):
         scripts = make_scripts(
             scripts_dir=self.base_dir, apply_configured_networking=True)
         custom_networking = CustomNetworking(scripts, self.config_dir)
-        mock_apply_ephemeral_netplan = self.patch(
-            custom_networking, '_apply_ephemeral_netplan')
         mock_bring_down_networking = self.patch(
             custom_networking, '_bring_down_networking')
 
@@ -809,7 +820,6 @@ class TestCustomNetworking(MAASTestCase):
 
         self.assertRaises(OSError, custom_networking.__enter__)
         self.assertThat(self.mock_output_and_send_scripts, MockCalledOnce())
-        self.assertThat(mock_apply_ephemeral_netplan, MockCalledOnce())
         self.assertThat(self.mock_get_interfaces, MockNotCalled())
         self.assertThat(self.mock_signal, MockNotCalled())
         self.assertThat(mock_clean_logs, MockNotCalled())
