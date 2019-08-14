@@ -51,6 +51,9 @@ class TestUserHandler(MAASServerTestCase):
             "email": user.email,
             "is_superuser": user.is_superuser,
             "sshkeys_count": sshkeys_count,
+            "last_login": user.last_login,
+            "is_local": user.userprofile.is_local,
+            "machines_count": user.node_set.count(),
         }
         if for_self:
             permissions = []

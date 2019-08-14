@@ -34,7 +34,8 @@ class UserHandler(Handler):
 
     class Meta:
         queryset = User.objects.filter(is_active=True).annotate(
-            sshkeys_count=Count('sshkey'))
+            sshkeys_count=Count('sshkey'),
+            machines_count=Count('node')).select_related('userprofile')
         form_requires_request = False
         pk = 'id'
         allowed_methods = [
@@ -56,6 +57,9 @@ class UserHandler(Handler):
             "email",
             "is_superuser",
             "sshkeys_count",
+            "last_login",
+            'is_local',
+            'machines_count',
         ]
         listen_channels = [
             "user",
@@ -143,6 +147,8 @@ class UserHandler(Handler):
 
     def dehydrate(self, obj, data, for_list=False):
         data["sshkeys_count"] = obj.sshkeys_count
+        data['is_local'] = obj.userprofile.is_local
+        data["machines_count"] = obj.machines_count
         if obj.id == self.user.id:
             # User is reading information about itself, so provide the global
             # permissions.
@@ -167,6 +173,7 @@ class UserHandler(Handler):
     def auth_user(self, params):
         """Return the authenticated user."""
         self.user.sshkeys_count = self.user.sshkey_set.count()
+        self.user.machines_count = self.user.node_set.count()
         return self.full_dehydrate(self.user)
 
     def mark_intro_complete(self, params):
