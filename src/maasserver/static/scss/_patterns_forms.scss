@@ -26,6 +26,11 @@
       color: $color-mid-dark;
     }
   }
+
+  .p-form-help-text {
+    padding-top: $spv-inner--small;
+    line-height: 1.5;
+  }
 }
 
 @mixin maas-p-form-stacked {

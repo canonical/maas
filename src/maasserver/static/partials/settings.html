@@ -50,26 +50,26 @@
 <div data-ng-show="!loading && currentpage === 'repositories'" window-width>
     <section class="p-strip">
         <div class="row">
-            <table class="p-table-expanding p-table--mobile-card">
+            <table class="p-table">
                 <thead>
                     <tr>
-                        <th class="col-3">Name</th>
-                        <th class="col-4">URL</th>
-                        <th class="col-2">Enabled</th>
-                        <th class="col-3"><div class="u-align--right">Actions</div></th>
+                        <th>Name</th>
+                        <th>URL</th>
+                        <th>Enabled</th>
+                        <th><div class="u-align--right">Actions</div></th>
                         <th class="u-hide"><!-- empty cell required for validation --></th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr data-ng-hide="repositories.length">
-                        <td col-span="5">
+                        <td colspan="5">
                             <p>No package repositories.</p>
                         </td>
                     </tr>
                     <tr
                         data-ng-repeat="repository in repositories track by repository.id"
                         data-ng-class="{ 'is-active': editRepository === repository || deleteRepository === repository }">
-                        <td class="col-3" aria-label="Name" data-ng-if="editRepository !== repository">
+                        <td aria-label="Name" data-ng-if="editRepository !== repository">
                             <span data-ng-if="repository.name === 'main_archive'">
                                 Ubuntu archive
                             </span>
@@ -80,8 +80,8 @@
                                 {$ repository.name $}
                             </span>
                         </td>
-                        <td class="col-4" aria-label="URL" data-ng-if="editRepository !== repository">{$ repository.url $}</td>
-                        <td class="col-2 p-table--action-cell" aria-label="Enabled" data-ng-if="editRepository !== repository">
+                        <td aria-label="URL" data-ng-if="editRepository !== repository">{$ repository.url $}</td>
+                        <td class="p-table--action-cell" aria-label="Enabled" data-ng-if="editRepository !== repository">
                             <div class="onoffswitch" data-ng-if="!isMirror(repository)">
                                 <input type="checkbox" name="enabled" class="onoffswitch-checkbox" id="enabled-repo-{$ repository.id $}"
                                     data-ng-model="repository.enabled"
@@ -105,7 +105,7 @@
                                 </span>
                             </div>
                         </td>
-                        <td class="col-3" data-ng-if="editRepository !== repository">
+                        <td data-ng-if="editRepository !== repository">
                             <div class="u-align--right" toggle-ctrl>
                                 <button aria-label="Edit" class="p-button--base is-small"
                                     data-ng-click="toggleMenu(); repositoryEnterEdit(repository)">
@@ -118,7 +118,7 @@
                                 </button>
                             </div>
                         </td>
-                        <td class="is-active p-table-expanding__panel col-12" col-span="5" data-ng-if="editRepository === repository || deleteRepository === repository">
+                        <td class="is-active p-table-expanding__panel" colspan="5" data-ng-if="editRepository === repository || deleteRepository === repository">
                             <maas-obj-form obj="editRepository" manager="packageRepositoriesManager" manager-method="updateItem" data-ng-if="editRepository === repository"
                                 table-form="true" save-on-blur="false" after-save="repositoryExitEdit">
                                 <div class="row u-equal-height">
@@ -230,7 +230,7 @@
                         </td>
                     </tr>
                     <tr class="is-active" data-ng-if="newRepository">
-                        <td class="p-table-expanding__panel col-12" col-span="5">
+                        <td class="p-table-expanding__panel col-12" colspan="5">
                             <maas-obj-form obj="newRepository" manager="packageRepositoriesManager" manager-method="createItem"
                                 table-form="true" save-on-blur="false" after-save="repositoryAddCancel">
                                 <div class="row u-equal-height">
@@ -302,14 +302,16 @@
             </table>
         </div>
         <div class="row">
-            <button class="p-button--neutral"
-                data-ng-disabled="editing"
-                data-ng-if="!newRepository"
-                data-ng-click="editing || repositoryAdd(true)">Add PPA</button>
-            <button class="p-button--neutral"
-                data-ng-disabled="editing"
-                data-ng-if="!newRepository"
-                data-ng-click="editing || repositoryAdd(false)">Add repository</button>
+            <div class="col-12">
+                <button class="p-button--neutral "
+                    data-ng-disabled="editing"
+                    data-ng-if="!newRepository"
+                    data-ng-click="editing || repositoryAdd(true)">Add PPA</button>
+                <button class="p-button--neutral"
+                    data-ng-disabled="editing"
+                    data-ng-if="!newRepository"
+                    data-ng-click="editing || repositoryAdd(false)">Add repository</button>
+            </div>
         </div>
     </section>
 </div>
