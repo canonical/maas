@@ -1199,6 +1199,67 @@ class TestScriptSet(MAASServerTestCase):
             'value': 'all',
             }}, new_storage_script_result.parameters)
 
+    def test_regenerate_network_with_url_param(self):
+        node = factory.make_Node()
+        interface = factory.make_Interface(node=node)
+        interface.ip_addresses.all().delete()
+        interface.ip_addresses.add(factory.make_StaticIPAddress())
+        url = factory.make_url(scheme='http')
+        default_url = factory.make_url(scheme='http')
+        script_set = factory.make_ScriptSet(node=node)
+
+        pending_network_script = factory.make_Script(parameters={
+            'interface': {
+                'type': 'interface',
+            },
+            'url': {
+                'type': 'url',
+                'required': True,
+                'default': default_url,
+            },
+        })
+        factory.make_ScriptResult(
+            script_set=script_set, status=SCRIPT_STATUS.PENDING,
+            script=pending_network_script, parameters={
+                'interface': {
+                    'type': 'interface',
+                    'value': {
+                        'name': factory.make_name('name'),
+                        'mac_address': factory.make_mac_address(),
+                        'vendor': factory.make_name('vendor'),
+                        'product': factory.make_name('product'),
+                    },
+                },
+                'url': {
+                    'type': 'url',
+                    'required': True,
+                    'default': default_url,
+                    'value': url,
+                },
+            })
+
+        script_set.regenerate(storage=False, network=True)
+
+        new_network_script_result = script_set.scriptresult_set.get(
+            script=pending_network_script)
+        self.assertDictEqual({
+            'interface': {
+                'type': 'interface',
+                'value': {
+                    'name': interface.name,
+                    'mac_address': str(interface.mac_address),
+                    'vendor': interface.vendor,
+                    'product': interface.product,
+                    'interface_id': interface.id,
+                },
+            },
+            'url': {
+                'type': 'url',
+                'required': True,
+                'default': default_url,
+                'value': url,
+            }}, new_network_script_result.parameters)
+
     def test_regenerate_logs_failure(self):
         mock_logger = self.patch(scriptset_module.logger, 'error')
         node = factory.make_Node()

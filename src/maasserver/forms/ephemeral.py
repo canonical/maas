@@ -163,14 +163,14 @@ class TestForm(Form):
     def _get_script_param_dict(self, scripts):
         params = {}
         script_names = []
-        script_ids = []
+        ids = []
         for script in scripts:
             if script.isdigit():
-                script_ids.append(int(script))
+                ids.append(int(script))
             else:
                 script_names.append(script)
         qs = Script.objects.filter(
-            Q(id__in=script_ids) | Q(name__in=script_names))
+            Q(name__in=scripts) | Q(tags__overlap=scripts) | Q(id__in=ids))
         for name, value in self.cleaned_data.items():
             if name in [
                     "enable_ssh", "testing_scripts", "commissioning_scripts",

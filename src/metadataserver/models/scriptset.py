@@ -532,8 +532,12 @@ class ScriptSet(CleanSave, Model):
                     # device or interface may no longer exist. The
                     # ParametersForm will set the default value(all).
                     script_result.parameters.pop(param_name)
-                    regenerate_scripts[
-                        script_result.script] = script_result.parameters
+                    # Only preserve the value of the parameter as that is what
+                    # the form will validate.
+                    regenerate_scripts[script_result.script] = {
+                        key: value['value']
+                        for key, value in script_result.parameters.items()
+                    }
                     script_result.delete()
                     break
 
