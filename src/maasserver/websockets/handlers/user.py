@@ -23,6 +23,7 @@ from maasserver.permissions import (
     ResourcePoolPermission,
 )
 from maasserver.websockets.base import (
+    dehydrate_datetime,
     Handler,
     HandlerDoesNotExistError,
     HandlerPermissionError,
@@ -146,9 +147,11 @@ class UserHandler(Handler):
         return result
 
     def dehydrate(self, obj, data, for_list=False):
-        data["sshkeys_count"] = obj.sshkeys_count
-        data['is_local'] = obj.userprofile.is_local
-        data["machines_count"] = obj.machines_count
+        data.update(
+            {'sshkeys_count': obj.sshkeys_count,
+             'is_local': obj.userprofile.is_local,
+             'machines_count': obj.machines_count,
+             'last_login': dehydrate_datetime(obj.last_login)})
         if obj.id == self.user.id:
             # User is reading information about itself, so provide the global
             # permissions.

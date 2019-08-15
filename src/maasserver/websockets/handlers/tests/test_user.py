@@ -5,6 +5,8 @@
 
 __all__ = []
 
+import datetime
+
 from django.contrib.auth.models import User
 from maasserver.models.event import Event
 from maasserver.models.user import SYSTEM_USERS
@@ -24,6 +26,8 @@ from maasserver.views.tests.test_settings import (
     user_attributes,
 )
 from maasserver.websockets.base import (
+    DATETIME_FORMAT,
+    dehydrate_datetime,
     HandlerDoesNotExistError,
     HandlerPermissionError,
 )
@@ -51,7 +55,7 @@ class TestUserHandler(MAASServerTestCase):
             "email": user.email,
             "is_superuser": user.is_superuser,
             "sshkeys_count": sshkeys_count,
-            "last_login": user.last_login,
+            "last_login": dehydrate_datetime(user.last_login),
             "is_local": user.userprofile.is_local,
             "machines_count": user.node_set.count(),
         }
@@ -319,3 +323,12 @@ class TestUserHandler(MAASServerTestCase):
             ("Updated user profile (username: {username}, "
              "full name: {last_name}, "
              "email: {email}, administrator: True)").format(**params))
+
+    def test_last_login(self):
+        user = factory.make_User()
+        now = datetime.datetime.utcnow()
+        user.last_login = now
+        user.save()
+        handler = UserHandler(user, {}, None)
+        last_login_serialised = handler.get({"id": user.id})['last_login']
+        self.assertEqual(last_login_serialised, now.strftime(DATETIME_FORMAT))
