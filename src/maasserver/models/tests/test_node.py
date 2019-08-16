@@ -3715,6 +3715,12 @@ class TestNode(MAASServerTestCase):
         node.mark_fixed(factory.make_User())
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
 
+    def test_mark_fixed_changes_status_to_deployed_if_previous_status(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.BROKEN, previous_status=NODE_STATUS.DEPLOYED)
+        node.mark_fixed(factory.make_User())
+        self.assertEqual(NODE_STATUS.DEPLOYED, reload_object(node).status)
+
     def test_mark_fixed_logs_user_request(self):
         owner = factory.make_User()
         node = factory.make_Node(status=NODE_STATUS.BROKEN, owner=owner)

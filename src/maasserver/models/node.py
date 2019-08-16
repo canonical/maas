@@ -3289,7 +3289,10 @@ class Node(CleanSave, TimestampedModel):
             raise NodeStateViolation(
                 "Can't mark a non-broken node as 'Ready'.")
         maaslog.info("%s: Marking node fixed", self.hostname)
-        self.status = NODE_STATUS.READY
+        if self.previous_status == NODE_STATUS.DEPLOYED:
+            self.status = NODE_STATUS.DEPLOYED
+        else:
+            self.status = NODE_STATUS.READY
         self.error_description = ''
         self.osystem = ''
         self.distro_series = ''
