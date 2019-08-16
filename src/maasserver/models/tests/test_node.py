@@ -3868,7 +3868,10 @@ class TestNode(MAASServerTestCase):
         release = self.patch_autospec(node, 'release_interface_config')
         self.patch(Node, '_clear_status_expires')
         node.update_power_state(POWER_STATE.OFF)
-        self.assertThat(release, MockCalledOnceWith())
+        # release_interface_config() is called once by update_power_state and
+        # a second time by the release_auto_ips() signal. Whichever runs
+        # second is a noop but is needed for commissioning/testing.
+        self.assertThat(release, MockCallsMatch(call(), call()))
 
     def test_update_power_state_doesnt_release_interface_config_if_on(self):
         node = factory.make_Node(

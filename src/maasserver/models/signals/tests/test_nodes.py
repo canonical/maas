@@ -1,4 +1,4 @@
-# Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test the behaviour of node signals."""
@@ -8,9 +8,17 @@ __all__ = []
 import random
 
 from maasserver.enum import (
+    IPADDRESS_TYPE,
     NODE_STATUS,
     NODE_STATUS_CHOICES,
     NODE_TYPE,
+    NODE_TYPE_CHOICES,
+    POWER_STATE,
+    POWER_STATE_CHOICES,
+)
+from maasserver.models import (
+    Node,
+    StaticIPAddress,
 )
 from maasserver.models.service import (
     RACK_SERVICES,
@@ -212,3 +220,95 @@ class TestNodeCreateServices(MAASServerTestCase):
         self.assertThat(
             {service.name for service in services},
             Equals(REGION_SERVICES))
+
+
+class TestNodeReleasesAutoIPs(MAASServerTestCase):
+    """Test that auto ips are released when node power is off."""
+
+    def __init__(self, *args, **kwargs):
+        self.reserved_statuses = [
+            NODE_STATUS.COMMISSIONING,
+            NODE_STATUS.DEPLOYED,
+            NODE_STATUS.DEPLOYING,
+            NODE_STATUS.DISK_ERASING,
+            NODE_STATUS.RESCUE_MODE,
+            NODE_STATUS.ENTERING_RESCUE_MODE,
+            NODE_STATUS.TESTING,
+        ]
+        self.scenarios = [
+            (status_label, {'status': status})
+            for status, status_label in NODE_STATUS_CHOICES
+            if status not in self.reserved_statuses
+        ]
+        super().__init__(*args, **kwargs)
+
+    def test__releases_interface_config_when_turned_off(self):
+        machine = factory.make_Machine_with_Interface_on_Subnet(
+            status=random.choice(self.reserved_statuses),
+            power_state=POWER_STATE.ON)
+        for interface in machine.interface_set.all():
+            interface.claim_auto_ips()
+
+        # Hack to get around node transition model
+        Node.objects.filter(id=machine.id).update(status=self.status)
+        machine = reload_object(machine)
+        machine.power_state = POWER_STATE.OFF
+        machine.save()
+
+        for ip in StaticIPAddress.objects.filter(
+                interface__node=machine, alloc_type=IPADDRESS_TYPE.AUTO):
+            self.assertIsNone(ip.ip)
+
+    def test__does_nothing_if_not_off(self):
+        machine = factory.make_Machine_with_Interface_on_Subnet(
+            status=random.choice(self.reserved_statuses),
+            power_state=POWER_STATE.ON)
+        for interface in machine.interface_set.all():
+            interface.claim_auto_ips()
+
+        # Hack to get around node transition model
+        Node.objects.filter(id=machine.id).update(status=self.status)
+        machine = reload_object(machine)
+        machine.power_state = factory.pick_choice(
+            POWER_STATE_CHOICES, but_not=[POWER_STATE.OFF])
+        machine.save()
+
+        for ip in StaticIPAddress.objects.filter(
+                interface__node=machine, alloc_type=IPADDRESS_TYPE.AUTO):
+            self.assertIsNotNone(ip.ip)
+
+    def test__does_nothing_if_reserved_status(self):
+        machine = factory.make_Machine_with_Interface_on_Subnet(
+            status=self.status, power_state=POWER_STATE.ON)
+        for interface in machine.interface_set.all():
+            interface.claim_auto_ips()
+
+        # Hack to get around node transition model
+        Node.objects.filter(id=machine.id).update(
+            status=random.choice(self.reserved_statuses))
+        machine = reload_object(machine)
+        machine.power_state = POWER_STATE.OFF
+        machine.save()
+
+        for ip in StaticIPAddress.objects.filter(
+                interface__node=machine, alloc_type=IPADDRESS_TYPE.AUTO):
+            self.assertIsNotNone(ip.ip)
+
+    def test__does_nothing_if_not_machine(self):
+        node = factory.make_Node_with_Interface_on_Subnet(
+            node_type=factory.pick_choice(
+                NODE_TYPE_CHOICES, but_not=[NODE_TYPE.MACHINE]),
+            status=random.choice(self.reserved_statuses),
+            power_state=POWER_STATE.ON)
+        for interface in node.interface_set.all():
+            interface.claim_auto_ips()
+
+        # Hack to get around node transition model
+        Node.objects.filter(id=node.id).update(status=self.status)
+        node = reload_object(node)
+        node.power_state = POWER_STATE.OFF
+        node.save()
+
+        for ip in StaticIPAddress.objects.filter(
+                interface__node=node, alloc_type=IPADDRESS_TYPE.AUTO):
+            self.assertIsNotNone(ip.ip)

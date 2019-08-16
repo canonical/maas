@@ -1,4 +1,4 @@
-# Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Respond to node changes."""
@@ -13,7 +13,10 @@ from django.db.models.signals import (
     pre_delete,
     pre_save,
 )
-from maasserver.enum import NODE_STATUS
+from maasserver.enum import (
+    NODE_STATUS,
+    POWER_STATE,
+)
 from maasserver.models import (
     Controller,
     Device,
@@ -134,6 +137,30 @@ for klass in NODE_CLASSES:
     signals.watch(
         post_save, create_services_on_create,
         sender=klass)
+
+
+def release_auto_ips(node, old_values, deleted=False):
+    """Release auto assigned IPs once the machine is off and ready."""
+    # Only machines use AUTO_IPs.
+    if not node.is_machine:
+        return
+    # Commissioning and testing may acquire an AUTO_IP for network testing.
+    # Users may keep the machine on after commissioning/testing to debug
+    # issues where the assigned IP is still in use. Wait till the machine
+    # is off and not in a status which will have an IP in use.
+    if (node.power_state == POWER_STATE.OFF and node.status not in (
+            NODE_STATUS.COMMISSIONING,
+            NODE_STATUS.DEPLOYED,
+            NODE_STATUS.DEPLOYING,
+            NODE_STATUS.DISK_ERASING,
+            NODE_STATUS.RESCUE_MODE,
+            NODE_STATUS.ENTERING_RESCUE_MODE,
+            NODE_STATUS.TESTING)):
+        node.release_interface_config()
+
+
+for klass in [Node, Machine]:
+    signals.watch_fields(release_auto_ips, klass, ['power_state'])
 
 
 # Enable all signals by default.
