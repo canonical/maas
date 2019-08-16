@@ -1272,10 +1272,17 @@ function NodeDetailsController(
       return false;
     }
 
+    // Keys which are optional
+    const optionalKeys = ["mac_address"];
+
     // If keys but no values in obj
     var hasParameters = false;
 
     Object.keys(power_parameters).forEach(function(key) {
+      if (optionalKeys.includes(key)) {
+        return true;
+      }
+
       if (power_parameters[key] !== "") {
         hasParameters = true;
       } else {

@@ -55250,11 +55250,17 @@ function NodeDetailsController($scope, $rootScope, $routeParams, $location, Devi
 
     if (Object.keys(power_parameters).length === 0) {
       return false;
-    } // If keys but no values in obj
+    } // Keys which are optional
 
+
+    var optionalKeys = ["mac_address"]; // If keys but no values in obj
 
     var hasParameters = false;
     Object.keys(power_parameters).forEach(function (key) {
+      if (optionalKeys.includes(key)) {
+        return true;
+      }
+
       if (power_parameters[key] !== "") {
         hasParameters = true;
       } else {

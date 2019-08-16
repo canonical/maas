@@ -2551,5 +2551,16 @@ describe("NodeDetailsController", function() {
         })
       ).toBe(true);
     });
+
+    it("returns true if optional power_parameters are empty", function() {
+      makeController();
+      expect(
+        $scope.powerParametersValid({
+          power_address: "qemu+ssh://ubuntu@172.16.3.247/system",
+          power_id: 26,
+          mac_address: ""
+        })
+      ).toBe(true);
+    });
   });
 });
