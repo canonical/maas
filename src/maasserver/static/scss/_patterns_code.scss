@@ -1,6 +1,20 @@
 @mixin maas-p-code {
+  .p-code-numbered.is-copyable {
+    position: relative;
+  }
+
+  .p-code-numbered__copy-button {
+    position: absolute;
+    right: 0;
+    top: $spv-inner--large;
+  }
+
   .p-code-numbered__line {
     display: block;
+
+    &:only-of-type {
+      min-height: 4.5rem; // Height of two code lines
+    }
   }
 
   .p-code-copyable__input {

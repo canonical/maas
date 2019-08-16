@@ -60947,24 +60947,42 @@ function maasCodeLines() {
         // Empty the element contents and include again, this assures
         // its the most up-to-date content
         element.empty();
-        element.text(scope.maasCodeLines); // Count the line contents
+        element.text(scope.maasCodeLines);
+        var lines = element.html().split("\n");
+        var insert = "";
+        var newLine = ""; // Add copy button
 
-        var lines = element.html().split("\n"),
-            newLine = "",
-            insert = "<code>"; // Each line is to be wrapped by a span which is style & given
+        insert += "<button " + 'class="p-code-numbered__copy-button p-button has-icon" ' + '><i class="p-icon--copy">Copy</i></button>'; // Each line is to be wrapped by a span which is style & given
         // its appropriate line number
 
-        angular.forEach(lines, function (line) {
-          insert += newLine + '<span class="p-code-numbered__line">' + line + "</span>";
+        insert += "<code>";
+        lines.forEach(function (line) {
+          return insert += newLine + '<span class="p-code-numbered__line">' + line + "</span>";
         });
         insert += "</code>"; // Re-insert the contents
 
         element.html(insert);
-      } // Watch the contents of the element so when it changes to
+      }
+
+      scope.copyToClipboard = function () {
+        var el = document.createElement("textarea");
+        el.value = scope.maasCodeLines();
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand("copy");
+        document.body.removeChild(el);
+      }; // Watch the contents of the element so when it changes to
       // re-add the line numbers.
 
 
-      scope.$watch(scope.maasCodeLines, insertContent);
+      scope.$watch(scope.maasCodeLines, function () {
+        insertContent();
+        element.find(".p-code-numbered__copy-button").bind("click", scope.copyToClipboard);
+      }); // Remove the handlers when the scope is destroyed.
+
+      scope.$on("$destroy", function () {
+        element.find(".p-code-numbered__copy-button").off("click", scope.copyToClipboard);
+      });
     }
   };
 }
