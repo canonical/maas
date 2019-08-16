@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `BlockDevice`."""
@@ -338,7 +338,8 @@ class TestBlockDevice(MAASServerTestCase):
         mock_get_effective_filesystem = self.patch_autospec(
             blockdevice_module, "get_effective_filesystem")
         mock_get_effective_filesystem.return_value = sentinel.filesystem
-        block_device = factory.make_BlockDevice()
+        node = factory.make_Node(with_boot_disk=False)
+        block_device = factory.make_BlockDevice(node=node)
         self.assertEqual(
             sentinel.filesystem, block_device.get_effective_filesystem())
 

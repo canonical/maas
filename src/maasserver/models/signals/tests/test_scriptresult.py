@@ -6,7 +6,6 @@
 __all__ = []
 
 
-import json
 import random
 
 from maasserver.models import Event
@@ -19,6 +18,7 @@ from metadataserver.enum import (
     SCRIPT_STATUS_CHOICES,
     SCRIPT_STATUS_FAILED,
     SCRIPT_STATUS_RUNNING,
+    SCRIPT_TYPE,
 )
 from provisioningserver.events import (
     EVENT_DETAILS,
@@ -28,21 +28,19 @@ from provisioningserver.events import (
 
 class TestStatusTransitionEvent(MAASServerTestCase):
 
-    def test__running_or_installing_emits_event_empty_storage_parameters(self):
-
+    def test__running_or_installing_emits_event(self):
+        script = factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
         script_result = factory.make_ScriptResult(
-            status=SCRIPT_STATUS.PENDING, script_set=factory.make_ScriptSet(
-                result_type=RESULT_TYPE.TESTING), script=factory.make_Script())
+            status=SCRIPT_STATUS.PENDING, script=script)
+
         script_result.status = random.choice(list(SCRIPT_STATUS_RUNNING))
-        script_result.parameters = json.dumps({})
         script_result.save()
 
         latest_event = Event.objects.last()
         self.assertEqual(
             (
                 EVENT_TYPES.RUNNING_TEST,
-                EVENT_DETAILS[
-                    EVENT_TYPES.RUNNING_TEST].description,
+                EVENT_DETAILS[EVENT_TYPES.RUNNING_TEST].description,
                 script_result.name,
             ),
             (
@@ -51,29 +49,76 @@ class TestStatusTransitionEvent(MAASServerTestCase):
                 latest_event.description,
             ))
 
-    def test__running_or_installing_emits_event_with_storage_parameters(self):
-
+    def test__running_or_installing_emits_event_with_storage_parameter(self):
+        node = factory.make_Node()
+        script = factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
+        script_set = factory.make_ScriptSet(
+            result_type=RESULT_TYPE.TESTING, node=node)
         script_result = factory.make_ScriptResult(
-            status=SCRIPT_STATUS.PENDING, script_set=factory.make_ScriptSet(
-                result_type=RESULT_TYPE.TESTING), script=factory.make_Script())
+            status=SCRIPT_STATUS.PENDING, script=script, script_set=script_set,
+            physical_blockdevice=node.boot_disk)
+
         script_result.status = random.choice(list(SCRIPT_STATUS_RUNNING))
-        script_result.parameters = json.dumps({
-            'storage': {
-                'value': {
-                    'name': factory.make_name('name')
-                    }
-                }
-            })
         script_result.save()
 
         latest_event = Event.objects.last()
         self.assertEqual(
             (
                 EVENT_TYPES.RUNNING_TEST,
-                EVENT_DETAILS[
-                    EVENT_TYPES.RUNNING_TEST].description,
-                "%s on %s" % (script_result.name, script_result.parameters.get(
-                    'storage').get('value').get('name')),
+                EVENT_DETAILS[EVENT_TYPES.RUNNING_TEST].description,
+                '%s on %s' % (script_result.name, node.boot_disk.name)
+            ),
+            (
+                latest_event.type.name,
+                latest_event.type.description,
+                latest_event.description,
+            ))
+
+    def test__running_or_installing_emits_event_with_interface_parameter(self):
+        node = factory.make_Node_with_Interface_on_Subnet()
+        script = factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
+        script_set = factory.make_ScriptSet(
+            result_type=RESULT_TYPE.TESTING, node=node)
+        script_result = factory.make_ScriptResult(
+            status=SCRIPT_STATUS.PENDING, script=script, script_set=script_set,
+            interface=node.boot_interface)
+
+        script_result.status = random.choice(list(SCRIPT_STATUS_RUNNING))
+        script_result.save()
+
+        latest_event = Event.objects.last()
+        self.assertEqual(
+            (
+                EVENT_TYPES.RUNNING_TEST,
+                EVENT_DETAILS[EVENT_TYPES.RUNNING_TEST].description,
+                '%s on %s' % (script_result.name, node.boot_interface.name)
+            ),
+            (
+                latest_event.type.name,
+                latest_event.type.description,
+                latest_event.description,
+            ))
+
+    def test__running_or_installing_emits_event_with_nic_disk_param(self):
+        node = factory.make_Node_with_Interface_on_Subnet()
+        script = factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
+        script_set = factory.make_ScriptSet(
+            result_type=RESULT_TYPE.TESTING, node=node)
+        script_result = factory.make_ScriptResult(
+            status=SCRIPT_STATUS.PENDING, script=script, script_set=script_set,
+            physical_blockdevice=node.boot_disk, interface=node.boot_interface)
+
+        script_result.status = random.choice(list(SCRIPT_STATUS_RUNNING))
+        script_result.save()
+
+        latest_event = Event.objects.last()
+        self.assertEqual(
+            (
+                EVENT_TYPES.RUNNING_TEST,
+                EVENT_DETAILS[EVENT_TYPES.RUNNING_TEST].description,
+                '%s on %s and %s' % (
+                    script_result.name, node.boot_disk.name,
+                    node.boot_interface.name)
             ),
             (
                 latest_event.type.name,

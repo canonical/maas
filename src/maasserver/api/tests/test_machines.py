@@ -397,6 +397,8 @@ class TestMachinesAPI(APITestCase.ForUser):
         for _ in range(10):
             node = factory.make_Node_with_Interface_on_Subnet()
             factory.make_VirtualBlockDevice(node=node)
+        # XXX ltrager 2019-08-16 - Work around for LP:1840491
+        Node.objects.update(boot_disk=None)
 
         num_queries1, response1 = count_queries(
             self.client.get, reverse('machines_handler'))
@@ -404,6 +406,8 @@ class TestMachinesAPI(APITestCase.ForUser):
         for _ in range(10):
             node = factory.make_Node_with_Interface_on_Subnet()
             factory.make_VirtualBlockDevice(node=node)
+        # XXX ltrager 2019-08-16 - Work around for LP:1840491
+        Node.objects.update(boot_disk=None)
         num_queries2, response2 = count_queries(
             self.client.get, reverse('machines_handler'))
 
