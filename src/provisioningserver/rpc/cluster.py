@@ -416,6 +416,7 @@ class _ConfigureDHCP_V2(amp.Command):
                     ], optional=True)),
                 ])),
             (b"mtu", amp.Integer(optional=True)),
+            (b"interface", amp.Unicode(optional=True)),
         ])),
         (b"hosts", CompressedAmpList([
             (b"host", amp.Unicode()),

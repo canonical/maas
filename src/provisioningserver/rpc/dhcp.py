@@ -529,6 +529,7 @@ def downgrade_shared_networks(shared_networks):
     Mutates `shared_networks` in place.
     """
     for shared_network in shared_networks:
+        shared_network.pop("interface", None)
         for subnet in shared_network["subnets"]:
             dns_servers = subnet["dns_servers"]
             if not isinstance(dns_servers, str):

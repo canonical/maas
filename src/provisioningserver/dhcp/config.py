@@ -350,6 +350,32 @@ def normalise_any_iterable_to_quoted_comma_list(iterable):
         return ", ".join(map(quote, iterable))
 
 
+def get_rack_ip_for_subnet(version, cidr, interface):
+    """
+    Return the IP address on this rack controller.
+
+    First the code will try to find an IP address that is in the cidr, but if
+    not it will use the first IP address on the interface (to support
+    VLAN relay).
+    """
+    cidr = IPNetwork(cidr)
+    if interface:
+        ip_addresses = [
+            IPAddress(addr)
+            for addr in net_utils.get_all_addresses_for_interface(interface)]
+    else:
+        ip_addresses = [
+            IPAddress(addr)
+            for addr in net_utils.get_all_interface_addresses()]
+    for ip_addr in ip_addresses:
+        if ip_addr in cidr:
+            return ip_addr
+    for ip_addr in ip_addresses:
+        if ip_addr.version == version:
+            return ip_addr
+    return None
+
+
 @typed
 def get_config_v4(
         template_name: str, global_dhcp_snippets: Sequence[dict],
@@ -373,22 +399,15 @@ def get_config_v4(
         "running_in_snap": snappy.running_in_snap(),
     }
 
-    rack_addrs = [
-        IPAddress(addr)
-        for addr in net_utils.get_all_interface_addresses()]
-
     for shared_network in shared_networks:
+        interface = shared_network.get("interface", None)
         for subnet in shared_network["subnets"]:
-            cidr = IPNetwork(subnet['subnet_cidr'])
-            rack_ips = [
-                str(rack_addr)
-                for rack_addr in rack_addrs
-                if rack_addr in cidr
-            ]
-            if len(rack_ips) > 0:
-                subnet["next_server"] = rack_ips[0]
+            rack_ip = get_rack_ip_for_subnet(
+                4, subnet['subnet_cidr'], interface)
+            if rack_ip is not None:
+                subnet["next_server"] = rack_ip
                 subnet["bootloader"] = compose_conditional_bootloader(
-                    False, rack_ips[0])
+                    False, rack_ip)
             ntp_servers = subnet["ntp_servers"]  # Is a list.
             ntp_servers_ipv4, ntp_servers_ipv6 = _get_addresses(*ntp_servers)
             subnet["ntp_servers_ipv4"] = ", ".join(ntp_servers_ipv4)
@@ -428,12 +447,8 @@ def get_config_v6(
         "running_in_snap": snappy.running_in_snap(),
     }
 
-    rack_addrs = [
-        IPAddress(addr)
-        for addr in net_utils.get_all_interface_addresses()]
-
     shared_networks = _process_network_parameters_v6(
-        rack_addrs, failover_peers, shared_networks)
+        failover_peers, shared_networks)
 
     try:
         return template.substitute(
@@ -446,15 +461,12 @@ def get_config_v6(
             "Failed to render DHCP configuration.") from error
 
 
-def _process_network_parameters_v6(
-        rack_addrs, failover_peers, shared_networks):
+def _process_network_parameters_v6(failover_peers, shared_networks):
     """Preprocess shared_networks prior to rendering the template.
 
     This is a separate function, partly for readability, and partly for ease
     of testing.
 
-    :param rack_addrs: a list of IPAddress values for the interfaces on this
-        rack controller.
     :param failover_peers: failover_peers from get_config_v6.
     :param shared_networks: shared_networks from get_config_v6.
     :return: an updated shared_networks, suitable for rendering the template.
@@ -462,15 +474,11 @@ def _process_network_parameters_v6(
     peers = {x["name"]: x for x in failover_peers}
 
     for shared_network in shared_networks:
+        interface = shared_network.get("interface", None)
         for subnet in shared_network["subnets"]:
-            cidr = IPNetwork(subnet['subnet_cidr'])
-            rack_ip_found = False
-            for rack_addr in rack_addrs:
-                if rack_addr in cidr:
-                    rack_ip = str(rack_addr)
-                    rack_ip_found = True
-                    break
-            if rack_ip_found:
+            rack_ip = get_rack_ip_for_subnet(
+                6, subnet['subnet_cidr'], interface)
+            if rack_ip is not None:
                 subnet["bootloader"] = compose_conditional_bootloader(
                     True, rack_ip)
             ntp_servers = subnet["ntp_servers"]  # Is a list.

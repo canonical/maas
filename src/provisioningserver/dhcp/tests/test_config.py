@@ -61,7 +61,7 @@ def is_ip_address(string):
         return True
 
 
-def make_sample_params_only(ipv6=False):
+def make_sample_params_only(ipv6=False, with_interface=False):
     """Return a dict of arbitrary DHCP configuration parameters.
 
     :param ipv6: When true, prepare configuration for a DHCPv6 server,
@@ -73,7 +73,7 @@ def make_sample_params_only(ipv6=False):
         for _ in range(3)
     ]
     shared_networks = [
-        make_shared_network(ipv6=ipv6)
+        make_shared_network(ipv6=ipv6, with_interface=with_interface)
         for _ in range(3)
     ]
 
@@ -114,7 +114,7 @@ def read_aliases_from_etc_hosts():
 aliases_from_etc_hosts = tuple(read_aliases_from_etc_hosts())
 
 
-def make_sample_params(test, ipv6=False):
+def make_sample_params(test, ipv6=False, with_interface=False):
     """Return a dict of arbitrary DHCP configuration parameters.
 
     This differs from `make_sample_params_only` in that it arranges it such
@@ -126,7 +126,8 @@ def make_sample_params(test, ipv6=False):
         otherwise prepare configuration for a DHCPv4 server.
     :return: A dictionary of sample configuration.
     """
-    sample_params = make_sample_params_only(ipv6=ipv6)
+    sample_params = make_sample_params_only(
+        ipv6=ipv6, with_interface=with_interface)
 
     # So that get_config can resolve the configuration, collect hostnames from
     # the sample params that need to resolve then replace them with names that
@@ -433,7 +434,7 @@ class TestGetConfig(MAASTestCase):
 class TestGetConfigIPv4(MAASTestCase):
     """Tests for `get_config`."""
 
-    def test__includes_next_server_in_config(self):
+    def test__includes_next_server_in_config_from_all_addresses(self):
         params = make_sample_params(self, ipv6=False)
         subnet = params['shared_networks'][0]['subnets'][0]
         next_server_ip = factory.pick_ip_in_network(
@@ -441,6 +442,20 @@ class TestGetConfigIPv4(MAASTestCase):
         self.patch(net_utils, 'get_all_interface_addresses').return_value = [
             next_server_ip
         ]
+        config_output = config.get_config('dhcpd.conf.template', **params)
+        validate_dhcpd_configuration(self, config_output, False)
+        self.assertThat(
+            config_output, Contains('next-server %s;' % next_server_ip))
+
+    def test__includes_next_server_in_config_from_interface_addresses(self):
+        params = make_sample_params(self, ipv6=False, with_interface=True)
+        subnet = params['shared_networks'][0]['subnets'][0]
+        next_server_ip = factory.pick_ip_in_network(
+            netaddr.IPNetwork(subnet['subnet_cidr']))
+        self.patch(
+            net_utils, 'get_all_addresses_for_interface').return_value = [
+                next_server_ip
+            ]
         config_output = config.get_config('dhcpd.conf.template', **params)
         validate_dhcpd_configuration(self, config_output, False)
         self.assertThat(
@@ -456,14 +471,12 @@ class Test_process_shared_network_v6(MAASTestCase):
                 'ip_range_high': '2001:db8:3:1::ffff',
                 'ip_range_low': '2001:db8:3:1::',
                 'failover_peer': None},
-            rack_addrs=[netaddr.IPAddress('2001:db8:3:280::2')],
             failover_peers=[])),
         ('primary', dict(
             expected={
                 'ip_range_high': '2001:db8:3:1::7fff',
                 'ip_range_low': '2001:db8:3:1::',
                 'failover_peer': 'failover-vlan-5020'},
-            rack_addrs=[netaddr.IPAddress('2001:db8:3:280::2')],
             failover_peers=[{
                 'mode': 'primary',
                 'peer_address': '2001:db8:3:0:1::',
@@ -474,7 +487,6 @@ class Test_process_shared_network_v6(MAASTestCase):
                 'ip_range_high': '2001:db8:3:1::ffff',
                 'ip_range_low': '2001:db8:3:1::8000',
                 'failover_peer': 'failover-vlan-5020'},
-            rack_addrs=[netaddr.IPAddress('2001:db8:3:0:1::')],
             failover_peers=[{
                 'mode': 'secondary',
                 'address': '2001:db8:3:0:1::',
@@ -485,6 +497,7 @@ class Test_process_shared_network_v6(MAASTestCase):
         shared_networks = [
             {
                 'name': 'vlan-5020',
+                'interface': 'eth0',
                 'subnets': [
                     {
                         'domain_name': 'maas.example.com',
@@ -503,12 +516,14 @@ class Test_process_shared_network_v6(MAASTestCase):
                     }],
             }]
         self.patch(
+            config, 'get_rack_ip_for_subnet').return_value = None
+        self.patch(
             config, 'compose_conditional_bootloader').return_value = ""
         self.patch(
             config, '_get_addresses').return_value = (
                 [''], ['2001:db8:280::2'])
         actual = config._process_network_parameters_v6(
-            self.rack_addrs, self.failover_peers, shared_networks)
+            self.failover_peers, shared_networks)
         self.assertDictEqual(
             actual[0]['subnets'][0]['pools'][0], self.expected)
 

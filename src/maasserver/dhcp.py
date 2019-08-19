@@ -151,6 +151,17 @@ def _key_interface_subnet_dynamic_range_count(interface):
     return count
 
 
+def _ip_version_on_vlan(ip_address, ip_version, vlan):
+    """Return True when the `ip_address` is the same `ip_version` and is on
+    the same `vlan` or relay VLAN's for the `vlan."""
+    return (
+        ip_is_version(ip_address, ip_version) and
+        ip_address.subnet is not None and
+        ip_address.subnet.vlan is not None and (
+            ip_address.subnet.vlan == vlan or
+            vlan in list(ip_address.subnet.vlan.relay_vlans.all())))
+
+
 def get_interfaces_with_ip_on_vlan(rack_controller, vlan, ip_version):
     """Return a list of interfaces that have an assigned IP address on `vlan`.
 
@@ -164,20 +175,16 @@ def get_interfaces_with_ip_on_vlan(rack_controller, vlan, ip_version):
     interfaces_with_static = []
     interfaces_with_discovered = []
     for interface in rack_controller.interface_set.all().prefetch_related(
-            "ip_addresses__subnet__vlan",
+            "ip_addresses__subnet__vlan__relay_vlans",
             "ip_addresses__subnet__iprange_set"):
         for ip_address in interface.ip_addresses.all():
             if ip_address.alloc_type in [
                     IPADDRESS_TYPE.AUTO, IPADDRESS_TYPE.STICKY]:
-                if (ip_is_version(ip_address, ip_version) and
-                        ip_address.subnet is not None and
-                        ip_address.subnet.vlan == vlan):
+                if _ip_version_on_vlan(ip_address, ip_version, vlan):
                     interfaces_with_static.append(interface)
                     break
             elif ip_address.alloc_type == IPADDRESS_TYPE.DISCOVERED:
-                if (ip_is_version(ip_address, ip_version) and
-                        ip_address.subnet is not None and
-                        ip_address.subnet.vlan == vlan):
+                if _ip_version_on_vlan(ip_address, ip_version, vlan):
                     interfaces_with_discovered.append(interface)
                     break
     if len(interfaces_with_static) == 1:
@@ -689,14 +696,16 @@ def get_dhcp_configuration(rack_controller, test_dhcp_snippet=None):
             failover_peer, subnets, hosts, interface = config
             if failover_peer is not None:
                 failover_peers_v4.append(failover_peer)
-            shared_networks_v4.append({
+            shared_network = {
                 "name": "vlan-%d" % vlan.id,
                 "mtu": vlan.mtu,
                 "subnets": subnets,
-            })
+            }
+            shared_networks_v4.append(shared_network)
             hosts_v4.extend(hosts)
             if interface is not None:
                 interfaces_v4.add(interface)
+                shared_network["interface"] = interface
         # IPv6
         if len(subnets_v6) > 0:
             config = get_dhcp_configure_for(
@@ -706,14 +715,16 @@ def get_dhcp_configuration(rack_controller, test_dhcp_snippet=None):
             failover_peer, subnets, hosts, interface = config
             if failover_peer is not None:
                 failover_peers_v6.append(failover_peer)
-            shared_networks_v6.append({
+            shared_network = {
                 "name": "vlan-%d" % vlan.id,
                 "mtu": vlan.mtu,
                 "subnets": subnets,
-            })
+            }
+            shared_networks_v6.append(shared_network)
             hosts_v6.extend(hosts)
             if interface is not None:
                 interfaces_v6.add(interface)
+                shared_network["interface"] = interface
     # When no interfaces exist for each IP version clear the shared networks
     # as DHCP server cannot be started and needs to be stopped.
     if len(interfaces_v4) == 0:

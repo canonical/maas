@@ -2323,6 +2323,7 @@ class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
             "command": cluster.ConfigureDHCPv4,
             "make_network": factory.make_ipv4_network,
             "make_shared_network": make_shared_network_v1,
+            "make_shared_network_kwargs": {},
             "concurrency_lock": concurrency.dhcpv4,
         }),
         ("DHCPv4,V2", {
@@ -2330,6 +2331,7 @@ class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
             "command": cluster.ConfigureDHCPv4_V2,
             "make_network": factory.make_ipv4_network,
             "make_shared_network": make_shared_network,
+            "make_shared_network_kwargs": {"with_interface": True},
             "concurrency_lock": concurrency.dhcpv4,
         }),
         ("DHCPv6", {
@@ -2337,6 +2339,7 @@ class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
             "command": cluster.ConfigureDHCPv6,
             "make_network": factory.make_ipv6_network,
             "make_shared_network": make_shared_network_v1,
+            "make_shared_network_kwargs": {},
             "concurrency_lock": concurrency.dhcpv6,
         }),
         ("DHCPv6,V2", {
@@ -2344,6 +2347,7 @@ class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
             "command": cluster.ConfigureDHCPv6_V2,
             "make_network": factory.make_ipv6_network,
             "make_shared_network": make_shared_network,
+            "make_shared_network_kwargs": {"with_interface": True},
             "concurrency_lock": concurrency.dhcpv6,
         }),
     )
@@ -2361,7 +2365,8 @@ class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
 
         omapi_key = factory.make_name('key')
         failover_peers = [make_failover_peer_config()]
-        shared_networks = [self.make_shared_network()]
+        shared_networks = [self.make_shared_network(
+            **self.make_shared_network_kwargs)]
         shared_networks = fix_shared_networks_failover(
             shared_networks, failover_peers)
         hosts = [make_host()]
