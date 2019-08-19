@@ -260,8 +260,7 @@ class MachineHandler(NodeHandler):
 
     def dehydrate(self, obj, data, for_list=False):
         """Add extra fields to `data`."""
-        data = super(MachineHandler, self).dehydrate(
-            obj, data, for_list=for_list)
+        data = super().dehydrate(obj, data, for_list=for_list)
         data.update({
             "locked": obj.locked,
             "pool": self.dehydrate_pool(obj.pool),
@@ -426,11 +425,11 @@ class MachineHandler(NodeHandler):
             if value is not None
         }
 
-        return super(NodeHandler, self).preprocess_form(action, new_params)
+        return super().preprocess_form(action, new_params)
 
     def create(self, params):
         """Create the object from params."""
-        data = super(NodeHandler, self).create(params)
+        data = super().create(params)
         node_obj = Node.objects.get(system_id=data['system_id'])
 
         # Start the commissioning process right away, which has the
@@ -444,7 +443,7 @@ class MachineHandler(NodeHandler):
 
     def update(self, params):
         """Update the object from params."""
-        data = super(NodeHandler, self).update(params)
+        data = super().update(params)
         node_obj = Node.objects.get(system_id=data['system_id'])
 
         # Update the tags for the node and disks if they are set.

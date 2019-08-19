@@ -177,8 +177,6 @@ class ConfigManager(Manager):
             return self.get(name=name).value
         except Config.DoesNotExist:
             return copy.deepcopy(DEFAULT_CONFIG.get(name, default))
-        except Config.MultipleObjectsReturned as error:
-            raise Config.MultipleObjectsReturned("%s (%s)" (error, name))
 
     def get_configs(self, names, defaults=None):
         """Return the config values corresponding to the given config names.

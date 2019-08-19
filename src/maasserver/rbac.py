@@ -219,7 +219,7 @@ class FakeRBACClient(RBACClient):
             email=username + '@example.com')
 
 
-# Set when their is no client for the current request.
+# Set when there is no client for the current request.
 NO_CLIENT = object()
 
 

@@ -312,13 +312,12 @@ def generate_node_system_id():
                 "WHERE system_id = %s", [system_id])
             if cursor.fetchone() is None:
                 return system_id
-    else:
-        # Wow, really? This should _never_ happen. You must be managing a
-        # *lot* of machines. This is here as a fail-safe; it does not feels
-        # right to leave a loop that might never terminate in the code.
-        raise AssertionError(
-            "The unthinkable has come to pass: after %d iterations "
-            "we could find no unused node identifiers." % attempt)
+    # Wow, really? This should _never_ happen. You must be managing a
+    # *lot* of machines. This is here as a fail-safe; it does not feel
+    # right to leave a loop that might never terminate in the code.
+    raise AssertionError(
+        "The unthinkable has come to pass: after %d iterations "
+        "we could find no unused node identifiers." % attempt)
 
 
 class NodeQueriesMixin(MAASQueriesMixin):
@@ -3873,7 +3872,6 @@ class Node(CleanSave, TimestampedModel):
                     # IP address checking was successful, use the results
                     # to either mark the assigned IP address no longer
                     # temporary or to mark the IP address as discovered.
-                    ip_to_obj = {ip.ip: ip for ip in ips}
                     for ip_result in check_result['ip_addresses']:
                         ip_obj = ip_to_obj[ip_result['ip_address']]
                         if ip_result['used']:
