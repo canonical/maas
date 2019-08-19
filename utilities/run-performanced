@@ -1,0 +1,85 @@
+#!/bin/bash -e
+#
+# setup and run the maas-performanced daemon
+#
+# The script can be called as
+#
+# run-performanced [interface] [number-of-machines]
+#
+
+REPO_URL="https://git.launchpad.net/~maas-committers/maas/+git/maas-performance"
+REPO_BRANCH="2.6-performance-spike"
+REPO_DIR="$PWD/maas-performance"
+MAAS_PERFORMANCED="$REPO_DIR/maas-performanced"
+
+NGINX_CONF=/etc/nginx/sites-enabled/maas-performance
+
+
+# cmdline parameters
+IFACE=${1:-eth1}
+NUM_MACHINES=${2:-10}
+
+setup_repo() {
+    if [ -d "$REPO_DIR" ]; then
+        return
+    fi
+
+    git clone -b "$REPO_BRANCH" "$REPO_URL" "$REPO_DIR"
+}
+
+install_deps() {
+    local deps=""
+    [ -e /usr/bin/make ] || deps+=" make"
+    [ -e /usr/sbin/nginx ] || deps+=" nginx ssl-cert"
+    if [ -z "$deps" ]; then
+        return
+    fi
+    # shellcheck disable=SC2086
+    apt install -y $deps
+}
+
+setup_nginx() {
+    if [ ! -f "$NGINX_CONF" ]; then
+        cat >"$NGINX_CONF" <<EOF
+server {
+  listen 443;
+  listen [::]:443;
+
+  access_log /var/log/nginx/maas-performance.access.log;
+
+  ssl on;
+  ssl_protocols  TLSv1 TLSv1.1 TLSv1.2;
+  ssl_ciphers HIGH:!aNULL:!eNULL:!EXPORT:!CAMELLIA:!DES:!MD5:!PSK:!RC4;
+  ssl_prefer_server_ciphers on;
+  ssl_session_cache  builtin:1000  shared:SSL:10m;
+  ssl_certificate /etc/ssl/certs/ssl-cert-snakeoil.pem;
+  ssl_certificate_key /etc/ssl/private/ssl-cert-snakeoil.key;
+
+  location / {
+    proxy_set_header Host \$host;
+    proxy_set_header X-Real-IP \$remote_addr;
+    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto \$scheme;
+    proxy_pass http://localhost:5000;
+    proxy_read_timeout  90;
+  }
+}
+EOF
+        systemctl restart nginx
+    fi
+}
+
+setup_daemon() {
+    if [ ! -e "$MAAS_PERFORMANCED" ]; then
+        make -C "$REPO_DIR" dep
+    fi
+}
+
+if [ -z "$SKIP_APT_UPDATE" ]; then
+    apt update
+fi
+setup_repo
+install_deps
+setup_nginx
+setup_daemon
+exec "$MAAS_PERFORMANCED" -n "$NUM_MACHINES" "$IFACE"
