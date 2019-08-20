@@ -4877,6 +4877,7 @@
     "children": [],
     "mac_address": "00:11:22:33:44:55",
     "params": {
+      "bridge_type": "standard",
       "bridge_fd": 15,
       "bridge_stp": false
     },

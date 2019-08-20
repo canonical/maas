@@ -2810,7 +2810,8 @@ class Node(CleanSave, TimestampedModel):
 
     def acquire(
             self, user, token=None, agent_name='', comment=None,
-            bridge_all=False, bridge_stp=None, bridge_fd=None):
+            bridge_all=False, bridge_type=None,
+            bridge_stp=None, bridge_fd=None):
         """Mark commissioned node as acquired by the given user and token."""
         assert self.owner is None or self.owner == user
         assert token is None or token.user == user
@@ -2825,6 +2826,7 @@ class Node(CleanSave, TimestampedModel):
         self.token = token
         if bridge_all:
             self._create_acquired_bridges(
+                bridge_type=bridge_type,
                 bridge_stp=bridge_stp, bridge_fd=bridge_fd)
         self.save()
         maaslog.info("%s: allocated to user %s", self.hostname, user.username)
@@ -3734,13 +3736,15 @@ class Node(CleanSave, TimestampedModel):
             acquired=True)
         filesystems.delete()
 
-    def _create_acquired_bridges(self, bridge_stp=None, bridge_fd=None):
+    def _create_acquired_bridges(
+            self, bridge_type=None, bridge_stp=None, bridge_fd=None):
         """Create an acquired bridge on all configured interfaces."""
         interfaces = self.interface_set.exclude(type=INTERFACE_TYPE.BRIDGE)
         interfaces = interfaces.prefetch_related('ip_addresses')
         for interface in interfaces:
             if interface.is_configured():
                 interface.create_acquired_bridge(
+                    bridge_type=bridge_type,
                     bridge_stp=bridge_stp, bridge_fd=bridge_fd)
 
     def claim_auto_ips(self, temp_expires_after=None):
@@ -4571,7 +4575,7 @@ class Node(CleanSave, TimestampedModel):
     @transactional
     def start(
             self, user, user_data=None, comment=None, install_kvm=None,
-            bridge_stp=None, bridge_fd=None):
+            bridge_type=None, bridge_stp=None, bridge_fd=None):
         if not user.has_perm(NodePermission.edit, self):
             # You can't start a node you don't own unless you're an admin.
             raise PermissionDenied()
@@ -4590,6 +4594,7 @@ class Node(CleanSave, TimestampedModel):
             allow_power_cycle = True
             if self.install_kvm:
                 self._create_acquired_bridges(
+                    bridge_type=bridge_type,
                     bridge_stp=bridge_stp, bridge_fd=bridge_fd)
         # Bug #1630361: Make sure that there is a maas_facing_server_address in
         # the same address family as our configured interfaces.

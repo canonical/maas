@@ -33,6 +33,8 @@ from maasserver.api.utils import (
 )
 from maasserver.clusterrpc.driver_parameters import get_driver_types
 from maasserver.enum import (
+    BRIDGE_TYPE_CHOICES,
+    BRIDGE_TYPE_CHOICES_DICT,
     NODE_STATUS,
     NODE_TYPE,
     NODE_TYPE_CHOICES,
@@ -60,6 +62,7 @@ from maasserver.models import (
 from maasserver.models.nodeprobeddetails import get_single_probed_details
 from maasserver.node_constraint_filter_forms import ReadNodesForm
 from maasserver.permissions import NodePermission
+from maasserver.utils.forms import compose_invalid_choice_text
 from maasserver.utils.orm import prefetch_queryset
 from metadataserver.enum import (
     HARDWARE_TYPE,
@@ -971,6 +974,14 @@ class PowerMixin:
             install_kvm = get_optional_param(
                 request.POST, 'install_kvm',
                 default=False, validator=StringBool)
+            bridge_type = get_optional_param(
+                request.POST, 'bridge_type', default=None)
+            if (bridge_type is not None and
+                    bridge_type not in BRIDGE_TYPE_CHOICES_DICT):
+                raise MAASAPIValidationError({
+                    'bridge_type': compose_invalid_choice_text(
+                        'bridge_type', BRIDGE_TYPE_CHOICES)
+                })
             bridge_stp = get_optional_param(
                 request.POST, 'bridge_stp', default=None,
                 validator=StringBool)
@@ -978,8 +989,8 @@ class PowerMixin:
                 request.POST, 'bridge_fd', default=None, validator=Int)
             node.start(
                 request.user, user_data=user_data, comment=comment,
-                install_kvm=install_kvm, bridge_stp=bridge_stp,
-                bridge_fd=bridge_fd)
+                install_kvm=install_kvm, bridge_type=bridge_type,
+                bridge_stp=bridge_stp, bridge_fd=bridge_fd)
         except StaticIPAddressExhaustion:
             # The API response should contain error text with the
             # system_id in it, as that is the primary API key to a node.

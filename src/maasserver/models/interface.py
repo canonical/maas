@@ -37,6 +37,7 @@ from django.db.models import (
 from django.db.models.query import QuerySet
 from maasserver import DefaultMeta
 from maasserver.enum import (
+    BRIDGE_TYPE,
     INTERFACE_LINK_TYPE,
     INTERFACE_TYPE,
     INTERFACE_TYPE_CHOICES,
@@ -1293,11 +1294,14 @@ class Interface(CleanSave, TimestampedModel):
                 name = b"b-%s-%s" % (ifname_hash, ifname[len(ifname) - 6:])
         return name.decode('utf-8')
 
-    def create_acquired_bridge(self, bridge_stp=None, bridge_fd=None):
+    def create_acquired_bridge(
+            self, bridge_type=None, bridge_stp=None, bridge_fd=None):
         """Create an acquired bridge on top of this interface.
 
         Cannot be called on a `BridgeInterface`.
         """
+        if bridge_type is None:
+            bridge_type = BRIDGE_TYPE.STANDARD
         if bridge_stp is None:
             bridge_stp = False
         if bridge_fd is None:
@@ -1306,6 +1310,7 @@ class Interface(CleanSave, TimestampedModel):
             raise ValueError(
                 "Cannot create an acquired bridge on a bridge interface.")
         params = {
+            'bridge_type': bridge_type,
             'bridge_stp': bridge_stp,
             'bridge_fd': bridge_fd,
         }

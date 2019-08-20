@@ -52,6 +52,9 @@ from maasserver.api.utils import (
 )
 from maasserver.enum import (
     BMC_TYPE,
+    BRIDGE_TYPE,
+    BRIDGE_TYPE_CHOICES,
+    BRIDGE_TYPE_CHOICES_DICT,
     NODE_STATUS,
     NODE_STATUS_CHOICES_DICT,
     NODE_TYPE,
@@ -108,6 +111,7 @@ from maasserver.storage_layouts import (
     StorageLayoutMissingBootDiskError,
 )
 from maasserver.utils.django_urls import reverse
+from maasserver.utils.forms import compose_invalid_choice_text
 from maasserver.utils.orm import (
     get_first,
     reload_object,
@@ -208,6 +212,7 @@ AllocationOptions = namedtuple(
     'AllocationOptions', (
         'agent_name',
         'bridge_all',
+        'bridge_type',
         'bridge_fd',
         'bridge_stp',
         'comment',
@@ -258,6 +263,13 @@ def get_allocation_options(request) -> AllocationOptions:
     bridge_all = get_optional_param(
         request.POST, 'bridge_all', default=default_bridge_all,
         validator=StringBool)
+    bridge_type = get_optional_param(
+        request.POST, 'bridge_type', default=BRIDGE_TYPE.STANDARD)
+    if bridge_type not in BRIDGE_TYPE_CHOICES_DICT:
+        raise MAASAPIValidationError({
+            'bridge_type': compose_invalid_choice_text(
+                'bridge_type', BRIDGE_TYPE_CHOICES)
+        })
     bridge_stp = get_optional_param(
         request.POST, 'bridge_stp', default=False,
         validator=StringBool)
@@ -267,6 +279,7 @@ def get_allocation_options(request) -> AllocationOptions:
     return AllocationOptions(
         agent_name,
         bridge_all,
+        bridge_type,
         bridge_fd,
         bridge_stp,
         comment,
@@ -637,6 +650,9 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         created bridges will be removed once the machine is released.
         (Default: false)
 
+        @param (string) "bridge_type" [required=false] Optionally create the
+        bridges with this type. Possible values are: ``standard``, ``ovs``.
+
         @param (boolean) "bridge_stp" [required=false] Optionally turn spanning
         tree protocol on or off for the bridges created on every configured
         interface.  (Default: false)
@@ -713,6 +729,7 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
                     request.user, get_oauth_token(request),
                     agent_name=options.agent_name, comment=options.comment,
                     bridge_all=options.bridge_all,
+                    bridge_type=options.bridge_type,
                     bridge_stp=options.bridge_stp, bridge_fd=options.bridge_fd)
         if NODE_STATUS.DEPLOYING not in NODE_TRANSITIONS[machine.status]:
             raise NodeStateViolation(
@@ -2332,6 +2349,7 @@ class MachinesHandler(NodesHandler, PowersMixin):
                     request.user, get_oauth_token(request),
                     agent_name=options.agent_name, comment=options.comment,
                     bridge_all=options.bridge_all,
+                    bridge_type=options.bridge_type,
                     bridge_stp=options.bridge_stp, bridge_fd=options.bridge_fd)
             machine.constraint_map = storage.get(machine.id, {})
             machine.constraints_by_type = {}

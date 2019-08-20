@@ -23,6 +23,7 @@ from maasserver.api import (
     machines as machines_module,
 )
 from maasserver.enum import (
+    BRIDGE_TYPE,
     FILESYSTEM_FORMAT_TYPE_CHOICES,
     FILESYSTEM_TYPE,
     INTERFACE_TYPE,
@@ -680,7 +681,7 @@ class TestMachineAPI(APITestCase.ForUser):
             })
         self.assertThat(machine_start, MockCalledOnceWith(
             self.user, user_data=ANY, comment=comment,
-            install_kvm=ANY, bridge_stp=ANY, bridge_fd=ANY))
+            install_kvm=ANY, bridge_type=ANY, bridge_stp=ANY, bridge_fd=ANY))
 
     def test_POST_deploy_handles_missing_comment(self):
         machine = factory.make_Node(
@@ -701,7 +702,7 @@ class TestMachineAPI(APITestCase.ForUser):
             })
         self.assertThat(machine_start, MockCalledOnceWith(
             self.user, user_data=ANY, comment=None,
-            install_kvm=ANY, bridge_stp=ANY, bridge_fd=ANY))
+            install_kvm=ANY, bridge_type=ANY, bridge_stp=ANY, bridge_fd=ANY))
 
     def test_POST_deploy_doesnt_reset_power_options_bug_1569102(self):
         self.become_admin()
@@ -800,8 +801,8 @@ class TestMachineAPI(APITestCase.ForUser):
         self.assertThat(
             machine_method, MockCalledOnceWith(
                 ANY, ANY, agent_name=ANY,
-                bridge_all=False, bridge_fd=False,
-                bridge_stp=False, comment=request['comment']))
+                bridge_all=False, bridge_type=BRIDGE_TYPE.STANDARD,
+                bridge_fd=0, bridge_stp=False, comment=request['comment']))
 
     def test_POST_deploy_passes_bridge_settings(self):
         self.patch(node_module.Node, "_start")
@@ -817,6 +818,7 @@ class TestMachineAPI(APITestCase.ForUser):
             'op': 'deploy',
             'distro_series': distro_series,
             'bridge_all': True,
+            'bridge_type': BRIDGE_TYPE.OVS,
             'bridge_stp': True,
             'bridge_fd': 7,
         }
@@ -824,8 +826,9 @@ class TestMachineAPI(APITestCase.ForUser):
         self.assertThat(
             machine_method, MockCalledOnceWith(
                 ANY, ANY, agent_name=ANY,
-                bridge_all=True, bridge_fd=7,
-                bridge_stp=True, comment=None))
+                bridge_all=True, bridge_type=BRIDGE_TYPE.OVS,
+                bridge_fd=7, bridge_stp=True,
+                comment=None))
 
     def test_POST_deploy_stores_vcenter_registration_by_default(self):
         self.become_admin()
@@ -1151,8 +1154,9 @@ class TestMachineAPI(APITestCase.ForUser):
         self.assertThat(
             machine_method, MockCalledOnceWith(
                 ANY, ANY, agent_name=ANY,
-                bridge_all=False, bridge_fd=False,
-                bridge_stp=False, comment=comment))
+                bridge_all=False, bridge_type=BRIDGE_TYPE.STANDARD,
+                bridge_fd=False, bridge_stp=False,
+                comment=comment))
 
     def test_POST_allocate_handles_missing_comment(self):
         factory.make_Node(
@@ -1164,8 +1168,9 @@ class TestMachineAPI(APITestCase.ForUser):
         self.assertThat(
             machine_method, MockCalledOnceWith(
                 ANY, ANY, agent_name=ANY,
-                bridge_all=False, bridge_fd=False,
-                bridge_stp=False, comment=None))
+                bridge_all=False, bridge_type=BRIDGE_TYPE.STANDARD,
+                bridge_fd=0, bridge_stp=False,
+                comment=None))
 
     def test_POST_release_frees_hwe_kernel(self):
         self.patch(node_module.Machine, '_stop')

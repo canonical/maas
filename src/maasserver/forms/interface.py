@@ -16,6 +16,7 @@ from maasserver.enum import (
     BOND_LACP_RATE_CHOICES,
     BOND_MODE_CHOICES,
     BOND_XMIT_HASH_POLICY_CHOICES,
+    BRIDGE_TYPE_CHOICES,
     DEVICE_IP_ASSIGNMENT_TYPE,
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
@@ -568,6 +569,13 @@ class BondInterfaceForm(ChildInterfaceForm):
 
 class BridgeInterfaceForm(ChildInterfaceForm):
     """Form used to create/edit a bridge interface."""
+
+    bridge_type = forms.ChoiceField(
+        choices=BRIDGE_TYPE_CHOICES, required=False,
+        initial=BRIDGE_TYPE_CHOICES[0][0], error_messages={
+            'invalid_choice': compose_invalid_choice_text(
+                'bridge_type', BRIDGE_TYPE_CHOICES),
+        })
 
     bridge_stp = forms.NullBooleanField(initial=False, required=False)
 

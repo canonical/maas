@@ -18,6 +18,8 @@ from django.db import transaction
 from django.http import Http404
 from fixtures import FakeLogger
 from maasserver.enum import (
+    BRIDGE_TYPE,
+    BRIDGE_TYPE_CHOICES,
     INTERFACE_LINK_TYPE,
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
@@ -1472,6 +1474,7 @@ class InterfaceMTUTest(MAASServerTestCase):
             enabled=Equals(True),
             acquired=Equals(True),
             params=MatchesDict({
+                "bridge_type": Equals(BRIDGE_TYPE.STANDARD),
                 "bridge_stp": Equals(False),
                 "bridge_fd": Equals(15),
                 "mtu": Equals(mtu),
@@ -3126,6 +3129,7 @@ class TestCreateAcquiredBridge(MAASServerTestCase):
             enabled=Equals(True),
             acquired=Equals(True),
             params=MatchesDict({
+                "bridge_type": Equals(BRIDGE_TYPE.STANDARD),
                 "bridge_stp": Equals(False),
                 "bridge_fd": Equals(15),
             })
@@ -3135,9 +3139,11 @@ class TestCreateAcquiredBridge(MAASServerTestCase):
 
     def test__creates_acquired_bridge_with_passed_options(self):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        bridge_type = factory.pick_choice(BRIDGE_TYPE_CHOICES)
         bridge_stp = factory.pick_bool()
         bridge_fd = random.randint(0, 500)
         bridge = parent.create_acquired_bridge(
+            bridge_type=bridge_type,
             bridge_stp=bridge_stp, bridge_fd=bridge_fd)
         self.assertThat(bridge, MatchesStructure(
             name=Equals("%s" % parent.get_default_bridge_name()),
@@ -3147,6 +3153,7 @@ class TestCreateAcquiredBridge(MAASServerTestCase):
             enabled=Equals(True),
             acquired=Equals(True),
             params=MatchesDict({
+                "bridge_type": Equals(bridge_type),
                 "bridge_stp": Equals(bridge_stp),
                 "bridge_fd": Equals(bridge_fd),
             })
@@ -3169,6 +3176,7 @@ class TestCreateAcquiredBridge(MAASServerTestCase):
             enabled=Equals(True),
             acquired=Equals(True),
             params=MatchesDict({
+                "bridge_type": Equals(BRIDGE_TYPE.STANDARD),
                 "bridge_stp": Equals(False),
                 "bridge_fd": Equals(15),
             })

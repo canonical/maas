@@ -730,6 +730,20 @@ BOND_XMIT_HASH_POLICY_CHOICES = (
 )
 
 
+class BRIDGE_TYPE:
+    """A bridge type."""
+    STANDARD = "standard"
+    OVS = "ovs"
+
+
+BRIDGE_TYPE_CHOICES = (
+    (BRIDGE_TYPE.STANDARD, BRIDGE_TYPE.STANDARD),
+    (BRIDGE_TYPE.OVS, BRIDGE_TYPE.OVS),
+)
+
+BRIDGE_TYPE_CHOICES_DICT = OrderedDict(BRIDGE_TYPE_CHOICES)
+
+
 class SERVICE_STATUS:
     """Service statuses"""
     #: Status of the service is not known.

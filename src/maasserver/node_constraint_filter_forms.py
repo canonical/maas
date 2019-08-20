@@ -131,6 +131,7 @@ NETWORKING_CONSTRAINT_NAMES = {
 IGNORED_FIELDS = {
     'comment',
     'bridge_all',
+    'bridge_type',
     'bridge_stp',
     'bridge_fd',
     'dry_run',

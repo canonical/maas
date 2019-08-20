@@ -24,6 +24,7 @@ from maasserver.api.machines import (
     get_allocation_options,
 )
 from maasserver.enum import (
+    BRIDGE_TYPE,
     INTERFACE_TYPE,
     NODE_STATUS,
     NODE_STATUS_CHOICES_DICT,
@@ -3025,8 +3026,9 @@ class TestGetAllocationOptions(MAASTestCase):
         request = factory.make_fake_request(method="POST", data={})
         options = get_allocation_options(request)
         expected_options = AllocationOptions(
-            agent_name='', bridge_all=False, bridge_fd=0, bridge_stp=False,
-            comment=None, install_rackd=False, install_kvm=False,
+            agent_name='', bridge_all=False, bridge_type=BRIDGE_TYPE.STANDARD,
+            bridge_fd=0, bridge_stp=False, comment=None,
+            install_rackd=False, install_kvm=False,
             ephemeral_deploy=False)
         self.assertThat(options, Equals(expected_options))
 
@@ -3035,7 +3037,8 @@ class TestGetAllocationOptions(MAASTestCase):
             method="POST", data=dict(install_kvm='true'))
         options = get_allocation_options(request)
         expected_options = AllocationOptions(
-            agent_name='', bridge_all=True, bridge_fd=0, bridge_stp=False,
+            agent_name='', bridge_all=True, bridge_type=BRIDGE_TYPE.STANDARD,
+            bridge_fd=0, bridge_stp=False,
             comment=None, install_rackd=False, install_kvm=True,
             ephemeral_deploy=False)
         self.assertThat(options, Equals(expected_options))
@@ -3043,12 +3046,14 @@ class TestGetAllocationOptions(MAASTestCase):
     def test_non_defaults(self):
         request = factory.make_fake_request(method="POST", data=dict(
             install_rackd="true", install_kvm="true", bridge_all="true",
-            bridge_stp="true", bridge_fd="42", agent_name="maas",
+            bridge_type=BRIDGE_TYPE.OVS, bridge_stp="true",
+            bridge_fd="42", agent_name="maas",
             comment="don't panic", ephemeral_deploy="true"
         ))
         options = get_allocation_options(request)
         expected_options = AllocationOptions(
-            agent_name='maas', bridge_all=True, bridge_fd=42, bridge_stp=True,
+            agent_name='maas', bridge_all=True, bridge_type=BRIDGE_TYPE.OVS,
+            bridge_fd=42, bridge_stp=True,
             comment="don't panic", install_rackd=True, install_kvm=True,
             ephemeral_deploy=True)
         self.assertThat(options, Equals(expected_options))

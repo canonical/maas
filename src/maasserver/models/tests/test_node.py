@@ -51,6 +51,7 @@ from maasserver.clusterrpc.power import (
 )
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.enum import (
+    BRIDGE_TYPE_CHOICES,
     CACHE_MODE_TYPE,
     FILESYSTEM_GROUP_TYPE,
     FILESYSTEM_TYPE,
@@ -1753,14 +1754,18 @@ class TestNode(MAASServerTestCase):
         agent_name = factory.make_name('agent-name')
         mock_create_acquired_bridges = self.patch_autospec(
             node, "_create_acquired_bridges")
+        bridge_type = factory.pick_choice(BRIDGE_TYPE_CHOICES)
         bridge_stp = factory.pick_bool()
         bridge_fd = random.randint(0, 500)
         node.acquire(
             user, token, agent_name,
-            bridge_all=True, bridge_stp=bridge_stp, bridge_fd=bridge_fd)
+            bridge_all=True, bridge_type=bridge_type,
+            bridge_stp=bridge_stp, bridge_fd=bridge_fd)
         self.assertThat(
             mock_create_acquired_bridges,
-            MockCalledOnceWith(bridge_stp=bridge_stp, bridge_fd=bridge_fd))
+            MockCalledOnceWith(
+                bridge_type=bridge_type,
+                bridge_stp=bridge_stp, bridge_fd=bridge_fd))
 
     def test_set_default_storage_layout_does_nothing_if_skip_storage(self):
         node = factory.make_Node(skip_storage=True)
@@ -6004,7 +6009,8 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
         node._create_acquired_bridges()
         self.assertThat(
             mock_create_acquired_bridge,
-            MockCalledOnceWith(bridge_stp=None, bridge_fd=None))
+            MockCalledOnceWith(
+                bridge_type=None, bridge_stp=None, bridge_fd=None))
 
     def test__create_acquired_bridges_passes_options(self):
         mock_create_acquired_bridge = self.patch(
@@ -6014,13 +6020,17 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO, interface=interface)
+        bridge_type = factory.pick_choice(BRIDGE_TYPE_CHOICES)
         bridge_stp = factory.pick_bool()
         bridge_fd = random.randint(0, 500)
         node._create_acquired_bridges(
+            bridge_type=bridge_type,
             bridge_stp=bridge_stp, bridge_fd=bridge_fd)
         self.assertThat(
             mock_create_acquired_bridge,
-            MockCalledOnceWith(bridge_stp=bridge_stp, bridge_fd=bridge_fd))
+            MockCalledOnceWith(
+                bridge_type=bridge_type,
+                bridge_stp=bridge_stp, bridge_fd=bridge_fd))
 
     @transactional
     def test_claim_auto_ips_works_with_multiple_auto_on_the_same_subnet(self):
@@ -7145,15 +7155,18 @@ class TestNode_Start(MAASTransactionServerTestCase):
         user = factory.make_User()
         node = self.make_acquired_node_with_interface(
             user, power_type="manual")
+        bridge_type = factory.pick_choice(BRIDGE_TYPE_CHOICES)
         bridge_stp = factory.pick_bool()
         bridge_fd = random.randint(0, 500)
         node.start(
-            user, install_kvm=True, bridge_stp=bridge_stp, bridge_fd=bridge_fd)
+            user, install_kvm=True, bridge_type=bridge_type,
+            bridge_stp=bridge_stp, bridge_fd=bridge_fd)
         node = reload_object(node)
         bridge = BridgeInterface.objects.get(node=node)
         interface = node.interface_set.first()
         self.assertEquals(NODE_STATUS.DEPLOYING, node.status)
         self.assertEquals(bridge.mac_address, interface.mac_address)
+        self.assertEquals(bridge.params['bridge_type'], bridge_type)
         self.assertEquals(bridge.params['bridge_stp'], bridge_stp)
         self.assertEquals(bridge.params['bridge_fd'], bridge_fd)
         self.assertTrue(node.install_kvm)

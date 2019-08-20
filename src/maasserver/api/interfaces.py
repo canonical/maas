@@ -411,6 +411,9 @@ class InterfacesHandler(OperationsHandler):
         @param (int) "parent" [required=false] Parent interface id for this
         bridge interface.
 
+        @param (string) "bridge_type" [required=false] The type of bridge
+        to create. Possible values are: ``standard``, ``ovs``.
+
         @param (boolean) "bridge_stp" [required=false] Turn spanning tree
         protocol on or off. (Default: False).
 
@@ -606,6 +609,9 @@ class InterfaceHandler(OperationsHandler):
 
         @param (int) "parent" [required=false] (Bridge interfaces) Parent
         interface ids for this bridge interface.
+
+        @param (string) "bridge_type" [required=false] (Bridge interfaces) Type
+        of bridge to create. Possible values are: ``standard``, ``ovs``.
 
         @param (boolean) "bridge_stp" [required=false] (Bridge interfaces) Turn
         spanning tree protocol on or off.  (Default: False).

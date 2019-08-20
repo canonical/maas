@@ -10,6 +10,7 @@ from unittest import skip
 
 from django.core.exceptions import ValidationError
 from maasserver.enum import (
+    BRIDGE_TYPE_CHOICES,
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
 )
@@ -1498,9 +1499,11 @@ class BridgeInterfaceFormTest(MAASServerTestCase):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         interface = factory.make_Interface(
             INTERFACE_TYPE.BRIDGE, parents=[parent])
+        bridge_type = factory.pick_choice(BRIDGE_TYPE_CHOICES)
         bridge_stp = factory.pick_bool()
         bridge_fd = random.randint(0, 1000)
         interface.params = {
+            "bridge_type": bridge_type,
             "bridge_stp": bridge_stp,
             "bridge_fd": bridge_fd,
         }
@@ -1514,6 +1517,7 @@ class BridgeInterfaceFormTest(MAASServerTestCase):
         self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
         self.assertEqual({
+            "bridge_type": bridge_type,
             "bridge_stp": bridge_stp,
             "bridge_fd": bridge_fd,
             }, interface.params)
@@ -1524,24 +1528,30 @@ class BridgeInterfaceFormTest(MAASServerTestCase):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         interface = factory.make_Interface(
             INTERFACE_TYPE.BRIDGE, parents=[parent])
+        bridge_type = factory.pick_choice(BRIDGE_TYPE_CHOICES)
         bridge_stp = factory.pick_bool()
         bridge_fd = random.randint(0, 1000)
         interface.params = {
+            "bridge_type": bridge_type,
             "bridge_stp": bridge_stp,
             "bridge_fd": bridge_fd,
         }
         interface.save()
+        new_bridge_type = factory.pick_choice(
+            BRIDGE_TYPE_CHOICES, but_not=[bridge_type])
         new_bridge_stp = factory.pick_bool()
         new_bridge_fd = random.randint(0, 1000)
         form = BridgeInterfaceForm(
             instance=interface,
             data={
+                'bridge_type': new_bridge_type,
                 'bridge_stp': new_bridge_stp,
                 'bridge_fd': new_bridge_fd,
             })
         self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
         self.assertEqual({
+            "bridge_type": new_bridge_type,
             "bridge_stp": new_bridge_stp,
             "bridge_fd": new_bridge_fd,
             }, interface.params)
@@ -1550,24 +1560,30 @@ class BridgeInterfaceFormTest(MAASServerTestCase):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         interface = factory.make_Interface(
             INTERFACE_TYPE.BRIDGE, parents=[parent])
+        bridge_type = factory.pick_choice(BRIDGE_TYPE_CHOICES)
         bridge_stp = True
         bridge_fd = random.randint(1, 1000)
         interface.params = {
+            "bridge_type": bridge_type,
             "bridge_stp": bridge_stp,
             "bridge_fd": bridge_fd,
         }
         interface.save()
+        new_bridge_type = factory.pick_choice(
+            BRIDGE_TYPE_CHOICES, but_not=[bridge_type])
         new_bridge_stp = False
         new_bridge_fd = 0
         form = BridgeInterfaceForm(
             instance=interface,
             data={
+                'bridge_type': new_bridge_type,
                 'bridge_stp': new_bridge_stp,
                 'bridge_fd': new_bridge_fd,
             })
         self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
         self.assertEqual({
+            'bridge_type': new_bridge_type,
             'bridge_stp': new_bridge_stp,
             'bridge_fd': new_bridge_fd,
             }, interface.params)

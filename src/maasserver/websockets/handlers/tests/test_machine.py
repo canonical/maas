@@ -19,6 +19,8 @@ from lxml import etree
 from maasserver.enum import (
     BMC_TYPE,
     BOND_MODE,
+    BRIDGE_TYPE,
+    BRIDGE_TYPE_CHOICES,
     CACHE_MODE_TYPE,
     FILESYSTEM_FORMAT_TYPE_CHOICES,
     FILESYSTEM_FORMAT_TYPE_CHOICES_DICT,
@@ -1400,6 +1402,7 @@ class TestMachineHandler(MAASServerTestCase):
             INTERFACE_TYPE.BOND, node=node, parents=[eth0, eth1],
             params=bond_params)
         bridge_params = {
+            "bridge_type": BRIDGE_TYPE.STANDARD,
             "bridge_fd": 5,
             "bridge_stp": True
         }
@@ -3475,6 +3478,7 @@ class TestMachineHandler(MAASServerTestCase):
         handler = MachineHandler(user, {}, None)
         nic1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         name = factory.make_name("br")
+        bridge_type = factory.pick_choice(BRIDGE_TYPE_CHOICES)
         bridge_stp = factory.pick_bool()
         bridge_fd = random.randint(0, 15)
         handler.create_bridge({
@@ -3483,6 +3487,7 @@ class TestMachineHandler(MAASServerTestCase):
             "parents": [nic1.id],
             "mac_address": "%s" % nic1.mac_address,
             "vlan": nic1.vlan.id,
+            "bridge_type": bridge_type,
             "bridge_stp": bridge_stp,
             "bridge_fd": bridge_fd,
             })
@@ -3491,6 +3496,7 @@ class TestMachineHandler(MAASServerTestCase):
                 node=node, type=INTERFACE_TYPE.BRIDGE, parents=nic1,
                 name=name, vlan=nic1.vlan))
         self.assertIsNotNone(bridge_interface)
+        self.assertEqual(bridge_type, bridge_interface.params["bridge_type"])
         self.assertEqual(bridge_stp, bridge_interface.params["bridge_stp"])
         self.assertEqual(bridge_fd, bridge_interface.params["bridge_fd"])
 
@@ -3516,6 +3522,7 @@ class TestMachineHandler(MAASServerTestCase):
             "parents": [nic1.id],
             "mac_address": "%s" % nic1.mac_address,
             "vlan": nic1.vlan.id,
+            "bridge_type": factory.pick_choice(BRIDGE_TYPE_CHOICES),
             "bridge_stp": factory.pick_bool(),
             "bridge_fd": random.randint(0, 15)}
         self.assertRaises(
