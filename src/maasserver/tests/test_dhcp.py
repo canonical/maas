@@ -265,7 +265,7 @@ class TestGetInterfacesWithIPOnVLAN(MAASServerTestCase):
         # affects the number of queries performed when performing this
         # operation. It is important to keep this number as low as possible.
         self.assertEqual(
-            query_10_count, 5,
+            query_10_count, 6,
             "Number of queries has changed; make sure this is expected.")
         self.assertEqual(
             query_10_count, query_20_count,
@@ -424,6 +424,42 @@ class TestGetInterfacesWithIPOnVLAN(MAASServerTestCase):
             [interface],
             dhcp.get_interfaces_with_ip_on_vlan(
                 rack_controller, vlan, subnet.get_ipnetwork().version))
+
+    def test__returns_interface_with_static_ip_on_vlan_from_relay(self):
+        rack_controller = factory.make_RackController()
+        vlan = factory.make_VLAN()
+        relayed_to_another = factory.make_VLAN(relay_vlan=vlan)
+        subnet = factory.make_Subnet(vlan=vlan)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=rack_controller, vlan=vlan)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet, interface=interface)
+        self.assertEquals(
+            [interface],
+            dhcp.get_interfaces_with_ip_on_vlan(
+                rack_controller, relayed_to_another,
+                subnet.get_ipnetwork().version))
+
+    def test__returns_interfaces_with_discovered_ips_on_vlan_from_relay(self):
+        rack_controller = factory.make_RackController()
+        vlan = factory.make_VLAN()
+        relayed_to_another = factory.make_VLAN(relay_vlan=vlan)
+        subnet = factory.make_Subnet(vlan=vlan)
+        interface_one = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=rack_controller, vlan=vlan)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED,
+            subnet=subnet, interface=interface_one)
+        interface_two = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=rack_controller, vlan=vlan)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED,
+            subnet=subnet, interface=interface_two)
+        self.assertItemsEqual(
+            [interface_one, interface_two],
+            dhcp.get_interfaces_with_ip_on_vlan(
+                rack_controller, relayed_to_another,
+                subnet.get_ipnetwork().version))
 
 
 class TestGenManagedVLANsFor(MAASServerTestCase):

@@ -133,7 +133,8 @@ def make_subnet_config(network=None, pools=None, ipv6=False,
     }
 
 
-def make_shared_network(name=None, subnets=None, ipv6=False):
+def make_shared_network(
+        name=None, subnets=None, ipv6=False, with_interface=False):
     """Return complete DHCP configuration dict for a shared network."""
     if name is None:
         name = factory.make_name("vlan")
@@ -142,11 +143,14 @@ def make_shared_network(name=None, subnets=None, ipv6=False):
             make_subnet_config(ipv6=ipv6)
             for _ in range(3)
         ]
-    return {
+    data = {
         "name": name,
         "mtu": 1500,
         "subnets": subnets,
     }
+    if with_interface:
+        data["interface"] = factory.make_name("eth")
+    return data
 
 
 def make_shared_network_v1(name=None, subnets=None, ipv6=False):
