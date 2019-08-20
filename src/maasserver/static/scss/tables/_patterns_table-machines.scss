@@ -147,6 +147,18 @@
       white-space: inherit;
     }
 
+    .p-checkbox--group {
+      padding-top: 0;
+
+      &::before {
+        top: 0;
+      }
+
+      &::after {
+        top: 0.25rem;
+      }
+    }
+
     &:last-of-type::after {
       display: none;
     }

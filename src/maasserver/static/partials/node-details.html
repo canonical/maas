@@ -972,19 +972,28 @@
                                 </div>
                             </div>
                         </div>
-
-                        <div class="row u-sv2">
+                        <div class="row u-sv1">
                             <hr />
                         </div>
                         <div class="row">
-                            <div class="u-float--right">
-                                <button class="p-button--base u-no-margin--bottom" data-ng-click="cancel()">Cancel</button>
-                                <button class="p-button--positive u-no-margin--bottom" data-ng-click="addBridge()" data-ng-disabled="cannotAddBridge()">Save bridge</button>
+                            <div class="col-12 u-align--right">
+                                <button
+                                    class="p-button--base u-no-margin--bottom"
+                                    data-ng-click="cancel()"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    class="p-button--positive u-no-margin--bottom"
+                                    data-ng-click="addBridge()"
+                                    data-ng-disabled="cannotAddBridge()"
+                                >
+                                    Save bridge
+                                </button>
                             </div>
                         </div>
                     </div>
                 </div>
-
 
                 <div class="row" data-ng-repeat="interface in interfaces" data-ng-if="isInterfaceSelected(interface) && isShowingEdit() && interface.type === editInterface.type">
                     <div class="p-card--highlighted">
@@ -2062,12 +2071,9 @@
                                 </div>
                             </div>
                         </div>
-
-
-                        <div class="row u-sv2">
+                        <div class="row u-sv1">
                             <hr />
                         </div>
-
                         <div class="row">
                             <div class="col-12 u-align--right">
                                 <button class="p-button--base u-no-margin--bottom" type="button" data-ng-click="cancel()">Cancel</button>
@@ -2090,7 +2096,6 @@
                         </div>
                     </div>
                 </div>
-
 
                 <div class="row" data-ng-if="!isShowingCreateBridge() && !isShowingEdit() && !isShowingCreateBond()">
                     <table class="p-table-expanding p-table--controller-interfaces">

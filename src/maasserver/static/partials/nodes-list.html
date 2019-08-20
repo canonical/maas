@@ -371,10 +371,10 @@
                     </div>
                 </div>
             </section>
-            <section class="page-header__section row" data-ng-hide="isActionError(tab) || hasActionsInProgress(tab)" data-ng-if="tabs[tab].actionOption.name === 'commission' && hasCustomCommissioningScripts()">
-                <form class="p-form p-form--stacked">
-                    <div class="col-8">
-                        <div class="p-form__group u-vertically-center">
+            <section class="page-header__section" data-ng-hide="isActionError(tab) || hasActionsInProgress(tab)" data-ng-if="tabs[tab].actionOption.name === 'commission' && hasCustomCommissioningScripts()">
+                <form class="p-form p-form--stacked row">
+                    <div class="col-6">
+                        <div class="p-form__group">
                             <label class="p-form__label" for="{$ tab $}-commissiong-scripts">Additional commissioning Scripts</label>
                             <div class="p-form__control">
                                 <span id="{$ tab $}-commissioning-scripts" data-maas-script-select="script" data-script-type="0" data-ng-model="tabs[tab].commissioningSelection" class="tags--inline"></span>
@@ -384,7 +384,6 @@
                 </form>
             </section>
             <section class="page-header__section row" data-ng-hide="isActionError(tab) || hasActionsInProgress(tab)" data-ng-if="tabs[tab].actionOption.name === 'commission' || tabs[tab].actionOption.name ==='test'">
-                <hr />
                 <form class="p-form row">
                     <div class="col-6">
                         <div class="p-form__group hide-create-tag-label">
