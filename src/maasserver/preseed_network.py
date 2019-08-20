@@ -1,7 +1,7 @@
-# Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Preseed generation for curtin network."""
+"""Preseed generation for curtin/netplan network."""
 
 __all__ = []
 
@@ -16,6 +16,7 @@ from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_FAMILY,
     IPADDRESS_TYPE,
+    NODE_STATUS,
 )
 from maasserver.models import Interface
 from maasserver.models.staticroute import StaticRoute
@@ -151,8 +152,27 @@ class InterfaceConfiguration:
     def _get_dhcp_type(self):
         """Return the DHCP type for the interface."""
         dhcp_types = set()
-        for dhcp_ip in self.iface.ip_addresses.filter(
-                alloc_type=IPADDRESS_TYPE.DHCP).select_related("subnet"):
+        if (self.iface == self.iface.node.boot_interface and
+                NODE_STATUS.COMMISSIONING in {
+                    self.iface.node.status,
+                    self.iface.node.previous_status} and
+                self.iface.ip_addresses.exclude(
+                    alloc_type=IPADDRESS_TYPE.DISCOVERED,
+                    ip=None).exists()):
+            # AUTOIP assignment happens as a post_commit() hook after a node
+            # starts testing or deploying so MAAS can verify the IP address is
+            # free. If it is requested during commissioning or in testing run
+            # directly after commissioning no IP will be assigned when
+            # networking configuration is reset. In this state generate a
+            # configuration file with dhcp being run on the boot interface.
+            # This is the same configuration run at boot so testing will be
+            # done with the booted configuration.
+            qs = self.iface.ip_addresses.all()
+        else:
+            qs = self.iface.ip_addresses.filter(
+                alloc_type=IPADDRESS_TYPE.DHCP).select_related("subnet")
+
+        for dhcp_ip in qs:
             if dhcp_ip.subnet is None:
                 # No subnet is linked so no IP family can be determined. So
                 # we allow both families to be DHCP'd.
@@ -162,6 +182,7 @@ class InterfaceConfiguration:
                 self.addr_family_present[6] = True
             else:
                 dhcp_types.add(dhcp_ip.subnet.get_ipnetwork().version)
+
         if dhcp_types == {4, 6}:
             self.addr_family_present[4] = True
             self.addr_family_present[6] = True

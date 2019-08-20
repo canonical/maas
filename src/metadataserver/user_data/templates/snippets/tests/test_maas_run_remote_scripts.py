@@ -1146,6 +1146,7 @@ class TestParseParameters(MAASTestCase):
         # interface by default.
         br0_mac = bond0_mac = eth0_mac = factory.make_mac_address()
         eth1_mac = factory.make_mac_address()
+        eth2_mac = factory.make_mac_address()
         # Normally all configuration is stored in one config file but netplan
         # supports loading multiple. Verify maas-run-remote-scripts will read
         # from multiple.
@@ -1163,6 +1164,12 @@ class TestParseParameters(MAASTestCase):
                             'match': {
                                 'macaddress': eth1_mac,
                             },
+                        },
+                        'eth2': {
+                            'match': {
+                                'macaddress': eth2_mac,
+                            },
+                            random.choice(['dhcp4', 'dhcp6']): True,
                         },
                     },
                 }
@@ -1200,12 +1207,16 @@ class TestParseParameters(MAASTestCase):
             ['interfaces.yaml', 'bonds.yaml', 'bridges.yaml'],
             # Simulate interfaces taking a bit to come up to verify LP:1838114
             # work around.
-            ['lo', 'eth0', 'eth1'],
-            ['lo', 'eth0', 'eth1', 'bond0', 'bridge0'],
+            ['lo', 'eth0', 'eth1', 'eth2'],
+            ['lo', 'eth0', 'eth1', 'eth2', 'bond0', 'bridge0'],
         )
         mock_sleep = self.patch(maas_run_remote_scripts.time, 'sleep')
 
-        self.assertDictEqual({br0_mac: 'bridge0'}, get_interfaces())
+        self.assertDictEqual(
+            {
+                br0_mac: 'bridge0',
+                eth2_mac: 'eth2',
+            }, get_interfaces())
         # This should only be called once but sometimes unittest catches
         # sleeps from itself which cause the lander to fail.
         self.assertThat(mock_sleep, MockAnyCall(0.1))

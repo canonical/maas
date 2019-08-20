@@ -555,7 +555,8 @@ def get_interfaces(clear_cache=False):
                     # We only care about devices which have addresses. This is
                     # how we differentiate between a bond and the interfaces
                     # that make that bond.
-                    if 'addresses' in info:
+                    if ('addresses' in info or
+                            info.get('dhcp4') or info.get('dhcp6')):
                         interfaces[macaddress] = info.get('set-name', dev)
 
         # XXX ltrager 2019-07-26 - netplan is non-blocking(LP:1838114). Try

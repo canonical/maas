@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test `maasserver.preseed_network`."""
@@ -18,6 +18,7 @@ from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_FAMILY,
     IPADDRESS_TYPE,
+    NODE_STATUS,
 )
 from maasserver.models import Domain
 from maasserver.preseed_network import (
@@ -1206,6 +1207,39 @@ class TestNetplan(MAASServerTestCase):
             }
         }
         self.expectThat(v1, Equals(expected_v1))
+
+    def test__commissioning_dhcp_config(self):
+        # Verifies dhcp config is given when commissioning has run
+        # or just run and no AUTOIP has been acquired.
+        subnet = factory.make_Subnet(dns_servers=[])
+        subnet_ver = subnet.get_ipnetwork().version
+        node = factory.make_Node_with_Interface_on_Subnet(
+            subnet=subnet, **random.choice([
+                {'status': NODE_STATUS.COMMISSIONING},
+                {
+                    'status': NODE_STATUS.TESTING,
+                    'previous_status': NODE_STATUS.COMMISSIONING,
+                }]))
+        node.set_initial_networking_configuration()
+        v2 = self._render_netplan_dict(node)
+        self.assertDictEqual(
+            v2, {
+                'network': {
+                    'version': 2,
+                    'ethernets': {
+                        node.boot_interface.name: {
+                            'mtu': 1500,
+                            'match': {
+                                'macaddress': str(
+                                    node.boot_interface.mac_address),
+                            },
+                            'set-name': node.boot_interface.name,
+                            'gateway%d' % subnet_ver: subnet.gateway_ip,
+                            'dhcp%d' % subnet_ver: True,
+                        },
+                    },
+                },
+            })
 
 
 class TestGetNextRoutingTableId(MAASServerTestCase):
