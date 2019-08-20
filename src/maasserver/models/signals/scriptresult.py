@@ -22,30 +22,32 @@ from provisioningserver.events import EVENT_TYPES
 signals = SignalsManager()
 
 
-def emit_script_result_status_transition_event(instance, old_values, **kwargs):
+def emit_script_result_status_transition_event(
+        script_result, old_values, **kwargs):
     """Send a status transition event."""
-    script_result = instance
     [old_status] = old_values
 
+    if script_result.physical_blockdevice:
+        script_name = '%s on %s' % (
+            script_result.name, script_result.physical_blockdevice.name)
+    else:
+        script_name = script_result.name
+
     if (script_result.script_set.result_type == RESULT_TYPE.TESTING and
-            old_status == SCRIPT_STATUS.PENDING and script_result.status in (
-                SCRIPT_STATUS.INSTALLING, SCRIPT_STATUS.RUNNING)):
-            storage_name = script_result.parameters.get(
-                'storage', {}).get('value', {}).get('name')
+            old_status == SCRIPT_STATUS.PENDING and (
+                script_result.status in [
+                    SCRIPT_STATUS.INSTALLING, SCRIPT_STATUS.RUNNING])):
             Event.objects.create_node_event(
                 script_result.script_set.node, EVENT_TYPES.RUNNING_TEST,
-                event_description="%s on %s" % (
-                    script_result.name, storage_name) if storage_name else
-                script_result.name)
-
-    elif script_result.status in (
-            SCRIPT_STATUS.FAILED, SCRIPT_STATUS.TIMEDOUT,
-            SCRIPT_STATUS.ABORTED):
+                event_description=script_name)
+    elif script_result.status in [
+            SCRIPT_STATUS.FAILED, SCRIPT_STATUS.FAILED_INSTALLING,
+            SCRIPT_STATUS.TIMEDOUT, SCRIPT_STATUS.ABORTED]:
         Event.objects.create_node_event(
             script_result.script_set.node,
             EVENT_TYPES.SCRIPT_DID_NOT_COMPLETE,
             event_description="%s %s" % (
-                script_result.name, SCRIPT_STATUS_CHOICES[
+                script_name, SCRIPT_STATUS_CHOICES[
                     script_result.status][1].lower()))
     else:
         old_status_name = None
@@ -59,7 +61,7 @@ def emit_script_result_status_transition_event(instance, old_values, **kwargs):
             script_result.script_set.node,
             EVENT_TYPES.SCRIPT_RESULT_CHANGED_STATUS,
             event_description="%s changed status from '%s' to '%s'" % (
-                script_result.name, old_status_name, new_status_name))
+                script_name, old_status_name, new_status_name))
         if (CURTIN_INSTALL_LOG == script_result.name and not
                 script_result.script_set.node.netboot):
             Event.objects.create_node_event(

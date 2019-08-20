@@ -1,4 +1,4 @@
-# Copyright 2013-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the Tags API."""
@@ -16,7 +16,10 @@ from apiclient.creds import convert_tuple_to_string
 from django.conf import settings
 from maasserver import middleware
 from maasserver.enum import NODE_STATUS
-from maasserver.models import Tag
+from maasserver.models import (
+    Node,
+    Tag,
+)
 from maasserver.models.node import generate_node_system_id
 from maasserver.models.user import (
     create_auth_token,
@@ -167,6 +170,8 @@ class TestTagAPI(APITestCase.ForUser):
         for _ in range(3):
             machine = factory.make_Node_with_Interface_on_Subnet()
             machine.tags.add(tag)
+        # XXX ltrager 2019-08-16 - Work around for LP:1840491
+        Node.objects.update(boot_disk=None)
         for _ in range(3):
             device = factory.make_Device()
             device.tags.add(tag)
@@ -176,6 +181,8 @@ class TestTagAPI(APITestCase.ForUser):
         for _ in range(3):
             machine = factory.make_Node_with_Interface_on_Subnet()
             machine.tags.add(tag)
+        # XXX ltrager 2019-08-16 - Work around for LP:1840491
+        Node.objects.update(boot_disk=None)
         for _ in range(3):
             device = factory.make_Device()
             device.tags.add(tag)
@@ -234,12 +241,16 @@ class TestTagAPI(APITestCase.ForUser):
         for _ in range(3):
             machine = factory.make_Node_with_Interface_on_Subnet()
             machine.tags.add(tag)
+        # XXX ltrager 2019-08-16 - Work around for LP:1840491
+        Node.objects.update(boot_disk=None)
         num_queries1, response1 = count_queries(
             self.client.get, self.get_tag_uri(tag), {'op': 'machines'})
 
         for _ in range(3):
             machine = factory.make_Node_with_Interface_on_Subnet()
             machine.tags.add(tag)
+        # XXX ltrager 2019-08-16 - Work around for LP:1840491
+        Node.objects.update(boot_disk=None)
         num_queries2, response2 = count_queries(
             self.client.get, self.get_tag_uri(tag), {'op': 'machines'})
 

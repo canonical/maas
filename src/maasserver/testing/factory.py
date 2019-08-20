@@ -473,6 +473,8 @@ class Factory(maastesting.factory.Factory):
             self.make_Filesystem(
                 fstype=fstype, partition=root_partition, mount_point='/',
                 acquired=acquired)
+            node.boot_disk = root_partition.partition_table.block_device
+            node.save()
 
         # Setup the BMC connected to rack controller if a BMC is created.
         if bmc_connected_to is not None:
@@ -803,7 +805,14 @@ class Factory(maastesting.factory.Factory):
             stdout=None, stderr=None, result=None, started=None, ended=None,
             suppressed=False, **kwargs):
         if script_set is None:
-            script_set = self.make_ScriptSet()
+            if script is not None:
+                script_set_type = (
+                    RESULT_TYPE.TESTING
+                    if script.script_type == SCRIPT_TYPE.TESTING else
+                    RESULT_TYPE.COMMISSIONING)
+            else:
+                script_set_type = None
+            script_set = self.make_ScriptSet(result_type=script_set_type)
         if script is None and script_name is None:
             if script_set.result_type == RESULT_TYPE.COMMISSIONING:
                 script = self.make_Script(

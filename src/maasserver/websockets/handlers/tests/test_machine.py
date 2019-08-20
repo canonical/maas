@@ -210,7 +210,7 @@ class TestMachineHandler(MAASServerTestCase):
             "actions": list(compile_node_actions(node, handler.user).keys()),
             "architecture": node.architecture,
             "bmc": node.bmc_id,
-            "boot_disk": node.boot_disk,
+            "boot_disk": node.boot_disk.id if node.boot_disk else None,
             "bios_boot_method": node.bios_boot_method,
             "commissioning_script_count": commissioning_scripts.count(),
             "commissioning_status": get_status_from_qs(
@@ -618,7 +618,7 @@ class TestMachineHandler(MAASServerTestCase):
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
         self.assertEqual(
-            queries, 49,
+            queries, 50,
             "Number of queries has changed; make sure this is expected.")
 
     def test_trigger_update_updates_script_result_cache(self):
