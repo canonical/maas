@@ -37,7 +37,7 @@
       border-color: $color-mid-light;
     }
 
-    .p-option-selector-subnets__options {
+    .p-option-selector__options--subnets {
       @media (min-width: $breakpoint-medium) {
         width: 70vw;
       }
@@ -165,6 +165,87 @@
           }
         }
       }
+    }
+  }
+
+  .p-option-selector--subnets {
+    position: relative;
+
+    .p-option-selector__options--subnets {
+      @extend %p-card--highlighted;
+      left: -45vw;
+      position: absolute;
+      width: 90vw;
+      z-index: 10;
+
+      @media (min-width: $breakpoint-small) {
+        left: -226%;
+        width: 450%;
+      }
+
+      @media (min-width: $breakpoint-large) {
+        left: 0;
+        right: -126%;
+        width: auto;
+      }
+    }
+
+    .p-option-selector__title--subnets {
+      @extend %muted-heading;
+      border-bottom: 1px solid $color-mid-light;
+      margin-bottom: 0;
+      padding-bottom: $spv-inner--x-small--scaleable;
+    }
+
+    .p-option-selector__option--subnets {
+      @include vf-focus;
+      cursor: pointer;
+
+      &:last-of-type {
+        margin-bottom: $spv-outer--scaleable;
+      }
+
+      &:not(:last-of-type) {
+        position: relative;
+
+        &::before {
+          background-color: $color-mid-x-light;
+          bottom: 0;
+          content: "";
+          height: 1px;
+          position: absolute;
+          width: 100%;
+        }
+      }
+
+      &:hover {
+        background-color: $color-light;
+      }
+    }
+
+    .p-option-selector__option-cell--subnets {
+      padding-bottom: $spv-inner--scaleable;
+      padding-top: $spv-inner--scaleable;
+
+      &:first-of-type {
+        padding-left: $sph-inner--small;
+      }
+
+      &:last-of-type {
+        padding-right: $sph-inner--small;
+      }
+
+      &:nth-of-type(2) {
+        @media (max-width: $breakpoint-large) {
+          padding-left: $sph-inner--small;
+        }
+      }
+    }
+
+    .p-button--close {
+      position: absolute;
+      right: -#{$sph-inner--small};
+      top: $spv-inner--x-small--scaleable;
     }
   }
 

@@ -138,6 +138,8 @@
   }
 
   .p-table--pod-networking-config--message {
-    margin-left: 35%;
+    @media only screen and (min-width: $breakpoint-navigation-threshold) {
+      margin-left: calc(2% + #{$sph-outer--large});
+    }
   }
 }

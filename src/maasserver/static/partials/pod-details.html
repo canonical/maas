@@ -71,16 +71,22 @@
                     </div>
                 </div>
                 <div class="p-strip">
+                    <div class="row u-vertically-center">
+                        <div class="col-4">
+                            <h3 class="p-heading--four">Interfaces</h3>
+                        </div>
+                        <div class="col-8">
+                            <p
+                                data-ng-if="spaces.length === 0"
+                                class="p-table--pod-networking-config--message p-text--small"
+                            >
+                                You have not defined any networking spaces.
+                                <a href="/MAAS/#/networks?by=space">More about spaces.</a>
+                            </p>
+                        </div>
+                    </div>
                     <div class="row">
                         <div class="col-12">
-                            <h3 class="p-heading--four">Interfaces</h3>
-                            <div class="p-table--pod-networking-config--message" data-ng-if="spaces.length == 0">
-                                <small>
-                                    You have not defined any networking spaces.
-                                    <a href="/MAAS/#/networks?by=space"
-                                        title="Spaces">More about spaces</a>
-                                </small>
-                            </div>
                             <table class="p-table--pod-networking-config">
                                 <thead>
                                     <tr class="p-table__row">
@@ -164,7 +170,7 @@
                                         <td class="p-table--action-cell">
                                             <div data-ng-if="iface.name !== 'default'" class="form__group-input">
                                                 <div class="form__group-input">
-                                                    <div class="p-option-selector" tabindex="0"
+                                                    <div class="p-option-selector--subnets" tabindex="0"
                                                         ng-keyup="$event.keyCode === 27 && closeOptions(iface)">
                                                         <input type="text"
                                                             class="p-option-selector__input u-no-margin--bottom"
@@ -174,62 +180,56 @@
                                                             data-ng-focus="openSubnetOptions(iface)"
                                                             data-ng-disabled="iface.ipaddress.length > 0"
                                                             data-ng-keypress="$event.keyCode === 13 && $event.preventDefault()">
-                                                        <div class="p-option-selector__options p-option-selector-subnets__options u-no-padding--top"
+                                                        <div
+                                                            class="p-option-selector__options--subnets"
                                                             ng-if="iface.showOptions">
-                                                            <div class="p-option-selector__header">
-                                                                <button class="p-button--close" ng-click="closeOptions(iface)">
-                                                                    <i class="p-icon--close">Close</i>
-                                                                </button>
-                                                                <hr class="u-no-margin--bottom">
-                                                            </div>
-                                                            <div data-ng-repeat="space in spaces | filter:{ name: iface.selectedSpace }">
-                                                                <div
-                                                                    class="p-option-selector__title p-muted-text"
-                                                                    data-ng-if="!iface.selectedSpace">
-                                                                    Space: {$ space.name $}
-                                                                </div>
-                                                                <div
-                                                                    class="p-option-selector__option u-no-padding"
-                                                                    tabindex="0"
-                                                                    data-ng-click="selectSubnet(subnet, iface)"
-                                                                    data-ng-keyup="$event.keyCode == 13 && selectSubnet(subnet, iface)"
-                                                                    data-ng-repeat="subnet in availableSubnets | filter:bySpace(space.name) | orderBy:['version', 'cidr']">
-                                                                    <div class="p-option-selector-subnets__option-cell">
-                                                                        <div>
-                                                                            <strong>{$ subnet.displayName $}</strong>
+                                                            <button class="p-button--close" ng-click="closeOptions(iface)">
+                                                                <i class="p-icon--close">Close</i>
+                                                            </button>
+                                                            <div>
+                                                                <div data-ng-repeat="space in spaces">
+                                                                    <h4 data-ng-if="!iface.selectedSpace" class="p-option-selector__title--subnets u-no-max-width">
+                                                                        Space: {$ space.name $}
+                                                                    </h4>
+                                                                    <div
+                                                                        class="p-option-selector__option--subnets row"
+                                                                        tabindex="0"
+                                                                        data-ng-click="selectSubnet(subnet, iface)"
+                                                                        data-ng-keyup="$event.keyCode == 13 && selectSubnet(subnet, iface)"
+                                                                        data-ng-repeat="subnet in availableSubnets | filter:bySpace(space.name) | orderBy:['version', 'cidr']">
+                                                                        <div class="p-option-selector__option-cell--subnets col-6 col-medium-6 col-small-4">
+                                                                            <span>{$ subnet.displayName $}</span>
                                                                         </div>
-                                                                    </div>
-                                                                    <div class="p-option-selector-subnets__option-cell">
-                                                                        <div>{$ subnet.fabric.name $}</div>
-                                                                    </div>
-                                                                    <div class="p-option-selector-subnets__option-cell">
-                                                                        <div ng-switch on="subnet.vlan.vid">
-                                                                            <div ng-switch-when="0">untagged</div>
-                                                                            <div ng-switch-default>
-                                                                                <span>{$ subnet.vlan.vid $}</span>
-                                                                                <span data-ng-if="subnet.vlan.name">({$ subnet.vlan.name $})</span>
+                                                                        <div class="p-option-selector__option-cell--subnets col-3 col-medium-3 col-small-2">
+                                                                            <span>{$ subnet.fabric.name $}</span>
+                                                                        </div>
+                                                                        <div class="p-option-selector__option-cell--subnets col-3 col-medium-3 col-small-2">
+                                                                            <div ng-switch on="subnet.vlan.vid">
+                                                                                <div ng-switch-when="0">untagged</div>
+                                                                                <div ng-switch-default>
+                                                                                    <span>{$ subnet.vlan.vid $}</span>
+                                                                                    <span data-ng-if="subnet.vlan.name">({$ subnet.vlan.name $})</span>
+                                                                                </div>
                                                                             </div>
                                                                         </div>
                                                                     </div>
                                                                 </div>
                                                             </div>
                                                             <div data-ng-if="!iface.selectedSpace && hasSpacelessSubnets()">
-                                                                <div class="p-option-selector__title p-muted-text">Space: (unassigned)</div>
+                                                                <h4 class="p-option-selector__title--subnets u-no-max-width">Space: (unassigned)</h4>
                                                                 <div
-                                                                    class="p-option-selector__option u-no-padding"
+                                                                    class="p-option-selector__option--subnets row"
                                                                     tabindex="0"
                                                                     data-ng-click="selectSubnet(subnet, iface)"
                                                                     data-ng-keyup="$event.keyCode == 13 && selectSubnet(subnet, iface)"
                                                                     data-ng-repeat="subnet in availableSubnets | filter:bySpace() | orderBy:['version', 'cidr']">
-                                                                    <div class="p-option-selector-subnets__option-cell">
-                                                                        <div>
-                                                                            <strong>{$ subnet.displayName $}</strong>
-                                                                        </div>
+                                                                    <div class="p-option-selector__option-cell--subnets col-6 col-medium-6 col-small-4">
+                                                                        <span>{$ subnet.displayName $}</span>
                                                                     </div>
-                                                                    <div class="p-option-selector-subnets__option-cell">
-                                                                        <div>{$ subnet.fabric.name $}</div>
+                                                                    <div class="p-option-selector__option-cell--subnets col-3 col-medium-3 col-small-2">
+                                                                        <span>{$ subnet.fabric.name $}</span>
                                                                     </div>
-                                                                    <div class="p-option-selector-subnets__option-cell">
+                                                                    <div class="p-option-selector__option-cell--subnets col-3 col-medium-3 col-small-2">
                                                                         <div ng-switch on="subnet.vlan.vid">
                                                                             <div ng-switch-when="0">untagged</div>
                                                                             <div ng-switch-default>
@@ -272,7 +272,7 @@
                                     </tr>
                                     <tr data-ng-show="availableSubnets.length > 0">
                                         <td colspan="8">
-                                            <button class="p-button--base u-td-outdent-focusable--left p-button--narrow" data-ng-click="composeAddInterface()">
+                                            <button class="p-button--base u-td-outdent-focusable--left p-button--narrow u-no-margin--right" data-ng-click="composeAddInterface()">
                                                 <i class="p-icon--plus"></i>
                                                 <span class="u-off-screen">Add another interface</span>
                                             </button>
