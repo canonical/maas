@@ -4,7 +4,7 @@
 #
 # The script can be called as
 #
-# run-performanced [interface] [number-of-machines]
+# run-performanced [interface] [number-of-machines] [promreg-url] [promreg-token]
 #
 
 REPO_URL="https://git.launchpad.net/~maas-committers/maas/+git/maas-performance"
@@ -16,8 +16,11 @@ NGINX_CONF=/etc/nginx/sites-enabled/maas-performance
 
 
 # cmdline parameters
-IFACE=${1:-eth1}
-NUM_MACHINES=${2:-10}
+iface=${1:-eth1}
+num_machines=${2:-10}
+promreg_url="$3"
+promreg_token="$4"
+
 
 setup_repo() {
     if [ -d "$REPO_DIR" ]; then
@@ -82,4 +85,10 @@ setup_repo
 install_deps
 setup_nginx
 setup_daemon
-exec "$MAAS_PERFORMANCED" -n "$NUM_MACHINES" "$IFACE"
+
+params="-n $num_machines $iface"
+if [ -n "$promreg_url" ] && [ -n "$promreg_token" ]; then
+    params+=" --promreg-url $promreg_url --promreg-token $promreg_token"
+fi
+# shellcheck disable=SC2086
+exec "$MAAS_PERFORMANCED" $params
