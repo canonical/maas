@@ -45,5 +45,8 @@
   "dependencies": {
     "babel-polyfill": "^6.26.0",
     "macaroon-bakery": "^0.2.1"
+  },
+  "resolutions": {
+    "lodash": "4.17.15"
   }
 }
