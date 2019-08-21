@@ -15,6 +15,7 @@ from maasserver import (
 )
 from maasserver.dns.zonegenerator import get_dns_search_paths
 from maasserver.enum import (
+    BRIDGE_TYPE,
     INTERFACE_TYPE,
     IPADDRESS_FAMILY,
     IPADDRESS_TYPE,
@@ -770,7 +771,56 @@ class TestNetplan(MAASServerTestCase):
         }
         self.expectThat(netplan, Equals(expected_netplan))
 
-    def test__bridge_with_params(self):
+    def test__bridge_standard_with_params(self):
+        node = factory.make_Node()
+        eth0 = factory.make_Interface(
+            node=node, name='eth0', mac_address="00:01:02:03:04:05")
+        eth1 = factory.make_Interface(
+            node=node, name='eth1', mac_address="02:01:02:03:04:05")
+        br0 = factory.make_Interface(
+            INTERFACE_TYPE.BRIDGE,
+            node=node, name='br0', parents=[eth0, eth1], params={
+                "bridge_type": BRIDGE_TYPE.STANDARD,
+                "bridge_stp": False,
+                "bridge_fd": 15
+            })
+        netplan = self._render_netplan_dict(node)
+        expected_netplan = {
+            'network': OrderedDict([
+                ('version', 2),
+                ('ethernets', {
+                    'eth0': {
+                        'match': {'macaddress': '00:01:02:03:04:05'},
+                        'mtu': 1500,
+                        'set-name': 'eth0'
+                    },
+                    'eth1': {
+                        'match': {'macaddress': '02:01:02:03:04:05'},
+                        'mtu': 1500,
+                        'set-name': 'eth1'
+                    },
+                }),
+                ('bridges', {
+                    'br0': {
+                        'interfaces': ['eth0', 'eth1'],
+                        'mtu': 1500,
+                        'macaddress': br0.mac_address,
+                        'parameters': {
+                            'forward-delay': 15,
+                            'stp': False,
+                        },
+                    },
+                }),
+            ])
+        }
+        self.expectThat(netplan, Equals(expected_netplan))
+        # Verify that stp is boolean value not an integer value.
+        [output] = compose_curtin_network_config(node, version=2)
+        self.assertTrue(
+            'stp: false' in output,
+            'stp: value must be a boolean not an integer')
+
+    def test__bridge_standard_fallback_with_params(self):
         node = factory.make_Node()
         eth0 = factory.make_Interface(
             node=node, name='eth0', mac_address="00:01:02:03:04:05")
@@ -807,6 +857,56 @@ class TestNetplan(MAASServerTestCase):
                             'forward-delay': 15,
                             'stp': False,
                         },
+                    },
+                }),
+            ])
+        }
+        self.expectThat(netplan, Equals(expected_netplan))
+        # Verify that stp is boolean value not an integer value.
+        [output] = compose_curtin_network_config(node, version=2)
+        self.assertTrue(
+            'stp: false' in output,
+            'stp: value must be a boolean not an integer')
+
+    def test__bridge_ovs_with_params(self):
+        node = factory.make_Node()
+        eth0 = factory.make_Interface(
+            node=node, name='eth0', mac_address="00:01:02:03:04:05")
+        eth1 = factory.make_Interface(
+            node=node, name='eth1', mac_address="02:01:02:03:04:05")
+        br0 = factory.make_Interface(
+            INTERFACE_TYPE.BRIDGE,
+            node=node, name='br0', parents=[eth0, eth1], params={
+                "bridge_type": BRIDGE_TYPE.OVS,
+                "bridge_stp": False,
+                "bridge_fd": 15
+            })
+        netplan = self._render_netplan_dict(node)
+        expected_netplan = {
+            'network': OrderedDict([
+                ('version', 2),
+                ('ethernets', {
+                    'eth0': {
+                        'match': {'macaddress': '00:01:02:03:04:05'},
+                        'mtu': 1500,
+                        'set-name': 'eth0'
+                    },
+                    'eth1': {
+                        'match': {'macaddress': '02:01:02:03:04:05'},
+                        'mtu': 1500,
+                        'set-name': 'eth1'
+                    },
+                }),
+                ('bridges', {
+                    'br0': {
+                        'interfaces': ['eth0', 'eth1'],
+                        'mtu': 1500,
+                        'macaddress': br0.mac_address,
+                        'parameters': {
+                            'forward-delay': 15,
+                            'stp': False,
+                        },
+                        'renderer': 'openvswitch',
                     },
                 }),
             ])

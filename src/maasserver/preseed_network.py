@@ -13,6 +13,7 @@ from operator import attrgetter
 
 from maasserver.dns.zonegenerator import get_dns_search_paths
 from maasserver.enum import (
+    BRIDGE_TYPE,
     INTERFACE_TYPE,
     IPADDRESS_FAMILY,
     IPADDRESS_TYPE,
@@ -453,6 +454,13 @@ class InterfaceConfiguration:
                     for parent in self.iface.parents.order_by('name')
                 ],
             })
+            if self.iface.params:
+                bridge_type = self.iface.params.get(
+                    "bridge_type", BRIDGE_TYPE.STANDARD)
+                if bridge_type == BRIDGE_TYPE.OVS:
+                    bridge_operation.update({
+                        "renderer": "openvswitch",
+                    })
             bridge_params = get_netplan_bridge_parameters(
                 self._get_bridge_params(version=version))
             if len(bridge_params) > 0:
@@ -504,7 +512,7 @@ class InterfaceConfiguration:
         if self.iface.params:
             for key, value in self.iface.params.items():
                 # Only include bridge parameters.
-                if key.startswith("bridge_"):
+                if key.startswith("bridge_") and key != "bridge_type":
                     if version == 1:
                         # The v1 YAML needs an extra translation layer (for
                         # example, it changes bool to int).
