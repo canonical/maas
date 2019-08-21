@@ -1035,7 +1035,9 @@ class TestPowerOffAction(MAASServerTestCase):
         results = {}
         for status in all_statuses:
             node = factory.make_Node(
-                status=status, power_type='ipmi', power_state=POWER_STATE.ON)
+                status=status, power_type='ipmi',
+                power_parameters={'power_address': factory.make_ip_address()},
+                power_state=POWER_STATE.ON)
             actions = compile_node_actions(
                 node, factory.make_admin(), classes=[PowerOff])
             results[status] = list(actions.keys())
@@ -1049,7 +1051,9 @@ class TestPowerOffAction(MAASServerTestCase):
         results = {}
         for status in all_statuses:
             node = factory.make_Node(
-                status=status, power_type='ipmi', power_state=POWER_STATE.ON)
+                status=status, power_type='ipmi',
+                power_parameters={'power_address': factory.make_ip_address()},
+                power_state=POWER_STATE.ON)
             actions = compile_node_actions(
                 node, factory.make_admin(), classes=[PowerOff])
             results[status] = list(actions.keys())
@@ -1063,7 +1067,9 @@ class TestPowerOffAction(MAASServerTestCase):
         results = {}
         for status in all_statuses:
             node = factory.make_Node(
-                status=status, power_type='ipmi', power_state=POWER_STATE.OFF)
+                status=status, power_type='ipmi',
+                power_parameters={'power_address': factory.make_ip_address()},
+                power_state=POWER_STATE.OFF)
             actions = compile_node_actions(
                 node, factory.make_admin(), classes=[PowerOff])
             results[status] = list(actions.keys())

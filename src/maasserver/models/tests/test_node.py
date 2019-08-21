@@ -4911,13 +4911,9 @@ class TestNodePowerParameters(MAASServerTestCase):
         self.assertEqual(bmc_parameters, node.bmc.power_parameters)
 
     def test_none_chassis_bmc_doesnt_consolidate(self):
-        parameters = {
-            'power_address': factory.make_ipv4_address(),
-            'power_pass': factory.make_string(),
-        }
         for _ in range(3):
             node = factory.make_Node()
-            node.set_power_config('amt', parameters)
+            node.set_power_config('manual', {})
             node.save()
 
         # Should be 3 BMC's even though they all have the same information.

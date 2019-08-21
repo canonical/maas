@@ -1676,9 +1676,15 @@ class TestAcquireNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         self.assertItemsEqual(constraints.keys(), described_constraints)
 
     def test_pod_not_pod_pod_type_or_not_pod_type_for_pod(self):
-        node1 = factory.make_Node(power_type='virsh')
-        pod1 = factory.make_Pod(pod_type=node1.power_type, name='pod1')
-        node2 = factory.make_Node(power_type='rsd')
+        node1 = factory.make_Node(
+            power_type='virsh',
+            power_parameters={'power_address': factory.make_ip_address()})
+        pod1 = factory.make_Pod(
+            pod_type=node1.power_type,
+            name='pod1')
+        node2 = factory.make_Node(
+            power_type='rsd',
+            power_parameters={'power_address': factory.make_ip_address()})
         pod2 = factory.make_Pod(pod_type=node2.power_type, name='pod2')
         node1.bmc = pod1
         node1.save()
@@ -1689,9 +1695,13 @@ class TestAcquireNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         self.assertConstrainedNodes([], {'pod': factory.make_name('pod')})
 
     def test_pod_not_pod_pod_type_or_not_pod_type_for_not_pod(self):
-        node1 = factory.make_Node(power_type='virsh')
+        node1 = factory.make_Node(
+            power_type='virsh',
+            power_parameters={'power_address': factory.make_ip_address()})
         pod1 = factory.make_Pod(pod_type=node1.power_type, name='pod1')
-        node2 = factory.make_Node(power_type='rsd')
+        node2 = factory.make_Node(
+            power_type='rsd',
+            power_parameters={'power_address': factory.make_ip_address()})
         pod2 = factory.make_Pod(pod_type=node2.power_type, name='pod2')
         node1.bmc = pod1
         node1.save()
@@ -1703,9 +1713,13 @@ class TestAcquireNodeForm(MAASServerTestCase, FilterConstraintsMixin):
             [node1, node2], {'not_pod': factory.make_name('not_pod')})
 
     def test_pod_not_pod_pod_type_or_not_pod_type_for_pod_type(self):
-        node1 = factory.make_Node(power_type='virsh')
+        node1 = factory.make_Node(
+            power_type='virsh',
+            power_parameters={'power_address': factory.make_ip_address()})
         pod1 = factory.make_Pod(pod_type=node1.power_type)
-        node2 = factory.make_Node(power_type='rsd')
+        node2 = factory.make_Node(
+            power_type='rsd',
+            power_parameters={'power_address': factory.make_ip_address()})
         pod2 = factory.make_Pod(pod_type=node2.power_type)
         node1.bmc = pod1
         node1.save()
@@ -1717,9 +1731,13 @@ class TestAcquireNodeForm(MAASServerTestCase, FilterConstraintsMixin):
             [], {'pod_type': factory.make_name('pod_type')})
 
     def test_pod_not_pod_pod_type_or_not_pod_type_for_not_pod_type(self):
-        node1 = factory.make_Node(power_type='virsh')
+        node1 = factory.make_Node(
+            power_type='virsh',
+            power_parameters={'power_address': factory.make_ip_address()})
         pod1 = factory.make_Pod(pod_type=node1.power_type)
-        node2 = factory.make_Node(power_type='rsd')
+        node2 = factory.make_Node(
+            power_type='rsd',
+            power_parameters={'power_address': factory.make_ip_address()})
         pod2 = factory.make_Pod(pod_type=node2.power_type)
         node1.bmc = pod1
         node1.save()
