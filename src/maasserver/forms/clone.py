@@ -47,7 +47,8 @@ class CloneForm(forms.Form):
         self.fields['destinations'].base_field.queryset = (
             Machine.objects.get_nodes(
                 self.user, NodePermission.admin,
-                from_nodes=Machine.objects.filter(status=NODE_STATUS.READY)))
+                from_nodes=Machine.objects.filter(status__in={
+                    NODE_STATUS.READY, NODE_STATUS.FAILED_TESTING})))
 
     def clean(self):
         """Validate that the form is valid and that the destinations can accept

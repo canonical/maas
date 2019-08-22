@@ -2675,7 +2675,8 @@ class TestRestoreNetworkingConfiguration(APITestCase.ForUser):
 
     def test_restore_networking_configuration(self):
         self.become_admin()
-        machine = factory.make_Machine(status=NODE_STATUS.READY)
+        machine = factory.make_Machine(status=choice([
+            NODE_STATUS.READY, NODE_STATUS.FAILED_TESTING]))
         mock_restore_network_interfaces = self.patch(
             node_module.Machine, 'restore_network_interfaces')
         mock_set_initial_networking_config = self.patch(
@@ -2699,7 +2700,9 @@ class TestRestoreNetworkingConfiguration(APITestCase.ForUser):
 
     def test_restore_networking_configuration_checks_machine_status(self):
         self.become_admin()
-        machine = factory.make_Machine(status=NODE_STATUS.DEPLOYED)
+        machine = factory.make_Machine(status=factory.pick_choice(
+            NODE_STATUS_CHOICES,
+            but_not=[NODE_STATUS.READY, NODE_STATUS.FAILED_TESTING]))
         mock_set_initial_networking_config = self.patch(
             node_module.Machine, 'set_initial_networking_configuration')
         response = self.client.post(
@@ -2719,7 +2722,8 @@ class TestRestoreStorageConfiguration(APITestCase.ForUser):
 
     def test_restore_storage_configuration(self):
         self.become_admin()
-        machine = factory.make_Machine(status=NODE_STATUS.READY)
+        machine = factory.make_Machine(status=choice([
+            NODE_STATUS.READY, NODE_STATUS.FAILED_TESTING]))
         mock_set_default_storage_layout = self.patch(
             node_module.Machine, 'set_default_storage_layout')
         response = self.client.post(
@@ -2740,7 +2744,9 @@ class TestRestoreStorageConfiguration(APITestCase.ForUser):
 
     def test_restore_storage_configuration_checks_machine_status(self):
         self.become_admin()
-        machine = factory.make_Machine(status=NODE_STATUS.DEPLOYED)
+        machine = factory.make_Machine(status=factory.pick_choice(
+            NODE_STATUS_CHOICES,
+            but_not=[NODE_STATUS.READY, NODE_STATUS.FAILED_TESTING]))
         mock_set_default_storage_layout = self.patch(
             node_module.Machine, 'set_default_storage_layout')
         response = self.client.post(
@@ -2760,7 +2766,8 @@ class TestRestoreDefaultConfiguration(APITestCase.ForUser):
 
     def test_restore_default_configuration(self):
         self.become_admin()
-        machine = factory.make_Machine(status=NODE_STATUS.READY)
+        machine = factory.make_Machine(status=choice([
+            NODE_STATUS.READY, NODE_STATUS.FAILED_TESTING]))
         mock_set_default_storage_layout = self.patch(
             node_module.Machine, 'set_default_storage_layout')
         mock_restore_network_interfaces = self.patch(
@@ -2787,7 +2794,9 @@ class TestRestoreDefaultConfiguration(APITestCase.ForUser):
 
     def test_restore_default_configuration_checks_machine_status(self):
         self.become_admin()
-        machine = factory.make_Machine(status=NODE_STATUS.DEPLOYED)
+        machine = factory.make_Machine(status=factory.pick_choice(
+            NODE_STATUS_CHOICES,
+            but_not=[NODE_STATUS.READY, NODE_STATUS.FAILED_TESTING]))
         mock_restore_default_configuration = self.patch(
             node_module.Machine, 'restore_default_configuration')
         response = self.client.post(

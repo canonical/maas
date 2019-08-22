@@ -3412,6 +3412,8 @@ describe("NodeNetworkingController", function() {
         expect($scope.isAllNetworkingDisabled()).toBe(false);
         $scope.node = { status: "Ready" };
         expect($scope.isAllNetworkingDisabled()).toBe(false);
+        $scope.node = { status: "Failed testing" };
+        expect($scope.isAllNetworkingDisabled()).toBe(false);
         $scope.node = { status: "Allocated" };
         expect($scope.isAllNetworkingDisabled()).toBe(false);
         $scope.node = { status: "Broken" };

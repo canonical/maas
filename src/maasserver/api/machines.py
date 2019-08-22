@@ -1226,10 +1226,11 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user,
             perm=NodePermission.admin)
-        if machine.status != NODE_STATUS.READY:
+        if machine.status not in {
+                NODE_STATUS.READY, NODE_STATUS.FAILED_TESTING}:
             raise NodeStateViolation(
-                "Machine must be in a ready state to restore networking "
-                "configuration")
+                "Machine must be in a ready or failed testing state to "
+                "restore networking configuration")
         machine.restore_network_interfaces()
         machine.set_initial_networking_configuration()
         return reload_object(machine)
@@ -1260,10 +1261,11 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user,
             perm=NodePermission.admin)
-        if machine.status != NODE_STATUS.READY:
+        if machine.status not in {
+                NODE_STATUS.READY, NODE_STATUS.FAILED_TESTING}:
             raise NodeStateViolation(
-                "Machine must be in a ready state to restore storage "
-                "configuration.")
+                "Machine must be in a ready or failed testing state to "
+                "restore storage configuration.")
         machine.set_default_storage_layout()
         return reload_object(machine)
 
@@ -1293,10 +1295,11 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user,
             perm=NodePermission.admin)
-        if machine.status != NODE_STATUS.READY:
+        if machine.status not in {
+                NODE_STATUS.READY, NODE_STATUS.FAILED_TESTING}:
             raise NodeStateViolation(
-                "Machine must be in a ready state to restore default "
-                "networking and storage configuration.")
+                "Machine must be in a ready or failed testing state to "
+                "restore default networking and storage configuration.")
         machine.set_default_storage_layout()
         machine.restore_network_interfaces()
         machine.set_initial_networking_configuration()

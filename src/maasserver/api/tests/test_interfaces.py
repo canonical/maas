@@ -1,4 +1,4 @@
-# Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for NodeInterfaces API."""
@@ -14,6 +14,7 @@ from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
     NODE_STATUS,
+    NODE_STATUS_CHOICES,
     NODE_TYPE,
 )
 from maasserver.models import Interface
@@ -37,25 +38,14 @@ from testtools.matchers import (
 )
 
 
-STATUSES = (
-    NODE_STATUS.NEW,
-    NODE_STATUS.COMMISSIONING,
-    NODE_STATUS.FAILED_COMMISSIONING,
-    NODE_STATUS.MISSING,
-    NODE_STATUS.RESERVED,
-    NODE_STATUS.DEPLOYING,
-    NODE_STATUS.DEPLOYED,
-    NODE_STATUS.RETIRED,
-    NODE_STATUS.FAILED_DEPLOYMENT,
-    NODE_STATUS.RELEASING,
-    NODE_STATUS.FAILED_RELEASING,
-    NODE_STATUS.DISK_ERASING,
-    NODE_STATUS.FAILED_DISK_ERASING,
-    NODE_STATUS.ENTERING_RESCUE_MODE,
-    NODE_STATUS.FAILED_ENTERING_RESCUE_MODE,
-    NODE_STATUS.RESCUE_MODE,
-    NODE_STATUS.EXITING_RESCUE_MODE,
-    NODE_STATUS.FAILED_EXITING_RESCUE_MODE,
+EDITABLE_STATUSES = (
+    NODE_STATUS.READY, NODE_STATUS.FAILED_TESTING,
+    NODE_STATUS.ALLOCATED, NODE_STATUS.BROKEN,
+)
+
+BLOCKED_STATUSES = (
+    status for status, _ in NODE_STATUS_CHOICES
+    if status not in EDITABLE_STATUSES
 )
 
 
@@ -174,7 +164,7 @@ class TestInterfacesAPI(APITestCase.ForUser):
 
     def test_create_physical(self):
         self.become_admin()
-        for status in (NODE_STATUS.READY, NODE_STATUS.BROKEN):
+        for status in EDITABLE_STATUSES:
             node = factory.make_Node(status=status)
             mac = factory.make_mac_address()
             name = factory.make_name("eth")
@@ -240,8 +230,7 @@ class TestInterfacesAPI(APITestCase.ForUser):
 
     def test_create_physical_disabled(self):
         self.become_admin()
-        for status in (
-                NODE_STATUS.READY, NODE_STATUS.ALLOCATED, NODE_STATUS.BROKEN):
+        for status in EDITABLE_STATUSES:
             node = factory.make_Node(status=status)
             mac = factory.make_mac_address()
             name = factory.make_name("eth")
@@ -288,9 +277,9 @@ class TestInterfacesAPI(APITestCase.ForUser):
         self.assertEqual(
             http.client.FORBIDDEN, response.status_code, response.content)
 
-    def test_create_physical_409_when_not_ready_or_broken(self):
+    def test_create_physical_409_when_invalid_status(self):
         self.become_admin()
-        for status in STATUSES:
+        for status in BLOCKED_STATUSES:
             node = factory.make_Node(status=status)
             mac = factory.make_mac_address()
             name = factory.make_name("eth")
@@ -307,7 +296,7 @@ class TestInterfacesAPI(APITestCase.ForUser):
 
     def test_create_physical_requires_mac(self):
         self.become_admin()
-        node = factory.make_Node(status=NODE_STATUS.READY)
+        node = factory.make_Node(status=random.choice(EDITABLE_STATUSES))
         uri = get_interfaces_uri(node)
         response = self.client.post(uri, {
             "op": "create_physical",
@@ -320,7 +309,7 @@ class TestInterfacesAPI(APITestCase.ForUser):
 
     def test_create_physical_doesnt_allow_mac_already_register(self):
         self.become_admin()
-        node = factory.make_Node(status=NODE_STATUS.READY)
+        node = factory.make_Node(status=random.choice(EDITABLE_STATUSES))
         interface_on_other_node = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL)
         name = factory.make_name("eth")
@@ -342,8 +331,7 @@ class TestInterfacesAPI(APITestCase.ForUser):
 
     def test_create_bond(self):
         self.become_admin()
-        for status in (
-                NODE_STATUS.READY, NODE_STATUS.ALLOCATED, NODE_STATUS.BROKEN):
+        for status in EDITABLE_STATUSES:
             node = factory.make_Node(status=status)
             vlan = factory.make_VLAN()
             parent_1_iface = factory.make_Interface(
@@ -413,9 +401,9 @@ class TestInterfacesAPI(APITestCase.ForUser):
         self.assertEqual(
             http.client.FORBIDDEN, response.status_code, response.content)
 
-    def test_create_bond_409_when_not_ready_or_broken(self):
+    def test_create_bond_409_when_invalid_status(self):
         self.become_admin()
-        for status in STATUSES:
+        for status in BLOCKED_STATUSES:
             node = factory.make_Node(status=status)
             vlan = factory.make_VLAN()
             parent_1_iface = factory.make_Interface(
@@ -436,7 +424,7 @@ class TestInterfacesAPI(APITestCase.ForUser):
 
     def test_create_bond_requires_name_vlan_and_parents(self):
         self.become_admin()
-        node = factory.make_Node(status=NODE_STATUS.READY)
+        node = factory.make_Node(status=random.choice(EDITABLE_STATUSES))
         uri = get_interfaces_uri(node)
         response = self.client.post(uri, {
             "op": "create_bond",
@@ -452,7 +440,7 @@ class TestInterfacesAPI(APITestCase.ForUser):
 
     def test_create_vlan(self):
         self.become_admin()
-        node = factory.make_Node(status=NODE_STATUS.READY)
+        node = factory.make_Node(status=random.choice(EDITABLE_STATUSES))
         untagged_vlan = factory.make_VLAN()
         parent_iface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, vlan=untagged_vlan, node=node)
@@ -495,7 +483,7 @@ class TestInterfacesAPI(APITestCase.ForUser):
             http.client.NOT_FOUND, response.status_code, response.content)
 
     def test_create_vlan_requires_admin(self):
-        node = factory.make_Node(status=NODE_STATUS.READY)
+        node = factory.make_Node(status=random.choice(EDITABLE_STATUSES))
         untagged_vlan = factory.make_VLAN()
         parent_iface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, vlan=untagged_vlan, node=node)
@@ -511,7 +499,7 @@ class TestInterfacesAPI(APITestCase.ForUser):
 
     def test_create_vlan_requires_vlan_and_parent(self):
         self.become_admin()
-        node = factory.make_Node(status=NODE_STATUS.READY)
+        node = factory.make_Node(status=random.choice(EDITABLE_STATUSES))
         uri = get_interfaces_uri(node)
         response = self.client.post(uri, {
             "op": "create_vlan",
@@ -527,7 +515,7 @@ class TestInterfacesAPI(APITestCase.ForUser):
     def test_create_bridge(self):
         self.become_admin()
         name = factory.make_name("br")
-        node = factory.make_Node(status=NODE_STATUS.READY)
+        node = factory.make_Node(status=random.choice(EDITABLE_STATUSES))
         untagged_vlan = factory.make_VLAN()
         parent_iface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, vlan=untagged_vlan, node=node)
@@ -571,7 +559,7 @@ class TestInterfacesAPI(APITestCase.ForUser):
             http.client.NOT_FOUND, response.status_code, response.content)
 
     def test_create_bridge_requires_admin(self):
-        node = factory.make_Node(status=NODE_STATUS.READY)
+        node = factory.make_Node(status=random.choice(EDITABLE_STATUSES))
         untagged_vlan = factory.make_VLAN()
         parent_iface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, vlan=untagged_vlan, node=node)
@@ -586,7 +574,7 @@ class TestInterfacesAPI(APITestCase.ForUser):
 
     def test_create_bridge_requires_name_and_parent(self):
         self.become_admin()
-        node = factory.make_Node(status=NODE_STATUS.READY)
+        node = factory.make_Node(status=random.choice(EDITABLE_STATUSES))
         uri = get_interfaces_uri(node)
         response = self.client.post(uri, {
             "op": "create_bridge",
@@ -603,8 +591,7 @@ class TestInterfacesAPI(APITestCase.ForUser):
     def test_create_acquired_bridge(self):
         self.become_admin()
         name = factory.make_name("br")
-        node = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=self.user)
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=self.user)
         parent_fabric = factory.make_Fabric()
         parent_vlan = parent_fabric.get_default_vlan()
         parent_iface = factory.make_Interface(
@@ -651,7 +638,7 @@ class TestInterfacesAPI(APITestCase.ForUser):
 
     def test_create_acquired_bridge_not_allowed_in_ready(self):
         name = factory.make_name("br")
-        node = factory.make_Node(status=NODE_STATUS.READY)
+        node = factory.make_Node(status=random.choice(EDITABLE_STATUSES))
         parent_fabric = factory.make_Fabric()
         parent_vlan = parent_fabric.get_default_vlan()
         parent_iface = factory.make_Interface(
@@ -933,8 +920,7 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
 
     def test_update_physical_interface(self):
         self.become_admin()
-        for status in (
-                NODE_STATUS.READY, NODE_STATUS.ALLOCATED, NODE_STATUS.BROKEN):
+        for status in EDITABLE_STATUSES:
             node = factory.make_Node(status=status)
             interface = factory.make_Interface(
                 INTERFACE_TYPE.PHYSICAL, node=node)
@@ -984,8 +970,7 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
 
     def test_update_bond_interface(self):
         self.become_admin()
-        for status in (
-                NODE_STATUS.READY, NODE_STATUS.ALLOCATED, NODE_STATUS.BROKEN):
+        for status in EDITABLE_STATUSES:
             node = factory.make_Node(status=status)
             bond, [nic_0, nic_1], [vlan_10, vlan_11] = make_complex_interface(
                 node)
@@ -1000,8 +985,7 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
 
     def test_update_vlan_interface(self):
         self.become_admin()
-        for status in (
-                NODE_STATUS.READY, NODE_STATUS.ALLOCATED, NODE_STATUS.BROKEN):
+        for status in EDITABLE_STATUSES:
             node = factory.make_Node(status=status)
             bond, [nic_0, nic_1], [vlan_10, vlan_11] = make_complex_interface(
                 node)
@@ -1030,11 +1014,11 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
 
     def test_update_409_when_not_ready_broken_or_deployed(self):
         self.become_admin()
-        statuses = list(STATUSES)
-        # Update is the only call that a deployed node can have called on
-        # its interface.
-        statuses.remove(NODE_STATUS.DEPLOYED)
-        for status in statuses:
+        for status in BLOCKED_STATUSES:
+            # Update is the only call that a deployed node can have called on
+            # its interface.
+            if status == NODE_STATUS.DEPLOYED:
+                continue
             node = factory.make_Node(interface=True, status=status)
             interface = factory.make_Interface(
                 INTERFACE_TYPE.PHYSICAL, node=node)
@@ -1048,8 +1032,7 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
 
     def test_delete_deletes_interface(self):
         self.become_admin()
-        for status in (
-                NODE_STATUS.READY, NODE_STATUS.ALLOCATED, NODE_STATUS.BROKEN):
+        for status in EDITABLE_STATUSES:
             node = factory.make_Node(interface=True, status=status)
             interface = node.get_boot_interface()
             uri = get_interface_uri(interface)
@@ -1089,9 +1072,9 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
         self.assertEqual(
             http.client.NOT_FOUND, response.status_code, response.content)
 
-    def test_delete_409_when_not_ready_or_broken(self):
+    def test_delete_409_when_invalid_status(self):
         self.become_admin()
-        for status in STATUSES:
+        for status in BLOCKED_STATUSES:
             node = factory.make_Node(interface=True, status=status)
             interface = node.get_boot_interface()
             uri = get_interface_uri(interface)
@@ -1104,8 +1087,7 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
         # This just tests that the form is saved and the updated interface
         # is returned.
         self.become_admin()
-        for status in (
-                NODE_STATUS.READY, NODE_STATUS.ALLOCATED, NODE_STATUS.BROKEN):
+        for status in EDITABLE_STATUSES:
             node = factory.make_Node(interface=True, status=status)
             interface = node.get_boot_interface()
             uri = get_interface_uri(interface)
@@ -1144,7 +1126,8 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
 
     def test_link_subnet_allows_subnet_with_link_up(self):
         self.become_admin()
-        node = factory.make_Node(owner=self.user, status=NODE_STATUS.READY)
+        node = factory.make_Node(
+            owner=self.user, status=random.choice(EDITABLE_STATUSES))
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=node)
         subnet = factory.make_Subnet(vlan=interface.vlan)
@@ -1166,7 +1149,8 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
 
     def test_link_subnet_allows_link_up_subnet_to_be_cleared(self):
         self.become_admin()
-        node = factory.make_Node(owner=self.user, status=NODE_STATUS.READY)
+        node = factory.make_Node(
+            owner=self.user, status=random.choice(EDITABLE_STATUSES))
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=node)
         subnet = factory.make_Subnet(vlan=interface.vlan)
@@ -1191,7 +1175,8 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
 
     def test_link_subnet_allows_link_up_subnet_to_be_changed(self):
         self.become_admin()
-        node = factory.make_Node(owner=self.user, status=NODE_STATUS.READY)
+        node = factory.make_Node(
+            owner=self.user, status=random.choice(EDITABLE_STATUSES))
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=node)
         subnet = factory.make_Subnet(vlan=interface.vlan)
@@ -1219,7 +1204,8 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
 
     def test_link_subnet_disallows_subnets_on_another_vlan(self):
         self.become_admin()
-        node = factory.make_Node(owner=self.user, status=NODE_STATUS.READY)
+        node = factory.make_Node(
+            owner=self.user, status=random.choice(EDITABLE_STATUSES))
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=node)
         vlan2 = factory.make_VLAN()
@@ -1241,7 +1227,8 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
 
     def test_link_subnet_allows_link_up_subnet_to_be_forcibly_changed(self):
         self.become_admin()
-        node = factory.make_Node(owner=self.user, status=NODE_STATUS.READY)
+        node = factory.make_Node(
+            owner=self.user, status=random.choice(EDITABLE_STATUSES))
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=node)
         vlan2 = factory.make_VLAN()
@@ -1271,7 +1258,8 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
 
     def test_link_subnet_force_link_up_deletes_existing_links(self):
         self.become_admin()
-        node = factory.make_Node(owner=self.user, status=NODE_STATUS.READY)
+        node = factory.make_Node(
+            owner=self.user, status=random.choice(EDITABLE_STATUSES))
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=node)
         vlan2 = factory.make_VLAN()
@@ -1301,7 +1289,8 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
 
     def test_link_subnet_without_force_link_up_returns_bad_request(self):
         self.become_admin()
-        node = factory.make_Node(owner=self.user, status=NODE_STATUS.READY)
+        node = factory.make_Node(
+            owner=self.user, status=random.choice(EDITABLE_STATUSES))
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=node)
         vlan2 = factory.make_VLAN()
@@ -1343,8 +1332,7 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
 
     def test_link_subnet_raises_error(self):
         self.become_admin()
-        for status in (
-                NODE_STATUS.READY, NODE_STATUS.ALLOCATED, NODE_STATUS.BROKEN):
+        for status in EDITABLE_STATUSES:
             node = factory.make_Node(interface=True, status=status)
             interface = node.get_boot_interface()
             uri = get_interface_uri(interface)
@@ -1368,9 +1356,9 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
         self.assertEqual(
             http.client.FORBIDDEN, response.status_code, response.content)
 
-    def test_link_subnet_409_when_not_ready_or_broken(self):
+    def test_link_subnet_409_when_invalid_status(self):
         self.become_admin()
-        for status in STATUSES:
+        for status in BLOCKED_STATUSES:
             node = factory.make_Node(interface=True, status=status)
             interface = node.get_boot_interface()
             uri = get_interface_uri(interface)
@@ -1386,8 +1374,7 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
         # This just tests that the form is saved and the updated interface
         # is returned.
         self.become_admin()
-        for status in (
-                NODE_STATUS.READY, NODE_STATUS.ALLOCATED, NODE_STATUS.BROKEN):
+        for status in EDITABLE_STATUSES:
             node = factory.make_Node(interface=True, status=status)
             interface = node.get_boot_interface()
             subnet = factory.make_Subnet()
@@ -1424,8 +1411,7 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
 
     def test_unlink_subnet_raises_error(self):
         self.become_admin()
-        for status in (
-                NODE_STATUS.READY, NODE_STATUS.ALLOCATED, NODE_STATUS.BROKEN):
+        for status in EDITABLE_STATUSES:
             node = factory.make_Node(interface=True, status=status)
             interface = node.get_boot_interface()
             uri = get_interface_uri(interface)
@@ -1449,9 +1435,9 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
         self.assertEqual(
             http.client.FORBIDDEN, response.status_code, response.content)
 
-    def test_unlink_subnet_409_when_not_ready_or_broken(self):
+    def test_unlink_subnet_409_when_invalid_status(self):
         self.become_admin()
-        for status in STATUSES:
+        for status in BLOCKED_STATUSES:
             node = factory.make_Node(interface=True, status=status)
             interface = node.get_boot_interface()
             uri = get_interface_uri(interface)
@@ -1466,8 +1452,7 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
         # This just tests that the form is saved and the updated interface
         # is returned.
         self.become_admin()
-        for status in (
-                NODE_STATUS.READY, NODE_STATUS.ALLOCATED, NODE_STATUS.BROKEN):
+        for status in EDITABLE_STATUSES:
             node = factory.make_Node(interface=True, status=status)
             interface = node.get_boot_interface()
             subnet = factory.make_Subnet()
@@ -1493,9 +1478,9 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
         self.assertEqual(
             http.client.FORBIDDEN, response.status_code, response.content)
 
-    def test_disconnect_409_when_not_ready_or_broken(self):
+    def test_disconnect_409_when_invalid_status(self):
         self.become_admin()
-        for status in STATUSES:
+        for status in BLOCKED_STATUSES:
             node = factory.make_Node(interface=True, status=status)
             interface = node.get_boot_interface()
             uri = get_interface_uri(interface)
@@ -1509,8 +1494,7 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
         # The form that is used is fully tested in test_forms_interface_link.
         # This just tests that the form is saved and the node link is created.
         self.become_admin()
-        for status in (
-                NODE_STATUS.READY, NODE_STATUS.ALLOCATED, NODE_STATUS.BROKEN):
+        for status in EDITABLE_STATUSES:
             node = factory.make_Node(interface=True, status=status)
             interface = node.get_boot_interface()
             network = factory.make_ipv4_network()
@@ -1532,8 +1516,7 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
         # The form that is used is fully tested in test_forms_interface_link.
         # This just tests that the form is saved and the node link is created.
         self.become_admin()
-        for status in (
-                NODE_STATUS.READY, NODE_STATUS.ALLOCATED, NODE_STATUS.BROKEN):
+        for status in EDITABLE_STATUSES:
             node = factory.make_Node(interface=True, status=status)
             interface = node.get_boot_interface()
             network = factory.make_ipv6_network()
@@ -1553,8 +1536,7 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
 
     def test_set_default_gateway_raises_error(self):
         self.become_admin()
-        for status in (
-                NODE_STATUS.READY, NODE_STATUS.ALLOCATED, NODE_STATUS.BROKEN):
+        for status in EDITABLE_STATUSES:
             node = factory.make_Node(interface=True, status=status)
             interface = node.get_boot_interface()
             uri = get_interface_uri(interface)
@@ -1578,9 +1560,9 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
         self.assertEqual(
             http.client.FORBIDDEN, response.status_code, response.content)
 
-    def test_set_default_gateway_409_when_not_ready_or_broken(self):
+    def test_set_default_gateway_409_when_invalid_status(self):
         self.become_admin()
-        for status in STATUSES:
+        for status in BLOCKED_STATUSES:
             node = factory.make_Node(interface=True, status=status)
             interface = node.get_boot_interface()
             uri = get_interface_uri(interface)

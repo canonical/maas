@@ -98,7 +98,10 @@ INTERFACES_PREFETCH = [
      'children_relationships__child__vlan'),
 ]
 
-ALLOWED_STATES = (NODE_STATUS.READY, NODE_STATUS.ALLOCATED, NODE_STATUS.BROKEN)
+ALLOWED_STATES = (
+    NODE_STATUS.READY, NODE_STATUS.FAILED_TESTING,
+    NODE_STATUS.ALLOCATED, NODE_STATUS.BROKEN,
+)
 
 
 def raise_error_for_invalid_state_on_allocated_operations(

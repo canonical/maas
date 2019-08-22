@@ -5,6 +5,8 @@
 
 __all__ = []
 
+import random
+
 from maasserver.enum import NODE_STATUS
 from maasserver.forms.clone import CloneForm
 from maasserver.testing.factory import factory
@@ -25,7 +27,8 @@ class TestCloneForm(MAASServerTestCase):
 
     def test__source_destination_match_error(self):
         user = factory.make_admin()
-        source = factory.make_Machine(status=NODE_STATUS.READY)
+        source = factory.make_Machine(status=random.choice([
+            NODE_STATUS.READY, NODE_STATUS.FAILED_TESTING]))
         form = CloneForm(user, data={
             'source': source.system_id,
             'destinations': [source.system_id],
@@ -44,7 +47,9 @@ class TestCloneForm(MAASServerTestCase):
         factory.make_PhysicalBlockDevice(
             node=source, size=8 * 1024 ** 3, name="sda")
         destination = factory.make_Machine(
-            status=NODE_STATUS.READY, with_boot_disk=False)
+            status=random.choice([
+                NODE_STATUS.READY, NODE_STATUS.FAILED_TESTING]),
+            with_boot_disk=False)
         factory.make_PhysicalBlockDevice(
             node=destination, size=4 * 1024 ** 3, name="sda")
         form = CloneForm(user, data={
@@ -65,7 +70,9 @@ class TestCloneForm(MAASServerTestCase):
         source = factory.make_Machine(with_boot_disk=False)
         factory.make_Interface(node=source, name='eth0')
         destination = factory.make_Machine(
-            status=NODE_STATUS.READY, with_boot_disk=False)
+            status=random.choice([
+                NODE_STATUS.READY, NODE_STATUS.FAILED_TESTING]),
+            with_boot_disk=False)
         factory.make_Interface(node=destination, name='eth1')
         form = CloneForm(user, data={
             'source': source.system_id,
@@ -87,7 +94,9 @@ class TestCloneForm(MAASServerTestCase):
             node=source, size=8 * 1024 ** 3, name="sda")
         factory.make_Interface(node=source, name='eth0')
         destination = factory.make_Machine(
-            status=NODE_STATUS.READY, with_boot_disk=False)
+            status=random.choice([
+                NODE_STATUS.READY, NODE_STATUS.FAILED_TESTING]),
+            with_boot_disk=False)
         factory.make_PhysicalBlockDevice(
             node=destination, size=8 * 1024 ** 3, name="sda")
         factory.make_Interface(node=destination, name='eth0')
@@ -112,12 +121,16 @@ class TestCloneForm(MAASServerTestCase):
             node=source, size=8 * 1024 ** 3, name="sda")
         factory.make_Interface(node=source, name='eth0')
         destination1 = factory.make_Machine(
-            status=NODE_STATUS.READY, with_boot_disk=False)
+            status=random.choice([
+                NODE_STATUS.READY, NODE_STATUS.FAILED_TESTING]),
+            with_boot_disk=False)
         factory.make_PhysicalBlockDevice(
             node=destination1, size=8 * 1024 ** 3, name="sda")
         factory.make_Interface(node=destination1, name='eth0')
         destination2 = factory.make_Machine(
-            status=NODE_STATUS.READY, with_boot_disk=False)
+            status=random.choice([
+                NODE_STATUS.READY, NODE_STATUS.FAILED_TESTING]),
+            with_boot_disk=False)
         factory.make_PhysicalBlockDevice(
             node=destination2, size=8 * 1024 ** 3, name="sda")
         factory.make_Interface(node=destination2, name='eth0')

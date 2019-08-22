@@ -39895,7 +39895,7 @@ function NodeNetworkingController($scope, $filter, FabricsManager, VLANsManager,
       return false;
     }
 
-    if (angular.isObject($scope.node) && ["New", "Ready", "Allocated", "Broken"].indexOf($scope.node.status) === -1) {
+    if (angular.isObject($scope.node) && ["New", "Ready", "Failed testing", "Allocated", "Broken"].indexOf($scope.node.status) === -1) {
       // If a non-controller node is not ready allocated, or broken,
       // disable networking panel.
       return true;
