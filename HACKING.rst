@@ -669,12 +669,12 @@ Viewing SQL queries during tests
 If you need to view the SQL queries that are performed during a test, the
 `LogSQL` fixture can be used to output all the queries during the test.::
 
-    from maasserver.fixture import LogSQL
+    from maasserver.testing.fixtures import LogSQL
     self.useFixture(LogSQL())
 
 Sometimes you need to see where in the code that query was performed.::
 
-    from maasserver.fixture import LogSQL
+    from maasserver.testing.fixtures import LogSQL
     self.useFixture(LogSQL(include_stacktrace=True))
 
 
