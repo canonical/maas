@@ -1,0 +1,19 @@
+#!/usr/bin/env python3
+
+import os
+
+from maascli.snappy import run_with_drop_privileges
+
+
+def start_postgres():
+    binary = os.path.join(os.environ['SNAP'], 'bin', 'postgres')
+    base_dir = os.path.join(os.environ['SNAP_COMMON'], 'postgres')
+    os.execv(
+        binary,
+        [binary, '-D', os.path.join(base_dir, 'data'),
+         '-k', os.path.join(base_dir, 'sockets'),
+         '-h', ''])
+
+
+if __name__ == '__main__':
+    run_with_drop_privileges(start_postgres)

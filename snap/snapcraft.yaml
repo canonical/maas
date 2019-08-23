@@ -6,7 +6,12 @@ description: |
 grade: stable
 confinement: strict
 base: core18
+assumes:
+  - snapd2.41
 epoch: 1*
+passthrough:
+    system-usernames:
+      snap_daemon: shared
 
 apps:
   supervisor:

@@ -126,6 +126,8 @@ ARGUMENTS = OrderedDict([
     }),
 ])
 
+NON_ROOT_USER = 'snap_daemon'
+
 
 def get_default_gateway_ip():
     """Return the default gateway IP."""
@@ -306,23 +308,42 @@ def print_config(
                 print_config_value(config, 'debug_queries')
 
 
-def drop_privileges():
-    """Drop privileges to 'nobody:nogroup'."""
-    running_uid = pwd.getpwnam('nobody').pw_uid
-    running_gid = grp.getgrnam('nogroup').gr_gid
+def change_user(username, effective=False):
+    """Change running user, by default to the non-root user."""
+    running_uid = pwd.getpwnam(username).pw_uid
+    running_gid = grp.getgrnam(username).gr_gid
     os.setgroups([])
-    os.setgid(running_gid)
-    os.setuid(running_uid)
+    if effective:
+        os.setegid(running_gid)
+        os.seteuid(running_uid)
+    else:
+        os.setgid(running_gid)
+        os.setuid(running_uid)
+
+
+@contextmanager
+def privileges_dropped():
+    """Context manager to run things as non-root user."""
+    change_user(NON_ROOT_USER, effective=True)
+    yield
+    change_user('root', effective=True)
 
 
 def run_with_drop_privileges(cmd, *args, **kwargs):
     """Runs `cmd` in child process with lower privileges."""
     pid = os.fork()
+
     if pid == 0:
-        drop_privileges()
+        change_user(NON_ROOT_USER)
         cmd(*args, **kwargs)
         sys.exit(0)
     else:
+        def signal_handler(signal, frame):
+            with privileges_dropped():
+                os.kill(pid, signal)
+
+        signal.signal(signal.SIGINT, signal_handler)
+        signal.signal(signal.SIGTERM, signal_handler)
         _, code = os.waitpid(pid, 0)
         if code:
             # fail if the child process failed (the error will be reported
@@ -426,22 +447,22 @@ def init_db():
         os.mkdir(base_db_dir)
         # allow both root and non-root user to create/delete directories under
         # this one
-        shutil.chown(base_db_dir, group='nogroup')
+        shutil.chown(base_db_dir, group=NON_ROOT_USER)
         os.chmod(base_db_dir, 0o770)
     if os.path.exists(db_path):
         run_with_drop_privileges(shutil.rmtree, db_path)
     os.mkdir(db_path)
-    shutil.chown(db_path, user='nobody', group='nogroup')
+    shutil.chown(db_path, user=NON_ROOT_USER, group=NON_ROOT_USER)
     log_path = os.path.join(
         os.environ['SNAP_COMMON'], 'log', 'postgresql-init.log')
     if not os.path.exists(log_path):
         open(log_path, 'a').close()
-    shutil.chown(log_path, user='nobody', group='nogroup')
+    shutil.chown(log_path, user=NON_ROOT_USER, group=NON_ROOT_USER)
     socket_path = os.path.join(get_base_db_dir(), 'sockets')
     if not os.path.exists(socket_path):
         os.mkdir(socket_path)
         os.chmod(socket_path, 0o775)
-        shutil.chown(socket_path, user='nobody')  # keep root as group
+        shutil.chown(socket_path, user=NON_ROOT_USER)  # keep root as group
 
     def _init_db():
         subprocess.check_output([

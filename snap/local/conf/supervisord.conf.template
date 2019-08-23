@@ -20,8 +20,7 @@ password=maas
 {{if postgresql}}
 [program:postgresql]
 process_name=postgresql
-command=%(ENV_SNAP)s/bin/ld-preload %(ENV_SNAP)s/bin/postgres -D %(ENV_SNAP_COMMON)s/postgres/data -k %(ENV_SNAP_COMMON)s/postgres/sockets -h ""
-user=nobody
+command=%(ENV_SNAP)s/bin/ld-preload %(ENV_SNAP)s/bin/run-postgres
 stopasgroup=true
 killasgroup=true
 redirect_stderr=true
@@ -98,8 +97,6 @@ stdout_logfile=%(ENV_SNAP_COMMON)s/log/chrony.log
 [program:proxy]
 process_name=proxy
 command=%(ENV_SNAP)s/bin/run-squid
-user=nobody
-group=nogroup
 autostart=false
 stopasgroup=true
 killasgroup=true

@@ -14,6 +14,7 @@ from fixtures import EnvironmentVariableFixture
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.proxy import config
+from provisioningserver.utils import snappy
 from testtools.matchers import (
     Contains,
     FileContains,
@@ -105,3 +106,19 @@ class TestWriteConfig(MAASTestCase):
         with self.proxy_path.open() as proxy_file:
             lines = [line.strip() for line in proxy_file.readlines()]
             self.assertIn('http_port %s' % port, lines)
+
+    def test__user_in_snap(self):
+        self.patch(snappy, 'running_in_snap').return_value = True
+        config.write_config(allowed_cidrs=[])
+        with self.proxy_path.open() as proxy_file:
+            lines = [line.strip() for line in proxy_file.readlines()]
+            self.assertIn('cache_effective_user snap_daemon', lines)
+            self.assertIn('cache_effective_group snap_daemon', lines)
+
+    def test__user_not_in_snap(self):
+        self.patch(snappy, 'running_in_snap').return_value = False
+        config.write_config(allowed_cidrs=[])
+        with self.proxy_path.open() as proxy_file:
+            lines = [line.strip() for line in proxy_file.readlines()]
+            self.assertNotIn('cache_effective_user snap_daemon', lines)
+            self.assertNotIn('cache_effective_group snap_daemon', lines)
