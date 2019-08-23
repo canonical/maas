@@ -42,16 +42,14 @@ NODE_CLASSES = [
 signals = SignalsManager()
 
 
-def pre_delete_set_event_node_hostname(sender, instance, **kwargs):
-    """Set node_hostname for events that reference node being deleted."""
-    for event in instance.event_set.all():
-        event.node_hostname = instance.hostname
-        event.save()
+def pre_delete_update_events(sender, instance, **kwargs):
+    """Update node hostname and id for events related to the node."""
+    instance.event_set.all().update(
+        node_hostname=instance.hostname, node_id=None)
 
 
 for klass in NODE_CLASSES:
-    signals.watch(
-        pre_delete, pre_delete_set_event_node_hostname, sender=klass)
+    signals.watch(pre_delete, pre_delete_update_events, sender=klass)
 
 
 def post_init_store_previous_status(sender, instance, **kwargs):

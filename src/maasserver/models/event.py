@@ -11,11 +11,11 @@ import logging
 
 from django.db.models import (
     CharField,
+    DO_NOTHING,
     ForeignKey,
     IntegerField,
     Manager,
     PROTECT,
-    SET_NULL,
     TextField,
 )
 from maasserver import DefaultMeta
@@ -110,7 +110,8 @@ class Event(CleanSave, TimestampedModel):
     type = ForeignKey(
         'EventType', null=False, editable=False, on_delete=PROTECT)
 
-    node = ForeignKey('Node', null=True, editable=False, on_delete=SET_NULL)
+    # This gets set to None if the node gets deleted from the pre_delete signal
+    node = ForeignKey('Node', null=True, editable=False, on_delete=DO_NOTHING)
 
     node_system_id = CharField(
         max_length=41, blank=True, null=True, editable=False)

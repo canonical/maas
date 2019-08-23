@@ -9,6 +9,7 @@ __all__ = [
 
 import threading
 
+from django.db.models import Count
 from django.db.models.signals import (
     m2m_changed,
     post_save,
@@ -305,16 +306,11 @@ def delete_related_ip_addresses(sender, instance, **kwargs):
     if should_skip:
         return
 
-    # Unlink all links.
-    for ip_address in instance.ip_addresses.all():
-        if ip_address.interface_set.count() == 1:
-            # This is the last interface linked to this IP address.
-            # Remove its link to the interface before the interface
-            # is deleted.
-            if ip_address.alloc_type != IPADDRESS_TYPE.DISCOVERED:
-                instance.unlink_ip_address(ip_address, clearing_config=True)
-            else:
-                ip_address.delete()
+    # Delete all linked IP addresses that only have one link
+    StaticIPAddress.objects.annotate(
+        interface_count=Count('interface')).filter(
+            id__in=instance.ip_addresses.all().values('id'),
+            interface_count__lte=1).delete()
 
 
 for klass in INTERFACE_CLASSES:

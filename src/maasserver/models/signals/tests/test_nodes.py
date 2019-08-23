@@ -40,11 +40,11 @@ from testtools.matchers import (
 )
 
 
-class TestNodeHostname(MAASServerTestCase):
-    """Test that event's `node_hostname` is set when the node is
-    going to be deleted."""
+class TestNodeDeletion(MAASServerTestCase):
 
     def test_deleting_node_updates_event_node_hostname(self):
+        """Test that event's `node_hostname` is set when the node is going to be
+        deleted."""
         node = factory.make_Node()
         node_hostname = node.hostname
         events = [
@@ -54,6 +54,17 @@ class TestNodeHostname(MAASServerTestCase):
         node.delete()
         for event in events:
             self.assertEquals(event.node_hostname, node_hostname)
+
+    def test_deleting_node_sets_node_to_null(self):
+        node = factory.make_Node()
+        events = [
+            factory.make_Event(node=node)
+            for _ in range(3)
+        ]
+        node.delete()
+        for event in events:
+            event = reload_object(event)
+            self.assertIsNone(event.node)
 
 
 class TestNodePreviousStatus(MAASServerTestCase):

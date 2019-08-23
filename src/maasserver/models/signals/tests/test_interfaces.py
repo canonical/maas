@@ -347,3 +347,21 @@ class TestDiscoveryConfigChanges(MAASServerTestCase):
             mock_update_discovery_state,
             MockCallsMatch(*[call(NetworkDiscoveryConfig(
                 active=False, passive=False))] * 3))
+
+
+class TestDeleteInterface(MAASServerTestCase):
+
+    def test_removes_links(self):
+        ip1 = factory.make_StaticIPAddress()
+        ip2 = factory.make_StaticIPAddress()
+        node = factory.make_Node()
+        interface1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        interface2 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        interface1.ip_addresses.add(ip1)
+        interface1.ip_addresses.add(ip2)
+        interface1.save()
+        interface2.ip_addresses.add(ip2)
+        interface2.save()
+        interface1.delete()
+        self.assertIsNone(reload_object(ip1))
+        self.assertIsNotNone(reload_object(ip2))
