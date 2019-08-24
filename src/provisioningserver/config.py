@@ -413,7 +413,7 @@ class ConfigurationDatabase:
     @classmethod
     @contextmanager
     @typed
-    def open(cls, dbpath: str):
+    def open(cls: "ConfigurationDatabase", dbpath: str):
         """Open a configuration database.
 
         **Note** that this returns a context manager which will open the
@@ -435,7 +435,7 @@ class ConfigurationDatabase:
     @classmethod
     @contextmanager
     @typed
-    def open_for_update(cls, dbpath: str):
+    def open_for_update(cls: "ConfigurationDatabase", dbpath: str):
         """Open a configuration database.
 
         **Note** that this returns a context manager which will close the
@@ -537,7 +537,7 @@ class ConfigurationFile:
     @classmethod
     @contextmanager
     @typed
-    def open(cls, path: str):
+    def open(cls: "ConfigurationFile", path: str):
         """Open a configuration file read-only.
 
         This avoids all the locking that happens in `open_for_update`. However,
@@ -556,7 +556,7 @@ class ConfigurationFile:
     @classmethod
     @contextmanager
     @typed
-    def open_for_update(cls, path: str):
+    def open_for_update(cls: "ConfigurationFile", path: str):
         """Open a configuration file.
 
         Locks are taken so that there can only be *one* reader or writer for a
@@ -691,7 +691,7 @@ class Configuration:
 
     @classmethod
     @contextmanager
-    def open(cls, filepath=None):
+    def open(cls: "Configuration", filepath=None):
         if filepath is None:
             filepath = cls.DEFAULT_FILENAME
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
@@ -700,7 +700,7 @@ class Configuration:
 
     @classmethod
     @contextmanager
-    def open_for_update(cls, filepath=None):
+    def open_for_update(cls: "Configuration", filepath=None):
         if filepath is None:
             filepath = cls.DEFAULT_FILENAME
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
