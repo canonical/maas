@@ -7,7 +7,10 @@ __all__ = []
 
 import random
 import re
-from unittest.mock import sentinel
+from unittest.mock import (
+    ANY,
+    sentinel,
+)
 
 from maastesting.factory import factory
 from maastesting.matchers import (
@@ -21,6 +24,7 @@ from maastesting.twisted import (
     extract_result,
     TwistedLoggerFixture,
 )
+from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
 from provisioningserver.rpc import common
 from provisioningserver.rpc.testing.doubles import (
     DummyConnection,
@@ -41,6 +45,11 @@ from twisted.test.proto_helpers import StringTransport
 
 
 class TestClient(MAASTestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.command = sentinel.command
+        self.command.__name__ = 'Command'  # needed for metrics labels
 
     def test_init(self):
         conn = DummyConnection()
@@ -138,6 +147,18 @@ class TestClient(MAASTestCase):
             "supported. Usage: client(command, arg1=value1, ...)")
         with ExpectedException(TypeError, expected_message):
             client(sentinel.command, 1, 2, 3)
+
+    def test_call_records_latency_metric(self):
+        mock_metrics = self.patch(PROMETHEUS_METRICS, 'update')
+        conn, client = self.make_connection_and_client()
+        self.patch_autospec(conn, "callRemote")
+        conn.callRemote.return_value = sentinel.response
+        client(
+            sentinel.command, _timeout=None,
+            foo=sentinel.foo, bar=sentinel.bar)
+        mock_metrics.assert_called_with(
+            'maas_rack_region_rpc_call_latency', 'observe',
+            labels={'call': 'Command'}, value=ANY)
 
     def test_getHostCertificate(self):
         conn, client = self.make_connection_and_client()
