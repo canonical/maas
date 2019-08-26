@@ -14,6 +14,7 @@ from os import getpid
 from socket import gethostname
 
 from provisioningserver.logger import LegacyLogger
+from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
 from provisioningserver.rpc.interfaces import (
     IConnection,
     IConnectionToRegion,
@@ -135,6 +136,13 @@ class Client:
             raise NotImplementedError(
                 "Client address is only available in the rack.")
 
+    def _get_call_latency_metric_labels(self, cmd, *args, **kwargs):
+        """Return labels for the rack/region call latency metric."""
+        return {'call': cmd.__name__}
+
+    @PROMETHEUS_METRICS.record_call_latency(
+        'maas_rack_region_rpc_call_latency',
+        get_labels=_get_call_latency_metric_labels)
     @asynchronous
     def __call__(self, cmd, *args, **kwargs):
         """Call a remote RPC method.

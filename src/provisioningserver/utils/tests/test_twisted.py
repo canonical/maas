@@ -46,7 +46,6 @@ from maastesting.twisted import (
     extract_result,
     TwistedLoggerFixture,
 )
-from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
 from provisioningserver.utils import twisted as twisted_module
 from provisioningserver.utils.twisted import (
     asynchronous,
@@ -1182,18 +1181,6 @@ class TestRPCFetcher(MAASTestCase):
         self.expectThat(d2, IsUnfiredDeferred())
         client2_d.callback(sentinel.bar)
         self.assertThat(extract_result(d2), Is(sentinel.bar))
-
-    def test_call_records_latency_metric(self):
-        mock_metrics = self.patch(PROMETHEUS_METRICS, 'update')
-        client_d = Deferred()
-        client = Mock()
-        client.return_value = client_d
-        fetcher = RPCFetcher()
-        fetcher(client, self.fake_command, test=sentinel.kwarg_test)
-        client_d.callback(object())
-        mock_metrics.assert_called_with(
-            'maas_rack_region_rpc_call_latency', 'observe',
-            labels={'call': 'Command'}, value=mock.ANY)
 
 
 class TestDeferToNewThread(MAASTestCase):
