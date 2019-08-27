@@ -1,4 +1,4 @@
-# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test refresh functions."""
@@ -26,6 +26,7 @@ from provisioningserver.refresh.maas_api_helper import (
     MD_VERSION,
     SignalException,
 )
+from provisioningserver.refresh.node_info_scripts import LXD_OUTPUT_NAME
 from provisioningserver.utils.version import get_maas_version
 from testtools.matchers import (
     Contains,
@@ -452,6 +453,60 @@ class TestRefresh(MAASTestCase):
             },
             'FAILED',
             "Failed refreshing %s" % system_id,
+        ))
+
+    def test_refresh_executes_lxd_binary(self):
+        signal = self.patch(refresh, 'signal')
+        script_name = LXD_OUTPUT_NAME
+        self.patch_scripts_success(script_name)
+
+        system_id = factory.make_name('system_id')
+        consumer_key = factory.make_name('consumer_key')
+        token_key = factory.make_name('token_key')
+        token_secret = factory.make_name('token_secret')
+        url = factory.make_url()
+
+        refresh.refresh(
+            system_id, consumer_key, token_key, token_secret, url)
+        self.assertThat(signal, MockAnyCall(
+            "%s/metadata/%s/" % (url, MD_VERSION),
+            {
+                'consumer_secret': '',
+                'consumer_key': consumer_key,
+                'token_key': token_key,
+                'token_secret': token_secret,
+            },
+            'WORKING',
+            'Starting %s [1/1]' % script_name,
+        ))
+
+    def test_refresh_executes_lxd_binary_in_snap(self):
+        signal = self.patch(refresh, 'signal')
+        script_name = LXD_OUTPUT_NAME
+        self.patch_scripts_success(script_name)
+        path = factory.make_name()
+        self.patch(os, "environ", {
+            "SNAP": path
+        })
+
+        system_id = factory.make_name('system_id')
+        consumer_key = factory.make_name('consumer_key')
+        token_key = factory.make_name('token_key')
+        token_secret = factory.make_name('token_secret')
+        url = factory.make_url()
+
+        refresh.refresh(
+            system_id, consumer_key, token_key, token_secret, url)
+        self.assertThat(signal, MockAnyCall(
+            "%s/metadata/%s/" % (url, MD_VERSION),
+            {
+                'consumer_secret': '',
+                'consumer_key': consumer_key,
+                'token_key': token_key,
+                'token_secret': token_secret,
+            },
+            'WORKING',
+            'Starting %s [1/1]' % script_name,
         ))
 
     def test_refresh_clears_up_temporary_directory(self):

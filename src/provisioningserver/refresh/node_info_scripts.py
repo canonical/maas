@@ -1,4 +1,4 @@
-# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Builtin node info scripts."""
@@ -14,6 +14,7 @@ __all__ = [
     'LLDP_INSTALL_OUTPUT_NAME',
     'LLDP_OUTPUT_NAME',
     'LSHW_OUTPUT_NAME',
+    'LXD_OUTPUT_NAME',
     'NODE_INFO_SCRIPTS',
     'SERIAL_PORTS_OUTPUT_NAME',
     'SRIOV_OUTPUT_NAME',
@@ -42,6 +43,7 @@ DHCP_EXPLORE_OUTPUT_NAME = '00-maas-05-dhcp-unconfigured-ifaces'
 GET_FRUID_DATA_OUTPUT_NAME = '00-maas-06-get-fruid-api-data'
 BLOCK_DEVICES_OUTPUT_NAME = '00-maas-07-block-devices'
 SERIAL_PORTS_OUTPUT_NAME = '00-maas-08-serial-ports'
+LXD_OUTPUT_NAME = '50-maas-01-commissioning'
 LLDP_OUTPUT_NAME = '99-maas-02-capture-lldp'
 IPADDR_OUTPUT_NAME = '99-maas-03-network-interfaces'
 SRIOV_OUTPUT_NAME = '99-maas-04-network-interfaces-with-sriov'
@@ -93,6 +95,41 @@ LSHW_SCRIPT = dedent("""\
         $SNAP/usr/bin/lshw -xml
     fi
     """)
+
+LXD_SCRIPT = dedent("""\
+    #!/bin/bash -e
+
+    # When booting into the ephemeral environment root filesystem
+    # is the retrieved from the rack controller.
+    for i in $(cat /proc/cmdline); do
+        arg=$(echo $i | cut -d '=' -f1)
+        if [ "$arg" == "root" ]; then
+            value=$(echo $i | cut -d '=' -f2-)
+            # MAAS normally specifies the file has "filetype:url"
+            filetype=$(echo $value | cut -d ':' -f1)
+            if [ "$filetype" == "squash" ]; then
+                url=$(echo $value | cut -d ':' -f2-)
+            else
+                url=$filetype
+            fi
+            break
+        fi
+    done
+
+    # Get only the protocol, hostname, and port.
+    url=$(echo "$url" | awk -F '/' ' { print $1 "//" $3 } ')
+
+    if [ -z "$url" ] || $(echo "$url" | grep -vq "://"); then
+        echo "ERROR: Unable to find rack controller URL!"
+        exit 1
+    fi
+
+    BINARY="$(archdetect | cut -d '/' -f1)"
+    wget $url/machine-resources/$BINARY -O $DOWNLOAD_PATH/$BINARY 1>&2
+    chmod +x $DOWNLOAD_PATH/$BINARY
+    $DOWNLOAD_PATH/$BINARY
+    """)
+
 
 # Built-in script to run `ip addr`
 IPADDR_SCRIPT = dedent("""\
@@ -645,6 +682,13 @@ NODE_INFO_SCRIPTS = OrderedDict([
         'content': LSHW_SCRIPT.encode('ascii'),
         'hook': null_hook,
         'timeout': timedelta(minutes=5),
+        'run_on_controller': True,
+    }),
+    (LXD_OUTPUT_NAME, {
+        'content': LXD_SCRIPT.encode('ascii'),
+        'hook': null_hook,
+        'packages': {'apt': ['archdetect-deb']},
+        'timeout': timedelta(minutes=1),
         'run_on_controller': True,
     }),
     (CPUINFO_OUTPUT_NAME, {

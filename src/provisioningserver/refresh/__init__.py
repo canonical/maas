@@ -1,4 +1,4 @@
-# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Functionality to refresh rack controller hardware and networking details."""
@@ -22,11 +22,15 @@ from provisioningserver.refresh.maas_api_helper import (
     signal,
     SignalException,
 )
-from provisioningserver.refresh.node_info_scripts import NODE_INFO_SCRIPTS
+from provisioningserver.refresh.node_info_scripts import (
+    LXD_OUTPUT_NAME,
+    NODE_INFO_SCRIPTS,
+)
 from provisioningserver.utils.shell import (
     call_and_check,
     ExternalProcessError,
 )
+from provisioningserver.utils.snappy import running_in_snap
 from provisioningserver.utils.twisted import synchronous
 from provisioningserver.utils.version import get_maas_version
 
@@ -146,12 +150,24 @@ def runscripts(scripts, url, creds, tmpdir):
             url, creds, 'WORKING', 'Starting %s [%d/%d]' %
             (script_name, current_script, total_scripts))
 
-        # Write script to /tmp and set it executable
-        script_path = os.path.join(tmpdir, script_name)
-        with open(script_path, 'wb') as f:
-            f.write(builtin_script['content'])
-        st = os.stat(script_path)
-        os.chmod(script_path, st.st_mode | stat.S_IEXEC)
+        if script_name == LXD_OUTPUT_NAME:
+            # Execute the LXD binary directly as we are already on the
+            # rack controller and don't need to download it.
+            if running_in_snap():
+                script_path = os.path.join(
+                    '/snap/maas/current/usr/share/maas/machine-resources',
+                    get_architecture().split('/')[0])
+            else:
+                script_path = os.path.join(
+                    '/usr/share/maas/machine-resources',
+                    get_architecture().split('/')[0])
+        else:
+            # Write script to /tmp and set it executable
+            script_path = os.path.join(tmpdir, script_name)
+            with open(script_path, 'wb') as f:
+                f.write(builtin_script['content'])
+            st = os.stat(script_path)
+            os.chmod(script_path, st.st_mode | stat.S_IEXEC)
 
         combined_path = os.path.join(out_dir, script_name)
         stdout_name = '%s.out' % script_name
