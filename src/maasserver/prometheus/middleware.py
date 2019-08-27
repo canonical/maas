@@ -44,14 +44,14 @@ class PrometheusRequestMetricsMiddleware:
         self.prometheus_metrics = prometheus_metrics
 
     def __call__(self, request):
-        query_latencies = []
+        latencies = []
 
-        with self._wrap_cursor(connections['default'], query_latencies):
+        with wrap_query_counter_cursor(latencies):
             start_time = time()
             response = self.get_response(request)
             latency = time() - start_time
 
-        self._process_metrics(request, response, latency, query_latencies)
+        self._process_metrics(request, response, latency, latencies)
         return response
 
     def _process_metrics(self, request, response, latency, query_latencies):
@@ -77,12 +77,15 @@ class PrometheusRequestMetricsMiddleware:
                 'maas_http_request_query_latency', 'observe',
                 value=latency, labels=labels)
 
-    @contextmanager
-    def _wrap_cursor(self, dbconn, query_latencies):
-        orig_make_cursor = dbconn.make_cursor
-        dbconn.make_cursor = lambda cursor: QueryCountCursorWrapper(
-            cursor, dbconn, query_latencies)
-        try:
-            yield
-        finally:
-            dbconn.make_cursor = orig_make_cursor
+
+@contextmanager
+def wrap_query_counter_cursor(query_latencies, dbconn_name='default'):
+    """Context manager replacing the cursor with a QueryCountCursorWrapper."""
+    dbconn = connections[dbconn_name]
+    orig_make_cursor = dbconn.make_cursor
+    dbconn.make_cursor = lambda cursor: QueryCountCursorWrapper(
+        cursor, dbconn, query_latencies)
+    try:
+        yield
+    finally:
+        dbconn.make_cursor = orig_make_cursor
