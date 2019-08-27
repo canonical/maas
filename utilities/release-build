@@ -7,6 +7,10 @@ if [ ! -d $BUILDDIR ]; then
     mkdir $BUILDDIR
 fi
 
+# Set the GOPATH
+GOPATH=`go env GOPATH`
+PATH=$GOPATH/bin:$PATH
+
 usage () {
     DISTRO_ARGS=$(distro-info --supported | sed 's/^/[--/g' | sed 's/$/]/' | tr '\n' ' ')
     echo "Usage:"
@@ -63,17 +67,24 @@ MAJOR_VER=$(head -n 1 debian/changelog | sed 's/^.*(//' | sed 's/).*//' | sed 's
 REV_COUNT=$(git rev-list --count $COMMIT)
 REV_SHORT=$(git rev-parse --short $COMMIT)
 FULL_VER="$MAJOR_VER-$REV_COUNT-g$REV_SHORT"
-TARBALL="maas_$FULL_VER.orig.tar.gz"
+PREFIX="${PKG}-${FULL_VER}.orig/"
+TARBALL="maas_$FULL_VER.orig.tar"
+TARBALLGZ="maas_$FULL_VER.orig.tar.gz"
 
 get_orig_source() {
-        git archive --format=tar.gz --prefix="${PKG}-${FULL_VER}.orig/" ${COMMIT} -o ${TARBALL}
-
+    git archive --format=tar --prefix=${PREFIX} ${COMMIT} -o ${TARBALL}
+    # Update go dependencies before building archive and then cleanup after
+    cd $ROOTDIR/src/machine-resources && make deps
+    export GOPATH=$ROOTDIR:$GOPATH  && make vendor && cd $ROOTDIR
+    tar -rf ${TARBALL} src/machine-resources/vendor --transform 's,^,'"${PREFIX}"','
+    gzip -f ${TARBALL}
+    cd $ROOTDIR/src/machine-resources && make clean && cd $ROOTDIR
 }
 # Obtain the tarball from a local branch
 get_orig_source
 
 # Copy the tarball to the local dir
-mv "${TARBALL}" "$BUILDDIR"
+mv "${TARBALLGZ}" "$BUILDDIR"
 
 # Update the changelog
 sed -i "s/${MAJOR_VER}-0ubuntu1/${FULL_VER}-0ubuntu1/i" debian/changelog

@@ -2,10 +2,11 @@ Source: maas
 Section: net
 Priority: optional
 Maintainer: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
-Build-Depends: debhelper (>= 9.20160709),
+Build-Depends: debhelper (>= 10),
                dh-apport,
                dh-exec,
                dh-python,
+               golang-go [amd64 i386 armhf arm64 ppc64el s390x],
                po-debconf,
                python3-all,
                python3-django,

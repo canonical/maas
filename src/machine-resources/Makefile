@@ -8,19 +8,22 @@ BINARIES = $(ARCHES)
 .DEFAULT_GOAL := build
 
 deps:
-	go get -u -v github.com/lxc/lxd/lxd/resources
+	go get -u github.com/lxc/lxd/lxd/resources
+	go get -u github.com/tools/godep
 .PHONY: deps
+
+vendor:
+	godep save
+.PHONY: vendor
 
 build: $(BINARIES)
 .PHONY: build
 
-$(BINARY_PREFIX)%: %
-	@true  # to force the rule to execute
-
 $(ARCHES): deps
-	GOARCH=$@ go build -o $@ machine-resources.go
+	GOARCH=$@ go build -ldflags '-s -w' -o $@ machine-resources.go
 .PHONY: $(ARCHES)
 
 clean:
 	rm -f $(BINARIES)
+	rm -rf vendor/ Godeps/
 .PHONY: clean

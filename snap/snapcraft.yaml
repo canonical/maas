@@ -216,7 +216,7 @@ parts:
 
   machine-resources:
     plugin: make
-    source: src
+    source: src/machine-resources
     build-snaps:
       - go
     artifacts:

@@ -44,7 +44,8 @@ dbrun := bin/database --preserve run --
 mkfile_dir := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 nodejs_path := $(mkfile_dir)/include/nodejs/bin
 
-export PATH := $(nodejs_path):$(PATH)
+export GOPATH := $(shell go env GOPATH)
+export PATH := $(GOPATH)/bin:$(nodejs_path):$(PATH)
 
 # For things that care, postgresfixture for example, we always want to
 # use the "maas" databases.
@@ -638,6 +639,7 @@ packaging-version = $(shell \
     utilities/calc-snap-version | sed s/[-]snap//)
 tmp_changelog := $(shell tempfile)
 packaging-dir := maas_$(packaging-version)
+packaging-orig-tar := $(packaging-dir).orig.tar
 packaging-orig-targz := $(packaging-dir).orig.tar.gz
 
 -packaging-clean:
@@ -645,13 +647,25 @@ packaging-orig-targz := $(packaging-dir).orig.tar.gz
 	mkdir -p $(packaging-build-area)
 
 -packaging-export-orig: $(packaging-build-area)
-	git archive --format=tar.gz $(packaging-export-extra) \
+	git archive --format=tar $(packaging-export-extra) \
             --prefix=$(packaging-dir)/ \
-	    -o $(packaging-build-area)/$(packaging-orig-targz) HEAD
+	    -o $(packaging-build-area)/$(packaging-orig-tar) HEAD
+	(cd src/machine-resources && ${MAKE} deps)
+	(export GOPATH=$(CURDIR):$(GOPATH) && cd src/machine-resources && ${MAKE} vendor)
+	tar -rf $(packaging-build-area)/$(packaging-orig-tar) src/machine-resources/vendor \
+		--transform 's,^,$(packaging-dir)/,'
+	gzip -f $(packaging-build-area)/$(packaging-orig-tar)
+	(cd src/machine-resources/ && ${MAKE} clean)
 
 -packaging-export-orig-uncommitted: $(packaging-build-area)
 	git ls-files --others --exclude-standard --cached | grep -v '^debian' | \
-	    xargs tar --transform 's,^,$(packaging-dir)/,' -czf $(packaging-build-area)/$(packaging-orig-targz)
+	    xargs tar --transform 's,^,$(packaging-dir)/,' -cf $(packaging-build-area)/$(packaging-orig-tar)
+	(cd src/machine-resources && ${MAKE} deps)
+	(export GOPATH=$(CURDIR):$(GOPATH) && cd src/machine-resources && ${MAKE} vendor)
+	tar -rf $(packaging-build-area)/$(packaging-orig-tar) src/machine-resources/vendor \
+		--transform 's,^,$(packaging-dir)/,'
+	gzip -f $(packaging-build-area)/$(packaging-orig-tar)
+	(cd src/machine-resources/ && ${MAKE} clean)
 
 -packaging-export: -packaging-export-orig$(if $(export-uncommitted),-uncommitted,)
 
