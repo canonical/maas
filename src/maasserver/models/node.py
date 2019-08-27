@@ -6178,13 +6178,12 @@ class RackController(Controller):
         only the BMC's this rack controller can access. Returning all nodes
         connected to those BMCs.
         """
-        subnet_ids = set()
-        for interface in self.interface_set.all().prefetch_related(
-                "ip_addresses"):
-            for ip_address in interface.ip_addresses.all():
-                if ip_address.ip and ip_address.subnet_id is not None:
-                    subnet_ids.add(ip_address.subnet_id)
-
+        subnet_ids = (
+            StaticIPAddress.objects
+            .filter(interface__in=self.interface_set.all())
+            .exclude(ip__isnull=True)
+            .exclude(subnet_id__isnull=True)
+            .values_list('subnet_id', flat=True))
         nodes = Node.objects.filter(
             bmc__ip_address__ip__isnull=False,
             bmc__ip_address__subnet_id__in=subnet_ids).distinct()

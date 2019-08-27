@@ -11,14 +11,14 @@ __all__ = [
 ]
 
 from datetime import timedelta
-from itertools import (
-    chain,
-    islice,
-)
 import json
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
+from django.db.models import (
+    F,
+    Q,
+)
 from maasserver import (
     exceptions,
     ntp,
@@ -61,7 +61,7 @@ def mark_node_failed(system_id, error_description):
         raise NodeStateViolation(e)
 
 
-def _gen_cluster_nodes_power_parameters(nodes):
+def _gen_cluster_nodes_power_parameters(nodes, limit):
     """Generate power parameters for `nodes`.
 
     These fulfil a subset of the return schema for the RPC call for
@@ -76,24 +76,17 @@ def _gen_cluster_nodes_power_parameters(nodes):
         if driver.queryable
     ]
 
-    nodes_unchecked = (
+    qs = (
         nodes
-        .filter(power_state_queried=None)
-        .filter(bmc__power_type__in=queryable_power_types)
         .exclude(status=NODE_STATUS.BROKEN)
+        .filter(bmc__power_type__in=queryable_power_types)
+        .filter(
+            Q(power_state_queried=None) |
+            Q(power_state_queried__lte=five_minutes_ago))
+        .order_by(F('power_state_queried').asc(nulls_first=True), 'system_id')
         .distinct()
     )
-    nodes_checked = (
-        nodes
-        .exclude(power_state_queried=None)
-        .exclude(power_state_queried__gt=five_minutes_ago)
-        .filter(bmc__power_type__in=queryable_power_types)
-        .exclude(status=NODE_STATUS.BROKEN)
-        .order_by("power_state_queried", "system_id")
-        .distinct()
-    )
-
-    for node in chain(nodes_unchecked, nodes_checked):
+    for node in qs[:limit]:
         power_info = node.get_effective_power_info()
         if power_info.power_type is not None:
             yield {
@@ -155,8 +148,7 @@ def list_cluster_nodes_power_parameters(system_id, limit=10):
 
     # Generate all the the power queries that will fit into the response.
     nodes = rack.get_bmc_accessible_nodes()
-    details = _gen_cluster_nodes_power_parameters(nodes)
-    details = islice(details, limit)  # ... but never more than `limit`.
+    details = _gen_cluster_nodes_power_parameters(nodes, limit)
     details = _gen_up_to_json_limit(details, 60 * (2 ** 10))  # 60kiB
     details = list(details)
 
