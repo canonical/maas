@@ -19,6 +19,7 @@ from django.db.models import Model
 from django.utils.encoding import is_protected_type
 from maasserver import concurrency
 from maasserver.permissions import NodePermission
+from maasserver.prometheus.middleware import wrap_query_counter_cursor
 from maasserver.rbac import rbac
 from maasserver.utils.forms import get_QueryDict
 from maasserver.utils.orm import transactional
@@ -397,7 +398,8 @@ class Handler(metaclass=HandlerMetaclass):
                         self.user.refresh_from_db()
 
                         # Perform the work in the database.
-                        return method(params)
+                        return self._call_method_track_queries(
+                            method_name, method, params)
 
                     # Force the name of the function to include the handler
                     # name so the debug logging is useful.
@@ -410,6 +412,25 @@ class Handler(metaclass=HandlerMetaclass):
                         deferToDatabase, prep_user_execute, params)
         else:
             raise HandlerNoSuchMethodError(method_name)
+
+    def _call_method_track_queries(self, method_name, method, params):
+        """Call the specified method tracking query-related metrics."""
+        latencies = []
+
+        with wrap_query_counter_cursor(latencies):
+            result = method(params)
+
+        labels = self._get_call_latency_metrics_label(
+            method_name, [])
+        PROMETHEUS_METRICS.update(
+            'maas_websocket_call_query_count', 'observe',
+            value=len(latencies), labels=labels)
+        for latency in latencies:
+            PROMETHEUS_METRICS.update(
+                'maas_websocket_call_query_latency', 'observe',
+                value=latency, labels=labels)
+
+        return result
 
     def _cache_pks(self, objs):
         """Cache all loaded object pks."""
