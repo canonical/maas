@@ -16,6 +16,7 @@ import time
 from provisioningserver import logger
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils.debug import (
+    register_sigusr1_toggle_cprofile,
     register_sigusr2_thread_dump_handler,
 )
 from twisted.application.service import IServiceMaker
@@ -109,6 +110,7 @@ class RegionWorkerServiceMaker:
 
     def makeService(self, options):
         """Construct the MAAS Region service."""
+        register_sigusr1_toggle_cprofile('regiond-worker')
         register_sigusr2_thread_dump_handler()
 
         self._set_pdeathsig()
@@ -168,6 +170,7 @@ class RegionMasterServiceMaker(RegionWorkerServiceMaker):
 
     def makeService(self, options):
         """Construct the MAAS Region service."""
+        register_sigusr1_toggle_cprofile('regiond-master')
         register_sigusr2_thread_dump_handler()
 
         self._configureThreads()
@@ -206,6 +209,7 @@ class RegionAllInOneServiceMaker(RegionMasterServiceMaker):
 
     def makeService(self, options):
         """Construct the MAAS Region service."""
+        register_sigusr1_toggle_cprofile('regiond-all')
         register_sigusr2_thread_dump_handler()
 
         self._configureThreads()

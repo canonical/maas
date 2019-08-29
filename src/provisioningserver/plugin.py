@@ -25,6 +25,7 @@ from provisioningserver.monkey import (
     add_patches_to_txtftp,
 )
 from provisioningserver.utils.debug import (
+    register_sigusr1_toggle_cprofile,
     register_sigusr2_thread_dump_handler,
 )
 from twisted.application.service import IServiceMaker
@@ -215,6 +216,7 @@ class ProvisioningServiceMaker:
 
     def makeService(self, options, clock=reactor):
         """Construct the MAAS Cluster service."""
+        register_sigusr1_toggle_cprofile('rackd')
         register_sigusr2_thread_dump_handler()
         add_patches_to_txtftp()
         add_patches_to_twisted()
