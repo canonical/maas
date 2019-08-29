@@ -1,5 +1,9 @@
-import atexit
+import os
+from pathlib import Path
+from subprocess import Popen
 
+from fixtures import EnvironmentVariable
+from maastesting.fixtures import TempDirectory
 from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
@@ -7,6 +11,7 @@ from maastesting.testcase import (
 import prometheus_client
 from provisioningserver.prometheus import utils
 from provisioningserver.prometheus.utils import (
+    clean_prometheus_dir,
     create_metrics,
     MetricDefinition,
     PrometheusMetrics,
@@ -79,25 +84,6 @@ class TestPrometheusMetrics(MAASTestCase):
         self.assertIn(
             'a_gauge 33.0',
             prometheus_metrics.generate_latest().decode('ascii'))
-
-    def test_register_atexit_global_registry(self):
-        mock_register = self.patch(atexit, 'register')
-        definitions = [
-            MetricDefinition('Gauge', 'a_gauge', 'A Gauge', ['foo', 'bar'])
-        ]
-        prometheus_metrics = PrometheusMetrics(definitions=definitions)
-        mock_register.assert_called_once_with(
-            prometheus_metrics._cleanup_metric_files)
-
-    def test_no_register_atexit_custom_registry(self):
-        mock_register = self.patch(atexit, 'register')
-        definitions = [
-            MetricDefinition('Gauge', 'a_gauge', 'A Gauge', ['foo', 'bar'])
-        ]
-        PrometheusMetrics(
-            definitions=definitions,
-            registry=prometheus_client.CollectorRegistry())
-        mock_register.assert_not_called()
 
     @inlineCallbacks
     def test_record_call_latency_async(self):
@@ -202,3 +188,55 @@ class TestCreateMetrics(MAASTestCase):
         content = prometheus_metrics.generate_latest().decode('ascii')
         self.assertIn('sample_counter{foo="a"} 1.0', content)
         self.assertIn('sample_counter{foo="b"} 1.0', content)
+
+
+class TestCleanPrometheusDir(MAASTestCase):
+
+    def get_unused_pid(self):
+        """Return a PID for a process that has just finished running."""
+        proc = Popen(['/bin/true'])
+        proc.wait()
+        return proc.pid
+
+    def test_dir_not_existent(self):
+        self.assertIsNone(clean_prometheus_dir('/not/here'))
+
+    def test_env_not_specified(self):
+        self.useFixture(EnvironmentVariable('prometheus_multiproc_dir', None))
+        self.assertIsNone(clean_prometheus_dir())
+
+    def test_env_dir_not_existent(self):
+        self.useFixture(
+            EnvironmentVariable('prometheus_multiproc_dir', '/not/here'))
+        self.assertIsNone(clean_prometheus_dir())
+
+    def test_delete_for_nonexistent_processes(self):
+        tmpdir = Path(self.useFixture(TempDirectory()).path)
+        pid = os.getpid()
+        file1 = tmpdir / 'histogram_1.db'
+        file1.touch()
+        file2 = tmpdir / 'histogram_{}.db'.format(pid)
+        file2.touch()
+        file3 = tmpdir / 'histogram_{}.db'.format(self.get_unused_pid())
+        file3.touch()
+        file4 = tmpdir / 'histogram_{}.db'.format(self.get_unused_pid())
+        file4.touch()
+        clean_prometheus_dir(str(tmpdir))
+        self.assertTrue(file1.exists())
+        self.assertTrue(file2.exists())
+        self.assertFalse(file3.exists())
+        self.assertFalse(file4.exists())
+
+    def test_delete_file_disappeared(self):
+        real_os_remove = os.remove
+
+        def mock_os_remove(path):
+            # remove it twice, so that FileNotFoundError is raised
+            real_os_remove(path)
+            real_os_remove(path)
+
+        self.patch(os, 'remove', mock_os_remove)
+        tmpdir = Path(self.useFixture(TempDirectory()).path)
+        file1 = tmpdir / 'histogram_{}.db'.format(self.get_unused_pid())
+        file1.touch()
+        self.assertIsNone(clean_prometheus_dir(str(tmpdir)))

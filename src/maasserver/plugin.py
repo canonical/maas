@@ -15,6 +15,7 @@ import time
 
 from provisioningserver import logger
 from provisioningserver.logger import LegacyLogger
+from provisioningserver.prometheus.utils import clean_prometheus_dir
 from provisioningserver.utils.debug import (
     register_sigusr1_toggle_cprofile,
     register_sigusr2_thread_dump_handler,
@@ -172,6 +173,7 @@ class RegionMasterServiceMaker(RegionWorkerServiceMaker):
         """Construct the MAAS Region service."""
         register_sigusr1_toggle_cprofile('regiond-master')
         register_sigusr2_thread_dump_handler()
+        clean_prometheus_dir()
 
         self._configureThreads()
         self._configureLogging(options["verbosity"])

@@ -4,6 +4,7 @@
 """Helpers for inspecting processes."""
 
 __all__ = [
+    'is_pid_running',
     'running_in_container',
     ]
 
