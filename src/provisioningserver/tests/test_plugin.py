@@ -5,7 +5,13 @@
 
 __all__ = []
 
+import os
+from pathlib import Path
+from subprocess import Popen
+
 import crochet
+from fixtures import EnvironmentVariable
+from maastesting.fixtures import TempDirectory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import (
     MAASTestCase,
@@ -88,6 +94,12 @@ class TestProvisioningServiceMaker(MAASTestCase):
         self.patch_autospec(crochet, "no_setup")
         self.patch_autospec(logger, "configure")
 
+    def get_unused_pid(self):
+        """Return a PID for a process that has just finished running."""
+        proc = Popen(['/bin/true'])
+        proc.wait()
+        return proc.pid
+
     def test_init(self):
         service_maker = ProvisioningServiceMaker("Harry", "Hill")
         self.assertEqual("Harry", service_maker.tapname)
@@ -168,6 +180,21 @@ class TestProvisioningServiceMaker(MAASTestCase):
         service_maker = ProvisioningServiceMaker("Harry", "Hill")
         service_maker.makeService(options, clock=None)
         self.assertThat(mock_tftp_patch, MockCalledOnceWith())
+
+    def test_makeService_cleanup_prometheus_dir(self):
+        tmpdir = Path(self.useFixture(TempDirectory()).path)
+        self.useFixture(
+            EnvironmentVariable('prometheus_multiproc_dir', str(tmpdir)))
+        pid = os.getpid()
+        file1 = tmpdir / 'histogram_{}.db'.format(pid)
+        file1.touch()
+        file2 = tmpdir / 'histogram_{}.db'.format(self.get_unused_pid())
+        file2.touch()
+
+        service_maker = ProvisioningServiceMaker("Harry", "Hill")
+        service_maker.makeService(Options(), clock=None)
+        self.assertTrue(file1.exists())
+        self.assertFalse(file2.exists())
 
     def test_image_download_service(self):
         options = Options()

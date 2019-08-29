@@ -24,6 +24,7 @@ from provisioningserver.monkey import (
     add_patches_to_twisted,
     add_patches_to_txtftp,
 )
+from provisioningserver.prometheus.utils import clean_prometheus_dir
 from provisioningserver.utils.debug import (
     register_sigusr2_thread_dump_handler,
 )
@@ -216,6 +217,7 @@ class ProvisioningServiceMaker:
     def makeService(self, options, clock=reactor):
         """Construct the MAAS Cluster service."""
         register_sigusr2_thread_dump_handler()
+        clean_prometheus_dir()
         add_patches_to_txtftp()
         add_patches_to_twisted()
 

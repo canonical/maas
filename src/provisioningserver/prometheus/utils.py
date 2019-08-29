@@ -1,12 +1,14 @@
-import atexit
 from functools import wraps
+import glob
 import os
+import re
 from time import time
 
 from provisioningserver.prometheus import (
     prom_cli,
     PROMETHEUS_SUPPORTED,
 )
+from provisioningserver.utils.ps import is_pid_running
 from twisted.internet.defer import Deferred
 
 
@@ -35,8 +37,6 @@ class PrometheusMetrics:
         else:
             self.registry = registry or prom_cli.REGISTRY
             self._metrics = self._create_metrics(definitions)
-        if PROMETHEUS_SUPPORTED and self.registry is prom_cli.REGISTRY:
-            atexit.register(self._cleanup_metric_files)
 
     def _create_metrics(self, definitions):
         metrics = {}
@@ -139,13 +139,6 @@ class PrometheusMetrics:
 
         return wrap_func
 
-    def _cleanup_metric_files(self):
-        """Remove prometheus metrics files for the process itself."""
-        if 'prometheus_multiproc_dir' not in os.environ:
-            return
-        from prometheus_client import multiprocess
-        multiprocess.mark_process_dead(os.getpid())
-
 
 def create_metrics(
         metric_definitions, extra_labels=None, update_handlers=(),
@@ -155,3 +148,30 @@ def create_metrics(
     return PrometheusMetrics(
         definitions=definitions, extra_labels=extra_labels,
         update_handlers=update_handlers, registry=registry)
+
+
+def clean_prometheus_dir(path=None):
+    """Delete unused Prometheus database files from the specified dir.
+
+    Files for PIDs not matching running processes are removed.
+    """
+    if path is None:
+        path = os.environ.get('prometheus_multiproc_dir')
+    if not path or not os.path.isdir(path):
+        return
+
+    file_re = re.compile(r'.*_(?P<pid>[0-9]+)\.db')
+
+    for dbfile in glob.iglob(path + '/*.db'):
+        match = file_re.match(dbfile)
+        if not match:
+            continue
+
+        pid = int(match.groupdict()['pid'])
+        if not is_pid_running(pid):
+            try:
+                os.remove(dbfile)
+            except FileNotFoundError:
+                # might have been deleted by a concurrent run from
+                # another process
+                pass
