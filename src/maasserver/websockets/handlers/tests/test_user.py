@@ -157,6 +157,21 @@ class TestUserHandler(MAASServerTestCase):
         self.assertIsNotNone(event)
         self.assertEqual(event.description, "Created token.")
 
+    def test_update_token_name(self):
+        user = factory.make_User()
+        handler = UserHandler(user, {}, None)
+        new_token_name = factory.make_string()
+        observed = handler.create_authorisation_token({})
+        handler.update_token_name({'key': observed['key'],
+                                   'name': new_token_name})
+        auth_token = user.userprofile.get_authorisation_tokens().get(
+            key=observed['key'])
+        self.assertEqual(auth_token.consumer.name, new_token_name)
+        event = Event.objects.filter(
+            type__level=AUDIT).order_by('-created').first()
+        self.assertIsNotNone(event)
+        self.assertEqual(event.description, "Modified consumer name of token.")
+
     def test_delete_authorisation_token(self):
         user = factory.make_User()
         handler = UserHandler(user, {}, None)

@@ -48,6 +48,7 @@ class UserHandler(Handler):
             'auth_user',
             'mark_intro_complete',
             'create_authorisation_token',
+            'update_token_name',
             'delete_authorisation_token',
         ]
         fields = [
@@ -210,6 +211,14 @@ class UserHandler(Handler):
                 'name': consumer.name,
             },
         }
+
+    def update_token_name(self, params):
+        """Modify the consumer name of an existing token"""
+        profile = self.user.userprofile
+        profile.modify_consumer_name(params['key'], params['name'])
+        self.create_audit_event(
+            EVENT_TYPES.AUTHORISATION, "Modified consumer name of token.")
+        return {}
 
     def delete_authorisation_token(self, params):
         """Delete an authorisation token for the user.
