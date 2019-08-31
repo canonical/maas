@@ -30,7 +30,10 @@ from provisioningserver.utils.shell import (
     call_and_check,
     ExternalProcessError,
 )
-from provisioningserver.utils.snappy import running_in_snap
+from provisioningserver.utils.snappy import (
+    get_snap_path,
+    running_in_snap,
+)
 from provisioningserver.utils.twisted import synchronous
 from provisioningserver.utils.version import get_maas_version
 
@@ -155,7 +158,7 @@ def runscripts(scripts, url, creds, tmpdir):
             # rack controller and don't need to download it.
             if running_in_snap():
                 script_path = os.path.join(
-                    '/snap/maas/current/usr/share/maas/machine-resources',
+                    get_snap_path(), 'usr/share/maas/machine-resources',
                     get_architecture().split('/')[0])
             else:
                 script_path = os.path.join(
