@@ -25,6 +25,7 @@ from django.http import (
     HttpResponseRedirect,
     JsonResponse,
 )
+from django.middleware.csrf import get_token
 from django.shortcuts import render
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT
@@ -149,4 +150,17 @@ def authenticate(request):
         "name": token.consumer.name,
         "token_key": token.key,
         "token_secret": token.secret,
+    })
+
+
+def csrf(request):
+    """Get the CSRF token for the authenticated user."""
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+    if (request.user is None or
+            not request.user.is_authenticated or
+            not request.user.is_active):
+        return HttpResponseForbidden()
+    return JsonResponse({
+        "csrf": get_token(request),
     })

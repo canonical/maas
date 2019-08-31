@@ -69,6 +69,9 @@ PUBLIC_URL_PREFIXES = [
     # Authentication: must be visible to anonymous users.
     reverse('authenticate'),
     reverse('discharge-request'),
+    # CSRF: only usable by logged in users, but returns FORBIDDEN instead of
+    # a redirect to the login page on request of an unauthenticated user.
+    reverse('csrf'),
     # The combo loaders are publicly accessible.
     reverse('robots'),
     reverse('api-doc'),

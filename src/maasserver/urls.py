@@ -28,6 +28,7 @@ from maasserver.views import (
 )
 from maasserver.views.account import (
     authenticate,
+    csrf,
     login,
     logout,
 )
@@ -94,6 +95,7 @@ urlpatterns += [
 # # URLs for logged-in users.
 # Preferences views.
 urlpatterns += [
+    url(r'^account/csrf/$', csrf, name='csrf'),
     url(r'^account/prefs/$', userprefsview, name='prefs'),
     url(
         r'^account/prefs/sslkey/add/$', SSLKeyCreateView.as_view(),

@@ -364,3 +364,29 @@ class TestAuthenticate(MAASServerTestCase):
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
         self.assertEquals(event.description, "Created API (OAuth) token.")
+
+
+class TestCSRF(MAASServerTestCase):
+
+    def test__method_not_allowed_on_get(self):
+        response = self.client.get(reverse('csrf'))
+        self.assertThat(response, HasStatusCode(HTTPStatus.METHOD_NOT_ALLOWED))
+
+    def test__method_not_allowed_on_put(self):
+        response = self.client.put(reverse('csrf'))
+        self.assertThat(response, HasStatusCode(HTTPStatus.METHOD_NOT_ALLOWED))
+
+    def test__method_not_allowed_on_delete(self):
+        response = self.client.delete(reverse('csrf'))
+        self.assertThat(response, HasStatusCode(HTTPStatus.METHOD_NOT_ALLOWED))
+
+    def test__forbidden_when_not_authenticated(self):
+        response = self.client.post(reverse('csrf'))
+        self.assertThat(response, HasStatusCode(HTTPStatus.FORBIDDEN))
+
+    def test__returns_csrf(self):
+        self.client.login(user=factory.make_User())
+        response = self.client.post(reverse('csrf'))
+        self.assertThat(response, HasStatusCode(HTTPStatus.OK))
+        body = json_load_bytes(response.content)
+        self.assertTrue("csrf" in body)
