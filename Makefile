@@ -744,10 +744,15 @@ endef
 # Snap building
 #
 
-snap-clean:
+check-snapcraft:
+ifeq ($(shell which snapcraft), /usr/bin/snapcraft)
+$(error The snapcraft deb package is installed, uninstall and install snapcraft from the snap)
+endif
+
+snap-clean: check-snapcraft
 	$(snapcraft) clean
 
-snap:
+snap: check-snapcraft
 	$(snapcraft)
 
 define phony_snap_targets
@@ -764,7 +769,7 @@ endef
 build/dev-snap: ## Check out a clean version of the working tree.
 	git checkout-index -a --prefix build/dev-snap/
 
-build/dev-snap/prime: build/dev-snap
+build/dev-snap/prime: check-snapcraft build/dev-snap
 	cd build/dev-snap && $(snapcraft) prime --destructive-mode
 
 sync-dev-snap: RSYNC=rsync -v -r -u -l -t -W -L
