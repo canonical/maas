@@ -161,6 +161,7 @@ import storageDatastores from "./directives/nodedetails/storage_datastores";
 import maasMachinesTable from "./directives/machines_table";
 import maasDhcpSnippetsTable from "./directives/dhcp_snippets_table";
 import addMachine from "./directives/nodelist/add_machine";
+import kvmStorageDropdown from "./directives/pod-details/kvm_storage_dropdown";
 import nodesListFilter from "./directives/nodelist/nodes_list_filter";
 import maasAccordion from "./directives/accordion";
 import { maasActionButton } from "./directives/action_button";
@@ -632,6 +633,7 @@ angular
   .directive("storageFilesystems", storageFilesystems)
   .directive("storageDatastores", storageDatastores)
   .directive("addMachine", addMachine)
+  .directive("kvmStorageDropdown", kvmStorageDropdown)
   .directive("nodesListFilter", nodesListFilter)
   .directive("maasAccordion", maasAccordion)
   .directive("maasActionButton", maasActionButton)

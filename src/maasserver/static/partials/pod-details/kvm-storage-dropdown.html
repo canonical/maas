@@ -1,0 +1,164 @@
+<select ng-model="storage.type" ng-if="pod.type === 'rsd'">
+  <option value="local">Local</option>
+  <option
+    ng-disabled="storage.boot"
+    ng-if="pod.capabilities.indexOf('iscsi_storage') >= 0"
+    value="iscsi"
+  >
+    iSCSI
+  </option>
+</select>
+<div class="form__group-input" ng-if="pod.type === 'virsh'">
+  <div class="p-option-selector" tabindex="0">
+    <input
+      class="p-option-selector__input u-no-margin--bottom"
+      ng-class="{'in-warning': poolOverCapacity(storage)}"
+      ng-click="toggleDropdown()"
+      ng-keyup="$event.keyCode == 27 ? closeDropdown() : null"
+      ng-model="storage.pool.name"
+      readonly
+      type="text"
+    />
+    <small class="p-p-small--align-with-p" ng-if="poolOverCapacity(storage)">
+      <i class="p-icon--warning">Warning</i>
+      <span ng-if="storage.pool.available > 0">
+        Not enough space in {$ storage.pool.name $}, only {$ storage.pool.available | formatBytes $} free.
+      </span>
+      <span ng-if="storage.pool.available <= 0">
+        No space in {$ storage.pool.name $}.
+      </span>
+    </small>
+    <div
+      class="p-option-selector__options"
+      ng-if="dropdownOpen"
+      ng-keyup="$event.keyCode == 27 ? closeDropdown(storage) : null"
+    >
+      <div class="p-option-selector__header">
+        <button class="p-button--close" ng-click="closeDropdown(storage)">
+          <i class="p-icon--close">Close</i>
+        </button>
+        <ul class="p-key-list u-no-margin--bottom">
+          <li class="p-key-list__item--used">
+            <p class="p-p-compact">Used</p>
+          </li>
+          <li
+            class="p-key-list__item--other-requests"
+            data-ng-if="compose.obj.storage.length > 1"
+          >
+            <p class="p-p-compact">+</p>
+          </li>
+          <li class="p-key-list__item--requests">
+            <p class="p-p-compact">
+              Request<span ng-if="compose.obj.storage.length > 1">s</span>
+            </p>
+          </li>
+          <li class="p-key-list__item--free">
+            <p class="p-p-compact">
+              Free
+            </p>
+          </li>
+        </ul>
+      </div>
+      <hr class="u-no-margin--bottom" />
+      <div
+        class="p-option-selector__option row"
+        ng-class="{
+          'is-selected': storage.pool === storage_pool,
+          'is-over': totalStoragePercentage(storage_pool, (storage.size + getOtherRequests(storage_pool, storage)) | convertGigabyteToBytes) >= 100
+        }"
+        ng-click="selectStoragePool(storage_pool, storage, totalStoragePercentage(storage_pool, (storage.size + getOtherRequests(storage_pool, storage)) | convertGigabyteToBytes) >= 100)"
+        ng-keyup="$event.keyCode == 13 ? selectStoragePool(storage_pool, storage) : null"
+        ng-repeat="storage_pool in pod.storage_pools"
+        tabindex="0"
+      >
+        <div class="p-option-selector__option-cell col-4 col-medium-3">
+          <p class="p-p-compact">
+            <strong>
+              {$ storage_pool.name $}
+              <span ng-if="pod.default_storage_pool == storage_pool.id">
+                (default)
+              </span>
+            </strong>
+            <br />
+            <span class="u-text--light">{$ storage_pool.path $}</span>
+          </p>
+        </div>
+        <div class="p-option-selector__option-cell col-2 col-medium-3">
+          <p class="p-p-compact u-align--right">
+            <span>{$ storage_pool.type | formatStorageType $}</span>
+            <br />
+            <span>{$ storage_pool.total | formatBytes $}</span>
+          </p>
+        </div>
+        <div class="p-option-selector__option-cell col-6 col-medium-6">
+          <div class="p-chart__container">
+            <div class="p-chart">
+              <div
+                class="p-chart__bar--requests"
+                ng-class="{
+                  'is-selected': storage.pool === storage_pool,
+                  'is-over': totalStoragePercentage(storage_pool, (storage.size + getOtherRequests(storage_pool, storage)) | convertGigabyteToBytes) >= 100
+                }"
+                style="width: {$ totalStoragePercentage(storage_pool, (storage.size + getOtherRequests(storage_pool, storage)) | convertGigabyteToBytes) $}%"
+              ></div>
+              <div
+                class="p-chart__bar--other"
+                style="width: {$ totalStoragePercentage(storage_pool, getOtherRequests(storage_pool, storage) | convertGigabyteToBytes) $}%"
+              ></div>
+              <div
+                class="p-chart__bar--used"
+                style="width: {$ storage_pool.used / storage_pool.total * 100 $}%"
+              ></div>
+            </div>
+          </div>
+          <ul
+            class="p-inline-list u-no-margin--bottom u-flex--space-between"
+            ng-if="totalStoragePercentage(storage_pool, (storage.size + getOtherRequests(storage_pool, storage)) | convertGigabyteToBytes) < 100"
+          >
+            <li
+              class="p-inline-list__item p-key-list__item--used u-no-padding--right"
+            >
+              <p class="p-p-compact">
+                {$ storage_pool.used | formatBytes $}
+              </p>
+            </li>
+            <li
+              ng-if="compose.obj.storage.length > 1 && getOtherRequests(storage_pool, storage) > 0"
+              class="p-inline-list__item p-key-list__item--other-requests u-no-padding--right"
+            >
+              <p class="p-p-compact">
+                {$ getOtherRequests(storage_pool, storage) $} GB
+              </p>
+            </li>
+            <li
+              ng-if="storage.pool === storage_pool"
+              class="p-inline-list__item p-key-list__item--requests u-no-padding--right"
+            >
+              <p class="p-p-compact">
+                {$ storage.size $} GB
+              </p>
+            </li>
+            <li
+              class="p-inline-list__item p-key-list__item--free u-no-padding--right"
+            >
+              <p class="p-p-compact">
+                {$ storage_pool.available | formatBytes $}
+              </p>
+            </li>
+          </ul>
+          <small
+            class="p-p-small--align-with-p"
+            ng-if="totalStoragePercentage(storage_pool, (storage.size + getOtherRequests(storage_pool, storage)) | convertGigabyteToBytes) >= 100"
+          >
+            <i class="p-icon--warning">Warning</i>
+            <span ng-if="storage_pool.available > 0"
+              >Not enough space, {$ storage_pool.available | formatBytes $}
+              free.</span
+            >
+            <span ng-if="storage_pool.available <= 0">No space.</span>
+          </small>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

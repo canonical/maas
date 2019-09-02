@@ -37226,59 +37226,61 @@ var _dhcp_snippets_table = _interopRequireDefault(__webpack_require__(602));
 
 var _add_machine = _interopRequireDefault(__webpack_require__(603));
 
-var _nodes_list_filter = _interopRequireDefault(__webpack_require__(604));
+var _kvm_storage_dropdown = _interopRequireDefault(__webpack_require__(604));
 
-var _accordion = _interopRequireDefault(__webpack_require__(605));
+var _nodes_list_filter = _interopRequireDefault(__webpack_require__(605));
 
-var _boot_images = __webpack_require__(606);
+var _accordion = _interopRequireDefault(__webpack_require__(606));
 
-var _card_loader = _interopRequireDefault(__webpack_require__(607));
+var _boot_images = __webpack_require__(607);
 
-var _code_lines = _interopRequireDefault(__webpack_require__(608));
+var _card_loader = _interopRequireDefault(__webpack_require__(608));
 
-var _contenteditable = _interopRequireDefault(__webpack_require__(609));
+var _code_lines = _interopRequireDefault(__webpack_require__(609));
 
-var _default_os_select = _interopRequireDefault(__webpack_require__(610));
+var _contenteditable = _interopRequireDefault(__webpack_require__(610));
 
-var _enter_blur = _interopRequireDefault(__webpack_require__(611));
+var _default_os_select = _interopRequireDefault(__webpack_require__(611));
 
-var _enter = _interopRequireDefault(__webpack_require__(612));
+var _enter_blur = _interopRequireDefault(__webpack_require__(612));
 
-var _error_toggle = _interopRequireDefault(__webpack_require__(613));
+var _enter = _interopRequireDefault(__webpack_require__(613));
 
-var _ipranges2 = _interopRequireDefault(__webpack_require__(614));
+var _error_toggle = _interopRequireDefault(__webpack_require__(614));
 
-var _maas_obj_form = __webpack_require__(615);
+var _ipranges2 = _interopRequireDefault(__webpack_require__(615));
 
-var _mac_address = _interopRequireDefault(__webpack_require__(616));
+var _maas_obj_form = __webpack_require__(616);
 
-var _navigation_dropdown = _interopRequireDefault(__webpack_require__(617));
+var _mac_address = _interopRequireDefault(__webpack_require__(617));
 
-var _navigation_mobile = _interopRequireDefault(__webpack_require__(618));
+var _navigation_dropdown = _interopRequireDefault(__webpack_require__(618));
 
-var _placeholder = _interopRequireDefault(__webpack_require__(619));
+var _navigation_mobile = _interopRequireDefault(__webpack_require__(619));
 
-var _pref_keys = __webpack_require__(620);
+var _placeholder = _interopRequireDefault(__webpack_require__(620));
 
-var _proxy_settings = _interopRequireDefault(__webpack_require__(621));
+var _pref_keys = __webpack_require__(621);
 
-var _release_name = _interopRequireDefault(__webpack_require__(622));
+var _proxy_settings = _interopRequireDefault(__webpack_require__(622));
 
-var _script_expander = _interopRequireDefault(__webpack_require__(623));
+var _release_name = _interopRequireDefault(__webpack_require__(623));
 
-var _script_results_list = _interopRequireDefault(__webpack_require__(624));
+var _script_expander = _interopRequireDefault(__webpack_require__(624));
 
-var _ssh_keys = _interopRequireDefault(__webpack_require__(625));
+var _script_results_list = _interopRequireDefault(__webpack_require__(625));
 
-var _switches_table = _interopRequireDefault(__webpack_require__(626));
+var _ssh_keys = _interopRequireDefault(__webpack_require__(626));
 
-var _toggle_control = _interopRequireDefault(__webpack_require__(627));
+var _switches_table = _interopRequireDefault(__webpack_require__(627));
 
-var _type = _interopRequireDefault(__webpack_require__(628));
+var _toggle_control = _interopRequireDefault(__webpack_require__(628));
 
-var _version_reloader = _interopRequireDefault(__webpack_require__(629));
+var _type = _interopRequireDefault(__webpack_require__(629));
 
-var _window_width = _interopRequireDefault(__webpack_require__(630));
+var _version_reloader = _interopRequireDefault(__webpack_require__(630));
+
+var _window_width = _interopRequireDefault(__webpack_require__(631));
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -37514,7 +37516,7 @@ angular.module("MAAS", ["ngRoute", "ngCookies", "ngSanitize", "ngTagsInput", "vs
 .factory("PollingManager", _pollingmanager.default).factory("BootResourcesManager", _bootresources.default).factory("ConfigsManager", _configs.default).factory("ControllersManager", _controllers.default).factory("DevicesManager", _devices.default).factory("DHCPSnippetsManager", _dhcpsnippets.default).factory("DiscoveriesManager", _discoveries.default).factory("DomainsManager", _domains.default).factory("EventsManagerFactory", _events.default).factory("FabricsManager", _fabrics.default).factory("GeneralManager", _general.default).factory("getBakery", _login.getBakery).factory("IPRangesManager", _ipranges.default).factory("MachinesManager", _machines.default).factory("NodeResultsManagerFactory", _node_results.default).factory("NotificationsManager", _notifications2.default).factory("PackageRepositoriesManager", _packagerepositories.default).factory("ResourcePoolsManager", _resourcepools.default).factory("ScriptsManager", _scripts.default).factory("ServicesManager", _services.default).factory("SpacesManager", _spaces.default).factory("SSHKeysManager", _sshkeys.default).factory("StaticRoutesManager", _staticroutes.default).factory("SubnetsManager", _subnets.default).factory("SwitchesManager", _switches.default).factory("TagsManager", _tags.default).factory("UsersManager", _users.default).factory("VLANsManager", _vlans.default).factory("ZonesManager", _zones.default) // services
 .service("BrowserService", _browser.default).service("ControllerImageStatusService", _controller_image_status.ControllerImageStatusService).service("ConverterService", _converter.default).service("ErrorService", _error.default).service("JSONService", _json.default).service("LogService", _log.default).service("Manager", _manager.default).service("ManagerHelperService", _managerhelper.default).service("NodesManager", _nodes2.default).service("KVMDeployOSBlacklist", _osblacklist.default).service("PodsManager", _pods.default).service("RegionConnection", _region.default).service("SearchService", _search.default).service("ValidationService", _validation.default) // controllers
 .controller("AddDeviceController", _add_device.default).controller("AddDomainController", _add_domain.default).controller("AddHardwareController", _add_hardware.default).controller("DashboardController", _dashboard.default).controller("DomainDetailsController", _domain_details.default).controller("DomainsListController", _domains_list.default).controller("FabricDetailsController", _fabric_details.default).controller("ImagesController", _images.default).controller("IntroUserController", _intro_user.default).controller("IntroController", _intro.default).controller("NetworksListController", _networks_list.default).controller("NodeNetworkingController", _node_details_networking.NodeNetworkingController).controller("NodeFilesystemsController", _node_details_storage_filesystems.NodeFilesystemsController).controller("NodeAddSpecialFilesystemController", _node_details_storage_filesystems.NodeAddSpecialFilesystemController).controller("NodeStorageController", _node_details_storage.NodeStorageController).controller("NodeDetailsController", _node_details.default).controller("NodeEventsController", _node_events.default).controller("NodeResultController", _node_result.default).controller("NodeResultsController", _node_results2.default).controller("NodesListController", _nodes_list.default).controller("PodDetailsController", _pod_details.default).controller("PodsListController", _pods_list.default).controller("PreferencesController", _prefs.default).controller("SettingsController", _settings.default).controller("SpaceDetailsController", _space_details.default).controller("SubnetDetailsController", _subnet_details.SubnetDetailsController).controller("VLANDetailsController", _vlan_details.VLANDetailsController).controller("ZoneDetailsController", _zone_details.default).controller("ZonesListController", _zones_list.default) // directives
-.directive("storageDisksPartitions", _storage_disks_partitions.default).directive("storageFilesystems", _storage_filesystems.default).directive("storageDatastores", _storage_datastores.default).directive("addMachine", _add_machine.default).directive("nodesListFilter", _nodes_list_filter.default).directive("maasAccordion", _accordion.default).directive("maasActionButton", _action_button.maasActionButton).directive("maasBootImagesStatus", _boot_images.maasBootImagesStatus).directive("maasBootImages", _boot_images.maasBootImages).directive("maasCta", _call_to_action.maasCta).directive("maasCardLoader", _card_loader.default).directive("maasCodeLines", _code_lines.default).directive("contenteditable", _contenteditable.default).directive("maasControllerImageStatus", _controller_image_status.maasControllerImageStatus).directive("maasControllerStatus", _controller_status.maasControllerStatus).directive("maasDblClickOverlay", _dbl_click_overlay.maasDblClickOverlay).directive("maasDefaultOsSelect", _default_os_select.default).directive("maasEnterBlur", _enter_blur.default).directive("maasEnter", _enter.default).directive("maasErrorOverlay", _error_overlay.maasErrorOverlay).directive("maasErrorToggle", _error_toggle.default).directive("maasIpRanges", _ipranges2.default).directive("externalLogin", _login.externalLogin).directive("maasObjForm", _maas_obj_form.maasObjForm).directive("maasObjFieldGroup", _maas_obj_form.maasObjFieldGroup).directive("maasObjField", _maas_obj_form.maasObjField).directive("maasObjSave", _maas_obj_form.maasObjSave).directive("maasObjErrors", _maas_obj_form.maasObjErrors).directive("maasObjSaving", _maas_obj_form.maasObjSaving).directive("maasObjShowSaving", _maas_obj_form.maasObjShowSaving).directive("maasObjHideSaving", _maas_obj_form.maasObjHideSaving).directive("macAddress", _mac_address.default).directive("maasMachinesTable", _machines_table.default).directive("maasDhcpSnippetsTable", _dhcp_snippets_table.default).directive("maasNavigationDropdown", _navigation_dropdown.default).directive("maasNavigationMobile", _navigation_mobile.default).directive("maasNotifications", _notifications.maasNotifications).directive("maasOsSelect", _os_select.maasOsSelect).directive("ngPlaceholder", _placeholder.default).directive("maasPodParameters", _pod_parameters.maasPodParameters).directive("maasCoresChart", _cores_chart.maasCoresChart).directive("maasPowerInput", _power_parameters.maasPowerInput).directive("maasPowerParameters", _power_parameters.maasPowerParameters).directive("maasPrefKeys", _pref_keys.maasPrefKeys).directive("maasPrefKeysInject", _pref_keys.maasPrefKeysInject).directive("maasPrefKeysAdd", _pref_keys.maasPrefKeysAdd).directive("maasPrefKey", _pref_keys.maasPrefKey).directive("maasPrefKeyDelete", _pref_keys.maasPrefKeyDelete).directive("maasPrefKeyCopy", _pref_keys.maasPrefKeyCopy).directive("maasProxySettings", _proxy_settings.default).directive("maasReleaseName", _release_name.default).directive("maasReleaseOptions", _release_options.maasReleaseOptions).directive("pScriptExpander", _script_expander.default).directive("maasScriptResultsList", _script_results_list.default).directive("maasScriptRunTime", _script_runtime.maasScriptRunTime).directive("maasScriptSelect", _script_select.maasScriptSelect).directive("maasScriptStatus", _script_status.maasScriptStatus).directive("maasSshKeys", _ssh_keys.default).directive("maasSwitchesTable", _switches_table.default).directive("toggleCtrl", _toggle_control.default).directive("ngType", _type.default).directive("maasVersionReloader", _version_reloader.default).directive("windowWidth", _window_width.default);
+.directive("storageDisksPartitions", _storage_disks_partitions.default).directive("storageFilesystems", _storage_filesystems.default).directive("storageDatastores", _storage_datastores.default).directive("addMachine", _add_machine.default).directive("kvmStorageDropdown", _kvm_storage_dropdown.default).directive("nodesListFilter", _nodes_list_filter.default).directive("maasAccordion", _accordion.default).directive("maasActionButton", _action_button.maasActionButton).directive("maasBootImagesStatus", _boot_images.maasBootImagesStatus).directive("maasBootImages", _boot_images.maasBootImages).directive("maasCta", _call_to_action.maasCta).directive("maasCardLoader", _card_loader.default).directive("maasCodeLines", _code_lines.default).directive("contenteditable", _contenteditable.default).directive("maasControllerImageStatus", _controller_image_status.maasControllerImageStatus).directive("maasControllerStatus", _controller_status.maasControllerStatus).directive("maasDblClickOverlay", _dbl_click_overlay.maasDblClickOverlay).directive("maasDefaultOsSelect", _default_os_select.default).directive("maasEnterBlur", _enter_blur.default).directive("maasEnter", _enter.default).directive("maasErrorOverlay", _error_overlay.maasErrorOverlay).directive("maasErrorToggle", _error_toggle.default).directive("maasIpRanges", _ipranges2.default).directive("externalLogin", _login.externalLogin).directive("maasObjForm", _maas_obj_form.maasObjForm).directive("maasObjFieldGroup", _maas_obj_form.maasObjFieldGroup).directive("maasObjField", _maas_obj_form.maasObjField).directive("maasObjSave", _maas_obj_form.maasObjSave).directive("maasObjErrors", _maas_obj_form.maasObjErrors).directive("maasObjSaving", _maas_obj_form.maasObjSaving).directive("maasObjShowSaving", _maas_obj_form.maasObjShowSaving).directive("maasObjHideSaving", _maas_obj_form.maasObjHideSaving).directive("macAddress", _mac_address.default).directive("maasMachinesTable", _machines_table.default).directive("maasDhcpSnippetsTable", _dhcp_snippets_table.default).directive("maasNavigationDropdown", _navigation_dropdown.default).directive("maasNavigationMobile", _navigation_mobile.default).directive("maasNotifications", _notifications.maasNotifications).directive("maasOsSelect", _os_select.maasOsSelect).directive("ngPlaceholder", _placeholder.default).directive("maasPodParameters", _pod_parameters.maasPodParameters).directive("maasCoresChart", _cores_chart.maasCoresChart).directive("maasPowerInput", _power_parameters.maasPowerInput).directive("maasPowerParameters", _power_parameters.maasPowerParameters).directive("maasPrefKeys", _pref_keys.maasPrefKeys).directive("maasPrefKeysInject", _pref_keys.maasPrefKeysInject).directive("maasPrefKeysAdd", _pref_keys.maasPrefKeysAdd).directive("maasPrefKey", _pref_keys.maasPrefKey).directive("maasPrefKeyDelete", _pref_keys.maasPrefKeyDelete).directive("maasPrefKeyCopy", _pref_keys.maasPrefKeyCopy).directive("maasProxySettings", _proxy_settings.default).directive("maasReleaseName", _release_name.default).directive("maasReleaseOptions", _release_options.maasReleaseOptions).directive("pScriptExpander", _script_expander.default).directive("maasScriptResultsList", _script_results_list.default).directive("maasScriptRunTime", _script_runtime.maasScriptRunTime).directive("maasScriptSelect", _script_select.maasScriptSelect).directive("maasScriptStatus", _script_status.maasScriptStatus).directive("maasSshKeys", _ssh_keys.default).directive("maasSwitchesTable", _switches_table.default).directive("toggleCtrl", _toggle_control.default).directive("ngType", _type.default).directive("maasVersionReloader", _version_reloader.default).directive("windowWidth", _window_width.default);
 
 /***/ }),
 /* 502 */
@@ -57306,19 +57308,6 @@ function PodDetailsController($scope, $rootScope, $location, $routeParams, $filt
     return valid;
   };
 
-  $scope.totalStoragePercentage = function (storage_pool, storage, other) {
-    var used = storage_pool.used / storage_pool.total * 100;
-    var requested = storage / storage_pool.total * 100;
-    var otherRequested = other / storage_pool.total * 100;
-    var percent = used + requested;
-
-    if (other) {
-      percent = used + requested + otherRequested;
-    }
-
-    return percent;
-  };
-
   $scope.updateRequests = function () {
     var storages = $scope.compose.obj.storage;
     var requests = [];
@@ -57338,43 +57327,6 @@ function PodDetailsController($scope, $rootScope, $location, $routeParams, $filt
       }
     });
     $scope.compose.obj.requests = requests;
-  };
-
-  $scope.getOtherRequests = function (storagePool, storage) {
-    var requests = $scope.compose.obj.requests;
-    var request = 0;
-
-    for (var i = 0; i < requests.length; i++) {
-      if (storagePool.id === requests[i].poolId) {
-        request = requests[i].size;
-      }
-    }
-
-    if (storagePool.id === storage.pool.id) {
-      request -= storage.size;
-    }
-
-    return request;
-  };
-
-  $scope.poolOverCapacity = function (storage) {
-    var storagePool = $scope.pod.storage_pools.find(function (pool) {
-      return pool.id === storage.pool.id;
-    });
-    var requests = $scope.compose.obj.requests;
-    var request = 0;
-
-    for (var i = 0; i < requests.length; i++) {
-      if (storagePool.id === requests[i].poolId) {
-        request = requests[i].size;
-      }
-    }
-
-    if ($filter("convertGigabyteToBytes")(request) > storagePool.available) {
-      return true;
-    }
-
-    return false;
   }; // Prevents key input if input is not a number key code.
 
 
@@ -57402,13 +57354,6 @@ function PodDetailsController($scope, $rootScope, $location, $routeParams, $filt
     angular.forEach($scope.compose.obj.storage, function (disk) {
       disk.showOptions = false;
     });
-  };
-
-  $scope.selectStoragePool = function (storagePool, storage, isDisabled) {
-    if (!isDisabled) {
-      storage.pool = storagePool;
-      $scope.updateRequests();
-    }
   }; // Return the title of the pod type.
 
 
@@ -59737,6 +59682,130 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.default = void 0;
+KVMStorageDropdownController.$inject = ["$scope", "$filter"];
+kvmStorageDropdown.$inject = ["$document"];
+
+/* Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
+ * GNU Affero General Public License version 3 (see the file LICENSE).
+ *
+ * Directive for KVM storage dropdown.
+ *
+ */
+
+/* @ngInject */
+function kvmStorageDropdown($document) {
+  return {
+    restrict: "E",
+    scope: {
+      compose: "<",
+      pod: "<",
+      storage: "<",
+      updateRequests: "<"
+    },
+    templateUrl: "static/partials/pod-details/kvm-storage-dropdown.html",
+    link: function link(scope, element) {
+      scope.clickHandler = function (event) {
+        var closestRow = element.closest("tr");
+        var clickedInsideRow = closestRow.find(event.target).length > 0;
+
+        if (clickedInsideRow) {
+          return;
+        }
+
+        scope.$apply(scope.closeDropdown);
+      };
+
+      $document.on("click", scope.clickHandler);
+      scope.$on("$destroy", function () {
+        return $document.off("click", scope.clickHandler);
+      });
+    },
+    controller: KVMStorageDropdownController
+  };
+}
+/* @ngInject */
+
+
+function KVMStorageDropdownController($scope, $filter) {
+  $scope.dropdownOpen = false;
+
+  $scope.closeDropdown = function () {
+    $scope.dropdownOpen = false;
+  };
+
+  $scope.toggleDropdown = function () {
+    $scope.dropdownOpen = !$scope.dropdownOpen;
+  };
+
+  $scope.poolOverCapacity = function (storage) {
+    var compose = $scope.compose,
+        pod = $scope.pod;
+
+    if (compose && compose.obj && pod && pod.storage_pools) {
+      var storagePool = pod.storage_pools.find(function (pool) {
+        return pool.id === storage.pool.id;
+      });
+      var request = compose.obj.requests.find(function (req) {
+        return storagePool.id === req.poolId;
+      });
+      var requestSize = request ? request.size : 0;
+
+      if ($filter("convertGigabyteToBytes")(requestSize) > storagePool.available) {
+        return true;
+      }
+    }
+
+    return false;
+  };
+
+  $scope.totalStoragePercentage = function (storage_pool, storage, other) {
+    var used = storage_pool.used / storage_pool.total * 100;
+    var requested = storage / storage_pool.total * 100;
+    var otherRequested = other / storage_pool.total * 100;
+    var percent = used + requested;
+
+    if (other) {
+      percent = used + requested + otherRequested;
+    }
+
+    return percent;
+  };
+
+  $scope.getOtherRequests = function (storagePool, storage) {
+    var request = $scope.compose.obj.requests.find(function (req) {
+      return storagePool.id === req.poolId;
+    });
+    var requestSize = request ? request.size : 0;
+
+    if (storagePool.id === storage.pool.id) {
+      requestSize -= storage.size;
+    }
+
+    return requestSize;
+  };
+
+  $scope.selectStoragePool = function (storagePool, storage, isDisabled) {
+    if (!isDisabled) {
+      storage.pool = storagePool;
+      $scope.updateRequests();
+    }
+  };
+}
+
+var _default = kvmStorageDropdown;
+exports.default = _default;
+
+/***/ }),
+/* 605 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
 NodesListFilterController.$inject = ["$scope"];
 nodesListFilter.$inject = ["$document"];
 
@@ -59823,7 +59892,7 @@ var _default = nodesListFilter;
 exports.default = _default;
 
 /***/ }),
-/* 605 */
+/* 606 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -59877,7 +59946,7 @@ var _default = maasAccordion;
 exports.default = _default;
 
 /***/ }),
-/* 606 */
+/* 607 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -60880,7 +60949,7 @@ function maasBootImages($timeout, BootResourcesManager, UsersManager, ManagerHel
 }
 
 /***/ }),
-/* 607 */
+/* 608 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -60915,7 +60984,7 @@ var _default = maasCardLoader;
 exports.default = _default;
 
 /***/ }),
-/* 608 */
+/* 609 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -60991,7 +61060,7 @@ var _default = maasCodeLines;
 exports.default = _default;
 
 /***/ }),
-/* 609 */
+/* 610 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -61063,7 +61132,7 @@ var _default = contenteditable;
 exports.default = _default;
 
 /***/ }),
-/* 610 */
+/* 611 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -61179,7 +61248,7 @@ var _default = maasDefaultOsSelect;
 exports.default = _default;
 
 /***/ }),
-/* 611 */
+/* 612 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -61215,7 +61284,7 @@ var _default = maasEnterBlur;
 exports.default = _default;
 
 /***/ }),
-/* 612 */
+/* 613 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -61249,7 +61318,7 @@ var _default = maasEnter;
 exports.default = _default;
 
 /***/ }),
-/* 613 */
+/* 614 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -61330,7 +61399,7 @@ var _default = maasErrorToggle;
 exports.default = _default;
 
 /***/ }),
-/* 614 */
+/* 615 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -61504,7 +61573,7 @@ var _default = maasIpRanges;
 exports.default = _default;
 
 /***/ }),
-/* 615 */
+/* 616 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -62646,7 +62715,7 @@ function maasObjHideSaving() {
 }
 
 /***/ }),
-/* 616 */
+/* 617 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -62707,7 +62776,7 @@ var _default = macAddress;
 exports.default = _default;
 
 /***/ }),
-/* 617 */
+/* 618 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -62747,7 +62816,7 @@ var _default = maasNavigationDropdown;
 exports.default = _default;
 
 /***/ }),
-/* 618 */
+/* 619 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -62782,7 +62851,7 @@ var _default = maasNavigationMobile;
 exports.default = _default;
 
 /***/ }),
-/* 619 */
+/* 620 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -62818,7 +62887,7 @@ var _default = ngPlaceholder;
 exports.default = _default;
 
 /***/ }),
-/* 620 */
+/* 621 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -62991,7 +63060,7 @@ function maasPrefKeyCopy() {
 }
 
 /***/ }),
-/* 621 */
+/* 622 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -63049,7 +63118,7 @@ var _default = maasProxySettings;
 exports.default = _default;
 
 /***/ }),
-/* 622 */
+/* 623 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -63113,7 +63182,7 @@ var _default = maasReleaseName;
 exports.default = _default;
 
 /***/ }),
-/* 623 */
+/* 624 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -63150,7 +63219,7 @@ var _default = pScriptExpander;
 exports.default = _default;
 
 /***/ }),
-/* 624 */
+/* 625 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -63177,7 +63246,7 @@ var _default = maasScriptResultsList;
 exports.default = _default;
 
 /***/ }),
-/* 625 */
+/* 626 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -63362,7 +63431,7 @@ var _default = maasSshKeys;
 exports.default = _default;
 
 /***/ }),
-/* 626 */
+/* 627 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -63540,7 +63609,7 @@ var _default = maasSwitchesTable;
 exports.default = _default;
 
 /***/ }),
-/* 627 */
+/* 628 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -63591,7 +63660,7 @@ var _default = toggleCtrl;
 exports.default = _default;
 
 /***/ }),
-/* 628 */
+/* 629 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -63631,7 +63700,7 @@ var _default = ngType;
 exports.default = _default;
 
 /***/ }),
-/* 629 */
+/* 630 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -63686,7 +63755,7 @@ var _default = maasVersionReloader;
 exports.default = _default;
 
 /***/ }),
-/* 630 */
+/* 631 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";

@@ -280,18 +280,6 @@ function PodDetailsController(
     return valid;
   };
 
-  $scope.totalStoragePercentage = function(storage_pool, storage, other) {
-    var used = (storage_pool.used / storage_pool.total) * 100;
-    var requested = (storage / storage_pool.total) * 100;
-    var otherRequested = (other / storage_pool.total) * 100;
-    var percent = used + requested;
-
-    if (other) {
-      percent = used + requested + otherRequested;
-    }
-    return percent;
-  };
-
   $scope.updateRequests = function() {
     var storages = $scope.compose.obj.storage;
     var requests = [];
@@ -310,42 +298,6 @@ function PodDetailsController(
       }
     });
     $scope.compose.obj.requests = requests;
-  };
-
-  $scope.getOtherRequests = function(storagePool, storage) {
-    var requests = $scope.compose.obj.requests;
-    var request = 0;
-
-    for (var i = 0; i < requests.length; i++) {
-      if (storagePool.id === requests[i].poolId) {
-        request = requests[i].size;
-      }
-    }
-
-    if (storagePool.id === storage.pool.id) {
-      request -= storage.size;
-    }
-
-    return request;
-  };
-
-  $scope.poolOverCapacity = function(storage) {
-    var storagePool = $scope.pod.storage_pools.find(function(pool) {
-      return pool.id === storage.pool.id;
-    });
-    var requests = $scope.compose.obj.requests;
-    var request = 0;
-
-    for (var i = 0; i < requests.length; i++) {
-      if (storagePool.id === requests[i].poolId) {
-        request = requests[i].size;
-      }
-    }
-
-    if ($filter("convertGigabyteToBytes")(request) > storagePool.available) {
-      return true;
-    }
-    return false;
   };
 
   // Prevents key input if input is not a number key code.
@@ -372,13 +324,6 @@ function PodDetailsController(
     angular.forEach($scope.compose.obj.storage, function(disk) {
       disk.showOptions = false;
     });
-  };
-
-  $scope.selectStoragePool = function(storagePool, storage, isDisabled) {
-    if (!isDisabled) {
-      storage.pool = storagePool;
-      $scope.updateRequests();
-    }
   };
 
   // Return the title of the pod type.
