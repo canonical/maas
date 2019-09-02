@@ -1,10 +1,10 @@
 <header class="p-strip--light is-shallow u-no-padding--bottom page-header" media-query="min-width: 769px">
     <div class="row">
-        <div class="col-medium-4 col-8">
+        <div class="col-small-2 col-medium-4 col-8">
             <h1 class="page-header__title">{$ getPageHeading() $}</h1>
             <p class="page-header__status u-no-margin--top" data-ng-show="loading"><span class="u-text--loading"><i class="p-icon--spinner u-animation--spin"></i> Loading...</span></p>
         </div>
-        <div class="col-medium-2 col-4">
+        <div class="col-small-2 col-medium-2 col-4 u-align--right">
             <div class="page-header__controls">
                 <div data-ng-if="pods.length > 0 && !selectedItems.length && !action.option.isSingle">
                     <button class="p-button--neutral" data-ng-click="addPod()" data-ng-if="!add.open && canAddPod()">Add {$ getPageHeading() $}</button>
@@ -151,11 +151,23 @@
         </div>
         <div class="row">
             <table class="p-table-expanding p-table--sortable p-table--pods" data-ng-if="pods.length > 0">
-                <thead data-ng-if="windowWidth >= 772" offset="88" media-query="min-width: 772px">
+                <thead>
                     <tr class="p-table__row">
                         <th class="p-table__cell p-double-row">
-                            <input data-ng-if="showActions()" type="checkbox" class="checkbox" data-ng-click="toggleCheckAll()" data-ng-checked="allViewableChecked" id="check-all-pods" data-ng-disabled="add.open || hasActionsInProgress()" />
-                            <label data-ng-if="showActions()" for="check-all-pods" class="checkbox-label"></label>
+                            <input
+                                class="p-table--pods-checkbox"
+                                id="check-all-pods"
+                                ng-checked="allViewableChecked"
+                                ng-click="toggleCheckAll()"
+                                ng-disabled="add.open || hasActionsInProgress()"
+                                ng-if="showActions()"
+                                type="checkbox"
+                            />
+                            <label
+                                class="p-table--pods-checkbox-label"
+                                for="check-all-pods"
+                                ng-if="showActions()"
+                            ></label>
                             <span role="columnheader" data-ng-click="sortTable('name')" data-ng-class="{'is-sorted': predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">
                                 FQDN
                             </span>
@@ -167,20 +179,20 @@
                             <div role="columnheader" data-ng-click="sortTable('type')" data-ng-class="{'is-sorted': predicate === 'type', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="KVM host type">
                                 KVM host type
                             </div>
-                            <div>Virsh</div>
+                            <div class="p-double-row__muted-row">Virsh</div>
                         </th>
-                        <th class="p-table__cell p-double-row">
+                        <th class="p-table__cell p-double-row u-align--right">
                             <div role="columnheader" data-ng-click="sortTable('composed_machines')" data-ng-class="{'is-sorted': predicate === 'composed_machines', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="VMs">
                                 VM<span style="text-transform: lowercase;">s</span>
                             </div>
-                            <div>Owners</div>
+                            <div class="p-double-row__muted-row">Owners</div>
                         </th>
                         <th class="p-table__cell" title="Status">
                             Status
                         </th>
                         <th class="p-table__cell p-double-row" title="Resource pool">
                             <div>Resource pool</div>
-                            <div>AZ</div>
+                            <div class="p-double-row__muted-row">AZ</div>
                         </th>
                         <th class="p-table__cell">
                             <div role="columnheader" data-ng-click="sortTable('available.cores')" data-ng-class="{'is-sorted': predicate === 'available.cores', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="CPU">
@@ -197,7 +209,7 @@
                                 Storage
                             </div>
                         </th>
-                        <th>
+                        <th class="p-table__cell">
                             <div class="u-align--right">Actions</div>
                         </th>
                     </tr>
@@ -206,13 +218,27 @@
                     <tr class="p-table__row" data-ng-repeat="pod in filteredItems = (filterPods(pods) | nodesFilter:search | orderBy:predicate:reverse) track by pod.id" data-ng-class="{ selected: pod.$selected, 'is-active': pod.$selected && pod.action_failed }">
                         <td class="p-table__cell" aria-label="Name" title="{$ pod.name $}">
                             <div class="p-double-row__checkbox" data-ng-if="showActions()">
-                                <input type="checkbox" class="checkbox" data-ng-click="toggleChecked(pod)" data-ng-checked="pod.$selected" id="{$ pod.id $}" data-ng-disabled="add.open || hasActionsInProgress()"/>
-                                <label for="{$ pod.id $}" class="checkbox-label"></label>
+                                <input
+                                    class="p-table--pods-checkbox"
+                                    id="{$ pod.id $}"
+                                    ng-checked="pod.$selected"
+                                    ng-click="toggleChecked(pod)"
+                                    ng-disabled="add.open || hasActionsInProgress()"
+                                    type="checkbox"
+                                />
+                                <label
+                                    class="p-table--pods-checkbox-label"
+                                    for="{$ pod.id $}"
+                                ></label>
                                 <a href="#/{$ getDetailsRoute() $}/{$ pod.id $}"><strong>{$ pod.name $}</strong></a>
                             </div>
                         </td>
                         <td class="p-table__cell" aria-label="Power" title="Power">&ndash;</td>
-                        <td class="p-table__cell p-double-row" aria-label="KVM host type" title="{$ getPowerTypeTitle(pod.type) $}">
+                        <td
+                            aria-label="KVM host type"
+                            class="p-table__cell p-double-row"
+                            title="{$ getPowerTypeTitle(pod.type) $}"
+                        >
                             <div class="p-double-rows__container">
                                 <div class="p-double-row__main-row">
                                     <span class="u-text-overflow">{$ getPowerTypeTitle(pod.type) $}</span>
@@ -442,10 +468,14 @@
                                 <p><i class="p-icon--error">Error:</i> {$ pod.action_error $}</p>
                             </div>
                         </td>
-                        <td class="p-table--action-cell">
+                        <td class="p-table__cell p-table--action-cell">
                             <div class="u-align--right">
                                 <div class="p-contextual-menu" toggle-ctrl>
-                                    <button class="p-button--base is-small p-contextual-menu__toggle" data-ng-click="toggleMenu()">
+                                    <button
+                                        class="p-button--base is-small p-contextual-menu__toggle u-no-margin--right"
+                                        ng-class="{ 'u-mirror--y': isToggled }"
+                                        ng-click="toggleMenu()"
+                                    >
                                         <i class="p-icon--contextual-menu u-no-margin--right">Actions</i>
                                     </button>
                                     <div class="p-contextual-menu__dropdown" role="menu" data-ng-show="isToggled" style="width: auto">

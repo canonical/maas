@@ -2,45 +2,73 @@
   .p-table--pods {
     .p-table__row {
       .p-table__cell {
-        &:nth-child(1) {
-          width: 17%;
+        &:nth-of-type(1) {
+          @include breakpoint-widths(50%, 33%, 30%, 17%);
         }
 
-        &:nth-child(2) {
-          width: 6%;
+        &:nth-of-type(2) {
+          @include breakpoint-widths(0, 14%, 10%, 6%);
         }
 
-        &:nth-child(3) {
-          width: 17%;
+        &:nth-of-type(3) {
+          @include breakpoint-widths(50%, 33%, 25%, 22%);
         }
 
-        &:nth-child(4) {
-          width: 4%;
+        &:nth-of-type(4) {
+          @include breakpoint-widths(0, 0, 10%, 5%);
         }
 
-        &:nth-child(5) {
-          width: 10%;
+        &:nth-of-type(5) {
+          @include breakpoint-widths(0, 20%, 15%, 10%);
         }
 
-        &:nth-child(6) {
-          width: 8%;
+        &:nth-of-type(6) {
+          @include breakpoint-widths(0, 0, 10%, 10%);
         }
 
-        &:nth-child(7) {
-          width: 8%;
+        &:nth-of-type(7) {
+          @include breakpoint-widths(0, 0, 0, 8%);
         }
 
-        &:nth-child(8) {
-          width: 8%;
+        &:nth-of-type(8) {
+          @include breakpoint-widths(0, 0, 0, 8%);
         }
 
-        &:nth-child(9) {
-          width: 8%;
+        &:nth-of-type(9) {
+          @include breakpoint-widths(0, 0, 0, 8%);
         }
 
-        &:nth-child(10) {
-          width: 6%;
+        &:nth-of-type(10) {
+          @include breakpoint-widths(0, 0, 0, 6%);
         }
+      }
+    }
+
+    .p-table--pods-checkbox,
+    .p-table--pods-checkbox-label {
+      display: none;
+
+      @media (min-width: $breakpoint-first) {
+        display: inline;
+      }
+    }
+
+    .p-double-row__muted-row {
+      display: none;
+
+      @media (min-width: $breakpoint-fourth) {
+        display: block;
+      }
+    }
+
+    th .p-double-row__muted-row {
+      font-size: pow($ms-ratio, -2) * 1rem;
+    }
+
+    [class*="p-button"].is-small {
+      @media (max-width: $breakpoint-fourth) {
+        margin: -#{$spv-outer--small};
+        padding: 0 $sph-inner--small;
       }
     }
   }
