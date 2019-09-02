@@ -12,7 +12,9 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('maasserver', '0191_bmc_unique_power_type_and_parameters'),
+        # depend on the latest patch in the 2.6 branch as this is meant to be
+        # backported there.
+        ('maasserver', '0187_status_messages_change_event_logging_levels'),
     ]
 
     operations = [
