@@ -331,7 +331,7 @@ class Commission(NodeAction):
 class Test(NodeAction):
     """Start testing a node."""
     name = "test"
-    display = "Test hardware..."
+    display = "Test..."
     display_sentence = "tested"
     actionable_statuses = (
         NODE_STATUS.FAILED_COMMISSIONING,
