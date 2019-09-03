@@ -185,16 +185,12 @@ class DNSResourceManager(Manager, DNSResourceQueriesMixin):
                     "'%s': already exists in DNS with a static IP." % (
                         dnsrr.fqdn, sip.ip))
             else:
-                if dnsrr.ip_addresses.count() == 1:
-                    # Don't bother updating if it's already the same address.
-                    if set(dnsrr.ip_addresses.all()) == set([sip]):
-                        return
-                # One or more dynamic IPs for this hostname. Replace them.
-                dnsrr.ip_addresses.clear()
+                if sip in dnsrr.ip_addresses.all():
+                    return
                 dnsrr.ip_addresses.add(sip)
                 log.msg(
-                    "Updated dynamic hostname '%s' for IP address '%s'." % (
-                        dnsrr.fqdn, sip.ip))
+                    f"Updated dynamic hostname '{dnsrr.fqdn}'."
+                    f" Added IP address 'sip.ip'.")
 
     def release_dynamic_hostname(self, sip, but_not_for=None):
         """
@@ -209,15 +205,18 @@ class DNSResourceManager(Manager, DNSResourceQueriesMixin):
         if but_not_for is not None:
             resources = resources.exclude(name=but_not_for)
         for dnsrr in resources:
-            dynamic_ip = dnsrr.ip_addresses.filter(
-                alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=sip.ip).first()
-            if dynamic_ip is not None:
-                dnsrr.ip_addresses.remove(dynamic_ip)
+            dynamic_ips = dnsrr.ip_addresses.filter(
+                alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=sip.ip)
+            if sip in dynamic_ips:
+                dnsrr.ip_addresses.remove(sip)
+                log.msg(
+                    f"Updated dynamic hostname '{dnsrr.fqdn}'."
+                    f" Removed IP address '{sip.ip}'.")
             if dnsrr.ip_addresses.count() == 0:
                 dnsrr.delete()
                 log.msg(
-                    "Deleted dynamic hostname '%s' for IP address '%s'." % (
-                        dnsrr.fqdn, sip.ip))
+                    f"Deleted dynamic hostname '{dnsrr.fqdn}' for IP address "
+                    f" '{sip.ip}'.")
 
 
 class DNSResource(CleanSave, TimestampedModel):

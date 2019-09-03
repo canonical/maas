@@ -301,14 +301,18 @@ class TestUpdateDynamicHostname(MAASServerTestCase):
         DNSResource.objects.update_dynamic_hostname(sip_after, hostname)
         dnsrr = DNSResource.objects.get(name=hostname)
         self.assertThat(dnsrr.ip_addresses.all(), Contains(sip_after))
-        self.assertThat(dnsrr.ip_addresses.all(), Not(Contains(sip_before)))
+        self.assertThat(dnsrr.ip_addresses.all(), Contains(sip_before))
 
-    def test__skips_updating_identical_ip(self):
-        sip = factory.make_StaticIPAddress(
+    def test__skips_updating_already_added_ip(self):
+        sip1 = factory.make_StaticIPAddress(
             ip='10.0.0.1',
             alloc_type=IPADDRESS_TYPE.DISCOVERED)
+        sip2 = factory.make_StaticIPAddress(
+            ip='10.0.0.2',
+            alloc_type=IPADDRESS_TYPE.DISCOVERED)
         hostname = factory.make_name().lower()
-        DNSResource.objects.update_dynamic_hostname(sip, hostname)
+        DNSResource.objects.update_dynamic_hostname(sip1, hostname)
+        DNSResource.objects.update_dynamic_hostname(sip2, hostname)
         dnsrr = DNSResource.objects.get(name=hostname)
         # Create a date object for one week ago.
         before = datetime.fromtimestamp(
@@ -318,7 +322,8 @@ class TestUpdateDynamicHostname(MAASServerTestCase):
         self.assertThat(dnsrr.updated, Equals(before))
         self.assertThat(dnsrr.created, Equals(before))
         # Test that the timestamps weren't updated after updating again.
-        DNSResource.objects.update_dynamic_hostname(sip, hostname)
+        DNSResource.objects.update_dynamic_hostname(sip1, hostname)
+        DNSResource.objects.update_dynamic_hostname(sip2, hostname)
         dnsrr = DNSResource.objects.get(name=hostname)
         self.assertThat(dnsrr.updated, Equals(before))
         self.assertThat(dnsrr.created, Equals(before))
@@ -350,6 +355,38 @@ class TestReleaseDynamicHostname(MAASServerTestCase):
         self.assertThat(
             DNSResource.objects.filter(name=hostname).first(),
             Equals(None))
+
+    def test__releases_dynamic_hostname_keep_others(self):
+        sip1 = factory.make_StaticIPAddress(
+            ip='10.0.0.1',
+            alloc_type=IPADDRESS_TYPE.DISCOVERED)
+        sip2 = factory.make_StaticIPAddress(
+            ip='10.0.0.2',
+            alloc_type=IPADDRESS_TYPE.DISCOVERED)
+        hostname = factory.make_name().lower()
+        DNSResource.objects.update_dynamic_hostname(sip1, hostname)
+        DNSResource.objects.update_dynamic_hostname(sip2, hostname)
+        DNSResource.objects.release_dynamic_hostname(sip2)
+        dns_resource = DNSResource.objects.get(name=hostname)
+        self.assertEqual([sip1], list(dns_resource.ip_addresses.all()))
+
+    def test__no_update_not_there(self):
+        sip1 = factory.make_StaticIPAddress(
+            ip='10.0.0.1',
+            alloc_type=IPADDRESS_TYPE.DISCOVERED)
+        sip2 = factory.make_StaticIPAddress(
+            ip='10.0.0.2',
+            alloc_type=IPADDRESS_TYPE.DISCOVERED)
+        hostname = factory.make_name().lower()
+        DNSResource.objects.update_dynamic_hostname(sip1, hostname)
+        before = datetime.fromtimestamp(
+            datetime.now().timestamp() - timedelta(days=7).total_seconds())
+        dns_resource = DNSResource.objects.get(name=hostname)
+        dns_resource.save(_created=before, _updated=before, force_update=True)
+        DNSResource.objects.release_dynamic_hostname(sip2)
+        dns_resource = DNSResource.objects.get(name=hostname)
+        self.assertEqual([sip1], list(dns_resource.ip_addresses.all()))
+        self.assertEqual(before, dns_resource.updated)
 
     def test__leaves_static_hostnames_untouched(self):
         sip = factory.make_StaticIPAddress(
