@@ -769,7 +769,7 @@ class TestGetConfig(MAASServerTestCase):
         for purpose, description in purposes:
             node = self.make_node()
             event_log_pxe_request(node, purpose)
-            events = Event.objects.filter(node=node)
+            events = Event.objects.filter(node=node).order_by('id')
             self.assertEqual(description, events[0].description)
             self.assertEqual(events[1].type.description, EVENT_DETAILS[
                 EVENT_TYPES.PERFORMING_PXE_BOOT].description)

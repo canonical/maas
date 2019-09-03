@@ -1982,7 +1982,7 @@ class TestNode(MAASServerTestCase):
         self.patch(Node, "_set_status")
         with post_commit_hooks:
             node.abort_disk_erasing(owner)
-        events = Event.objects.filter(node=node)
+        events = Event.objects.filter(node=node).order_by('id')
         self.assertEqual(
             events[0].type.name, EVENT_TYPES.REQUEST_NODE_ABORT_ERASE_DISK)
         self.assertEqual(
@@ -2113,7 +2113,7 @@ class TestNode(MAASServerTestCase):
         self.patch(Node, "_stop").return_value = None
         with post_commit_hooks:
             node.abort_deploying(admin)
-        events = Event.objects.filter(node=node)
+        events = Event.objects.filter(node=node).order_by('id')
         self.assertEqual(
             events[0].type.name, EVENT_TYPES.REQUEST_NODE_ABORT_DEPLOYMENT)
         self.assertEqual(
@@ -2170,7 +2170,7 @@ class TestNode(MAASServerTestCase):
         self.patch(Node, "_stop").return_value = None
         with post_commit_hooks:
             node.abort_testing(admin)
-        events = Event.objects.filter(node=node)
+        events = Event.objects.filter(node=node).order_by('id')
         self.assertEqual(
             events[0].type.name, EVENT_TYPES.REQUEST_NODE_ABORT_TESTING)
         self.assertEqual(
@@ -2339,7 +2339,7 @@ class TestNode(MAASServerTestCase):
         node.power_state = POWER_STATE.OFF
         with post_commit_hooks:
             node.release()
-        events = Event.objects.filter(node=node)
+        events = Event.objects.filter(node=node).order_by('id')
         self.expectThat(events[1].type.name, Equals(EVENT_TYPES.RELEASING))
         self.expectThat(events[2].type.name, Equals(EVENT_TYPES.RELEASED))
         self.expectThat(node._stop, MockNotCalled())
@@ -2542,7 +2542,7 @@ class TestNode(MAASServerTestCase):
         self.patch(node, '_set_status')
         with post_commit_hooks:
             node.release(owner)
-        events = Event.objects.filter(node=node)
+        events = Event.objects.filter(node=node).order_by('id')
         self.assertEqual(events[0].type.name, EVENT_TYPES.REQUEST_NODE_RELEASE)
         self.assertEqual(events[1].type.name, EVENT_TYPES.RELEASING)
 
@@ -3079,7 +3079,7 @@ class TestNode(MAASServerTestCase):
         node.start_commissioning(admin)
         post_commit_hooks.reset()  # Ignore these for now.
         node = reload_object(node)
-        events = Event.objects.filter(node=node)
+        events = Event.objects.filter(node=node).order_by('id')
         self.assertEqual(
             events[0].type.name, EVENT_TYPES.REQUEST_NODE_START_COMMISSIONING)
         self.assertEqual(events[1].type.name, EVENT_TYPES.COMMISSIONING)
@@ -3155,7 +3155,7 @@ class TestNode(MAASServerTestCase):
         self.patch(Node, "_stop").return_value = None
         with post_commit_hooks:
             node.abort_commissioning(admin)
-        events = Event.objects.filter(node=node)
+        events = Event.objects.filter(node=node).order_by('id')
         self.assertEqual(
             events[0].type.name, EVENT_TYPES.REQUEST_NODE_ABORT_COMMISSIONING)
         self.assertEqual(
@@ -3289,7 +3289,7 @@ class TestNode(MAASServerTestCase):
         self.patch(node, '_start').return_value = None
         admin = factory.make_admin()
         node.start_testing(admin, testing_scripts=[script.name])
-        events = Event.objects.filter(node=node)
+        events = Event.objects.filter(node=node).order_by('id')
         post_commit_hooks.reset()  # Ignore these for now.
         node = reload_object(node)
         self.assertEqual(
@@ -4640,7 +4640,7 @@ class TestNode(MAASServerTestCase):
         node.start_rescue_mode(admin)
         post_commit_hooks.reset()  # Ignore these for now.
         node = reload_object(node)
-        events = Event.objects.filter(node=node)
+        events = Event.objects.filter(node=node).order_by('id')
         self.assertEqual(
             events[0].type.name, EVENT_TYPES.REQUEST_NODE_START_RESCUE_MODE)
         self.assertEqual(events[1].type.name, EVENT_TYPES.ENTERING_RESCUE_MODE)
