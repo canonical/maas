@@ -12,6 +12,7 @@ import logging
 from django.db.models import (
     CharField,
     ForeignKey,
+    Index,
     IntegerField,
     Manager,
     PROTECT,
@@ -145,6 +146,11 @@ class Event(CleanSave, TimestampedModel):
         index_together = (
             ("node", "id"),
         )
+        indexes = [
+            # Needed to get the latest event for each node on the
+            # machine listing page.
+            Index(fields=['node', '-created', '-id']),
+        ]
 
     @property
     def endpoint_name(self):

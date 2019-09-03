@@ -2166,7 +2166,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertThat(
             Node.set_default_storage_layout,
             MockCalledOnceWith(node))
-        events = Event.objects.filter(node=node)
+        events = Event.objects.filter(node=node).order_by('id')
         self.assertThat(
             events[0].description,
             DocTestMatches("Failed to set default storage layout."))
@@ -2188,7 +2188,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertThat(
             Node.set_initial_networking_configuration,
             MockCalledOnceWith(node))
-        events = Event.objects.filter(node=node)
+        events = Event.objects.filter(node=node).order_by('id')
         self.assertThat(
             events[0].description,
             DocTestMatches("Failed to set default networking configuration."))
