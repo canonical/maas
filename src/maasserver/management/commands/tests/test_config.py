@@ -126,7 +126,7 @@ class TestConfigurationSet(MAASTestCase):
         elif self.option in [
                 "debug", "debug_queries", "debug_http",
                 "database_keepalive"]:
-            value = random.choice(['true', 'false'])
+            value = random.choice([True, False])
         else:
             value = factory.make_name("foobar")
 

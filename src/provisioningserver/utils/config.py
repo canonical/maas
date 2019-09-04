@@ -185,3 +185,15 @@ class Schema(formencode.Schema):
             return False
         else:
             return super(Schema, self)._value_is_iterator(value)
+
+
+class OneWayStringBool(formencode.validators.StringBool):
+    """A `StringBool` that doesn't convert a boolean back into a string.
+
+    Used for "true" and "false" values, but doesn't convert a boolean back
+    to a string.
+    """
+
+    def from_python(self, value):
+        """Do nothing."""
+        return value

@@ -314,3 +314,12 @@ class TestExtendedURL(MAASTestCase):
                 netloc="[%s]" % addr.upper(), port=factory.pick_bool())
             self.assertEqual(
                 url, self.validator.to_python(url), "url: %s" % url)
+
+
+class TestOneWayStringBool(MAASTestCase):
+    """Tests for `OneWayStringBool`."""
+
+    def test__from_python(self):
+        validator = config.OneWayStringBool()
+        self.assertFalse(validator.from_python(False))
+        self.assertTrue(validator.from_python(True))

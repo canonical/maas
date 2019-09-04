@@ -662,6 +662,30 @@ class TestClusterConfiguration(MAASTestCase):
         # It's also stored in the configuration database.
         self.assertEqual({"cluster_uuid": str(example_uuid)}, config.store)
 
+    def test_default_debug(self):
+        config = ClusterConfiguration({})
+        self.assertFalse(config.debug)
+
+    def test_set_and_get_debug_false(self):
+        config = ClusterConfiguration({})
+        config.debug = False
+        self.assertFalse(config.debug)
+
+    def test_set_and_get_debug_false_str(self):
+        config = ClusterConfiguration({})
+        config.debug = "false"
+        self.assertFalse(config.debug)
+
+    def test_set_and_get_debug_true(self):
+        config = ClusterConfiguration({})
+        config.debug = True
+        self.assertTrue(config.debug)
+
+    def test_set_and_get_debug_true_str(self):
+        config = ClusterConfiguration({})
+        config.debug = "true"
+        self.assertTrue(config.debug)
+
 
 class TestClusterConfigurationGRUBRoot(MAASTestCase):
     """Tests for `ClusterConfiguration.grub_root`."""

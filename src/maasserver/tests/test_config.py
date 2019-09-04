@@ -94,7 +94,7 @@ class TestRegionConfigurationDatabaseOptions(MAASTestCase):
         if isinstance(getattr(config, self.option), str):
             example_value = factory.make_name(self.option)
         elif self.option == 'database_keepalive':
-            example_value = random.choice(['true', 'false'])
+            example_value = random.choice([True, False])
         else:
             example_value = factory.pick_port()
         # Argument values will most often be passed in from the command-line,

@@ -226,7 +226,7 @@ class TestUpdateMaasClusterConf(MAASTestCase):
         cluster_config_command.run(self.make_args(debug=expected))
         with ClusterConfiguration.open() as config:
             observed = config.debug
-        self.assertEqual(str(expected).lower(), observed)
+        self.assertEqual(expected, observed)
 
     def test_config_set_debug_without_setting_does_nothing(self):
         with ClusterConfiguration.open() as config:
