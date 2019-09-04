@@ -35,6 +35,7 @@ apps:
   maas:
     command: bin/ld-preload $SNAP/bin/maas
     plugs:
+        - home
         - mount-observe  # to read /proc/*/mounts
         - network # for external authentication
         - network-bind # for postgres

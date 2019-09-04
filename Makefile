@@ -1,5 +1,5 @@
 python := python3
-snapcraft := SNAPCRAFT_BUILD_INFO=1 snapcraft
+snapcraft := SNAPCRAFT_BUILD_INFO=1 /snap/bin/snapcraft
 
 # pkg_resources makes some incredible noise about version numbers. They
 # are not indications of bugs in MAAS so we silence them everywhere.
@@ -744,15 +744,10 @@ endef
 # Snap building
 #
 
-check-snapcraft:
-ifeq ($(shell which snapcraft), /usr/bin/snapcraft)
-$(error The snapcraft deb package is installed, uninstall and install snapcraft from the snap)
-endif
-
-snap-clean: check-snapcraft
+snap-clean:
 	$(snapcraft) clean
 
-snap: check-snapcraft
+snap:
 	$(snapcraft)
 
 define phony_snap_targets
@@ -769,7 +764,7 @@ endef
 build/dev-snap: ## Check out a clean version of the working tree.
 	git checkout-index -a --prefix build/dev-snap/
 
-build/dev-snap/prime: check-snapcraft build/dev-snap
+build/dev-snap/prime: build/dev-snap
 	cd build/dev-snap && $(snapcraft) prime --destructive-mode
 
 sync-dev-snap: RSYNC=rsync -v -r -u -l -t -W -L
