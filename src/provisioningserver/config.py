@@ -140,13 +140,13 @@ from formencode.declarative import DeclarativeMeta
 from formencode.validators import (
     Number,
     Set,
-    StringBool,
 )
 from provisioningserver.path import get_tentative_data_path
 from provisioningserver.utils import typed
 from provisioningserver.utils.config import (
     DirectoryString,
     ExtendedURL,
+    OneWayStringBool,
     UnicodeString,
     UUIDString,
 )
@@ -795,7 +795,7 @@ class ClusterConfiguration(Configuration, metaclass=ClusterConfigurationMeta):
     # Debug options.
     debug = ConfigurationOption(
         "debug", "Enable debug mode for detailed error and log reporting.",
-        StringBool(if_missing=False))
+        OneWayStringBool(if_missing=False))
 
 
 def is_dev_environment():

@@ -7,10 +7,7 @@ __all__ = [
     "RegionConfiguration",
 ]
 
-from formencode.validators import (
-    Int,
-    StringBool,
-)
+from formencode.validators import Int
 from provisioningserver.config import (
     Configuration,
     ConfigurationFile,
@@ -19,6 +16,7 @@ from provisioningserver.config import (
 )
 from provisioningserver.utils.config import (
     ExtendedURL,
+    OneWayStringBool,
     UnicodeString,
 )
 
@@ -61,7 +59,7 @@ class RegionConfiguration(Configuration, metaclass=RegionConfigurationMeta):
     database_keepalive = ConfigurationOption(
         "database_keepalive",
         "Whether keepalive for database connections is enabled.",
-        StringBool(if_missing=True))
+        OneWayStringBool(if_missing=True))
     database_keepalive_idle = ConfigurationOption(
         "database_keepalive_idle",
         "Time (in seconds) after which keepalives will be started.",
@@ -83,14 +81,14 @@ class RegionConfiguration(Configuration, metaclass=RegionConfigurationMeta):
     # Debug options.
     debug = ConfigurationOption(
         "debug", "Enable debug mode for detailed error and log reporting.",
-        StringBool(if_missing=False))
+        OneWayStringBool(if_missing=False))
     debug_queries = ConfigurationOption(
         "debug_queries",
         "Enable query debugging. Reports number of queries and time for all "
         "actions performed. Requires debug to also be True. mode for detailed "
         "error and log reporting.",
-        StringBool(if_missing=False))
+        OneWayStringBool(if_missing=False))
     debug_http = ConfigurationOption(
         "debug_http",
         "Enable HTTP debugging. Logs all HTTP requests and HTTP responses.",
-        StringBool(if_missing=False))
+        OneWayStringBool(if_missing=False))
