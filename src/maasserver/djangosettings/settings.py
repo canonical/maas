@@ -49,12 +49,6 @@ DEBUG = False
 DEBUG_QUERIES = False
 DEBUG_HTTP = False
 
-ADMINS = (
-    # ('Your Name', 'your_email@example.com'),
-)
-
-MANAGERS = ADMINS
-
 # The following specify named URL patterns.
 LOGOUT_URL = 'logout'
 LOGIN_REDIRECT_URL = 'index'
@@ -307,10 +301,6 @@ INSTALLED_APPS = (
     'piston3',
 )
 
-if DEBUG:
-    INSTALLED_APPS += (
-        'django.contrib.admin',
-    )
 
 # See http://docs.djangoproject.com/en/dev/topics/logging for more details on
 # how to customize the logging configuration. At present all logging config is
