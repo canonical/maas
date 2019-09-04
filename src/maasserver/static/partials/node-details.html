@@ -312,8 +312,8 @@
                     </li>
                     <li class="p-tabs__item" role="presentation">
                         <a role="tab" class="p-tabs__link"
-                            data-ng-class="{ 'is-active': section.area === 'interfaces'}"
-                            data-ng-click="openSection('interfaces')">Interfaces</a>
+                            data-ng-class="{ 'is-active': section.area === 'network'}"
+                            data-ng-click="openSection('network')">Network</a>
                     </li>
                     <li class="p-tabs__item" role="presentation">
                         <a role="tab" class="p-tabs__link" data-ng-if="!isDevice && !(isController && node.status === 'New')"
@@ -692,7 +692,7 @@
             </div>
         </div>
     </section>
-    <section class="u-no-margin--top" data-ng-if="section.area === 'vlans' || section.area === 'interfaces'" data-ng-controller="NodeNetworkingController">
+    <section class="u-no-margin--top" data-ng-if="section.area === 'vlans' || section.area === 'network'" data-ng-controller="NodeNetworkingController">
         <div class="p-strip" data-ng-if="section.area === 'vlans'">
             <div class="row" data-ng-if="!loaded">
                 <div class="col-12">
@@ -741,7 +741,7 @@
                 </form>
             </div>
         </div>
-        <div class="p-strip" data-ng-if="section.area === 'interfaces'">
+        <div class="p-strip" data-ng-if="section.area === 'network'">
             <div class="row" data-ng-if="!loaded">
                 <div class="col-12">
                     <p><i class="p-icon--spinner u-animation--spin"></i> Loading...</p>
