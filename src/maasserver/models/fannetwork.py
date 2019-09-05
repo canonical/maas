@@ -30,7 +30,7 @@ from maasserver.models.timestampedmodel import TimestampedModel
 from netaddr import IPNetwork
 
 
-FANNETWORK_BRIDGE_VALIDATOR = RegexValidator('^[\w\-_]+$')
+FANNETWORK_BRIDGE_VALIDATOR = RegexValidator(r'^[\w\-_]+$')
 
 
 class FanNetworkManager(Manager):

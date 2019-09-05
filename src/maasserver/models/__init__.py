@@ -279,7 +279,7 @@ def get_resource_uri_template(self):
                     if set(kwargs.keys()) != set(params):
                         continue
                     return _convert(result, params)
-    except:
+    except Exception:
         return None
 
 HandlerDocumentation.get_resource_uri_template = get_resource_uri_template

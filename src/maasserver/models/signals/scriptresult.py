@@ -46,9 +46,9 @@ def emit_script_result_status_transition_event(
     if (script_result.script_set.result_type == RESULT_TYPE.TESTING and
             old_status == SCRIPT_STATUS.PENDING and (
                 script_result.status in SCRIPT_STATUS_RUNNING)):
-            Event.objects.create_node_event(
-                script_result.script_set.node, EVENT_TYPES.RUNNING_TEST,
-                event_description=script_name)
+        Event.objects.create_node_event(
+            script_result.script_set.node, EVENT_TYPES.RUNNING_TEST,
+            event_description=script_name)
     elif script_result.status in SCRIPT_STATUS_FAILED.union({
             SCRIPT_STATUS.ABORTED}):
         Event.objects.create_node_event(

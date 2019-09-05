@@ -139,7 +139,7 @@ class MAASRunTest(runtest.RunTest):
             check_for_generator(result)
             check_for_deferred(result)
             return result
-        except:
+        except Exception:
             return self._got_user_exception(sys.exc_info())
 
 
@@ -222,7 +222,7 @@ class MAASCrochetRunTest(MAASRunTest):
         super(MAASCrochetRunTest, self)._run_core()
         try:
             self._clean()
-        except:
+        except Exception:
             self._got_user_exception(sys.exc_info())
 
     def _clean(self):

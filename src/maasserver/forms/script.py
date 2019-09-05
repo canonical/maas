@@ -248,8 +248,8 @@ class ScriptForm(ModelForm):
         fields they will be entered in the form.
         """
         yaml_delim = re.compile(
-            '\s*#\s*-+\s*(Start|End) MAAS (?P<version>\d+\.\d+) '
-            'script metadata\s+-+', re.I)
+            r'\s*#\s*-+\s*(Start|End) MAAS (?P<version>\d+\.\d+) '
+            r'script metadata\s+-+', re.I)
         found_version = None
         yaml_content = ''
 
@@ -355,13 +355,13 @@ class ScriptForm(ModelForm):
             set_form_error(self, 'for_hardware', 'Must be a list or string')
             return
         regex = re.compile(
-            '^modalias:.+|pci:[\da-f]{4}:[\da-f]{4}|'
-            'usb:[\da-f]{4}:[\da-f]{4}|'
-            'system_vendor:.*|'
-            'system_product:.*|'
-            'system_version:.*|'
-            'mainboard_vendor:.*|'
-            'mainboard_product:.*$', re.I)
+            r'^modalias:.+|pci:[\da-f]{4}:[\da-f]{4}|'
+            r'usb:[\da-f]{4}:[\da-f]{4}|'
+            r'system_vendor:.*|'
+            r'system_product:.*|'
+            r'system_version:.*|'
+            r'mainboard_vendor:.*|'
+            r'mainboard_product:.*$', re.I)
         for hw_id in for_hardware:
             if regex.search(hw_id) is None:
                 set_form_error(

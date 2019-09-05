@@ -1008,7 +1008,7 @@ class RegionService(service.Service, object):
             for conn in conns.copy():
                 try:
                     yield conn.transport.loseConnection()
-                except:
+                except Exception:
                     log.err(None, "Failure when closing RPC connection.")
         yield super(RegionService, self).stopService()
 

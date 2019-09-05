@@ -367,7 +367,7 @@ class AMTPowerDriver(PowerDriver):
             raise PowerConnError(
                 "Unable to retrieve AMT version: %s" % stderr)
         else:
-            match = re.search("ProductVersion>AMT\s*([0-9]+)", stdout)
+            match = re.search(r"ProductVersion>AMT\s*([0-9]+)", stdout)
             if match is None:
                 raise PowerActionError(
                     "Unable to extract AMT version from "

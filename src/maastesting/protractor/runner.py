@@ -99,7 +99,7 @@ class MAASRegionServiceFixture(Fixture):
             # Start twistd.
             try:
                 twistd.run()
-            except:
+            except Exception:
                 traceback.print_exc()
                 os._exit(2)
             finally:
@@ -172,7 +172,7 @@ class MAASClusterServiceFixture(Fixture):
             # Start twistd.
             try:
                 twistd.run()
-            except:
+            except Exception:
                 traceback.print_exc()
                 os._exit(2)
             finally:

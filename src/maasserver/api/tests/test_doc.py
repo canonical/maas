@@ -102,7 +102,7 @@ class TestFindingResources(MAASTestCase):
         # Resources for handlers with resource_uri attributes are discovered
         # in a urlconf module and returned. The type of resource_uri is not
         # checked; it must only be present and not None.
-        handler = type("\m/", (BaseHandler,), {"resource_uri": True})
+        handler = type("\\m/", (BaseHandler,), {"resource_uri": True})
         resource = Resource(handler)
         module = self.make_module()
         module.urlpatterns = [url("^metal", resource)]
@@ -111,7 +111,7 @@ class TestFindingResources(MAASTestCase):
     def test_urlpatterns_with_resource_hidden(self):
         # Resources for handlers with resource_uri attributes are discovered
         # in a urlconf module and returned, unless hidden = True.
-        handler = type("\m/", (BaseHandler,), {
+        handler = type("\\m/", (BaseHandler,), {
             "resource_uri": True,
             "hidden": True,
             })
@@ -122,7 +122,7 @@ class TestFindingResources(MAASTestCase):
 
     def test_nested_urlpatterns_with_handler(self):
         # Resources are found in nested urlconfs.
-        handler = type("\m/", (BaseHandler,), {"resource_uri": True})
+        handler = type("\\m/", (BaseHandler,), {"resource_uri": True})
         resource = Resource(handler)
         module = self.make_module()
         submodule = self.make_module()

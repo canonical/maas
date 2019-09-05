@@ -225,7 +225,7 @@ class Fabric(CleanSave, TimestampedModel):
             self._create_default_vlan()
 
     def clean_name(self):
-        reserved = re.compile('^fabric-\d+$')
+        reserved = re.compile(r'^fabric-\d+$')
         if self.name is not None and self.name != '':
             if reserved.search(self.name):
                 if (self.id is None or self.name != 'fabric-%d' % self.id):

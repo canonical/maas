@@ -66,7 +66,7 @@ class TestChoice(MAASTestCase):
             arguments.Choice({}).toString(object())
 
     def test_error_when_choices_is_not_mapping(self):
-        with ExpectedException(TypeError, "^Not a mapping: \[\]"):
+        with ExpectedException(TypeError, r"^Not a mapping: \[\]"):
             arguments.Choice([])
 
     def test_error_when_choices_values_are_not_byte_strings(self):

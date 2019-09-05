@@ -419,7 +419,7 @@ class VirshSSH(pexpect.spawn):
             try:
                 indexes.append(
                     cols.index(k))
-            except:
+            except Exception:
                 # key was not found, continue searching.
                 continue
         col_values = []

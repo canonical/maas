@@ -134,7 +134,7 @@ def pick_user_number(search_username):
 
 def is_ipmi_dhcp():
     output = bmc_get('Lan_Conf:IP_Address_Source')
-    show_re = re.compile('IP_Address_Source\s+Use_DHCP')
+    show_re = re.compile(r'IP_Address_Source\s+Use_DHCP')
     return show_re.search(output) is not None
 
 
@@ -151,7 +151,7 @@ def _bmc_get_ipmi_addresses(address_type):
 
 def get_ipmi_ip_address():
     show_re = re.compile(
-        '((?:[0-9]{1,3}\.){3}[0-9]{1,3}|[0-9a-fA-F]*:[0-9a-fA-F:.]+)')
+        r'((?:[0-9]{1,3}\.){3}[0-9]{1,3}|[0-9a-fA-F]*:[0-9a-fA-F:.]+)')
     for address_type in [
             'Lan_Conf:IP_Address',
             'Lan6_Conf:IPv6_Static_Addresses',
@@ -247,7 +247,7 @@ def set_ipmi_lan_channel_settings():
     for mode in ['Lan_Channel:Volatile_Access_Mode',
                  'Lan_Channel:Non_Volatile_Access_Mode']:
         output = bmc_get(mode)
-        show_re = re.compile('%s\s+Always_Available' % mode.split(':')[1])
+        show_re = re.compile(r'%s\s+Always_Available' % mode.split(':')[1])
         if show_re.search(output) is None:
             # Some BMC's don't support setting Lan_Channel (see LP: #1287274).
             # If that happens, it would cause the script to fail preventing

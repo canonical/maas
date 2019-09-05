@@ -198,7 +198,7 @@ class MAASClient:
         """
         for name, value in kwargs.items():
             if isinstance(value, (bytes, str)):
-                    yield name, value
+                yield name, value
             elif isinstance(value, collections.Sequence):
                 for iterable_item in value:
                     yield name, iterable_item

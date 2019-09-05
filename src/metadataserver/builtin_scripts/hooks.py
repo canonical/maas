@@ -382,35 +382,35 @@ def parse_cpuinfo(node, output, exit_status):
 
     cpu_count = len(
         re.findall(
-            '^(?P<CPU>\d+),(?P<CORE>\d+),(?P<SOCKET>\d+)$',
+            r'^(?P<CPU>\d+),(?P<CORE>\d+),(?P<SOCKET>\d+)$',
             output, re.MULTILINE))
     node.cpu_count = cpu_count
 
     # Some CPU vendors(Intel) include the speed in the model. If so use that
     # for the CPU speed as the speeds from lscpu are effected by CPU scaling.
     m = re.search(
-        '^Model name:\s+(?P<model_name>.+)(\s@\s(?P<ghz>\d+\.\d+)GHz)$',
+        r'^Model name:\s+(?P<model_name>.+)(\s@\s(?P<ghz>\d+\.\d+)GHz)$',
         output, re.MULTILINE)
     if m is not None:
         cpu_model = m.group('model_name')
         node.cpu_speed = int(float(m.group('ghz')) * 1000)
     else:
         m = re.search(
-            '^Model name:\s+(?P<model_name>.+)$', output, re.MULTILINE)
+            r'^Model name:\s+(?P<model_name>.+)$', output, re.MULTILINE)
         if m is not None:
             cpu_model = m.group('model_name')
         else:
             cpu_model = None
         # Try the max MHz if available.
         m = re.search(
-            '^CPU max MHz:\s+(?P<mhz>\d+)(\.\d+)?$', output, re.MULTILINE)
+            r'^CPU max MHz:\s+(?P<mhz>\d+)(\.\d+)?$', output, re.MULTILINE)
         if m is not None:
             node.cpu_speed = int(m.group('mhz'))
         else:
             # Fall back on the current speed, round it to the nearest hundredth
             # as the number may be effected by CPU scaling.
             m = re.search(
-                '^CPU MHz:\s+(?P<mhz>\d+)(\.\d+)?$', output, re.MULTILINE)
+                r'^CPU MHz:\s+(?P<mhz>\d+)(\.\d+)?$', output, re.MULTILINE)
             if m is not None:
                 node.cpu_speed = round(int(m.group('mhz')) / 100) * 100
 

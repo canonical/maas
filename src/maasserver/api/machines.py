@@ -759,7 +759,7 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         if (not machine.ephemeral_deployment and
                 not options.ephemeral_deploy):
             try:
-                    get_curtin_merged_config(request, machine)
+                get_curtin_merged_config(request, machine)
             except Exception as e:
                 raise MAASAPIBadRequest(
                     "Failed to render preseed: %s" % e)

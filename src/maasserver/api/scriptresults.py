@@ -418,7 +418,7 @@ class NodeScriptResultHandler(OperationsHandler):
             except ValidationError as e:
                 raise MAASAPIValidationError(e)
 
-        bin_regex = re.compile('.+\.tar(\..+)?')
+        bin_regex = re.compile(r'.+\.tar(\..+)?')
         for script_result in filter_script_results(
                 script_set, filters, hardware_type):
             mtime = time.mktime(script_result.updated.timetuple())

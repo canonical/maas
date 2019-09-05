@@ -227,10 +227,10 @@ class ScriptResult(CleanSave, TimestampedModel):
                     value = [value]
                 for i in value:
                     if type(i) not in [str, float, int, bool]:
-                            raise ValidationError(
-                                'All values in the results dictionary must be '
-                                'a string, float, int, or bool.'
-                                )
+                        raise ValidationError(
+                            'All values in the results dictionary must be '
+                            'a string, float, int, or bool.'
+                        )
         else:
             raise ValidationError('results must be a dictionary.')
 

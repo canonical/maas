@@ -496,17 +496,17 @@ class ComposeMachineForm(forms.Form):
         )
 
     def _pick_interface(self, interfaces):
-            bridge_interfaces = interfaces.filter(
-                type=INTERFACE_TYPE.BRIDGE).order_by('-id')
-            bond_interfaces = interfaces.filter(
-                type=INTERFACE_TYPE.BOND).order_by('-id')
-            bridge_interface = list(bridge_interfaces[:1])
-            if bridge_interface:
-                return bridge_interface[0]
-            bond_interface = list(bond_interfaces[:1])
-            if bond_interface:
-                return bond_interface[0]
-            return interfaces[0]
+        bridge_interfaces = interfaces.filter(
+            type=INTERFACE_TYPE.BRIDGE).order_by('-id')
+        bond_interfaces = interfaces.filter(
+            type=INTERFACE_TYPE.BOND).order_by('-id')
+        bridge_interface = list(bridge_interfaces[:1])
+        if bridge_interface:
+            return bridge_interface[0]
+        bond_interface = list(bond_interfaces[:1])
+        if bond_interface:
+            return bond_interface[0]
+        return interfaces[0]
 
     def _get_requested_machine_interfaces_via_constraints(
             self, interfaces_label_map):
@@ -720,7 +720,7 @@ class ComposeMachineForPodsForm(forms.Form):
                 return form.compose(
                     skip_commissioning=True,
                     creation_type=NODE_CREATION_TYPE.DYNAMIC)
-            except:
+            except Exception:
                 continue
         # Second, try to compose a machine from commitable pods
         for form in commit_forms:
@@ -728,7 +728,7 @@ class ComposeMachineForPodsForm(forms.Form):
                 return form.compose(
                     skip_commissioning=True,
                     creation_type=NODE_CREATION_TYPE.DYNAMIC)
-            except:
+            except Exception:
                 continue
         # No machine found.
         return None

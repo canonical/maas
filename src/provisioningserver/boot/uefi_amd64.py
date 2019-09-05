@@ -121,7 +121,7 @@ class UEFIAMD64BootMethod(BootMethod):
             cc:{...}end_cc are hit, for whatever reason.  Escape _JUST_ those.
             """
             return re.sub(
-                'cc:{(?P<inner>[^}]*)}end_cc', 'cc:\{\g<inner>\}end_cc',
+                r'cc:{(?P<inner>[^}]*)}end_cc', r'cc:\{\g<inner>\}end_cc',
                 compose_kernel_command_line(params))
 
         template = self.get_template(

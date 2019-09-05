@@ -410,7 +410,7 @@ def configure(
                     try:
                         yield deferToThread(
                             _update_hosts, server, remove, add, modify)
-                    except:
+                    except Exception:
                         # Error updating the host maps over the OMAPI.
                         # Restart the DHCP service so that the host maps
                         # are in-sync with what MAAS expects.

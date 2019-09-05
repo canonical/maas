@@ -96,7 +96,7 @@ def geturl(url, creds, headers=None, data=None):
                     ret_time = time.mktime(parsedate(date))
                     clockskew = int(ret_time - time.time())
                     warn("updated clock skew to %d" % clockskew)
-                except:
+                except Exception:
                     warn("failed to convert date '%s'" % date)
         except Exception as exc:
             error = exc

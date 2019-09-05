@@ -910,4 +910,4 @@ def get_config_doc(indentation=0):
             doc.append("Available choices are: %s." % choice_descr)
         doc.append("\n")
     full_text = (' ' * indentation).join(doc)
-    return re.sub('\ +$', '', full_text, flags=re.MULTILINE)
+    return re.sub(r'\ +$', '', full_text, flags=re.MULTILINE)

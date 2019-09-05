@@ -184,8 +184,7 @@ SRIOV_SCRIPT = dedent("""\
     done
     """)
 
-SUPPORT_SCRIPT = dedent("""\
-    #!/bin/bash
+SUPPORT_SCRIPT = dedent(r"""#!/bin/bash
     echo "-----BEGIN KERNEL INFO-----"
     uname -a
     echo "-----END KERNEL INFO-----"

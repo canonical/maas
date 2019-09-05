@@ -137,7 +137,7 @@ class PostgresListenerService(Service, object):
         """Poll the connection and process any notifications."""
         try:
             self.connection.connection.poll()
-        except:
+        except Exception:
             # If the connection goes down then `OperationalError` is raised.
             # It contains no pgcode or pgerror to identify the reason so no
             # special consideration can be made for it. Hence all errors are

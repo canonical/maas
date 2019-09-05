@@ -452,7 +452,7 @@ class RackExternalService(TimerService):
             # The region is not yet available.
             self._update_interval(None)
             return
-        except:
+        except Exception:
             log.err(None, "Failed to get external services configurations.")
             self._update_interval(None)
             return

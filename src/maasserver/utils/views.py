@@ -190,7 +190,7 @@ class WebApplicationHandler(WSGIHandler):
                 middleware = import_string(middleware_path)
                 try:
                     mw_instance = middleware(handler)
-                except MiddlewareNotUsed as exc:
+                except MiddlewareNotUsed:
                     continue
 
                 if mw_instance is None:
@@ -307,7 +307,7 @@ class WebApplicationHandler(WSGIHandler):
                 # Response is good, but the transaction needed to be rolled
                 # back because the response was a 500 error.
                 return exc.response
-            except:
+            except Exception:
                 # Catch *everything* else, also reproducing behaviour found in
                 # Django's BaseHandler. In practice, we should only really see
                 # transaction failures here from the outermost atomic block as

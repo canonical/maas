@@ -347,7 +347,7 @@ def get_power_state(system_id, hostname, power_type, context, clock=reactor):
         power_state = yield perform_power_driver_query(
             system_id, hostname, power_type, context)
         check_power_state(power_state)
-    except:
+    except Exception:
         # Hold the error; it will be reported later.
         exc_info = sys.exc_info()
     else:

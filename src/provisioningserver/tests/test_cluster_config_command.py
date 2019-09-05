@@ -148,7 +148,7 @@ class TestUpdateMaasClusterConf(MAASTestCase):
             observed = config.cluster_uuid
         try:
             parsed_observed = str(uuid.UUID(observed))
-        except:
+        except Exception:
             parsed_observed = None
 
         return (parsed_observed, observed)

@@ -425,7 +425,7 @@ class ConfigurationDatabase:
         database = sqlite3.connect(dbpath)
         try:
             yield cls(database, mutable=False)
-        except:
+        except Exception:
             raise
         else:
             database.rollback()
@@ -447,7 +447,7 @@ class ConfigurationDatabase:
         database = sqlite3.connect(dbpath)
         try:
             yield cls(database, mutable=True)
-        except:
+        except Exception:
             raise
         else:
             database.commit()
@@ -579,7 +579,7 @@ class ConfigurationFile:
                 configfile.load()
                 try:
                     yield configfile
-                except:
+                except Exception:
                     raise
                 else:
                     if configfile.dirty:
@@ -802,7 +802,7 @@ def is_dev_environment():
     """Is this the development environment, or production?"""
     try:
         from maastesting import root  # noqa
-    except:
+    except Exception:
         return False
     else:
         return True

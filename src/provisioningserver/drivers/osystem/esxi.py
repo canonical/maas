@@ -34,8 +34,8 @@ class ESXi(OperatingSystem):
         """Return the title for the given release."""
         ret = self.title
         m = re.search(
-            '^((?P<major>[0-9])(\.(?P<minor>[0-9]))?(\.(?P<micro>[0-9]))?)?'
-            '([\-\.]?(?P<title>.+)?)$', release)
+            r'^((?P<major>[0-9])(\.(?P<minor>[0-9]))?(\.(?P<micro>[0-9]))?)?'
+            r'([\-\.]?(?P<title>.+)?)$', release)
         if m is None:
             return ret
         if m.group('major'):

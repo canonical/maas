@@ -31,7 +31,7 @@ def validate_space_name(value):
     """Django validator: `value` must be either `None`, or valid."""
     if value is None:
         return
-    namespec = re.compile('^[\w-]+$')
+    namespec = re.compile(r'^[\w-]+$')
     if not namespec.search(value):
         raise ValidationError("Invalid space name: %s." % value)
 
@@ -152,7 +152,7 @@ class Space(CleanSave, TimestampedModel):
             return "space-%s" % self.id
 
     def clean_name(self):
-        reserved = re.compile('^space-\d+$')
+        reserved = re.compile(r'^space-\d+$')
         if self.name is not None and self.name != '':
             if self.name == Space.UNDEFINED:
                 raise ValidationError(

@@ -224,7 +224,7 @@ class Notification(CleanSave, TimestampedModel):
         # doing any of this if we cannot relate the message.
         try:
             self.render()
-        except Exception as error:
+        except Exception:
             raise ValidationError("Notification cannot be rendered.")
 
     def __repr__(self):

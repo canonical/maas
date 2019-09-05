@@ -195,7 +195,7 @@ class BlockDevice(CleanSave, TimestampedModel):
             return self
         try:
             return self.iscsiblockdevice
-        except:
+        except Exception:
             try:
                 return self.physicalblockdevice
             except PhysicalBlockDevice.DoesNotExist:

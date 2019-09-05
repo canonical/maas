@@ -74,7 +74,7 @@ maaslog = get_maas_logger("interface")
 
 # This is only last-resort validation, more specialized validation
 # will happen at the form level based on the interface type.
-INTERFACE_NAME_REGEXP = '^[\w\-_.:]+$'
+INTERFACE_NAME_REGEXP = r'^[\w\-_.:]+$'
 
 # Default value for bridge_fd.
 DEFAULT_BRIDGE_FD = 15

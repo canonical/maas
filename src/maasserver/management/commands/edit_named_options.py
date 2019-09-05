@@ -74,7 +74,7 @@ class Command(BaseCommand):
                         config.value = ' '.join(maas_forwarders)
                         config.save()
                     delete_forwarders = True
-                except:
+                except Exception:
                     pass
             else:
                 stdout.write(
@@ -109,7 +109,7 @@ class Command(BaseCommand):
                         # setting found in the configuration file.
                         config.value = dnssec_validation
                         config.save()
-                except:
+                except Exception:
                     pass
             else:
                 stdout.write(

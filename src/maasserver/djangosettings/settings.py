@@ -127,7 +127,7 @@ try:
         if DEBUG_HTTP and not DEBUG:
             # For HTTP debugging debug mode must also be on.
             DEBUG = True
-except:
+except Exception:
     # The regiond.conf will attempt to be loaded when the 'maas' command
     # is read by a standard user. We allow this to fail and miss configure the
     # database information. Django will still complain since no 'default'

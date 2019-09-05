@@ -73,7 +73,7 @@ class StorageLayoutBase(Form):
         for bd in self.node.blockdevice_set.all():
             try:
                 physical_bds.append(bd.physicalblockdevice)
-            except:
+            except Exception:
                 pass
         return sorted(physical_bds, key=lambda bd: bd.id)
 

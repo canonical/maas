@@ -377,7 +377,7 @@ def get_scan_result_string_for_humans(rpc_results: RPCResults) -> str:
                 "current scan finishes." % (
                     len(rpc_results.unavailable), len(rpc_results.failed)))
     elif len(rpc_results.failed) == 0:
-            result = "Scanning is in-progress on all rack controllers."
+        result = "Scanning is in-progress on all rack controllers."
     else:
         result = (
             "A scan was already in-progress on %d rack controller(s); another "

@@ -173,7 +173,7 @@ def touch_last_image_sync_timestamp():
     """
     try:
         client = getRegionClient()
-    except:
+    except Exception:
         return fail()
     else:
         return client(UpdateLastImageSync, system_id=get_maas_id())

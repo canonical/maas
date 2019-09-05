@@ -934,7 +934,7 @@ class Pod(BMC):
                     self._create_physical_block_device(
                         discovered_bd, machine,
                         name=BlockDevice._get_block_name_from_idx(idx))
-                except:
+                except Exception:
                     if skip_commissioning:
                         # Commissioning is not being performed for this
                         # machine. When not performing commissioning it is
@@ -1436,7 +1436,7 @@ class Pod(BMC):
                     yield decompose_machine(
                         client, pod_type, parameters,
                         pod_id=pod_id, name=pod_name)
-                except PodProblem as exc:
+                except PodProblem:
                     # Catch all errors and continue.
                     break
                 finally:

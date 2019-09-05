@@ -80,7 +80,7 @@ def run():
         try:
             with RegionConfiguration.open() as config:
                 worker_count = config.num_workers
-        except:
+        except Exception:
             worker_count = 4
     if worker_count <= 0:
         raise ValueError('Number of workers must be greater than zero.')

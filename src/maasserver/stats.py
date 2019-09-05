@@ -249,7 +249,7 @@ def make_maas_user_agent_request():
         requests.get(
             'https://stats.images.maas.io/',
             params=params, headers=headers)
-    except:
+    except Exception:
         # Do not fail if for any reason requests does.
         pass
 

@@ -78,13 +78,13 @@ def get_block_size(storage):
 
 def get_meminfo_key(meminfo, key):
     """Get key values from /proc/meminfo."""
-    m = re.search('%s:\s+(?P<%s>\d+)\s+kB' % (key, key), meminfo)
+    m = re.search(r'%s:\s+(?P<%s>\d+)\s+kB' % (key, key), meminfo)
     if m is None or key not in m.groupdict():
         print('ERROR: Unable to find %s in /proc/meminfo' % key)
         sys.exit(1)
     try:
         return int(m.group(key))
-    except:
+    except Exception:
         print('ERROR: Unable to convert %s into an int' % key)
         sys.exit(1)
 
@@ -142,8 +142,8 @@ def run_badblocks(storage, destructive=False):
     print(stdout)
 
     m = re.search(
-        '^Pass completed, (?P<badblocks>\d+) bad blocks found. '
-        '\((?P<read>\d+)\/(?P<write>\d+)\/(?P<comparison>\d+) errors\)$',
+        r'^Pass completed, (?P<badblocks>\d+) bad blocks found. '
+        r'\((?P<read>\d+)\/(?P<write>\d+)\/(?P<comparison>\d+) errors\)$',
         stdout, re.M)
     badblocks = int(m.group('badblocks'))
     read_errors = int(m.group('read'))

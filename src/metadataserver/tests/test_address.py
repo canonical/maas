@@ -147,7 +147,7 @@ class TestAddress(MAASTestCase):
     def test_guess_server_host_finds_IP_address(self):
         self.assertThat(
             address.guess_server_host(),
-            MatchesRegex("^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$"))
+            MatchesRegex(r"^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$"))
 
     def test_guess_server_host_returns_hostname_as_last_ditch_guess(self):
         def return_empty_list(*args):

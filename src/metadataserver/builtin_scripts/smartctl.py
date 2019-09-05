@@ -102,15 +102,16 @@ def find_matching_megaraid_controller(blockdevice):
     """Return the MegaRAID controller number matching the blockdevice."""
     output = run_storcli(['show'], output=True)
     m = re.search(
-        '^Number of Controllers = (?P<controllers>\d+)$', output, re.MULTILINE)
+        r'^Number of Controllers = (?P<controllers>\d+)$', output,
+        re.MULTILINE)
     if not m:
         print('ERROR: Unable to determine the amount of MegaRAID controllers!')
         return exit_skipped()
 
     controllers = int(m['controllers'])
-    vds_regex = re.compile('^Virtual Drives = (?P<vds>\d+)$', re.MULTILINE)
+    vds_regex = re.compile(r'^Virtual Drives = (?P<vds>\d+)$', re.MULTILINE)
     scsi_id_regex = re.compile(
-        '^SCSI NAA Id = (?P<scsi_id>\w+)$', re.MULTILINE)
+        r'^SCSI NAA Id = (?P<scsi_id>\w+)$', re.MULTILINE)
     for controller in range(0, controllers):
         output = run_storcli(['/c%d' % controller, 'show'])
         m = vds_regex.search(output)
@@ -153,7 +154,7 @@ def detect_megaraid_config(blockdevice):
     output = run_storcli(['/c%d' % controller, '/eall', '/sall', 'show'])
     return [
         int(i)
-        for i in re.findall('^\d+:\d+\s+(?P<DID>\d+)', output, re.MULTILINE)
+        for i in re.findall(r'^\d+:\d+\s+(?P<DID>\d+)', output, re.MULTILINE)
     ]
 
 
@@ -181,8 +182,8 @@ def check_SMART_support(blockdevice, device=None):
         else:
             output = e.output.decode()
 
-    if re.search('SMART support is:\s+Available', output) is None:
-        if re.search('Product:\s+MegaRAID', output) is not None:
+    if re.search(r'SMART support is:\s+Available', output) is None:
+        if re.search(r'Product:\s+MegaRAID', output) is not None:
             return 'megaraid', detect_megaraid_config(blockdevice)
         else:
             print(
@@ -211,8 +212,8 @@ def wait_smartctl_selftest(blockdevice, test, device=None):
     """Wait for a smartctl selftest to complete."""
     print('INFO: Waiting for SMART selftest %s to complete...' % test)
     status_regex = re.compile(
-        'Self-test execution status:\s+\(\s*(?P<status>\d+)\s*\)'
-        '\s+Self-test routine in progress')
+        r'Self-test execution status:\s+\(\s*(?P<status>\d+)\s*\)'
+        r'\s+Self-test routine in progress')
     args = ['-c']
     tried_alt = False
     while True:
@@ -226,7 +227,7 @@ def wait_smartctl_selftest(blockdevice, test, device=None):
             # Some devices(MegaRAID) test progress with --all instead of -c
             args = ['--all']
             status_regex = re.compile(
-                'Background %s\s+Self test in progress' % test)
+                r'Background %s\s+Self test in progress' % test)
             tried_alt = True
         elif m is None:
             # The test has finished running because we cannot find

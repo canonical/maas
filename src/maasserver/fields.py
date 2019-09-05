@@ -620,7 +620,7 @@ class IPListFormField(forms.CharField):
 
     This field normalizes the list to a space-separated list.
     """
-    separators = re.compile('[,\s]+')
+    separators = re.compile(r'[,\s]+')
 
     def clean(self, value):
         if value is None:
@@ -643,7 +643,7 @@ class HostListFormField(forms.CharField):
 
     This field normalizes the list to a space-separated list.
     """
-    separators = re.compile('[,\s]+')
+    separators = re.compile(r'[,\s]+')
 
     # Regular expressions to sniff out things that look like IP addresses;
     # additional and more robust validation ought to be done to make sure.
@@ -695,7 +695,7 @@ class SubnetListFormField(forms.CharField):
 
     This field normalizes the list to a space-separated list.
     """
-    separators = re.compile('[,\s]+')
+    separators = re.compile(r'[,\s]+')
 
     # Regular expressions to sniff out things that look like IP addresses;
     # additional and more robust validation ought to be done to make sure.
@@ -730,7 +730,7 @@ class SubnetListFormField(forms.CharField):
             addr = IPAddress(value)
         except ValueError:
             return
-        except AddrFormatError as error:
+        except AddrFormatError:
             raise ValidationError(
                 "Invalid IP address: %s." % value)
         else:

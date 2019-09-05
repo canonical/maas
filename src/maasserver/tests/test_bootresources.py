@@ -915,13 +915,13 @@ class TestBootResourceStore(MAASServerTestCase):
         files = [resource_set.files.first().filename]
         with post_commit_hooks:
             for _ in range(3):
-                    item_name = factory.make_name('item_name')
-                    product['item_name'] = item_name
-                    files.append(item_name)
-                    rfile = store.get_or_create_boot_resource_file(
-                        resource_set, product)
-                    rfile.largefile = factory.make_LargeFile()
-                    rfile.save()
+                item_name = factory.make_name('item_name')
+                product['item_name'] = item_name
+                files.append(item_name)
+                rfile = store.get_or_create_boot_resource_file(
+                    resource_set, product)
+                rfile.largefile = factory.make_LargeFile()
+                rfile.save()
             for rfile in resource_set.files.all():
                 self.assertIn(rfile.filename, files)
                 self.assertEquals(rfile.filetype, product['ftype'])

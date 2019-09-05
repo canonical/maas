@@ -161,7 +161,7 @@ class VLANForm(MAASModelForm):
         if (cleaned_data.get('secondary_rack') is None and
                 self.instance.secondary_rack is not None):
             self.instance.secondary_rack = None
-        if (cleaned_data.get('space') is "" and
+        if (cleaned_data.get('space') == "" and
                 self.instance.space is not None):
             self.instance.space = None
         return cleaned_data

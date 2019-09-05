@@ -1220,7 +1220,7 @@ class MultipleMACAddressField(forms.MultiValueField):
         return []
 
 
-IP_BASED_HOSTNAME_REGEXP = re.compile('\d{1,3}-\d{1,3}-\d{1,3}-\d{1,3}$')
+IP_BASED_HOSTNAME_REGEXP = re.compile(r'\d{1,3}-\d{1,3}-\d{1,3}-\d{1,3}$')
 
 MAX_MESSAGES = 10
 
@@ -2292,7 +2292,7 @@ class BootResourceForm(MAASModelForm):
         reserved_names += supported_osystems
 
         # Reserve CentOS version names for future MAAS use.
-        if name in reserved_names or re.search('^centos\d\d?$', name):
+        if name in reserved_names or re.search(r'^centos\d\d?$', name):
             raise ValidationError('%s is a reserved name' % name)
         return name
 

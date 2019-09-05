@@ -56,7 +56,7 @@ def get_cluster_configuration():
             for var in vars(ClusterConfiguration):
                 if not var.startswith('_'):
                     config_dict[var] = getattr(configuration, var)
-    except:
+    except Exception:
         print("Warning: Could not load cluster configuration.")
         print("(some data may not be accurate)")
         print()

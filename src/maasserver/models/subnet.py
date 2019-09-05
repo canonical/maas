@@ -73,7 +73,7 @@ maaslog = get_maas_logger("subnet")
 
 # Note: since subnets can be referenced in the API by name, if this regex is
 # updated, then the regex in urls_api.py also needs to be udpated.
-SUBNET_NAME_VALIDATOR = RegexValidator('^[.: \w/-]+$')
+SUBNET_NAME_VALIDATOR = RegexValidator(r'^[.: \w/-]+$')
 
 # Typing for list of IP addresses to exclude.
 IPAddressExcludeList = Optional[Iterable[MaybeIPAddress]]

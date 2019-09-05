@@ -491,7 +491,7 @@ class TestGeneratesAcceptablePasswords(MAASTestCase):
             "max_len": 15,
         }),
         ("huawei", {
-            "special_chars": '`~!@#$%^&*()-_=+\|[{}];:\'",<.>/?',
+            "special_chars": '`~!@#$%^&*()-_=+\\|[{}];:\'",<.>/?',
             "min_len": 8,
             "max_len": 20,
         }),

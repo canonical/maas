@@ -502,7 +502,7 @@ def power_control_vmware(
             api.set_power_state(vm, power_change)
         except VMwareAPIException:
             raise
-        except:
+        except Exception:
             # This is to cover what might go wrong in set_power_state(), if
             # an exception occurs while poweriing on or off.
             raise VMwareAPIException(
@@ -526,7 +526,7 @@ def power_query_vmware(
                 return api.get_maas_power_state(vm)
         except VMwareAPIException:
             raise
-        except:
+        except Exception:
             raise VMwareAPIException(
                 "Failed to get power state for uuid={uuid}"
                 .format(uuid=uuid), traceback.format_exc())

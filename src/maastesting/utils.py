@@ -47,7 +47,7 @@ def extract_word_list(string):
     Words are any string of 1 or more characters, not including commas,
     semi-colons, or whitespace.
     """
-    return re.findall("[^,;\s]+", string)
+    return re.findall(r"[^,;\s]+", string)
 
 
 # Some horrible binary data that could never, ever, under any encoding

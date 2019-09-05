@@ -263,7 +263,7 @@ def power_query_all(system_id, hostname, power_info, timeout=30):
     def cancel():
         try:
             dList.cancel()
-        except:
+        except Exception:
             # Don't care about the error.
             pass
 

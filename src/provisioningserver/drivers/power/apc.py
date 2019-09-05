@@ -71,7 +71,7 @@ class APCPowerDriver(PowerDriver):
             raise PowerActionError(
                 "APC Power Driver external process error for command %s: %s"
                 % (command, stderr))
-        match = re.search("INTEGER:\s*([1-2])", stdout)
+        match = re.search(r"INTEGER:\s*([1-2])", stdout)
         if match is None:
             raise PowerActionError(
                 "APC Power Driver unable to extract outlet power state"

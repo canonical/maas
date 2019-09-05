@@ -14,7 +14,7 @@ def detect_ipmi():
                 return (False, None)
 
     (status, output) = subprocess.getstatusoutput('ipmi-locate')
-    show_re = re.compile('(IPMI\ Version:) (\d\.\d)')
+    show_re = re.compile(r'(IPMI\ Version:) (\d\.\d)')
     res = show_re.search(output)
     if res is None:
         found = glob.glob("/dev/ipmi[0-9]")

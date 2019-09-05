@@ -27,7 +27,7 @@ def make_name_from_interface(interface, alias=None):
         base_name = 'unnamed-%d' % randint(1000000, 9999999)
     else:
         base_name = interface
-    return re.sub('[^\w:.-]', '--', base_name)
+    return re.sub(r'[^\w:.-]', '--', base_name)
 
 
 def get_name_and_vlan_from_cluster_interface(cluster_name, interface):

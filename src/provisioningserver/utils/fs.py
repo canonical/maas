@@ -262,7 +262,7 @@ def atomic_symlink(source, link_name):
     # end location, clobbering any existing link.
     try:
         os.rename(prov, link_name)
-    except:
+    except Exception:
         # Remove the provisionally created symlink so that
         # garbage does not accumulate.
         os.unlink(prov)

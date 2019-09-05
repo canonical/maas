@@ -979,7 +979,7 @@ class CommissioningScriptsHandler(MetadataViewHandler):
             try:
                 # Check if the script is a base64 encoded binary.
                 content = base64.b64decode(script.script.data)
-            except:
+            except Exception:
                 # If it isn't encode the text as binary data.
                 content = script.script.data.encode()
             yield script.name, content

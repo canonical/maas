@@ -1664,10 +1664,9 @@ class Node(CleanSave, TimestampedModel):
         """
         if (self.boot_interface is not None and self.id is not None and
                 self.id != self.boot_interface.node_id):
-                raise ValidationError({
-                    'boot_interface': [
-                        "Must be one of the node's interfaces."],
-                    })
+            raise ValidationError({
+                'boot_interface': ["Must be one of the node's interfaces."],
+            })
 
     def clean_status(self, old_status):
         """Check a node's status transition against the node-status FSM."""

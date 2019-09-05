@@ -1163,7 +1163,7 @@ class ClusterClientService(TimerService, object):
                 "Region not available: %s "
                 "(While requesting RPC info at %s)."
                 % (error, ', '.join(urls)))
-        except:
+        except Exception:
             self.maas_url = None
             log.err(
                 None, "Failed to contact region. "
@@ -1389,7 +1389,7 @@ class ClusterClientService(TimerService, object):
                         yield self._parallel_fetch_rpc_info(urls))
                     if eventloops is None:
                         maas_url = None
-                except:
+                except Exception:
                     # Ignore this exception, the `config_exc` will be raised
                     # instead, because that is the real issue. The rackd.conf
                     # should point to an active region controller.
@@ -1569,7 +1569,7 @@ class ClusterClientService(TimerService, object):
                 host, port = address
                 log.msg("Event-loop %s (%s:%d): %s" % (
                     eventloop, host, port, error))
-            except:
+            except Exception:
                 host, port = address
                 log.err(None, (
                     "Failure with event-loop %s (%s:%d)" % (

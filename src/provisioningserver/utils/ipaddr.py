@@ -377,9 +377,9 @@ def get_vid_from_ifname(ifname):
     :return:int
     """
     vid = 0
-    iface_vid_re = re.compile('.*\.([0-9]+)$')
+    iface_vid_re = re.compile(r'.*\.([0-9]+)$')
     iface_vid_match = iface_vid_re.match(ifname)
-    vlan_vid_re = re.compile('vlan([0-9]+)$')
+    vlan_vid_re = re.compile(r'vlan([0-9]+)$')
     vlan_vid_match = vlan_vid_re.match(ifname)
     if iface_vid_match:
         vid = int(iface_vid_match.group(1))

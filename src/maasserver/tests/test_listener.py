@@ -137,7 +137,7 @@ class TestPostgresListenerService(MAASServerTestCase):
             def doRead(self):
                 try:
                     self.connection.connection.poll()
-                except:
+                except Exception:
                     self.loseConnection(Failure(error.ConnectionLost()))
                 else:
                     # Copy the pending notices now but don't put them in the

@@ -105,7 +105,7 @@ class SilentHTTPRequestHandler(SimpleHTTPRequestHandler):
         try:
             fs = os.fstat(f.fileno())
             gz_out = gzip_compress(f)
-        except:
+        except Exception:
             f.close()
             raise
         else:
@@ -129,7 +129,7 @@ class SilentHTTPRequestHandler(SimpleHTTPRequestHandler):
             self.send_header("Last-Modified", mtime)
             self.end_headers()
             return f
-        except:
+        except Exception:
             f.close()
             raise
 

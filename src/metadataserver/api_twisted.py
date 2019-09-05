@@ -281,7 +281,7 @@ class StatusWorkerService(TimerService, object):
                         # Node has been deleted no reason to continue saving
                         # the events for this node.
                         break
-                except:
+                except Exception:
                     log.err(
                         None,
                         "Failed to process message "

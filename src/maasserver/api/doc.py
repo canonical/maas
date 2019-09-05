@@ -111,7 +111,7 @@ def generate_power_types_doc():
                         "'%s' (%s)" % (choice[0], choice[1])
                         for choice in choices))
             default = field.get('default', '')
-            if default is not '':
+            if default != '':
                 field_description.append("  Default: '%s'." % default)
             line(''.join(field_description))
         line('')
@@ -153,7 +153,7 @@ def generate_pod_types_doc():
                         "'%s' (%s)" % (choice[0], choice[1])
                         for choice in choices))
             default = field.get('default', '')
-            if default is not '':
+            if default != '':
                 field_description.append("  Default: '%s'." % default)
             line(''.join(field_description))
         line('')

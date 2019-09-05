@@ -726,7 +726,7 @@ def callInThread(ctx, func, args, kwargs, d):
     from twisted.internet import reactor
     try:
         result = context.call(ctx, func, *args, **kwargs)
-    except:
+    except Exception:
         # Failure() captures the exception information and trackback.
         reactor.callFromThread(context.call, ctx, d.errback, Failure())
     else:
@@ -858,7 +858,7 @@ class ThreadPool(threadpool.ThreadPool, object):
                         # that happens. This thread is not going to execute
                         # any more tasks so we exit the context.
                         context.exit()
-                    except:
+                    except Exception:
                         # There is no application code for this exception to
                         # bubble up to, so just log it and move on.
                         log.failure("Failure exiting worker context.")
@@ -991,7 +991,7 @@ class ThreadPoolLimiter:
                 # If this fails we have serious problems. On the other hand,
                 # if this succeeds we have handed off all responsibility.
                 pool.callInThreadWithCallback(callback, func, *args, **kwargs)
-            except:
+            except Exception:
                 try:
                     if onResult is None:
                         raise  # Don't suppress this; it's bad.
@@ -1172,7 +1172,7 @@ def getProcessOutputAndValue(
         # Always reap the process
         try:
             proc.reapProcess()
-        except:
+        except Exception:
             # Allow the error to occur, in the case the process has
             # already been reaped.
             pass

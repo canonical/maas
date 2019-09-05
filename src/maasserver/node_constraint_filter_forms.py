@@ -65,8 +65,8 @@ from provisioningserver.utils.constraints import LabeledConstraintMap
 #      - 400+GB disk, name the consrtaint "data"
 STORAGE_REGEX = re.compile(
     r"(?:(?P<label>[a-zA-Z0-9]+)\:)?"  # Optional label
-    "(?P<size>[0-9.]+)"                # Mandatory size
-    "(?:\((?P<tags>[^)]+)\))?",        # Optional tag list between parentheses
+    r"(?P<size>[0-9.]+)"               # Mandatory size
+    r"(?:\((?P<tags>[^)]+)\))?",       # Optional tag list between parentheses
     re.VERBOSE)
 
 

@@ -147,7 +147,7 @@ class MSCMPowerDriver(PowerDriver):
             raise PowerActionError(
                 "MSCM Power Driver unable to power query node %s: %s"
                 % (context['node_id'], e))
-        match = re.search("Power State:\s*((O[\w]+|U[\w]+))", output)
+        match = re.search(r"Power State:\s*((O[\w]+|U[\w]+))", output)
         if match is None:
             raise PowerFatalError(
                 "MSCM Power Driver unable to extract node power state from: %s"
@@ -201,7 +201,7 @@ def probe_and_enlist_mscm(
         # Product Name: ProLiant m500 Server Cartridge\r\n"
         node_info = mscm_driver.run_mscm_command(
             "show node info %s" % node_id, **params)
-        match = re.search("Product Name:\s*([A-Za-z0-9 ]+)", node_info)
+        match = re.search(r"Product Name:\s*([A-Za-z0-9 ]+)", node_info)
         if match is None:
             raise PowerFatalError(
                 "MSCM Power Driver unable to extract node architecture"

@@ -432,8 +432,8 @@ class APIDocstringParser:
     # Strips multiple inline spaces, all newlines, and
     # leading and trailing spaces
     def _strip_spaces_and_newlines(self, s):
-        s_stripped = re.sub('\s{2,}', ' ', s)
-        s_stripped = re.sub('\n', ' ', s_stripped)
+        s_stripped = re.sub(r'\s{2,}', ' ', s)
+        s_stripped = re.sub(r'\n', ' ', s_stripped)
 
         return s_stripped.rstrip().lstrip()
 
@@ -617,7 +617,7 @@ class APIDocstringParser:
         Given, for example, /MAAS/api/2.0/resourcepool/{id}/, this
         function returns "resourcepool".
         """
-        m = re.search("/MAAS/api/[0-9]+\.[0-9]+/([a-z\-]+)/", uri)
+        m = re.search(r"/MAAS/api/[0-9]+\.[0-9]+/([a-z\-]+)/", uri)
         if m:
             return m.group(1)
 
@@ -753,7 +753,7 @@ class APIDocstringParser:
 
             # Looking for a tag -- @tag
             if ps == ParseState.TAG:
-                m = re.search("@([a-z\-]+)", word)
+                m = re.search(r"@([a-z\-]+)", word)
                 if m:
                     tag = m.group(1)
                     ps = ParseState.TYPE
@@ -764,33 +764,33 @@ class APIDocstringParser:
 
             # Looking for a type -- (type)
             elif ps == ParseState.TYPE:
-                m = re.search("\(([a-zA-Z0-9\-_]+)\)", word)
+                m = re.search(r"\(([a-zA-Z0-9\-_]+)\)", word)
                 if m:
                     ttype = m.group(1)
                     ps = ParseState.NAME
-                elif not re.search("^[\s]+$", word):
+                elif not re.search(r"^[\s]+$", word):
                     ps = ParseState.NAME
                     # Put the word back
                     idx -= 1
 
             # Looking for a name -- "name"/'name'
             elif ps == ParseState.NAME:
-                m = re.search("[\"\']([a-zA-Z0-9\-_{}]+)[\"\']", word)
+                m = re.search(r"[\"\']([a-zA-Z0-9\-_{}]+)[\"\']", word)
                 if m:
                     tname = m.group(1)
                     ps = ParseState.OPTS
-                elif not re.search("^[\s]+$", word):
+                elif not re.search(r"^[\s]+$", word):
                     ps = ParseState.OPTS
                     # Put the word back
                     idx -= 1
 
             # Looking for options -- [options]
             elif ps == ParseState.OPTS:
-                m = re.search("\[([a-zA-Z0-9\-_=\/;,\.~]+)\]", word)
+                m = re.search(r"\[([a-zA-Z0-9\-_=\/;,\.~]+)\]", word)
                 if m:
                     opts = m.group(1)
                     ps = ParseState.DESC
-                elif not re.search("^[\s]+$", word):
+                elif not re.search(r"^[\s]+$", word):
                     ps = ParseState.DESC
                     # Put the word back
                     idx -= 1

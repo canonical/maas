@@ -233,7 +233,7 @@ class TestSendDHCPRequestPacket(MAASTestCase):
 def make_Failure(exception_type, *args, **kwargs):
     try:
         raise exception_type(*args, **kwargs)
-    except:
+    except Exception:
         return Failure()
 
 

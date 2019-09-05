@@ -293,7 +293,7 @@ def main_with_services(args):
                 yield stop_services()
         except SystemExit as se:
             exit_codes.add(se.code)
-        except:
+        except Exception:
             exit_codes.add(2)
             print("Failed to import boot resources", file=stderr)
             traceback.print_exc()

@@ -136,7 +136,7 @@ class SpaceHandler(OperationsHandler):
     def subnets(cls, space):
         # Backward compatibility for Juju 2.0.
         if space.id == -1:
-                return Subnet.objects.filter(vlan__space__isnull=True)
+            return Subnet.objects.filter(vlan__space__isnull=True)
         return Subnet.objects.filter(vlan__space=space)
 
     @classmethod

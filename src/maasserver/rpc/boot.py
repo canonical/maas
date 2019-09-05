@@ -154,7 +154,7 @@ def merge_kparams_with_extra(kparams, extra_kernel_opts):
     if extra_kernel_opts is not None and extra_kernel_opts != '':
         # We need to remove spaces from the tempita subsitutions so the split
         #  command works as desired.
-        final_params = re.sub('{{\s*([\w\.]*)\s*}}', '{{\g<1>}}',
+        final_params = re.sub(r'{{\s*([\w\.]*)\s*}}', r'{{\g<1>}}',
                               extra_kernel_opts)
 
     # Need to get a list of all kernel params in the extra opts.
@@ -167,7 +167,7 @@ def merge_kparams_with_extra(kparams, extra_kernel_opts):
             elist.append(key)
 
     # Go through all the kernel params as normally set.
-    new_kparams = re.sub('{{\s*([\w\.]*)\s*}}', '{{\g<1>}}', kparams)
+    new_kparams = re.sub(r'{{\s*([\w\.]*)\s*}}', r'{{\g<1>}}', kparams)
     params = shlex.split(new_kparams)
     for param in params:
         idx = param.find('=')

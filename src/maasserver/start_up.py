@@ -92,7 +92,7 @@ def start_up(master=False):
                     "pausing for 3 seconds.", psycopg2_exception.pgcode)
             logger.error("Database error during start-up", exc_info=True)
             yield pause(3.0)  # Wait 3 seconds before having another go.
-        except:
+        except Exception:
             maaslog.warning("Error during start-up; pausing for 3 seconds.")
             logger.error("Error during start-up.", exc_info=True)
             yield pause(3.0)  # Wait 3 seconds before having another go.

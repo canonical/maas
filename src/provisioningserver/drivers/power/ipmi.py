@@ -268,7 +268,7 @@ class IPMIPowerDriver(PowerDriver):
             raise PowerError(
                 "Failed to power %s %s: %s" % (
                     power_change, power_address, stdout))
-        match = re.search(":\s*(on|off)", stdout)
+        match = re.search(r":\s*(on|off)", stdout)
         return stdout if match is None else match.group(1)
 
     def _issue_ipmi_command(

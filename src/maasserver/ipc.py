@@ -223,7 +223,7 @@ class IPCMasterService(service.Service, object):
         for data in self.connections.values():
             try:
                 yield data['connection'].transport.loseConnection()
-            except:
+            except Exception:
                 log.err(None, "Failure when closing IPC connection.")
 
         @transactional

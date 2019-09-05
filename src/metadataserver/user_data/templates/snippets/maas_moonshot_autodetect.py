@@ -36,8 +36,8 @@ def get_ipmi_ip_address(local_address):
     output = subprocess.getoutput(
         'ipmitool -B 0 -T 0x20 -b 0 -t 0x20 -m %s lan print 2' % local_address)
     show_re = re.compile(
-        'IP Address\s+:\s+'
-        '(?P<addr>(?:[0-9]{1,3}\.){3}[0-9]{1,3}|[0-9a-fA-F]*:[0-9a-fA-F:.]+)')
+        r'IP Address\s+:\s+'
+        r'(?P<addr>(?:[0-9]{1,3}\.){3}[0-9]{1,3}|[0-9a-fA-F]*:[0-9a-fA-F:.]+)')
     res = show_re.search(output)
     if res is None:
         return None

@@ -160,7 +160,7 @@ def _formatModernEvent(event):
     if "log_failure" in event:
         try:
             traceback = event["log_failure"].getTraceback()
-        except:
+        except Exception:
             traceback = u"(UNABLE TO OBTAIN TRACEBACK FROM EVENT)\n"
         text = "\n".join((text, traceback))
     time = event["log_time"] if "log_time" in event else None

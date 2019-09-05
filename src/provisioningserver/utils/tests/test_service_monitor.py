@@ -738,7 +738,7 @@ class TestServiceMonitor(MAASTestCase):
         mock_execSystemDServiceAction.side_effect = factory.make_exception()
         try:
             yield service_monitor._loadSystemDServiceState(service)
-        except:
+        except Exception:
             pass
         self.assertThat(
             mock_execSystemDServiceAction,
@@ -886,7 +886,7 @@ class TestServiceMonitor(MAASTestCase):
         mock_execSupervisorServiceAction.side_effect = factory.make_exception()
         try:
             yield service_monitor._loadSupervisorServiceState(service)
-        except:
+        except Exception:
             pass
         self.assertThat(
             mock_execSupervisorServiceAction,

@@ -336,9 +336,9 @@ class SelectBucket(Plugin):
     def _ingestSelectedBucket(self, option, option_string, value, parser):
         """Callback for the `--select-bucket` option.
 
-        The recognises values that match \d+/\d+, i.e. two integers. The
-        latter is the total number of buckets, the first is which of those
-        buckets to select (starting at 1).
+        The recognises values that match two integers. The latter is the total
+        number of buckets, the first is which of those buckets to select
+        (starting at 1).
         """
         try:
             value = self._parseSelectedBucket(value)

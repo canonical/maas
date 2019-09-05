@@ -338,7 +338,7 @@ class TestStaticIPAddressManagerTransactional(MAASTransactionServerTestCase):
             try:
                 with concurrency:
                     sip = allocate()
-            except:
+            except Exception:
                 failure = Failure()
                 with mutex:
                     results.append(failure)

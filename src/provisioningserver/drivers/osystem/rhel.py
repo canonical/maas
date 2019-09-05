@@ -18,7 +18,7 @@ from provisioningserver.drivers.osystem import (
 # name just has to start with 'rhel' to be supported but the major, minor,
 # and title are found if available to help format the title.
 DISTRO_MATCHER = re.compile(
-    '^rhel((?P<major>[0-9])(?P<minor>[0-9])?)?([\-\.]?(?P<title>.+))?$',
+    r'^rhel((?P<major>[0-9])(?P<minor>[0-9])?)?([\-\.]?(?P<title>.+))?$',
     re.I)
 DISTRO_SERIES_DEFAULT = 'rhel7'
 

@@ -360,7 +360,7 @@ class CustomNetworking:
                     continue
                 try:
                     check_call(cmd + [dev], timeout=60)
-                except:
+                except Exception:
                     # This is a best effort. netplan apply will be run after
                     # this which may restore networking.
                     pass
@@ -537,7 +537,7 @@ def get_interfaces(clear_cache=False):
             try:
                 with open(cfg_path, 'r') as f:
                     cfg = yaml.safe_load(f)
-            except:
+            except Exception:
                 # Ignore bad configs, non-files.
                 continue
             if not isinstance(cfg, dict):
@@ -681,7 +681,7 @@ def _check_link_connected(script):
         try:
             with open(script['result_path'], 'r') as f:
                 result = yaml.safe_load(f.read())
-        except:
+        except Exception:
             # Ignore errors reading the file so MAAS can report the error
             # to the user.
             return
@@ -851,7 +851,7 @@ def run_serial_scripts(scripts, scripts_dir, config_dir, send_result=True):
                     fail_count += 1
         except SignalException:
             fail_count += 1
-        except:
+        except Exception:
             traceback.print_exc()
             fail_count += 1
     return fail_count
@@ -889,7 +889,7 @@ def run_instance_scripts(scripts, scripts_dir, config_dir, send_result=True):
                         fail_count += 1
         except SignalException:
             fail_count += len(instance_scripts)
-        except:
+        except Exception:
             traceback.print_exc()
             fail_count += len(instance_scripts)
     return fail_count
@@ -931,7 +931,7 @@ def run_parallel_scripts(scripts, scripts_dir, config_dir, send_result=True):
                         fail_count += 1
         except SignalException:
             fail_count += len(nscripts)
-        except:
+        except Exception:
             traceback.print_exec()
             fail_count += len(nscripts)
     return fail_count
