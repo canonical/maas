@@ -11,14 +11,9 @@ from copy import copy
 
 from django.core.exceptions import FieldDoesNotExist
 from django.db.models.base import ModelState
-from django.db.models.query_utils import DeferredAttribute
 
 # Used to track that the field was unset.
 FieldUnset = object()
-
-
-class DeferredValueAccessError(AttributeError):
-    """Raised when a deferred value is accessed."""
 
 
 class CleanSaveModelState(ModelState):
@@ -52,21 +47,6 @@ class CleanSaveModelState(ModelState):
         """
         if self.has_changed(name):
             return self._changed_fields[name]
-
-
-class DeferredAttributePreventer(DeferredAttribute):
-    """A `DeferredAttribute` that prevents loading.
-
-    Prevents developers from defering a field and then loading it, which
-    will cause more queries and is *never* a good idea.
-    """
-
-    def __get__(self, instance, cls=None):
-        """Prevent retrieving the field."""
-        if instance is None:
-            return self
-        raise DeferredValueAccessError(
-            "Accessing deferred field is not allowed: %s" % self.field_name)
 
 
 class CleanSave:
@@ -118,15 +98,6 @@ class CleanSave:
                     # Object cannot be copied so we assume the object is
                     # immutable and set the old value to the object.
                     self._state._changed_fields[name] = old_value
-
-    def __getattribute__(self, name):
-        """Override descriptor if its a `DeferredAttribute`."""
-        descriptor = getattr(type(self), name, None)
-        if (descriptor is not None and
-                isinstance(descriptor, DeferredAttribute) and
-                not isinstance(descriptor, DeferredAttributePreventer)):
-            descriptor.__class__ = DeferredAttributePreventer
-        return super(CleanSave, self).__getattribute__(name)
 
     def __setattr__(self, name, value):
         """Track the fields that have changed."""
