@@ -5,6 +5,7 @@
 
 __all__ = []
 
+from copy import deepcopy
 import doctest
 import json
 import os.path
@@ -40,7 +41,7 @@ from metadataserver.builtin_scripts.hooks import (
     extract_router_mac_addresses,
     filter_modaliases,
     get_dmi_data,
-    parse_cpuinfo,
+    lxd_update_cpu_details,
     retag_node_for_hardware_by_modalias,
     set_virtual_tag,
     SWITCH_OPENBMC_MAC,
@@ -72,6 +73,7 @@ lldp_output_template = """
 </lldp>
 """
 
+
 lldp_output_interface_template = """
 <interface label="Interface" name="eth1" via="LLDP">
   <chassis label="Chassis">
@@ -84,6 +86,65 @@ lldp_output_interface_template = """
   </chassis>
 </interface>
 """
+
+
+SAMPLE_JSON_CPUINFO = {
+    "cpu": {
+        "architecture": "x86_64",
+        "sockets": [
+            {
+                "name": "Intel(R) Core(TM) i7-4700MQ CPU @ 2.40GHz",
+                "vendor": "GenuineIntel",
+                "socket": 0,
+                "cache": [
+                    {
+                        "level": 1,
+                        "type": "Data",
+                        "size": 32768
+                    },
+                    {
+                        "level": 1,
+                        "type": "Instruction",
+                        "size": 32768
+                    },
+                    {
+                        "level": 2,
+                        "type": "Unified",
+                        "size": 262144
+                    },
+                    {
+                        "level": 3,
+                        "type": "Unified",
+                        "size": 6291456
+                    }
+                ],
+                "cores": [
+                    {
+                        "core": 0,
+                        "numa_node": 0,
+                        "threads": [
+                            {
+                                "id": 0,
+                                "thread": 0,
+                                "online": True
+                            },
+                            {
+                                "id": 1,
+                                "thread": 1,
+                                "online": True
+                            }
+                        ],
+                        "frequency": 3247
+                    }
+                ],
+                "frequency": 3247,
+                "frequency_minimum": 800,
+                "frequency_turbo": 3400
+            }
+        ],
+        "total": 8
+    }
+}
 
 
 def make_lldp_output(macs):
@@ -821,159 +882,54 @@ class TestUpdateHardwareDetails(MAASServerTestCase):
             self.assertIsNone(NodeMetadata.objects.get(node=node, key=key))
 
 
-class TestParseCPUInfo(MAASServerTestCase):
+class TestLXDUpdateCPUDetails(MAASServerTestCase):
 
     doctest_flags = doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE
 
-    def test_parse_cpuinfo_speed_in_model(self):
+    def test__speed_in_name(self):
         node = factory.make_Node()
         node.cpu_count = 2
         node.cpu_speed = 9999
         node.save()
-        # Sample lscpu output from a single socket, quad core with
-        # hyperthreading CPU. Flags have been ommitted to avoid lint errors.
-        cpuinfo = dedent("""\
-        Architecture:          x86_64
-        CPU op-mode(s):        32-bit, 64-bit
-        Byte Order:            Little Endian
-        CPU(s):                8
-        On-line CPU(s) list:   0-7
-        Thread(s) per core:    2
-        Core(s) per socket:    4
-        Socket(s):             1
-        NUMA node(s):          1
-        Vendor ID:             GenuineIntel
-        CPU family:            6
-        Model:                 60
-        Model name:            Intel(R) Core(TM) i7-4910MQ CPU @ 2.90GHz
-        Stepping:              3
-        CPU MHz:               2893.284
-        CPU max MHz:           3900.0000
-        CPU min MHz:           800.0000
-        BogoMIPS:              5786.32
-        Virtualization:        VT-x
-        L1d cache:             32K
-        L1i cache:             32K
-        L2 cache:              256K
-        L3 cache:              8192K
-        NUMA node0 CPU(s):     0-7
-        # The following is the parsable format, which can be fed to other
-        # programs. Each different item in every column has an unique ID
-        # starting from zero.
-        # CPU,Core,Socket
-        0,0,0
-        1,0,0
-        2,1,0
-        3,1,0
-        4,2,0
-        5,2,0
-        6,3,0
-        7,3,0
-        """).encode('utf-8')
-        parse_cpuinfo(node, cpuinfo, 0)
+
+        lxd_update_cpu_details(node, SAMPLE_JSON_CPUINFO)
         node = reload_object(node)
         self.assertEqual(8, node.cpu_count)
-        self.assertEqual(2900, node.cpu_speed)
+        self.assertEqual(2400, node.cpu_speed)
         nmd = NodeMetadata.objects.get(node=node, key='cpu_model')
-        self.assertEqual('Intel(R) Core(TM) i7-4910MQ CPU', nmd.value)
+        self.assertEqual('Intel(R) Core(TM) i7-4700MQ CPU', nmd.value)
 
-    def test_parse_cpuinfo_max_speed(self):
+    def test__max_speed(self):
         node = factory.make_Node()
         node.cpu_count = 2
         node.cpu_speed = 9999
         node.save()
-        # Sample lscpu output from a single socket, quad core with
-        # hyperthreading CPU. Flags have been ommitted to avoid lint errors.
-        cpuinfo = dedent("""\
-        Architecture:          x86_64
-        CPU op-mode(s):        32-bit, 64-bit
-        Byte Order:            Little Endian
-        CPU(s):                4
-        On-line CPU(s) list:   0-3
-        Thread(s) per core:    1
-        Core(s) per socket:    4
-        Socket(s):             1
-        NUMA node(s):          1
-        Vendor ID:             AuthenticAMD
-        CPU family:            22
-        Model:                 0
-        Model name:            AMD Athlon(tm) 5350 APU with Radeon(tm) R3
-        Stepping:              1
-        CPU MHz:               800.000
-        CPU max MHz:           2050.0000
-        CPU min MHz:           800.0000
-        BogoMIPS:              4092.20
-        Virtualization:        AMD-V
-        L1d cache:             32K
-        L1i cache:             32K
-        L2 cache:              2048K
-        NUMA node0 CPU(s):     0-3
-        # The following is the parsable format, which can be fed to other
-        # programs. Each different item in every column has an unique ID
-        # starting from zero.
-        # CPU,Core,Socket
-        0,0,0
-        1,1,0
-        2,2,0
-        3,3,0
-        """).encode('utf-8')
-        parse_cpuinfo(node, cpuinfo, 0)
-        node = reload_object(node)
-        self.assertEqual(4, node.cpu_count)
-        self.assertEqual(2050, node.cpu_speed)
-        nmd = NodeMetadata.objects.get(node=node, key='cpu_model')
-        self.assertEqual(
-            'AMD Athlon(tm) 5350 APU with Radeon(tm) R3', nmd.value)
 
-    def test_parse_cpuinfo_speed_current(self):
-        node = factory.make_Node()
-        node.cpu_count = 2
-        node.cpu_speed = 9999
-        node.save()
-        # Sample lscpu output from a single socket, quad core with
-        # hyperthreading CPU. Flags have been ommitted to avoid lint errors.
-        cpuinfo = dedent("""\
-        Architecture:          x86_64
-        CPU op-mode(s):        32-bit, 64-bit
-        Byte Order:            Little Endian
-        CPU(s):                8
-        On-line CPU(s) list:   0-7
-        Thread(s) per core:    2
-        Core(s) per socket:    4
-        Socket(s):             1
-        NUMA node(s):          1
-        Vendor ID:             GenuineIntel
-        CPU family:            6
-        Model:                 60
-        Model name:            Intel(R) Core(TM) i7-4910MQ CPU
-        Stepping:              3
-        CPU MHz:               2893.284
-        BogoMIPS:              5786.32
-        Virtualization:        VT-x
-        L1d cache:             32K
-        L1i cache:             32K
-        L2 cache:              256K
-        L3 cache:              8192K
-        NUMA node0 CPU(s):     0-7
-        # The following is the parsable format, which can be fed to other
-        # programs. Each different item in every column has an unique ID
-        # starting from zero.
-        # CPU,Core,Socket
-        0,0,0
-        1,0,0
-        2,1,0
-        3,1,0
-        4,2,0
-        5,2,0
-        6,3,0
-        7,3,0
-        """).encode('utf-8')
-        parse_cpuinfo(node, cpuinfo, 0)
+        SAMPLE_JSON_CPUINFO_NO_SPEED_IN_NAME = deepcopy(SAMPLE_JSON_CPUINFO)
+        SAMPLE_JSON_CPUINFO_NO_SPEED_IN_NAME['cpu']['sockets'][0]['name'] = (
+            'Intel(R) Core(TM) i7-4700MQ CPU')
+        lxd_update_cpu_details(node, SAMPLE_JSON_CPUINFO_NO_SPEED_IN_NAME)
         node = reload_object(node)
         self.assertEqual(8, node.cpu_count)
-        self.assertEqual(2900, node.cpu_speed)
+        self.assertEqual(3400, node.cpu_speed)
         nmd = NodeMetadata.objects.get(node=node, key='cpu_model')
-        self.assertEqual('Intel(R) Core(TM) i7-4910MQ CPU', nmd.value)
+        self.assertEqual('Intel(R) Core(TM) i7-4700MQ CPU', nmd.value)
+
+    def test__current_speed(self):
+        node = factory.make_Node()
+        node.cpu_count = 2
+        node.cpu_speed = 9999
+        node.save()
+
+        SAMPLE_JSON_CPUINFO_NO_NAME_OR_MAX_FREQ = deepcopy(SAMPLE_JSON_CPUINFO)
+        del SAMPLE_JSON_CPUINFO_NO_NAME_OR_MAX_FREQ[
+            'cpu']['sockets'][0]['name']
+        del SAMPLE_JSON_CPUINFO_NO_NAME_OR_MAX_FREQ[
+            'cpu']['sockets'][0]['frequency_turbo']
+        lxd_update_cpu_details(node, SAMPLE_JSON_CPUINFO_NO_NAME_OR_MAX_FREQ)
+        node = reload_object(node)
+        self.assertEqual(8, node.cpu_count)
+        self.assertEqual(3200, node.cpu_speed)
 
 
 class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):

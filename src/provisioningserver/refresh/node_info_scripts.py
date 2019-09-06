@@ -5,7 +5,6 @@
 
 __all__ = [
     'BLOCK_DEVICES_OUTPUT_NAME',
-    'CPUINFO_OUTPUT_NAME',
     'DHCP_EXPLORE_OUTPUT_NAME',
     'GET_FRUID_DATA_OUTPUT_NAME',
     'IPADDR_OUTPUT_NAME',
@@ -35,7 +34,6 @@ from textwrap import dedent
 # 0014_rename_dhcp_unconfigured_ifaces.py
 SUPPORT_INFO_OUTPUT_NAME = '00-maas-00-support-info'
 LSHW_OUTPUT_NAME = '00-maas-01-lshw'
-CPUINFO_OUTPUT_NAME = '00-maas-01-cpuinfo'
 VIRTUALITY_OUTPUT_NAME = '00-maas-02-virtuality'
 LLDP_INSTALL_OUTPUT_NAME = '00-maas-03-install-lldpd'
 LIST_MODALIASES_OUTPUT_NAME = '00-maas-04-list-modaliases'
@@ -154,14 +152,6 @@ VIRTUALITY_SCRIPT = dedent("""\
     else
         echo "none"
     fi
-    """)
-
-CPUINFO_SCRIPT = dedent("""\
-    #!/bin/bash
-    # Gather the standard output as it has some extra info
-    lscpu
-    # Gather the machine readable output for processing
-    lscpu -p=cpu,core,socket
     """)
 
 SERIAL_PORTS_SCRIPT = dedent("""\
@@ -688,12 +678,6 @@ NODE_INFO_SCRIPTS = OrderedDict([
         'hook': null_hook,
         'packages': {'apt': ['archdetect-deb']},
         'timeout': timedelta(minutes=1),
-        'run_on_controller': True,
-    }),
-    (CPUINFO_OUTPUT_NAME, {
-        'content': CPUINFO_SCRIPT.encode('ascii'),
-        'hook': null_hook,
-        'timeout': timedelta(seconds=10),
         'run_on_controller': True,
     }),
     (VIRTUALITY_OUTPUT_NAME, {

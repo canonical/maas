@@ -7,6 +7,7 @@ __all__ = [
     'NODE_INFO_SCRIPTS',
     'parse_lshw_nic_info',
     'update_node_network_information',
+    'lxd_update_cpu_details',
     ]
 
 import fnmatch
@@ -34,11 +35,11 @@ from maasserver.utils.orm import get_one
 from metadataserver.enum import SCRIPT_STATUS
 from provisioningserver.refresh.node_info_scripts import (
     BLOCK_DEVICES_OUTPUT_NAME,
-    CPUINFO_OUTPUT_NAME,
     GET_FRUID_DATA_OUTPUT_NAME,
     IPADDR_OUTPUT_NAME,
     LIST_MODALIASES_OUTPUT_NAME,
     LSHW_OUTPUT_NAME,
+    LXD_OUTPUT_NAME,
     NODE_INFO_SCRIPTS,
     SRIOV_OUTPUT_NAME,
     VIRTUALITY_OUTPUT_NAME,
@@ -296,9 +297,8 @@ def get_xml_field_value(evaluator, expression):
 def update_hardware_details(node, output, exit_status):
     """Process the results of `LSHW_SCRIPT`.
 
-    Updates `node.cpu_count`, `node.memory`, and `node.storage`
-    fields, and also evaluates all tag expressions against the given
-    ``lshw`` XML.
+    Updates `node.memory`, and `node.storage` fields, and also
+    evaluates all tag expressions against the given ``lshw`` XML.
 
     If `exit_status` is non-zero, this function returns without doing
     anything.
@@ -370,55 +370,85 @@ def update_hardware_details(node, output, exit_status):
                     defaults={'value': value})
 
 
-def parse_cpuinfo(node, output, exit_status):
-    """Parse the output of /proc/cpuinfo."""
+def process_lxd_results(node, output, exit_status):
+    """Process the results of `LXD_SCRIPT`.
+
+    If `exit_status` is non-zero, this function returns without doing
+    anything.
+    """
     if exit_status != 0:
         logger.error(
-            "%s: cpuinfo script failed with status: %s." % (
-                node.hostname, exit_status))
+            "%s: lxd script failed with status: "
+            "%s." % (node.hostname, exit_status))
         return
     assert isinstance(output, bytes)
-    output = output.decode('ascii')
+    try:
+        data = json.loads(output.decode('utf-8'))
+    except ValueError as e:
+        raise ValueError(e.message + ': ' + output)
 
-    cpu_count = len(
-        re.findall(
-            r'^(?P<CPU>\d+),(?P<CORE>\d+),(?P<SOCKET>\d+)$',
-            output, re.MULTILINE))
-    node.cpu_count = cpu_count
+    # Update CPU details.
+    lxd_update_cpu_details(node, data)
 
-    # Some CPU vendors(Intel) include the speed in the model. If so use that
-    # for the CPU speed as the speeds from lscpu are effected by CPU scaling.
-    m = re.search(
-        r'^Model name:\s+(?P<model_name>.+)(\s@\s(?P<ghz>\d+\.\d+)GHz)$',
-        output, re.MULTILINE)
-    if m is not None:
-        cpu_model = m.group('model_name')
-        node.cpu_speed = int(float(m.group('ghz')) * 1000)
-    else:
-        m = re.search(
-            r'^Model name:\s+(?P<model_name>.+)$', output, re.MULTILINE)
-        if m is not None:
-            cpu_model = m.group('model_name')
-        else:
-            cpu_model = None
-        # Try the max MHz if available.
-        m = re.search(
-            r'^CPU max MHz:\s+(?P<mhz>\d+)(\.\d+)?$', output, re.MULTILINE)
-        if m is not None:
-            node.cpu_speed = int(m.group('mhz'))
-        else:
-            # Fall back on the current speed, round it to the nearest hundredth
-            # as the number may be effected by CPU scaling.
-            m = re.search(
-                r'^CPU MHz:\s+(?P<mhz>\d+)(\.\d+)?$', output, re.MULTILINE)
-            if m is not None:
-                node.cpu_speed = round(int(m.group('mhz')) / 100) * 100
+
+def lxd_update_cpu_details(node, data):
+    """Updates `node.cpu_count`, `node.cpu_speed`, `node.cpu_model`"""
+    # cpu_count, cpu_speed, cpu_model.
+    node.cpu_count, node.cpu_speed, cpu_model = _parse_lxd_cpuinfo(data)
+    # memory.
+    node.memory = data.get('memory', {}).get('total', 0)
 
     if cpu_model:
         NodeMetadata.objects.update_or_create(
             node=node, key='cpu_model', defaults={'value': cpu_model})
 
-    node.save(update_fields=['cpu_count', 'cpu_speed'])
+    node.save(update_fields=['cpu_count', 'cpu_speed', 'memory'])
+
+
+def _parse_lxd_cpuinfo(data):
+    """Retrieve cpu_count, cpu_speed, and cpu_model."""
+    cpu_speed = 0
+    cpu_model = None
+    cpu_count = data.get('cpu', {}).get('total', 0)
+    # Only update the cpu_model if all the socket names match.
+    sockets = data.get('cpu', {}).get('sockets', {})
+    names = []
+    for socket in sockets:
+        name = socket.get('name')
+        if name is not None:
+            names.append(name)
+    if len(names) > 0 and all(name == names[0] for name in names):
+        cpu = names[0]
+        m = re.search(
+            r'(?P<model_name>.+)', cpu, re.MULTILINE)
+        if m is not None:
+            cpu_model = m.group('model_name')
+            if '@' in cpu_model:
+                cpu_model = cpu_model.split(' @')[0]
+
+        # Some CPU vendors include the speed in the model. If so use
+        # that for the CPU speed as the other speeds are effected by
+        # CPU scaling.
+        m = re.search(
+            r'(\s@\s(?P<ghz>\d+\.\d+)GHz)$', cpu, re.MULTILINE)
+        if m is not None:
+            cpu_speed = int(float(m.group('ghz')) * 1000)
+    # When socket names don't match or cpu_speed couldn't be retrieved,
+    # use the max frequency if available before resulting to current
+    # frequency average.
+    if not cpu_speed:
+        frequency_turbo = socket.get('frequency_turbo')
+        if frequency_turbo is not None:
+            cpu_speed = frequency_turbo
+        else:
+            frequency_current_average = socket.get('frequency')
+            if frequency_current_average is not None:
+                # Fall back on the current speed, round it to
+                # the nearest hundredth as the number may be
+                # effected by CPU scaling.
+                cpu_speed = round(frequency_current_average / 100) * 100
+
+    return cpu_count, cpu_speed, cpu_model
 
 
 def set_virtual_tag(node, output, exit_status):
@@ -945,7 +975,6 @@ def retag_node_for_hardware_by_modalias(
 
 # Register the post processing hooks.
 NODE_INFO_SCRIPTS[LSHW_OUTPUT_NAME]['hook'] = update_hardware_details
-NODE_INFO_SCRIPTS[CPUINFO_OUTPUT_NAME]['hook'] = parse_cpuinfo
 NODE_INFO_SCRIPTS[VIRTUALITY_OUTPUT_NAME]['hook'] = set_virtual_tag
 NODE_INFO_SCRIPTS[GET_FRUID_DATA_OUTPUT_NAME]['hook'] = (
     update_node_fruid_metadata)
@@ -957,3 +986,4 @@ NODE_INFO_SCRIPTS[SRIOV_OUTPUT_NAME]['hook'] = (
     update_node_network_interface_tags)
 NODE_INFO_SCRIPTS[LIST_MODALIASES_OUTPUT_NAME]['hook'] = (
     create_metadata_by_modalias)
+NODE_INFO_SCRIPTS[LXD_OUTPUT_NAME]['hook'] = process_lxd_results
