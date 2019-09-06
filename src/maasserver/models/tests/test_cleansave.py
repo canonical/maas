@@ -8,10 +8,8 @@ __all__ = []
 from unittest.mock import sentinel
 
 from django.db.models import Model
-from maasserver.models.cleansave import (
-    CleanSaveModelState,
-    DeferredValueAccessError,
-)
+from maasserver.models.cleansave import CleanSaveModelState
+from maasserver.monkey import DeferredValueAccessError
 from maasserver.testing.testcase import MAASLegacyServerTestCase
 from maasserver.tests.models import (
     CleanSaveTestModel,
