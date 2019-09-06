@@ -28,7 +28,7 @@ log = LegacyLogger()
 class ReverseDNSService(Service):
     """Service to resolve and cache reverse DNS names for neighbour entries."""
 
-    def __init__(self, postgresListener: PostgresListenerService=None):
+    def __init__(self, postgresListener: PostgresListenerService = None):
         super().__init__()
         self.listener = postgresListener
         # We will cache a reference to the region model object so we don't
@@ -69,7 +69,7 @@ class ReverseDNSService(Service):
         RDNS.objects.delete_current_entry(ip, self.region)
 
     @defer.inlineCallbacks
-    def consumeNeighbourEvent(self, action: str=None, cidr: str=None):
+    def consumeNeighbourEvent(self, action: str = None, cidr: str = None):
         """Given an event from the postgresListener, resolve RDNS for an IP.
 
         This method is called when an observed neighbour is changed.

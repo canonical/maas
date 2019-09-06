@@ -987,7 +987,7 @@ def parse_item_operation(specifier):
 
 
 def parse_item_specifier_type(
-        specifier, spec_types: Container=None, separator=':'):
+        specifier, spec_types: Container = None, separator=':'):
     """
     Returns a tuple that splits the string int a specifier, and its specifier
     type.

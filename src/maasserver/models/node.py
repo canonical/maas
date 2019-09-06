@@ -5464,7 +5464,7 @@ class Controller(Node):
 
     def _find_related_interface(
             self, own_interface: bool, related_ifname: str,
-            related_mac: str=None):
+            related_mac: str = None):
         """Returns a related interface matching the specified criteria.
 
         :param own_interface: if True, only search for "own" interfaces.
@@ -6188,7 +6188,7 @@ class RackController(Controller):
             bmc__ip_address__subnet_id__in=subnet_ids).distinct()
         return nodes
 
-    def migrate_dhcp_from_rack(self, commit: bool=True):
+    def migrate_dhcp_from_rack(self, commit: bool = True):
         """Migrate the DHCP away from the rack controller.
 
         :param commit: Whether to commit the change to the database. When False

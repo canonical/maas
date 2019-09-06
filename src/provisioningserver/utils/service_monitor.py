@@ -100,7 +100,7 @@ class ServiceState(ServiceStateBase):
     __slots__ = ()
 
     @typed
-    def __new__(cls, active_state: SERVICE_STATE=None, process_state=None):
+    def __new__(cls, active_state: SERVICE_STATE = None, process_state=None):
         if active_state is None:
             active_state = SERVICE_STATE.UNKNOWN
         _check_service_state_observed(active_state)

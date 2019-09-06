@@ -585,8 +585,8 @@ def make_node_client(node=None):
 
 
 def call_signal(
-        client=None, version='latest', files: dict=None, headers: dict=None,
-        status=None, **kwargs):
+        client=None, version='latest', files: dict = None,
+        headers: dict = None, status=None, **kwargs):
     """Call the API's signal method.
 
     :param client: Optional client to POST with.  If omitted, will create

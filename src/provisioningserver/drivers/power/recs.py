@@ -298,7 +298,7 @@ class RECSPowerDriver(PowerDriver):
 @typed
 def probe_and_enlist_recs(
         user: str, ip: str, port: Optional[int], username: Optional[str],
-        password: Optional[str], accept_all: bool=False, domain: str=None):
+        password: Optional[str], accept_all: bool = False, domain: str = None):
     maaslog.info("Probing for RECS servers as %s@%s", username, ip)
 
     port = 80 if port is None or port == 0 else port

@@ -715,10 +715,11 @@ class Factory:
 
     def make_dhcp_packet(
             self, transaction_id: bytes = None,
-            truncated: bool=False, truncated_option_value: bool=False,
-            bad_cookie: bool=False, truncated_option_length: bool=False,
-            include_server_identifier: bool=False, server_ip: str="127.1.1.1",
-            include_end_option: bool=True) -> bytes:
+            truncated: bool = False, truncated_option_value: bool = False,
+            bad_cookie: bool = False, truncated_option_length: bool = False,
+            include_server_identifier: bool = False,
+            server_ip: str = "127.1.1.1",
+            include_end_option: bool = True) -> bytes:
         """Returns a [possibly invalid] DHCP packet."""
         if transaction_id is None:
             transaction_id = self.make_bytes(size=4)

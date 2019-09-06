@@ -43,9 +43,9 @@ class Sequence:
 
     @typed
     def __init__(
-            self, name: str, *, increment: int=1, minvalue: int=None,
-            maxvalue: int=None, start: int=None, cycle: bool=True,
-            owner: str=None):
+            self, name: str, *, increment: int = 1, minvalue: int = None,
+            maxvalue: int = None, start: int = None, cycle: bool = True,
+            owner: str = None):
         """Initialise a new `Sequence`.
 
         :param name: The name of this sequence, a valid PostgreSQL identifier.

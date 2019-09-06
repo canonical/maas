@@ -90,7 +90,7 @@ current_verbosity = DEFAULT_LOG_VERBOSITY
 
 
 @typed
-def configure(verbosity: int=None, mode: LoggingMode=None):
+def configure(verbosity: int = None, mode: LoggingMode = None):
     """Configure logging for both Twisted and Python.
 
     This is safe to call from within `twistd`, in a plain Python environment,
@@ -135,7 +135,7 @@ configurators = [
 
 
 @typed
-def set_verbosity(verbosity: int=None):
+def set_verbosity(verbosity: int = None):
     """Resets the logging verbosity to the specified level.
 
     This function is intended to be be called after `configure()` is called.

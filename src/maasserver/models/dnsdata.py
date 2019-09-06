@@ -68,7 +68,7 @@ class HostnameRRsetMapping:
        rrdata) tuples."""
 
     def __init__(
-            self, system_id=None, rrset: set=None, node_type=None,
+            self, system_id=None, rrset: set = None, node_type=None,
             dnsresource_id=None, user_id=None):
         self.system_id = system_id
         self.node_type = node_type

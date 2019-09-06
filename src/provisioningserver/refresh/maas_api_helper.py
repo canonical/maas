@@ -212,7 +212,7 @@ class SignalException(Exception):
 
 def signal(
         url, creds, status, error=None, script_result_id=None,
-        files: dict=None, exit_status=None, script_version_id=None,
+        files: dict = None, exit_status=None, script_version_id=None,
         power_type=None, power_params=None):
     """Send a node signal to a given maas_url."""
     params = {

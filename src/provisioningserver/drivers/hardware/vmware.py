@@ -413,8 +413,8 @@ def get_vmware_servers(
 @typed
 def probe_vmware_and_enlist(
         user: str, host: str, username: Optional[str], password: Optional[str],
-        port: int=None, protocol: str=None, prefix_filter: str=None,
-        accept_all: bool=False, domain: str=None):
+        port: int = None, protocol: str = None, prefix_filter: str = None,
+        accept_all: bool = False, domain: str = None):
 
     # Both '' and None mean the same thing, so normalize it.
     if prefix_filter is None:

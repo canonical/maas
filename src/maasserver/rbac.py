@@ -56,7 +56,7 @@ class RBACClient(MacaroonClient):
 
     API_BASE_URL = '/api/service/v1'
 
-    def __init__(self, url: str=None, auth_info: AuthInfo=None):
+    def __init__(self, url: str = None, auth_info: AuthInfo = None):
         if url is None:
             url = Config.objects.get_config('rbac_url')
         if auth_info is None:
@@ -89,9 +89,9 @@ class RBACClient(MacaroonClient):
 
     def update_resources(
             self, resource_type: str,
-            updates: Sequence[Resource]=None,
-            removals: Sequence[int]=None,
-            last_sync_id: str=None):
+            updates: Sequence[Resource] = None,
+            removals: Sequence[int] = None,
+            last_sync_id: str = None):
         """Put all the resources for `resource_type`.
 
         This replaces all the resources for `resource_type`.
@@ -185,7 +185,7 @@ class FakeRBACClient(RBACClient):
     server.
     """
 
-    def __init__(self, url: str=None, auth_info: AuthInfo=None):
+    def __init__(self, url: str = None, auth_info: AuthInfo = None):
         if url is None:
             url = Config.objects.get_config('rbac_url')
         self._url = url

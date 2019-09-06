@@ -46,7 +46,7 @@ from testtools.matchers import (
 
 @typed
 def compose_config_path(
-        mac: str=None, arch: str=None, subarch: str=None) -> TFTPPath:
+        mac: str = None, arch: str = None, subarch: str = None) -> TFTPPath:
     """Compose the TFTP path for a UEFI configuration file.
 
     The path returned is relative to the TFTP root, as it would be

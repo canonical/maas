@@ -159,7 +159,7 @@ class AMTPowerDriver(PowerDriver):
     @typed
     def _run(
             self, command: tuple, power_pass: str,
-            stdin: bytes=None) -> bytes:
+            stdin: bytes = None) -> bytes:
         """Run a subprocess with stdin."""
         env = self._get_amt_environment(power_pass)
         process = Popen(

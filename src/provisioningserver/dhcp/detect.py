@@ -65,7 +65,8 @@ class DHCPDiscoverPacket:
     """
 
     def __init__(
-            self, mac: str=None, transaction_id: bytes=None, seconds: int=0):
+            self, mac: str = None, transaction_id: bytes = None,
+            seconds: int = 0):
         super().__init__()
         self.mac_bytes = None
         self.mac_str = None
@@ -302,7 +303,7 @@ SOCKET_TIMEOUT = 0.5
 
 class DHCPRequestMonitor:
 
-    def __init__(self, ifname: str, clock: IReactorThreads=None):
+    def __init__(self, ifname: str, clock: IReactorThreads = None):
         if clock is None:
             clock = reactor
         self.clock = clock    # type: IReactorThreads

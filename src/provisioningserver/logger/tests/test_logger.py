@@ -24,7 +24,7 @@ here = pathlib.Path(__file__).parent
 
 @typed
 def log_something(
-        name: str, *, verbosity: int, set_verbosity: int=None,
+        name: str, *, verbosity: int, set_verbosity: int = None,
         mode: LoggingMode):
     env = dict(get_env_with_locale(), PYTHONPATH=":".join(sys.path))
     script = here.parent.joinpath("testing", "logsomething.py")

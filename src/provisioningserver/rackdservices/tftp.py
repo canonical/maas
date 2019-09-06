@@ -370,7 +370,7 @@ class TFTPBackend(FilesystemSynchronousBackend):
 
     @deferred
     @typed
-    def get_reader(self, file_name: TFTPPath, skip_logging: bool=False):
+    def get_reader(self, file_name: TFTPPath, skip_logging: bool = False):
         """See `IBackend.get_reader()`.
 
         If `file_name` matches a boot method then the response is obtained

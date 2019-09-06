@@ -74,8 +74,8 @@ class DNSResourcesQuerySet(QuerySet):
 
 
 def get_dnsresource_queryset(
-        all_records: bool, domainname: str=None, name: str=None,
-        rrtype: str=None, user=None):
+        all_records: bool, domainname: str = None, name: str = None,
+        rrtype: str = None, user=None):
     # If the domain is a name, make it an id.
     domain = None
     if domainname is not None:

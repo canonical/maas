@@ -1370,9 +1370,9 @@ class VirshPodDriver(PodDriver):
 @synchronous
 @typed
 def probe_virsh_and_enlist(
-        user: str, poweraddr: str, password: str=None,
-        prefix_filter: str=None, accept_all: bool=False,
-        domain: str=None):
+        user: str, poweraddr: str, password: str = None,
+        prefix_filter: str = None, accept_all: bool = False,
+        domain: str = None):
     """Extracts all of the VMs from virsh and enlists them
     into MAAS.
 

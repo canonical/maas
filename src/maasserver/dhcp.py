@@ -321,7 +321,7 @@ def make_dhcp_snippet(dhcp_snippet):
     }
 
 
-def make_hosts_for_subnets(subnets, nodes_dhcp_snippets: list=None):
+def make_hosts_for_subnets(subnets, nodes_dhcp_snippets: list = None):
     """Return list of host entries to create in the DHCP configuration for the
     given `subnets`.
     """
@@ -412,7 +412,8 @@ def make_pools_for_subnet(subnet, failover_peer=None):
 def make_subnet_config(
         rack_controller, subnet, default_dns_servers: Optional[list],
         ntp_servers: Union[list, dict], default_domain, search_list=None,
-        failover_peer=None, subnets_dhcp_snippets: list=None, peer_rack=None):
+        failover_peer=None, subnets_dhcp_snippets: list = None,
+        peer_rack=None):
     """Return DHCP subnet configuration dict for a rack interface.
 
     :param ntp_servers: Either a list of NTP server addresses or hostnames to
@@ -573,7 +574,7 @@ def get_default_dns_servers(rack_controller, subnet, use_rack_proxy=True):
 def get_dhcp_configure_for(
         ip_version: int, rack_controller, vlan, subnets: list,
         ntp_servers: Union[list, dict], domain, search_list=None,
-        dhcp_snippets: Iterable=None, use_rack_proxy=True):
+        dhcp_snippets: Iterable = None, use_rack_proxy=True):
     """Get the DHCP configuration for `ip_version`."""
     # Select the best interface for this VLAN. This is an interface that
     # at least has an IP address.

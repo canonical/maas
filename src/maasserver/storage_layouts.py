@@ -57,7 +57,7 @@ class StorageLayoutBase(Form):
     boot_size = BytesOrPercentageField(required=False)
     root_size = BytesOrPercentageField(required=False)
 
-    def __init__(self, node, params: dict=None):
+    def __init__(self, node, params: dict = None):
         super(StorageLayoutBase, self).__init__(
             data=({} if params is None else params))
         self.node = node
@@ -618,7 +618,7 @@ class BcacheStorageLayout(FlatStorageLayout, BcacheStorageLayoutBase):
     bcache0     99.5G       disk    ext4           /
     """
 
-    def __init__(self, node, params: dict=None):
+    def __init__(self, node, params: dict = None):
         super(BcacheStorageLayout, self).__init__(
             node, params=({} if params is None else params))
         self.setup_cache_device_field()
@@ -855,7 +855,7 @@ def get_storage_layout_choices():
     ]
 
 
-def get_storage_layout_for_node(name, node, params: dict=None):
+def get_storage_layout_for_node(name, node, params: dict = None):
     """Get the storage layout object from its name."""
     if name in STORAGE_LAYOUTS:
         return STORAGE_LAYOUTS[name][1](

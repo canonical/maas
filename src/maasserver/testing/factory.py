@@ -1804,7 +1804,7 @@ class Factory(maastesting.factory.Factory):
             action=action, description=description)
 
     @typed
-    def make_LargeFile(self, content: bytes=None, size=512):
+    def make_LargeFile(self, content: bytes = None, size=512):
         """Create `LargeFile`.
 
         :param content: Data to store in large file object.

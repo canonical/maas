@@ -1128,7 +1128,8 @@ def annotate_with_default_monitored_interfaces(interfaces: dict) -> None:
         interfaces[interface]['monitored'] = interface in monitored
 
 
-def get_all_interfaces_definition(annotate_with_monitored: bool=True) -> dict:
+def get_all_interfaces_definition(
+        annotate_with_monitored: bool = True) -> dict:
     """Return interfaces definition by parsing "ip addr" and the running
     "dhclient" processes on the machine.
 
@@ -1378,7 +1379,7 @@ def preferred_hostnames_sort_key(fqdn: str):
 
 @inlineCallbacks
 def reverseResolve(
-        ip: MaybeIPAddress, resolver: IResolver=None) -> Optional[List[str]]:
+        ip: MaybeIPAddress, resolver: IResolver = None) -> Optional[List[str]]:
     """Using the specified IResolver, reverse-resolves the specifed `ip`.
 
     :return: a sorted list of resolved hostnames (which the specified IP

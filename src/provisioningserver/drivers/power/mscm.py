@@ -164,7 +164,7 @@ class MSCMPowerDriver(PowerDriver):
 @typed
 def probe_and_enlist_mscm(
         user: str, host: str, username: Optional[str], password: Optional[str],
-        accept_all: bool=False, domain: str=None):
+        accept_all: bool = False, domain: str = None):
     """ Extracts all of nodes from the MSCM, sets all of them to boot via M.2
     by, default, sets them to bootonce via PXE, and then enlists them into
     MAAS.  If accept_all is True, it will also commission them.

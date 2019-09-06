@@ -129,7 +129,7 @@ def _mask(buf: bytes, key: bytes) -> bytes:
 
 
 @typed
-def _makeFrame(buf: bytes, opcode, fin: bool, mask: bytes=None) -> bytes:
+def _makeFrame(buf: bytes, opcode, fin: bool, mask: bytes = None) -> bytes:
     """
     Make a frame.
 
@@ -179,7 +179,7 @@ def _makeFrame(buf: bytes, opcode, fin: bool, mask: bytes=None) -> bytes:
 
 
 @typed
-def _parseFrames(frameBuffer: List[bytes], needMask: bool=True):
+def _parseFrames(frameBuffer: List[bytes], needMask: bool = True):
     """
     Parse frames in a highly compliant manner. It modifies C{frameBuffer}
     removing the parsed content from it.
@@ -345,7 +345,7 @@ class WebSocketsTransport(object):
         self._transport.write(packet)
 
     @typed
-    def loseConnection(self, code=STATUSES.NORMAL, reason: bytes=b""):
+    def loseConnection(self, code=STATUSES.NORMAL, reason: bytes = b""):
         """
         Close the connection.
 

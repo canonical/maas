@@ -428,7 +428,7 @@ def power_state_ucsm(url, username, password, uuid):
 @typed
 def probe_and_enlist_ucsm(
         user: str, url: str, username: Optional[str], password: Optional[str],
-        accept_all: bool=False, domain: str=None):
+        accept_all: bool = False, domain: str = None):
     """Probe a UCS Manager and enlist all its servers.
 
     Here's what happens here: 1. Get a list of servers from the UCS

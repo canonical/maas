@@ -189,7 +189,7 @@ class MicrosoftOCSPowerDriver(PowerDriver):
 @typed
 def probe_and_enlist_msftocs(
         user: str, ip: str, port: Optional[int], username: Optional[str],
-        password: Optional[str], accept_all: bool=False, domain: str=None):
+        password: Optional[str], accept_all: bool = False, domain: str = None):
     """ Extracts all of nodes from msftocs, sets all of them to boot via
     HDD by, default, sets them to bootonce via PXE, and then enlists them
     into MAAS.

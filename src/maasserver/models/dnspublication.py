@@ -56,7 +56,7 @@ class DNSPublicationManager(Manager):
             # use migrations to provide an initial publication.
             raise self.model.DoesNotExist() from None
 
-    def collect_garbage(self, cutoff: datetime=None):
+    def collect_garbage(self, cutoff: datetime = None):
         """Delete all but the most recently inserted `DNSPublication`."""
         try:
             publication = self.get_most_recent()
