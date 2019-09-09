@@ -8,6 +8,7 @@ __all__ = []
 from collections import Iterable
 import datetime
 import random
+import threading
 from unittest.mock import call
 
 from django.core.exceptions import (
@@ -15,6 +16,7 @@ from django.core.exceptions import (
     ValidationError,
 )
 from django.db import transaction
+from django.db.utils import IntegrityError
 from django.http import Http404
 from fixtures import FakeLogger
 from maasserver.enum import (
@@ -1407,6 +1409,38 @@ class TestPhysicalInterface(MAASServerTestCase):
         # Test is that this does not fail.
         interface.save()
         self.assertFalse(reload_object(interface).enabled)
+
+
+class PhysicalInterfaceTransactionalTest(MAASTransactionServerTestCase):
+    """Test `PhysicalInterface` in across multiple transactions."""
+
+    def test_duplicate_physical_macs_not_allowed(self):
+
+        def _create_physical(mac):
+            node = factory.make_Node(power_type='manual')
+            vlan = factory.make_VLAN(dhcp_on=True)
+            factory.make_Interface(
+                INTERFACE_TYPE.PHYSICAL,
+                node=node, vlan=vlan, mac_address=mac)
+
+        def create_physical(mac):
+            with transaction.atomic():
+                _create_physical(mac)
+
+        mac = factory.make_MAC()
+        t = threading.Thread(target=create_physical, args=(mac,))
+
+        with transaction.atomic():
+            # Perform an actual query so that Django actually
+            # starts the transaction.
+            VLAN.objects.count()
+
+            # Create same physical in another transaction.
+            t.start()
+            t.join()
+
+            # Should fail as this is a duplicate physical MAC address.
+            self.assertRaises(IntegrityError, _create_physical, mac)
 
 
 class InterfaceMTUTest(MAASServerTestCase):
