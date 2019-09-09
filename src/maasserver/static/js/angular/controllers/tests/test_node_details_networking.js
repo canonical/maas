@@ -4887,4 +4887,24 @@ describe("NodeNetworkingController", function() {
       expect($scope.editInterface.parents).toEqual([]);
     });
   });
+
+  describe("getDHCPStatus", () => {
+    it("returns correct text if dhcp is provided by MAAS", () => {
+      makeController();
+      const vlan = { external_dhcp: null, dhcp_on: true };
+      expect($scope.getDHCPStatus(vlan)).toEqual("MAAS-provided");
+    });
+
+    it("returns correct text if dhcp is provided externally", () => {
+      makeController();
+      const vlan = { external_dhcp: "127.0.0.1", dhcp_on: true };
+      expect($scope.getDHCPStatus(vlan)).toEqual("External (127.0.0.1)");
+    });
+
+    it("returns correct text if dhcp is disabled", () => {
+      makeController();
+      const vlan = { external_dhcp: null, dhcp_on: false };
+      expect($scope.getDHCPStatus(vlan)).toEqual("No DHCP");
+    });
+  });
 });

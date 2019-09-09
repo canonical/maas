@@ -55,10 +55,10 @@
       th,
       td {
         &:nth-child(1) {
-          width: 20%;
+          width: 15%;
         }
         &:nth-child(2) {
-          width: 6%;
+          width: 5%;
         }
         &:nth-child(3) {
           width: 10%;
@@ -67,12 +67,15 @@
           width: 14%;
         }
         &:nth-child(5) {
-          width: 16%;
+          width: 15%;
         }
         &:nth-child(6) {
-          width: 28%;
+          width: 20%;
         }
         &:nth-child(7) {
+          width: 15%;
+        }
+        &:nth-child(8) {
           width: 6%;
         }
       }

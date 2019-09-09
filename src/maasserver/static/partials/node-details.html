@@ -2141,6 +2141,7 @@
                                     <div>IP Address</div>
                                     <div>IP Mode</div>
                                 </th>
+                                <th>DHCP</th>
                                 <th class="u-align--right">Actions</th>
                             </tr>
                         </thead>
@@ -2289,6 +2290,9 @@
                                             <span data-ng-if="interface.discovered[0].ip_address">DHCP</span>
                                         </div>
                                     </div>
+                                </td>
+                                <td>
+                                    {$ getDHCPStatus(interface.vlan) $}
                                 </td>
                                 <td class="p-table--action-cell u-vertically-center u-align--right">
                                     <div class="p-contextual-menu" toggle-ctrl data-ng-if="(!isAllNetworkingDisabled() || isLimitedEditingAllowed(interface)) && !isEditing(interface) && !(isShowingDeleteConfirm() && isInterfaceSelected(interface))">

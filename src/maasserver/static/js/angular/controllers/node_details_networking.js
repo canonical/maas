@@ -2235,6 +2235,18 @@ export function NodeNetworkingController(
       );
   };
 
+  $scope.getDHCPStatus = vlan => {
+    if (vlan.external_dhcp) {
+      return `External (${vlan.external_dhcp})`;
+    }
+
+    if (vlan.dhcp_on) {
+      return "MAAS-provided";
+    }
+
+    return "No DHCP";
+  };
+
   // Load all the required managers. NodesManager and GeneralManager
   // are loaded by the parent controller "NodeDetailsController".
   ManagerHelperService.loadManagers($scope, [
