@@ -2684,6 +2684,7 @@ class CreatePhysicalBlockDeviceForm(MAASModelForm):
         block_device = super(
             CreatePhysicalBlockDeviceForm, self).save(commit=False)
         block_device.node = self.node
+        block_device.numa_node = self.node.default_numanode
         block_device.save()
         return block_device
 

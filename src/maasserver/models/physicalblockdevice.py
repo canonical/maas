@@ -10,6 +10,7 @@ __all__ = [
 
 from django.core.exceptions import ValidationError
 from django.db.models import (
+    CASCADE,
     CharField,
     ForeignKey,
     SET_NULL,
@@ -61,6 +62,24 @@ class PhysicalBlockDevice(BlockDevice):
         PodStoragePool, blank=True, null=True, on_delete=SET_NULL,
         related_name='block_devices', help_text=(
             "Storage pool that this block device belongs to"))
+
+    numa_node = ForeignKey(
+        'NUMANode', related_name='blockdevices', on_delete=CASCADE)
+
+    def __init__(self, *args, **kwargs):
+        if kwargs:
+            # only check when kwargs are passed, which is the normal case when
+            # objects are created. If they're loaded from the DB, args get
+            # passed instead.
+            node = kwargs.get('node')
+            numa_node = kwargs.get('numa_node')
+            if node and numa_node:
+                raise ValidationError("Can't set both node and numa_node")
+            if not numa_node:
+                kwargs['numa_node'] = node.default_numanode
+            elif not node:
+                kwargs['node'] = numa_node.node
+        super().__init__(*args, **kwargs)
 
     def clean(self):
         if not self.id_path and not (self.model and self.serial):

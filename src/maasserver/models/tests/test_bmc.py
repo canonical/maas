@@ -1065,6 +1065,24 @@ class TestPod(MAASServerTestCase):
             pod.default_storage_pool.name, Equals(discovered_default.name))
         self.assertThat(pod.power_parameters, Equals({}))
 
+    def test_sync_pod_sets_default_numanode(self):
+        discovered_bdev = self.make_discovered_block_device()
+        discovered_iface = self.make_discovered_interface()
+        discovered_machine = self.make_discovered_machine(
+            block_devices=[discovered_bdev],
+            interfaces=[discovered_iface])
+        discovered_pod = self.make_discovered_pod(
+            machines=[discovered_machine])
+        self.patch(Machine, "start_commissioning")
+        pod = factory.make_Pod()
+        pod.sync(discovered_pod, factory.make_User())
+        [machine] = Machine.objects.all()
+        self.assertIsNotNone(machine.default_numanode)
+        [bdev] = machine.physicalblockdevice_set.all()
+        [iface] = machine.interface_set.all()
+        self.assertEqual(bdev.numa_node, machine.default_numanode)
+        self.assertEqual(iface.numa_node, machine.default_numanode)
+
     def test_create_machine_ensures_unique_hostname(self):
         existing_machine = factory.make_Node()
         discovered_machine = self.make_discovered_machine()

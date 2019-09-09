@@ -26,6 +26,7 @@ from maasserver.models import (
     RegionController,
     Service,
 )
+from maasserver.models.numa import create_default_numanode
 from maasserver.utils.signals import SignalsManager
 from metadataserver.models.nodekey import NodeKey
 
@@ -135,6 +136,17 @@ for klass in NODE_CLASSES:
     signals.watch(
         post_save, create_services_on_create,
         sender=klass)
+
+
+def create_default_numanode_on_create(sender, instance, created, **kwargs):
+    """Create NUMA node "0" for a node on creation."""
+    if not created or not instance.is_machine:
+        return
+
+    create_default_numanode(instance)
+
+signals.watch(post_save, create_default_numanode_on_create, sender=Machine)
+signals.watch(post_save, create_default_numanode_on_create, sender=Node)
 
 
 def release_auto_ips(node, old_values, deleted=False):

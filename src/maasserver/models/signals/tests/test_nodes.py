@@ -233,6 +233,28 @@ class TestNodeCreateServices(MAASServerTestCase):
             Equals(REGION_SERVICES))
 
 
+class TestNodeDefaultNUMANode(MAASServerTestCase):
+
+    def test_create_node_creates_default_numanode(self):
+        node = Node()
+        node.save()
+        [numanode] = node.numanode_set.all()
+        self.assertIs(numanode.node, node)
+        self.assertEqual(numanode.index, 0)
+
+    def test_update_doesnt_create_numanode(self):
+        node = factory.make_Node()
+        [numanode] = node.numanode_set.all()
+        node.hostname = factory.make_string()
+        node.save()
+        [new_numanode] = node.numanode_set.all()
+        self.assertEqual(new_numanode.id, numanode.id)
+
+    def test_not_for_devices(self):
+        device = factory.make_Device()
+        self.assertEqual(device.numanode_set.count(), 0)
+
+
 class TestNodeReleasesAutoIPs(MAASServerTestCase):
     """Test that auto ips are released when node power is off."""
 

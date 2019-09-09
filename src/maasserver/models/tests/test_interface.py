@@ -1343,7 +1343,7 @@ class InterfaceUpdateMDNSEntryTest(MAASServerTestCase):
             maaslog.output)
 
 
-class PhysicalInterfaceTest(MAASServerTestCase):
+class TestPhysicalInterface(MAASServerTestCase):
 
     def test_manager_returns_physical_interfaces(self):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)

@@ -702,7 +702,7 @@ class Pod(BMC):
             storage_pool = self._get_storage_pool_by_id(
                 discovered_bd.storage_pool)
         return PhysicalBlockDevice.objects.create(
-            node=machine,
+            numa_node=machine.default_numanode,
             name=name,
             id_path=discovered_bd.id_path,
             model=model,
@@ -760,6 +760,7 @@ class Pod(BMC):
             mac_address=discovered_nic.mac_address, defaults={
                 'name': name,
                 'node': machine,
+                'numa_node': machine.default_numanode,
                 'tags': discovered_nic.tags,
                 'vlan': vlan,
             })

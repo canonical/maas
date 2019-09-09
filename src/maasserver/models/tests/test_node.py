@@ -4809,6 +4809,13 @@ class TestNode(MAASServerTestCase):
                 "%s: Could not stop rescue mode for node: %s",
                 node.hostname, exception))
 
+    def test_default_numanode(self):
+        node = factory.make_Node()
+        factory.make_NUMANode(node)
+        factory.make_NUMANode(node)
+        self.assertIs(node.default_numanode.node, node)
+        self.assertEqual(node.default_numanode.index, 0)
+
 
 class TestNodePowerParameters(MAASServerTestCase):
 

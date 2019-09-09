@@ -119,6 +119,7 @@ from maasserver.models.interface import (
     Interface,
     InterfaceRelationship,
 )
+from maasserver.models.numa import NUMANode
 from maasserver.models.partition import MIN_PARTITION_SIZE
 from maasserver.models.rdns import RDNS
 from maasserver.models.switch import Switch
@@ -1343,7 +1344,7 @@ class Factory(maastesting.factory.Factory):
             vlan=None, parents=None, name=None, cluster_interface=None,
             ip=None, subnet=None, enabled=True, fabric=None, tags=None,
             link_connected=True, interface_speed=None, link_speed=None,
-            vendor=None, product=None, params=""):
+            vendor=None, product=None, params="", numa_node=None):
         if subnet is None and cluster_interface is not None:
             subnet = cluster_interface.subnet
         if subnet is not None and vlan is None:
@@ -1409,12 +1410,18 @@ class Factory(maastesting.factory.Factory):
             vendor = factory.make_name('vendor')
         if product is None:
             product = factory.make_name('product')
+        if (
+                iftype == INTERFACE_TYPE.PHYSICAL and
+                numa_node is None and
+                node.is_machine
+        ):
+            numa_node = node.default_numanode
         interface = Interface(
             node=node, mac_address=mac_address, type=iftype,
             name=name, vlan=vlan, enabled=enabled, tags=tags,
             link_connected=link_connected, interface_speed=interface_speed,
             link_speed=link_speed, vendor=vendor, product=product,
-            params=params)
+            params=params, numa_node=numa_node)
         interface.save()
         if subnet is None and ip is not None:
             subnet = Subnet.objects.get_best_subnet_for_ip(ip)
@@ -2021,8 +2028,9 @@ class Factory(maastesting.factory.Factory):
     def make_PhysicalBlockDevice(
             self, node=None, name=None, size=None, block_size=None,
             tags=None, model=None, serial=None, id_path=None,
-            formatted_root=False, firmware_version=None, storage_pool=None):
-        if node is None:
+            formatted_root=False, firmware_version=None, storage_pool=None,
+            numa_node=None):
+        if node is None and numa_node is None:
             node = self.make_Node()
         if name is None:
             name = self.make_name('name')
@@ -2052,7 +2060,8 @@ class Factory(maastesting.factory.Factory):
         block_device = PhysicalBlockDevice.objects.create(
             node=node, name=name, size=size, block_size=block_size,
             tags=tags, model=model, serial=serial, id_path=id_path,
-            firmware_version=firmware_version, storage_pool=storage_pool)
+            firmware_version=firmware_version, storage_pool=storage_pool,
+            numa_node=numa_node)
         if formatted_root:
             partition = self.make_Partition(
                 partition_table=(
@@ -2409,6 +2418,17 @@ class Factory(maastesting.factory.Factory):
         return PodStoragePool.objects.create(
             pod=pod, name=name, pool_id=pool_id, pool_type=pool_type,
             path=path, storage=storage)
+
+    def make_NUMANode(self, node=None, cores=None, memory=1024 * 1024):
+        if node is None:
+            node = factory.make_Node()
+        index = node.numanode_set.count()
+        now = datetime.utcnow()
+        if cores is None:
+            cores = []
+        return NUMANode.objects.create(
+            node=node, index=index, created=now, updated=now,
+            cores=cores, memory=memory)
 
 
 # Create factory singleton.

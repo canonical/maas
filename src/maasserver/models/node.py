@@ -1172,6 +1172,11 @@ class Node(CleanSave, TimestampedModel):
         else:
             return self.system_id
 
+    @property
+    def default_numanode(self):
+        """Return NUMA node 0 for the node."""
+        return self.numanode_set.get(index=0)
+
     def lock(self, user, comment=None):
         self._register_request_event(
             user, EVENT_TYPES.REQUEST_NODE_LOCK, action='lock',

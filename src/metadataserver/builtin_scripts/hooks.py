@@ -96,7 +96,8 @@ def _create_default_physical_interface(node, ifname, mac, **kwargs):
     fabric = Fabric.objects.get_default_fabric()
     vlan = fabric.get_default_vlan()
     interface = PhysicalInterface.objects.create(
-        mac_address=mac, name=ifname, node=node, vlan=vlan, **kwargs)
+        mac_address=mac, name=ifname, node=node,
+        numa_node=node.default_numanode, vlan=vlan, **kwargs)
 
     return interface
 
@@ -614,7 +615,7 @@ def update_node_physical_block_devices(node, output, exit_status):
                 continue
             # New block device. Create it on the node.
             PhysicalBlockDevice.objects.create(
-                node=node,
+                numa_node=node.default_numanode,
                 name=name,
                 id_path=id_path,
                 size=size,

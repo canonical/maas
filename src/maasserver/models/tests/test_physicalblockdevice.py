@@ -94,3 +94,25 @@ class TestPhysicalBlockDeviceManager(MAASServerTestCase):
             sum(sizes),
             PhysicalBlockDevice.objects.total_size_of_physical_devices_for(
                 node))
+
+    def test_default_numa_node_from_node(self):
+        node = factory.make_Node()
+        bdev = PhysicalBlockDevice.objects.create(
+            serial='123', model='disk', name='sda', size=MIN_BLOCK_DEVICE_SIZE,
+            block_size=1024, node=node)
+        self.assertEqual(bdev.numa_node, node.default_numanode)
+
+    def test_node_from_numa_node(self):
+        numa_node = factory.make_NUMANode()
+        bdev = PhysicalBlockDevice.objects.create(
+            serial='123', model='disk', name='sda', size=MIN_BLOCK_DEVICE_SIZE,
+            block_size=1024, numa_node=numa_node)
+        self.assertEqual(bdev.node, numa_node.node)
+
+    def test_node_and_numa_node_fail(self):
+        node = factory.make_Node()
+        numa_node = factory.make_NUMANode()
+        self.assertRaises(
+            ValidationError, PhysicalBlockDevice.objects.create,
+            serial='123', model='disk', name='sda', size=MIN_BLOCK_DEVICE_SIZE,
+            block_size=1024, node=node, numa_node=numa_node)

@@ -584,6 +584,12 @@ class Interface(CleanSave, TimestampedModel):
     # The speed of the link in Mbit/s
     link_speed = PositiveIntegerField(default=0)
 
+    # XXX interfaces should have null=False in the case where the interface is
+    # a physical one, but those are also used for devices, which don't have
+    # NUMA nodes. So for now, we have to use null=True
+    numa_node = ForeignKey(
+        'NUMANode', null=True, related_name='interfaces', on_delete=CASCADE)
+
     def __init__(self, *args, **kwargs):
         type = kwargs.get('type', self.get_type())
         kwargs['type'] = type

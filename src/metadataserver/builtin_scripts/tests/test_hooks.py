@@ -980,10 +980,11 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         json_output = json.dumps(devices).encode('utf-8')
         update_node_physical_block_devices(node, json_output, 0)
         update_node_physical_block_devices(node, json_output, 0)
-        created_names = [
-            device.name
-            for device in PhysicalBlockDevice.objects.filter(node=node)
-            ]
+        devices = list(PhysicalBlockDevice.objects.filter(node=node))
+        created_names = []
+        for device in devices:
+            created_names.append(device.name)
+            self.assertEqual(device.numa_node, node.default_numanode)
         self.assertItemsEqual(device_names, created_names)
 
     def test__does_nothing_when_exit_status_is_not_zero(self):
@@ -1391,15 +1392,15 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
     with open(IP_ADDR_WEDGE_OUTPUT_FILE, "rb") as fd:
         IP_ADDR_WEDGE_OUTPUT = fd.read()
 
-    def assert_expected_interfaces_and_macs_exist(
-            self, node_interfaces, additional_interfaces={},
-            expected_interfaces=EXPECTED_INTERFACES):
+    def assert_expected_interfaces_and_macs_exist_for_node(
+            self, node, expected_interfaces=EXPECTED_INTERFACES):
         """Asserts to ensure that the type, name, and MAC address are
         appropriate, given Node's interfaces. (and an optional list of
-        additional interfaces which must exist)
+        expected interfaces which must exist)
         """
+        node_interfaces = list(Interface.objects.filter(node=node))
+
         expected_interfaces = expected_interfaces.copy()
-        expected_interfaces.update(additional_interfaces)
 
         self.assertThat(len(node_interfaces), Equals(len(expected_interfaces)))
 
@@ -1416,6 +1417,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
             self.assertIn(interface.name, expected_interfaces)
             self.assertThat(interface.mac_address, Equals(
                 expected_interfaces[interface.name]))
+            self.assertEqual(interface.numa_node, node.default_numanode)
 
     def test__does_nothing_if_skip_networking(self):
         node = factory.make_Node(interface=True, skip_networking=True)
@@ -1436,8 +1438,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         update_node_network_information(node, self.IP_ADDR_OUTPUT, 0)
 
         # Makes sure all the test dataset MAC addresses were added to the node.
-        node_interfaces = Interface.objects.filter(node=node)
-        self.assert_expected_interfaces_and_macs_exist(node_interfaces)
+        self.assert_expected_interfaces_and_macs_exist_for_node(node)
 
     def test__add_all_interfaces_xenial(self):
         """Test a node that has no previously known interfaces on which we
@@ -1451,10 +1452,8 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         update_node_network_information(node, self.IP_ADDR_OUTPUT_XENIAL, 0)
 
         # Makes sure all the test dataset MAC addresses were added to the node.
-        node_interfaces = Interface.objects.filter(node=node)
-        self.assert_expected_interfaces_and_macs_exist(
-            node_interfaces,
-            expected_interfaces=self.EXPECTED_INTERFACES_XENIAL)
+        self.assert_expected_interfaces_and_macs_exist_for_node(
+            node, expected_interfaces=self.EXPECTED_INTERFACES_XENIAL)
 
     def test__adds_lshw_info(self):
         """Test a node that has no previously known interfaces gets info from
@@ -1551,8 +1550,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         update_node_network_information(node, self.IP_ADDR_OUTPUT, 0)
 
         # These should have been added to the node.
-        node_interfaces = Interface.objects.filter(node=node)
-        self.assert_expected_interfaces_and_macs_exist(node_interfaces)
+        self.assert_expected_interfaces_and_macs_exist_for_node(node)
 
         # This one should have been removed because it no longer shows on the
         # `ip addr` output.
@@ -1574,8 +1572,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         node2 = factory.make_Node()
         update_node_network_information(node2, self.IP_ADDR_OUTPUT, 0)
 
-        node2_interfaces = Interface.objects.filter(node=node2)
-        self.assert_expected_interfaces_and_macs_exist(node2_interfaces)
+        self.assert_expected_interfaces_and_macs_exist_for_node(node2)
 
         # Ensure the MAC object moved over to node2.
         self.assertItemsEqual([], Interface.objects.filter(node=node1))
@@ -1588,8 +1585,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         update_node_network_information(node1, self.IP_ADDR_OUTPUT, 0)
 
         # First make sure the first node has all the expected interfaces.
-        node2_interfaces = Interface.objects.filter(node=node1)
-        self.assert_expected_interfaces_and_macs_exist(node2_interfaces)
+        self.assert_expected_interfaces_and_macs_exist_for_node(node1)
 
         # Grab the id from one of the created interfaces.
         interface_id = Interface.objects.filter(node=node1).first().id
@@ -1598,8 +1594,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         node2 = factory.make_Node()
         update_node_network_information(node2, self.IP_ADDR_OUTPUT, 0)
 
-        node2_interfaces = Interface.objects.filter(node=node2)
-        self.assert_expected_interfaces_and_macs_exist(node2_interfaces)
+        self.assert_expected_interfaces_and_macs_exist_for_node(node2)
 
         # Now make sure all the objects moved to the second node.
         self.assertItemsEqual([], Interface.objects.filter(node=node1))
@@ -1630,8 +1625,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
             node=node, name=BOND_NAME)
 
         update_node_network_information(node, self.IP_ADDR_OUTPUT, 0)
-        node_interfaces = Interface.objects.filter(node=node)
-        self.assert_expected_interfaces_and_macs_exist(node_interfaces)
+        self.assert_expected_interfaces_and_macs_exist_for_node(node)
 
     def test__interface_names_changed(self):
         # Note: the MACs here are swapped compared to their expected values.
@@ -1648,9 +1642,8 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
 
         update_node_network_information(node, self.IP_ADDR_OUTPUT, 0)
 
-        node_interfaces = Interface.objects.filter(node=node)
         # This will ensure that the interfaces were renamed appropriately.
-        self.assert_expected_interfaces_and_macs_exist(node_interfaces)
+        self.assert_expected_interfaces_and_macs_exist_for_node(node)
 
     def test__mac_id_is_preserved(self):
         """Test whether MAC address entities are preserved and not recreated"""
@@ -1675,8 +1668,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         self.assertEqual(eth0, Interface.objects.get(id=eth0.id))
         self.assertEqual(eth1, Interface.objects.get(id=eth1.id))
 
-        node_interfaces = Interface.objects.filter(node=node)
-        self.assert_expected_interfaces_and_macs_exist(node_interfaces)
+        self.assert_expected_interfaces_and_macs_exist_for_node(node)
 
     def test__legacy_model_with_extra_mac(self):
         ETH0_MAC = self.EXPECTED_INTERFACES['eth0'].get_raw()
@@ -1691,8 +1683,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
 
         update_node_network_information(node, self.IP_ADDR_OUTPUT, 0)
 
-        node_interfaces = Interface.objects.filter(node=node)
-        self.assert_expected_interfaces_and_macs_exist(node_interfaces)
+        self.assert_expected_interfaces_and_macs_exist_for_node(node)
 
         # Make sure we re-used the existing MACs in the database.
         self.assertIsNotNone(reload_object(eth0))
@@ -1716,8 +1707,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
             parents=[eth1])
 
         update_node_network_information(node, self.IP_ADDR_OUTPUT, 0)
-        node_interfaces = Interface.objects.filter(node=node)
-        self.assert_expected_interfaces_and_macs_exist(node_interfaces)
+        self.assert_expected_interfaces_and_macs_exist_for_node(node)
 
     def test__deletes_virtual_interfaces_linked_to_removed_macs(self):
         VLAN_MAC = '00:00:00:00:01:01'
@@ -1733,8 +1723,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
             INTERFACE_TYPE.BOND, mac_address=BOND_MAC, parents=[eth1])
 
         update_node_network_information(node, self.IP_ADDR_OUTPUT, 0)
-        node_interfaces = Interface.objects.filter(node=node)
-        self.assert_expected_interfaces_and_macs_exist(node_interfaces)
+        self.assert_expected_interfaces_and_macs_exist_for_node(node)
 
     def test__creates_discovered_ip_address(self):
         node = factory.make_Node()
