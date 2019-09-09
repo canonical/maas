@@ -40247,6 +40247,9 @@ function NodeNetworkingController($scope, $filter, FabricsManager, VLANsManager,
         ip_address: nic.ip_address,
         ip_assignment: nic.ip_assignment,
         link_id: nic.link_id,
+        link_connected: nic.link_connected,
+        link_speed: nic.link_speed,
+        interface_speed: nic.interface_speed,
         type: nic.type,
         bridge_fd: nic.params.bridge_fd,
         bridge_stp: nic.params.bridge_stp,
@@ -40277,6 +40280,9 @@ function NodeNetworkingController($scope, $filter, FabricsManager, VLANsManager,
         mode: nic.mode,
         ip_address: nic.ip_address,
         link_id: nic.link_id,
+        link_connected: nic.link_connected,
+        link_speed: nic.link_speed,
+        interface_speed: nic.interface_speed,
         type: nic.type,
         bridge_fd: nic.params.bridge_fd,
         bridge_stp: nic.params.bridge_stp,
@@ -41001,7 +41007,7 @@ function NodeNetworkingController($scope, $filter, FabricsManager, VLANsManager,
 
 
   $scope.cannotEditBond = function (nic) {
-    return $scope.isInterfaceNameInvalid(nic) && $scope.isIPAddressInvalid(nic) && $scope.isMACAddressInvalid(nic.mac_address, true);
+    return $scope.isInterfaceNameInvalid(nic) || $scope.isIPAddressInvalid(nic) || $scope.isMACAddressInvalid(nic.mac_address, true) || nic.link_speed > nic.interface_speed;
   }; // Actually add the bond.
 
 
@@ -41328,7 +41334,11 @@ function NodeNetworkingController($scope, $filter, FabricsManager, VLANsManager,
 
       if (!angular.isObject(error)) {
         // Was not a JSON error. This is wrong here as it
-        // should be, so just log to the console.
+        // should be, so just log to the console, unless link_speed error
+        if (errorStr.includes("link_speed")) {
+          $scope.newInterface.errorMsg = errorStr;
+        }
+
         $log.error(errorStr);
       } else {
         var macError = error.mac_address;
