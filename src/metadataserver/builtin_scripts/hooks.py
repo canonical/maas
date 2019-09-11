@@ -7,13 +7,11 @@ __all__ = [
     'NODE_INFO_SCRIPTS',
     'parse_lshw_nic_info',
     'update_node_network_information',
-    'lxd_update_cpu_details',
     ]
 
 import fnmatch
 import json
 import logging
-import math
 import re
 
 from lxml import etree
@@ -298,8 +296,8 @@ def get_xml_field_value(evaluator, expression):
 def update_hardware_details(node, output, exit_status):
     """Process the results of `LSHW_SCRIPT`.
 
-    Updates `node.memory`, and `node.storage` fields, and also
-    evaluates all tag expressions against the given ``lshw`` XML.
+    Updates `node.storage` fields, and also evaluates all tag
+    expressions against the given ``lshw`` XML.
 
     If `exit_status` is non-zero, this function returns without doing
     anything.
@@ -318,20 +316,6 @@ def update_hardware_details(node, output, exit_status):
         # Same document, many queries: use XPathEvaluator.
         evaluator = etree.XPathEvaluator(doc)
 
-        # Some machines have a <size> element in their memory <node> with the
-        # total amount of memory, and other machines declare the size of the
-        # memory in individual memory banks. This expression is mean to cope
-        # with both.
-        memory = evaluator("""\
-            sum(//node[@id='memory']/size[@units='bytes'] |
-            //node[starts-with(@id, 'memory:')]
-                /node[starts-with(@id, 'bank:')]/size[@units='bytes'])
-            div 1024 div 1024
-        """)
-        if not memory or math.isnan(memory):
-            memory = 0
-        node.memory = memory
-
         # Only one hardware UUID should be provided but lxml always returns a
         # list.
         for e in evaluator('//node/configuration/setting[@id="uuid"]'):
@@ -339,7 +323,7 @@ def update_hardware_details(node, output, exit_status):
             if value:
                 node.hardware_uuid = value
 
-        node.save(update_fields=['memory', 'hardware_uuid'])
+        node.save(update_fields=['hardware_uuid'])
 
         # This gathers the system vendor, product, version, and serial. Custom
         # built machines and some Supermicro servers do not provide this
@@ -389,15 +373,9 @@ def process_lxd_results(node, output, exit_status):
         raise ValueError(e.message + ': ' + output)
 
     # Update CPU details.
-    lxd_update_cpu_details(node, data)
-
-
-def lxd_update_cpu_details(node, data):
-    """Updates `node.cpu_count`, `node.cpu_speed`, `node.cpu_model`"""
-    # cpu_count, cpu_speed, cpu_model.
     node.cpu_count, node.cpu_speed, cpu_model = _parse_lxd_cpuinfo(data)
-    # memory.
-    node.memory = data.get('memory', {}).get('total', 0)
+    # Update memory.
+    node.memory = data.get('memory', {}).get('total', 0) / 1024 / 1024
 
     if cpu_model:
         NodeMetadata.objects.update_or_create(
@@ -435,19 +413,26 @@ def _parse_lxd_cpuinfo(data):
         if m is not None:
             cpu_speed = int(float(m.group('ghz')) * 1000)
     # When socket names don't match or cpu_speed couldn't be retrieved,
-    # use the max frequency if available before resulting to current
-    # frequency average.
+    # use the max frequency among all the sockets if before
+    # resulting to average current frequency of all the sockets.
     if not cpu_speed:
-        frequency_turbo = socket.get('frequency_turbo')
-        if frequency_turbo is not None:
-            cpu_speed = frequency_turbo
+        max_frequency = 0
+        for socket in sockets:
+            frequency_turbo = socket.get('frequency_turbo', 0)
+            if frequency_turbo > max_frequency:
+                max_frequency = frequency_turbo
+        if max_frequency:
+            cpu_speed = max_frequency
         else:
-            frequency_current_average = socket.get('frequency')
-            if frequency_current_average is not None:
+            current_average = 0
+            for socket in sockets:
+                current_average += socket.get('frequency', 0)
+            current_average /= len(sockets)
+            if current_average:
                 # Fall back on the current speed, round it to
                 # the nearest hundredth as the number may be
                 # effected by CPU scaling.
-                cpu_speed = round(frequency_current_average / 100) * 100
+                cpu_speed = round(current_average / 100) * 100
 
     return cpu_count, cpu_speed, cpu_model
 

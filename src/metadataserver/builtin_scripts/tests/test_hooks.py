@@ -41,7 +41,7 @@ from metadataserver.builtin_scripts.hooks import (
     extract_router_mac_addresses,
     filter_modaliases,
     get_dmi_data,
-    lxd_update_cpu_details,
+    process_lxd_results,
     retag_node_for_hardware_by_modalias,
     set_virtual_tag,
     SWITCH_OPENBMC_MAC,
@@ -88,7 +88,7 @@ lldp_output_interface_template = """
 """
 
 
-SAMPLE_JSON_CPUINFO = {
+SAMPLE_LXD_JSON = {
     "cpu": {
         "architecture": "x86_64",
         "sockets": [
@@ -135,14 +135,212 @@ SAMPLE_JSON_CPUINFO = {
                             }
                         ],
                         "frequency": 3247
+                    },
+                    {
+                        "core": 1,
+                        "numa_node": 0,
+                        "threads": [
+                            {
+                                "id": 2,
+                                "thread": 0,
+                                "online": True
+                            },
+                            {
+                                "id": 3,
+                                "thread": 1,
+                                "online": True
+                            }
+                        ],
+                        "frequency": 3192
+                    },
+                    {
+                        "core": 2,
+                        "numa_node": 0,
+                        "threads": [
+                            {
+                                "id": 4,
+                                "thread": 0,
+                                "online": True
+                            },
+                            {
+                                "id": 5,
+                                "thread": 1,
+                                "online": True
+                            }
+                        ],
+                        "frequency": 3241
+                    },
+                    {
+                        "core": 3,
+                        "numa_node": 0,
+                        "threads": [
+                            {
+                                "id": 6,
+                                "thread": 0,
+                                "online": True
+                            },
+                            {
+                                "id": 7,
+                                "thread": 1,
+                                "online": True
+                            }
+                        ],
+                        "frequency": 3247
                     }
                 ],
-                "frequency": 3247,
+                "frequency": 3231,
                 "frequency_minimum": 800,
                 "frequency_turbo": 3400
             }
         ],
         "total": 8
+    },
+    "memory": {
+        "nodes": [
+            {
+                "numa_node": 0,
+                "hugepages_used": 0,
+                "hugepages_total": 0,
+                "used": 16430092288,
+                "total": 16691519488
+            }
+        ],
+        "hugepages_total": 0,
+        "hugepages_used": 0,
+        "hugepages_size": 2097152,
+        "used": 12116492288,
+        "total": 16691519488
+    },
+    "gpu": {
+        "cards": [
+            {
+                "driver": "i915",
+                "driver_version": "4.15.0-58-generic",
+                "drm": {
+                    "id": 0,
+                    "card_name": "card0",
+                    "card_device": "226:0",
+                    "control_name": "controlD64",
+                    "control_device": "226:0",
+                    "render_name": "renderD128",
+                    "render_device": "226:128"
+                },
+                "numa_node": 0,
+                "pci_address": "0000:00:02.0",
+                "vendor": "Intel Corporation",
+                "vendor_id": "8086",
+                "product": (
+                    "4th Gen Core Processor Integrated Graphics Controller"),
+                "product_id": "0416"
+            }
+        ],
+        "total": 1
+    },
+    "network": {
+        "cards": [
+            {
+                "driver": "e1000e",
+                "driver_version": "3.2.6-k",
+                "ports": [
+                    {
+                        "id": "enp0s25",
+                        "address": "54:ee:75:13:aa:52",
+                        "port": 0,
+                        "protocol": "ethernet",
+                        "supported_modes": [
+                            "10baseT/Half",
+                            "10baseT/Full",
+                            "100baseT/Half",
+                            "100baseT/Full",
+                            "1000baseT/Full"
+                        ],
+                        "supported_ports": [
+                            "twisted pair"
+                        ],
+                        "port_type": "twisted pair",
+                        "transceiver_type": "internal",
+                        "auto_negotiation": True,
+                        "link_detected": False
+                    }
+                ],
+                "numa_node": 0,
+                "pci_address": "0000:00:19.0",
+                "vendor": "Intel Corporation",
+                "vendor_id": "8086",
+                "product": "Ethernet Connection I217-LM",
+                "product_id": "153a"
+            },
+            {
+                "driver": "iwlwifi",
+                "driver_version": "4.15.0-58-generic",
+                "ports": [
+                    {
+                        "id": "wlp4s0",
+                        "address": "e8:2a:ea:22:0b:d2",
+                        "port": 0,
+                        "protocol": "ethernet",
+                        "auto_negotiation": False,
+                        "link_detected": True
+                    }
+                ],
+                "numa_node": 0,
+                "pci_address": "0000:04:00.0",
+                "vendor": "Intel Corporation",
+                "vendor_id": "8086",
+                "product": "Wireless 7260",
+                "product_id": "08b2"
+            }
+        ],
+        "total": 2
+    },
+    "storage": {
+        "disks": [
+            {
+                "id": "sda",
+                "device": "8:0",
+                "model": "Crucial_CT512M55",
+                "type": "scsi",
+                "read_only": False,
+                "size": 512110190592,
+                "removable": False,
+                "numa_node": 0,
+                "partitions": [
+                    {
+                        "id": "sda1",
+                        "device": "8:1",
+                        "read_only": False,
+                        "size": 536870912,
+                        "partition": 1
+                    },
+                    {
+                        "id": "sda2",
+                        "device": "8:2",
+                        "read_only": False,
+                        "size": 511705088,
+                        "partition": 2
+                    },
+                    {
+                        "id": "sda3",
+                        "device": "8:3",
+                        "read_only": False,
+                        "size": 511060213760,
+                        "partition": 3
+                    }
+                ]
+            },
+            {
+                "id": "sr0",
+                "device": "11:0",
+                "model": "DVD-RAM UJ8E2",
+                "type": "scsi",
+                "read_only": False,
+                "size": 1073741312,
+                "removable": True,
+                "numa_node": 0,
+                "partitions": []
+            }
+        ],
+        "total": 5
     }
 }
 
@@ -726,43 +924,6 @@ class TestUpdateHardwareDetails(MAASServerTestCase):
 
     doctest_flags = doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE
 
-    def test_hardware_updates_memory(self):
-        node = factory.make_Node()
-        xmlbytes = dedent("""\
-        <node id="memory">
-           <size units="bytes">4294967296</size>
-        </node>
-        """).encode("utf-8")
-        update_hardware_details(node, xmlbytes, 0)
-        node = reload_object(node)
-        self.assertEqual(4096, node.memory)
-
-    def test_hardware_updates_memory_lenovo(self):
-        node = factory.make_Node()
-        xmlbytes = dedent("""\
-        <node>
-          <node id="memory:0" class="memory">
-            <node id="bank:0" class="memory" handle="DMI:002D">
-              <size units="bytes">4294967296</size>
-            </node>
-            <node id="bank:1" class="memory" handle="DMI:002E">
-              <size units="bytes">3221225472</size>
-            </node>
-          </node>
-          <node id="memory:1" class="memory">
-            <node id="bank:0" class="memory" handle="DMI:002F">
-              <size units="bytes">536870912</size>
-            </node>
-          </node>
-          <node id="memory:2" class="memory"></node>
-        </node>
-        """).encode("utf-8")
-        update_hardware_details(node, xmlbytes, 0)
-        node = reload_object(node)
-        mega = 2 ** 20
-        expected = (4294967296 + 3221225472 + 536879812) // mega
-        self.assertEqual(expected, node.memory)
-
     def test_hardware_updates_hardware_uuid(self):
         node = factory.make_Node()
         hardware_uuid = factory.make_UUID()
@@ -882,53 +1043,54 @@ class TestUpdateHardwareDetails(MAASServerTestCase):
             self.assertIsNone(NodeMetadata.objects.get(node=node, key=key))
 
 
-class TestLXDUpdateCPUDetails(MAASServerTestCase):
+class TestProcessLXDResults(MAASServerTestCase):
 
-    doctest_flags = doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE
-
-    def test__speed_in_name(self):
+    def test__updates_memory(self):
         node = factory.make_Node()
-        node.cpu_count = 2
+        node.memory = random.randint(4096, 8192)
+        node.save()
+
+        process_lxd_results(
+            node, json.dumps(SAMPLE_LXD_JSON).encode('utf-8'), 0)
+        node = reload_object(node)
+        self.assertEqual(round(16691519488 / 1024 / 1024), node.memory)
+
+    def test__updates_model_and_cpu_speed_from_name(self):
+        node = factory.make_Node()
         node.cpu_speed = 9999
         node.save()
 
-        lxd_update_cpu_details(node, SAMPLE_JSON_CPUINFO)
+        process_lxd_results(
+            node, json.dumps(SAMPLE_LXD_JSON).encode('utf-8'), 0)
         node = reload_object(node)
-        self.assertEqual(8, node.cpu_count)
         self.assertEqual(2400, node.cpu_speed)
         nmd = NodeMetadata.objects.get(node=node, key='cpu_model')
         self.assertEqual('Intel(R) Core(TM) i7-4700MQ CPU', nmd.value)
 
-    def test__max_speed(self):
+    def test__updates_cpu_speed_with_max_frequency_when_not_in_name(self):
         node = factory.make_Node()
-        node.cpu_count = 2
         node.cpu_speed = 9999
         node.save()
 
-        SAMPLE_JSON_CPUINFO_NO_SPEED_IN_NAME = deepcopy(SAMPLE_JSON_CPUINFO)
-        SAMPLE_JSON_CPUINFO_NO_SPEED_IN_NAME['cpu']['sockets'][0]['name'] = (
+        NO_SPEED_IN_NAME = deepcopy(SAMPLE_LXD_JSON)
+        NO_SPEED_IN_NAME['cpu']['sockets'][0]['name'] = (
             'Intel(R) Core(TM) i7-4700MQ CPU')
-        lxd_update_cpu_details(node, SAMPLE_JSON_CPUINFO_NO_SPEED_IN_NAME)
+        process_lxd_results(
+            node, json.dumps(NO_SPEED_IN_NAME).encode('utf-8'), 0)
         node = reload_object(node)
-        self.assertEqual(8, node.cpu_count)
         self.assertEqual(3400, node.cpu_speed)
-        nmd = NodeMetadata.objects.get(node=node, key='cpu_model')
-        self.assertEqual('Intel(R) Core(TM) i7-4700MQ CPU', nmd.value)
 
-    def test__current_speed(self):
+    def test__updates_cpu_speed_with_current_frequency_when_not_in_name(self):
         node = factory.make_Node()
-        node.cpu_count = 2
         node.cpu_speed = 9999
         node.save()
 
-        SAMPLE_JSON_CPUINFO_NO_NAME_OR_MAX_FREQ = deepcopy(SAMPLE_JSON_CPUINFO)
-        del SAMPLE_JSON_CPUINFO_NO_NAME_OR_MAX_FREQ[
-            'cpu']['sockets'][0]['name']
-        del SAMPLE_JSON_CPUINFO_NO_NAME_OR_MAX_FREQ[
-            'cpu']['sockets'][0]['frequency_turbo']
-        lxd_update_cpu_details(node, SAMPLE_JSON_CPUINFO_NO_NAME_OR_MAX_FREQ)
+        NO_NAME_OR_MAX_FREQ = deepcopy(SAMPLE_LXD_JSON)
+        del NO_NAME_OR_MAX_FREQ['cpu']['sockets'][0]['name']
+        del NO_NAME_OR_MAX_FREQ['cpu']['sockets'][0]['frequency_turbo']
+        process_lxd_results(
+            node, json.dumps(NO_NAME_OR_MAX_FREQ).encode('utf-8'), 0)
         node = reload_object(node)
-        self.assertEqual(8, node.cpu_count)
         self.assertEqual(3200, node.cpu_speed)
 
 
