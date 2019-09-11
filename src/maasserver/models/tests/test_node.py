@@ -251,7 +251,10 @@ from testtools.matchers import (
     Not,
 )
 from twisted.internet import defer
-from twisted.internet.error import ConnectionDone
+from twisted.internet.error import (
+    ConnectionClosed,
+    ConnectionDone,
+)
 import yaml
 
 
@@ -11721,6 +11724,16 @@ class TestRackController(MAASTransactionServerTestCase):
 
     def test_list_boot_images_when_disconnected(self):
         rack_controller = factory.make_RackController()
+        images = rack_controller.list_boot_images()
+        self.assertEquals(False, images['connected'])
+        self.assertItemsEqual([], images['images'])
+        self.assertEquals('unknown', images['status'])
+        self.assertEquals('unknown', rack_controller.get_image_sync_status())
+
+    def test_list_boot_images_when_connection_closed(self):
+        rack_controller = factory.make_RackController()
+        self.patch(
+            boot_images, 'get_boot_images').side_effect = ConnectionClosed()
         images = rack_controller.list_boot_images()
         self.assertEquals(False, images['connected'])
         self.assertItemsEqual([], images['images'])

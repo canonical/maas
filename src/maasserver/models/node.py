@@ -256,7 +256,10 @@ from twisted.internet.defer import (
     inlineCallbacks,
     succeed,
 )
-from twisted.internet.error import ConnectionDone
+from twisted.internet.error import (
+    ConnectionClosed,
+    ConnectionDone,
+)
 from twisted.internet.threads import deferToThread
 from twisted.python.failure import Failure
 from twisted.python.threadable import isInIOThread
@@ -6370,7 +6373,7 @@ class RackController(Controller):
                         status = "syncing"
                     else:
                         status = "out-of-sync"
-        except (NoConnectionsAvailable, TimeoutError):
+        except (NoConnectionsAvailable, TimeoutError, ConnectionClosed):
             status = 'unknown'
         return status
 
@@ -6401,7 +6404,7 @@ class RackController(Controller):
             } for (name, arch), subarches in downloaded_boot_images.items()]
             status = self.get_image_sync_status(boot_images)
             return {'images': images, 'connected': True, 'status': status}
-        except (NoConnectionsAvailable, TimeoutError):
+        except (NoConnectionsAvailable, ConnectionClosed, TimeoutError):
             return {'images': [], 'connected': False, 'status': 'unknown'}
 
     def is_import_boot_images_running(self):
