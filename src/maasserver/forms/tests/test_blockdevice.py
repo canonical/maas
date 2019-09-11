@@ -195,6 +195,7 @@ class TestCreatePhysicalBlockDeviceForm(MAASServerTestCase):
             serial=serial,
             size=size,
             block_size=block_size,
+            numa_node=node.default_numanode
             ))
 
     def test_creates_physical_block_device_with_id_path(self):
@@ -217,7 +218,52 @@ class TestCreatePhysicalBlockDeviceForm(MAASServerTestCase):
             id_path=id_path,
             size=size,
             block_size=block_size,
+            numa_node=node.default_numanode
             ))
+
+    def test_creates_physical_block_device_with_numa_node(self):
+        node = factory.make_Node()
+        numa_node = factory.make_NUMANode(node=node)
+        name = factory.make_name("sd")
+        id_path = factory.make_absolute_path()
+        size = random.randint(
+            MIN_BLOCK_DEVICE_SIZE, MIN_BLOCK_DEVICE_SIZE * 10)
+        block_size = 4096
+        form = CreatePhysicalBlockDeviceForm(node, data={
+            'name': name,
+            'id_path': id_path,
+            'size': size,
+            'block_size': block_size,
+            'numa_node': numa_node.index
+            })
+        self.assertTrue(form.is_valid(), form.errors)
+        block_device = form.save()
+        self.assertThat(block_device, MatchesStructure.byEquality(
+            name=name,
+            id_path=id_path,
+            size=size,
+            block_size=block_size,
+            numa_node=numa_node
+            ))
+
+    def test_creates_physical_block_device_invalid_numa_node(self):
+        node = factory.make_Node()
+        name = factory.make_name("sd")
+        id_path = factory.make_absolute_path()
+        size = random.randint(
+            MIN_BLOCK_DEVICE_SIZE, MIN_BLOCK_DEVICE_SIZE * 10)
+        block_size = 4096
+        form = CreatePhysicalBlockDeviceForm(node, data={
+            'name': name,
+            'id_path': id_path,
+            'size': size,
+            'block_size': block_size,
+            'numa_node': 4,
+            })
+        self.assertFalse(form.is_valid(), form.errors)
+        self.assertEqual(
+            {'numa_node': ['Invalid NUMA node']},
+            form.errors)
 
 
 class TestUpdatePhysicalBlockDeviceForm(MAASServerTestCase):
@@ -230,6 +276,8 @@ class TestUpdatePhysicalBlockDeviceForm(MAASServerTestCase):
 
     def test_updates_physical_block_device(self):
         block_device = factory.make_PhysicalBlockDevice()
+        node = block_device.node
+        numa_node = factory.make_NUMANode(node=node)
         name = factory.make_name("sd")
         model = factory.make_name("model")
         serial = factory.make_name("serial")
@@ -244,6 +292,7 @@ class TestUpdatePhysicalBlockDeviceForm(MAASServerTestCase):
             'id_path': id_path,
             'size': size,
             'block_size': block_size,
+            'numa_node': numa_node.index
             })
         self.assertTrue(form.is_valid(), form.errors)
         block_device = form.save()
@@ -254,7 +303,25 @@ class TestUpdatePhysicalBlockDeviceForm(MAASServerTestCase):
             id_path=id_path,
             size=size,
             block_size=block_size,
+            numa_node=numa_node
             ))
+
+    def test_update_invalid_numa_node(self):
+        block_device = factory.make_PhysicalBlockDevice()
+        form = UpdatePhysicalBlockDeviceForm(
+            instance=block_device, data={'numa_node': 3})
+        self.assertFalse(form.is_valid())
+        self.assertEqual({'numa_node': ['Invalid NUMA node']}, form.errors)
+
+    def test_update_no_numa_node_change(self):
+        node = factory.make_Node()
+        numa_node = factory.make_NUMANode(node=node)
+        # associate with a node different from the default one
+        block_device = factory.make_PhysicalBlockDevice(numa_node=numa_node)
+        form = UpdatePhysicalBlockDeviceForm(instance=block_device, data={})
+        self.assertTrue(form.is_valid(), form.errors)
+        block_device = form.save()
+        self.assertEqual(block_device.numa_node, numa_node)
 
 
 class TestUpdateDeployedPhysicalBlockDeviceForm(MAASServerTestCase):

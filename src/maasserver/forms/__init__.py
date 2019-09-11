@@ -146,6 +146,7 @@ from maasserver.models import (
     LicenseKey,
     Machine,
     Node,
+    NUMANode,
     PackageRepository,
     Partition,
     PartitionTable,
@@ -2658,12 +2659,49 @@ class FormatPartitionForm(Form):
         return self.partition
 
 
-class CreatePhysicalBlockDeviceForm(MAASModelForm):
+class NUMANodeForm(MAASModelForm):
+    """Base class for forms taking a NUMANode index and setting the NUMANode
+    object.
+
+    The form must have an integer "numa_node" integer field which contains the
+    index of the NUMA node in the node.
+    A validation error is raised if a node with the specified index is not
+    found.
+
+    The form must also have a "node" attribute referencing the node this form
+    acts on.
+
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.is_update:
+            # replace the ID of the NUMANode with the index
+            numa_node_id = self.initial['numa_node']
+            self.initial['numa_node'] = self.node.numanode_set.get(
+                id=numa_node_id).index
+
+    def clean_numa_node(self):
+        index = self.cleaned_data['numa_node']
+        if index is None:
+            index = self.instance.numa_node.index if self.is_update else 0
+
+        try:
+            self.cleaned_data['numa_node'] = self.node.numanode_set.get(
+                index=index)
+        except NUMANode.DoesNotExist:
+            raise ValidationError('Invalid NUMA node')
+        return self.cleaned_data['numa_node']
+
+
+class CreatePhysicalBlockDeviceForm(NUMANodeForm):
     """For creating physical block device."""
 
     id_path = AbsolutePathField(required=False)
     size = BytesField(required=True)
     block_size = BytesField(required=True)
+    numa_node = forms.IntegerField(
+        required=False, min_value=0, label="NUMA node")
 
     class Meta:
         model = PhysicalBlockDevice
@@ -2674,28 +2712,29 @@ class CreatePhysicalBlockDeviceForm(MAASModelForm):
             "id_path",
             "size",
             "block_size",
+            "numa_node",
         ]
 
     def __init__(self, node, *args, **kwargs):
-        super(CreatePhysicalBlockDeviceForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.node = node
 
     def save(self):
-        block_device = super(
-            CreatePhysicalBlockDeviceForm, self).save(commit=False)
+        block_device = super().save(commit=False)
         block_device.node = self.node
-        block_device.numa_node = self.node.default_numanode
         block_device.save()
         return block_device
 
 
-class UpdatePhysicalBlockDeviceForm(MAASModelForm):
+class UpdatePhysicalBlockDeviceForm(NUMANodeForm):
     """For updating physical block device."""
 
     name = forms.CharField(required=False)
     id_path = AbsolutePathField(required=False)
     size = BytesField(required=False)
     block_size = BytesField(required=False)
+    numa_node = forms.IntegerField(
+        required=False, initial=0, min_value=0, label="NUMA node")
 
     class Meta:
         model = PhysicalBlockDevice
@@ -2706,7 +2745,13 @@ class UpdatePhysicalBlockDeviceForm(MAASModelForm):
             "id_path",
             "size",
             "block_size",
+            "numa_node"
         ]
+
+    @property
+    def node(self):
+        # needed by NUMANodeForm
+        return self.instance.node
 
 
 class UpdateDeployedPhysicalBlockDeviceForm(MAASModelForm):
