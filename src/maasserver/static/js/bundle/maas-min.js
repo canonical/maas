@@ -39427,7 +39427,8 @@ function NodeNetworkingController($scope, $filter, FabricsManager, VLANsManager,
     bond: "Bond",
     bridge: "Bridge",
     vlan: "VLAN",
-    alias: "Alias"
+    alias: "Alias",
+    ovs: "Open vSwitch"
   }; // Different link modes for an interface.
 
   var LINK_MODE = {
@@ -39932,7 +39933,14 @@ function NodeNetworkingController($scope, $filter, FabricsManager, VLANsManager,
 
 
   $scope.getInterfaceTypeText = function (nic) {
-    var text = INTERFACE_TYPE_TEXTS[nic.type];
+    var text;
+    var type = nic.type;
+
+    if (nic.params && nic.params.bridge_type === "ovs") {
+      type = nic.params.bridge_type;
+    }
+
+    text = INTERFACE_TYPE_TEXTS[type];
 
     if (angular.isDefined(text)) {
       return text;

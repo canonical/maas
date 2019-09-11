@@ -1667,7 +1667,8 @@ describe("NodeNetworkingController", function() {
       bond: "Bond",
       vlan: "VLAN",
       alias: "Alias",
-      missing_type: "missing_type"
+      missing_type: "missing_type",
+      ovs: "Open vSwitch"
     };
 
     angular.forEach(INTERFACE_TYPE_TEXTS, function(value, type) {
@@ -1678,6 +1679,15 @@ describe("NodeNetworkingController", function() {
         };
         expect($scope.getInterfaceTypeText(nic)).toBe(value);
       });
+    });
+
+    it("returns correct text if bridge type is OVS", () => {
+      makeController();
+      const nic = {
+        type: "bridge",
+        params: { bridge_type: "ovs" }
+      };
+      expect($scope.getInterfaceTypeText(nic)).toBe("Open vSwitch");
     });
   });
 

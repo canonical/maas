@@ -234,7 +234,8 @@ export function NodeNetworkingController(
     bond: "Bond",
     bridge: "Bridge",
     vlan: "VLAN",
-    alias: "Alias"
+    alias: "Alias",
+    ovs: "Open vSwitch"
   };
 
   // Different link modes for an interface.
@@ -765,7 +766,15 @@ export function NodeNetworkingController(
 
   // Get the text for the type of the interface.
   $scope.getInterfaceTypeText = function(nic) {
-    var text = INTERFACE_TYPE_TEXTS[nic.type];
+    let text;
+    let type = nic.type;
+
+    if (nic.params && nic.params.bridge_type === "ovs") {
+      type = nic.params.bridge_type;
+    }
+
+    text = INTERFACE_TYPE_TEXTS[type];
+
     if (angular.isDefined(text)) {
       return text;
     } else {
