@@ -119,6 +119,13 @@ from maasserver.utils.orm import (
 from piston3.utils import rc
 import yaml
 
+# NUMANode fields exposed in the API.
+DISPLAYED_NUMANODE_FIELDS = (
+    'index',
+    'cores',
+    'memory',
+)
+
 # Machine's fields exposed on the API.
 DISPLAYED_MACHINE_FIELDS = (
     'system_id',
@@ -188,6 +195,7 @@ DISPLAYED_MACHINE_FIELDS = (
     'hardware_info',
     'interface_test_status',
     'interface_test_status_name',
+    ('numanode_set', DISPLAYED_NUMANODE_FIELDS),
 )
 
 # Limited set of machine fields exposed on the anonymous API.

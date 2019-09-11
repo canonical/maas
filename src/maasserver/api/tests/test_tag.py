@@ -208,7 +208,7 @@ class TestTagAPI(APITestCase.ForUser):
         # `default_gateways`, `health_status`, 'special_filesystems' and
         # 'resource_pool' the number of queries is not the same but it is
         # proportional to the number of machines.
-        self.assertEquals(num_queries1, num_queries2 - (3 * 6))
+        self.assertEquals(num_queries1, num_queries2 - (3 * 7))
 
     def test_GET_machines_returns_machines(self):
         tag = factory.make_Tag()
@@ -273,7 +273,7 @@ class TestTagAPI(APITestCase.ForUser):
         # `default_gateways`, `health_status` and 'resource_pool', the number
         # of queries is not the same but it is proportional to the number of
         # machines.
-        self.assertEquals(num_queries1, num_queries2 - (3 * 6))
+        self.assertEquals(num_queries1, num_queries2 - (3 * 7))
 
     def test_GET_devices_returns_devices(self):
         tag = factory.make_Tag()

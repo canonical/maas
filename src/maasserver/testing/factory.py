@@ -1390,10 +1390,16 @@ class Factory(maastesting.factory.Factory):
                     INTERFACE_TYPE.BRIDGE,
                     INTERFACE_TYPE.UNKNOWN]):
             mac_address = self.make_MAC()
-        if node is None and iftype == INTERFACE_TYPE.PHYSICAL:
+        if (
+                node is None and
+                numa_node is None and
+                iftype == INTERFACE_TYPE.PHYSICAL):
             node = self.make_Node()
         elif node is None and parents is not None and len(parents) > 0:
             node = parents[0].get_node()
+        elif numa_node is not None:
+            node = numa_node.node
+
         if tags is None:
             tags = [self.make_name('tag') for _ in range(3)]
         link_speeds = [10, 100, 1000, 10000, 20000, 40000, 50000, 100000]
@@ -1410,11 +1416,7 @@ class Factory(maastesting.factory.Factory):
             vendor = factory.make_name('vendor')
         if product is None:
             product = factory.make_name('product')
-        if (
-                iftype == INTERFACE_TYPE.PHYSICAL and
-                numa_node is None and
-                node.is_machine
-        ):
+        if numa_node is None and node is not None and node.is_machine:
             numa_node = node.default_numanode
         interface = Interface(
             node=node, mac_address=mac_address, type=iftype,

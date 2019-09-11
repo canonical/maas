@@ -55,6 +55,7 @@ from maasserver.models import (
     Interface,
     ISCSIBlockDevice,
     Node,
+    NUMANode,
     OwnerData,
     PhysicalBlockDevice,
     VirtualBlockDevice,
@@ -131,6 +132,10 @@ NODES_PREFETCH = [
             'cache_set', 'filesystem_group'),
     ),
     Prefetch(
+        'blockdevice_set__physicalblockdevice__numa_node',
+        queryset=NUMANode.objects.select_related('node'),
+    ),
+    Prefetch(
         'blockdevice_set__virtualblockdevice',
         queryset=VirtualBlockDevice.objects.select_related(
             'node', 'filesystem_group'),
@@ -159,6 +164,7 @@ NODES_PREFETCH = [
     'interface_set__vlan__space',
     'interface_set__parents',
     'interface_set__ip_addresses__subnet',
+    'interface_set__numa_node',
     # Prefetch 3 levels deep, anything more will require extra queries.
     'interface_set__children_relationships__child__vlan',
     ('interface_set__children_relationships__child__'
@@ -168,6 +174,7 @@ NODES_PREFETCH = [
      'children_relationships__child__vlan'),
     'tags',
     'nodemetadata_set',
+    'numanode_set',
 ]
 
 

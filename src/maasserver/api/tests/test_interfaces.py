@@ -112,6 +112,18 @@ class TestInterfacesAPI(APITestCase.ForUser):
             ]
         self.assertItemsEqual(expected_ids, result_ids)
 
+    def test_read_physical_includes_numa_node(self):
+        numa_node = factory.make_NUMANode()
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, numa_node=numa_node)
+        uri = get_interfaces_uri(numa_node.node)
+        response = self.client.get(uri)
+
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        [interface] = json_load_bytes(response.content)
+        self.assertEqual(interface['numa_node'], numa_node.index)
+
     def test_read_on_device(self):
         parent = factory.make_Node()
         device = factory.make_Device(
@@ -1737,6 +1749,7 @@ class TestInterfaceAPIForControllers(APITestCase.ForUser):
             "resource_uri": Equals(get_interface_uri(interface)),
             "params": Equals(interface.params),
             "effective_mtu": Equals(interface.get_effective_mtu()),
+            "numa_node": Equals(None),
         }))
         self.assertThat(parsed_interface["links"], MatchesSetwise(*links))
         json_discovered = parsed_interface["discovered"][0]

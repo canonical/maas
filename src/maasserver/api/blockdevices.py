@@ -56,6 +56,7 @@ DISPLAYED_BLOCKDEVICE_FIELDS = (
     'partitions',
     'firmware_version',
     'storage_pool',
+    'numa_node',
 )
 
 
@@ -240,6 +241,13 @@ class BlockDeviceHandler(OperationsHandler):
         if (isinstance(block_device, PhysicalBlockDevice) and
                 block_device.storage_pool is not None):
             return block_device.storage_pool.pool_id
+        return None
+
+    @classmethod
+    def numa_node(cls, block_device):
+        block_device = block_device.actual_instance
+        if isinstance(block_device, PhysicalBlockDevice):
+            return block_device.numa_node.index
         return None
 
     def read(self, request, system_id, id):

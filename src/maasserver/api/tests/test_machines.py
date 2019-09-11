@@ -355,6 +355,19 @@ class TestMachinesAPI(APITestCase.ForUser):
             [machine1.system_id, machine2.system_id],
             extract_system_ids(parsed_result))
 
+    def test_GET_includes_numa_nodes(self):
+        machine = factory.make_Node()
+        factory.make_NUMANode(node=machine, memory=2048 * 1024, cores=[0, 1])
+        factory.make_NUMANode(node=machine, memory=4096 * 1024, cores=[2, 3])
+        response = self.client.get(reverse('machines_handler'))
+        [parsed_result] = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
+        self.assertEqual(
+            parsed_result['numanode_set'],
+            [{'index': 0, 'memory': 0, 'cores': []},
+             {'index': 1, 'memory': 2048 * 1024, 'cores': [0, 1]},
+             {'index': 2, 'memory': 4096 * 1024, 'cores': [2, 3]}])
+
     def test_GET_returns_pod_for_machine_in_pod(self):
         pod = factory.make_Pod()
         machine = factory.make_Node()
@@ -431,9 +444,9 @@ class TestMachinesAPI(APITestCase.ForUser):
         # `default_gateways`, `health_status`, 'special_filesystems' and
         # 'resource_pool' the number of queries is not the same but it is
         # proportional to the number of machines.
-        DEFAULT_NUM = 63
-        self.assertEqual(DEFAULT_NUM + (10 * 6), num_queries1)
-        self.assertEqual(DEFAULT_NUM + (20 * 6), num_queries2)
+        DEFAULT_NUM = 66
+        self.assertEqual(DEFAULT_NUM + (10 * 7), num_queries1)
+        self.assertEqual(DEFAULT_NUM + (20 * 7), num_queries2)
 
     def test_GET_without_machines_returns_empty_list(self):
         # If there are no machines to list, the "read" op still works but

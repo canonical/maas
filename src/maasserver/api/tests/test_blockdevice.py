@@ -160,6 +160,34 @@ class TestBlockDevices(APITestCase.ForUser):
         self.assertEqual(
             parsed_devices[0]['storage_pool'], pool.pool_id)
 
+    def test_read_returns_numa_node(self):
+        node = factory.make_Node(with_boot_disk=False)
+        factory.make_NUMANode(node=node)
+        numa_node2 = factory.make_NUMANode(node=node)
+        factory.make_PhysicalBlockDevice(numa_node=numa_node2)
+
+        uri = get_blockdevices_uri(node)
+        response = self.client.get(uri)
+
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        [parsed_device] = json_load_bytes(response.content)
+        self.assertEqual(parsed_device['numa_node'], 2)
+
+    def test_read_no_numa_node_not_physical(self):
+        node = factory.make_Node(with_boot_disk=False)
+        factory.make_VirtualBlockDevice(node=node)
+        uri = get_blockdevices_uri(node)
+        response = self.client.get(uri)
+
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_devices = json_load_bytes(response.content)
+        [parsed_device] = [
+            device for device in parsed_devices
+            if device['type'] != 'physical']
+        self.assertIsNone(parsed_device['numa_node'])
+
     def test_read_returns_partition_type(self):
         node = factory.make_Node(with_boot_disk=False)
         block_device = factory.make_PhysicalBlockDevice(node=node)

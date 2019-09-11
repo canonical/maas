@@ -80,6 +80,7 @@ DISPLAYED_INTERFACE_FIELDS = (
     'link_connected',
     'interface_speed',
     'link_speed',
+    'numa_node',
 )
 
 INTERFACES_PREFETCH = [
@@ -87,6 +88,7 @@ INTERFACES_PREFETCH = [
     'vlan__secondary_rack',
     'vlan__fabric__vlan_set',
     'vlan__space',
+    'numa_node',
     'parents',
     'ip_addresses__subnet',
     # Prefetch 3 levels deep, anything more will require extra queries.
@@ -521,6 +523,11 @@ class InterfaceHandler(OperationsHandler):
     @classmethod
     def effective_mtu(cls, interface):
         return interface.get_effective_mtu()
+
+    @classmethod
+    def numa_node(cls, interface):
+        numa_node = interface.numa_node
+        return numa_node.index if numa_node else None
 
     def read(self, request, system_id, id):
         """@description-title Read an interface
