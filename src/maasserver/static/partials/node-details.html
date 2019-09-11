@@ -877,6 +877,15 @@
                                             <input type="text" class="table__input editible" data-ng-model="newBridgeInterface.name">
                                         </div>
                                     </div>
+                                    <div class="p-form__group row u-vertically-center">
+                                        <label for="bridge_type" class="p-form__label col-2">Bridge type</label>
+                                        <div class="p-form__control col-4">
+                                            <select data-ng-model="newBridgeInterface.bridge_type">
+                                                <option value="standard">Standard</option>
+                                                <option value="ovs">Open vSwitch (ovs)</option>
+                                            </select>
+                                        </div>
+                                    </div>
                                     <div class="p-form__group row u-vertically-center" data-ng-class="{ 'is-error': isMACAddressInvalid(newBridgeInterface.mac_address) }">
                                         <label for="mac" class="p-form__label col-2">MAC address</label>
                                         <div class="p-form__control col-4">
@@ -1416,6 +1425,15 @@
                                                         data-ng-if="interface.type !== 'alias' && interface.type !== 'vlan'" disable-label="false"
                                                         label-width="2" input-width="4"
                                                         input-class="table__input"></maas-obj-field>
+                                                    <div class="p-form__group row u-vertically-center">
+                                                        <label for="bridge_type" class="p-form__label col-2">Bridge type</label>
+                                                        <div class="p-form__control col-4">
+                                                            <select data-ng-model="editInterface.bridge_type">
+                                                                <option value="standard">Standard</option>
+                                                                <option value="ovs">Open vSwitch (ovs)</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
                                                     <div class="p-form__group row">
                                                         <label for="mac" class="p-form__label col-2">MAC address</label>
                                                         <div class="p-form__control col-4 p-form-validation"

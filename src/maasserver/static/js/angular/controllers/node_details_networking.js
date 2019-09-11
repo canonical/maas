@@ -1121,6 +1121,7 @@ export function NodeNetworkingController(
         type: nic.type,
         bridge_fd: nic.params.bridge_fd,
         bridge_stp: nic.params.bridge_stp,
+        bridge_type: nic.params.bridge_type,
         bond_mode: nic.params.bond_mode,
         xmitHashPolicy: nic.params.bond_xmit_hash_policy,
         lacpRate: nic.params.bond_lacp_rate,
@@ -1153,6 +1154,7 @@ export function NodeNetworkingController(
         type: nic.type,
         bridge_fd: nic.params.bridge_fd,
         bridge_stp: nic.params.bridge_stp,
+        bridge_type: nic.params.bridge_type,
         bond_mode: nic.params.bond_mode,
         xmitHashPolicy: nic.params.bond_xmit_hash_policy,
         lacpRate: nic.params.bond_lacp_rate,
@@ -2061,7 +2063,8 @@ export function NodeNetworkingController(
         fabric: fabric,
         vlan: vlan,
         bridge_stp: false,
-        bridge_fd: 15
+        bridge_fd: 15,
+        bridge_type: "standard"
       };
     }
   };
@@ -2113,6 +2116,7 @@ export function NodeNetworkingController(
       parents: parents,
       bridge_stp: $scope.newBridgeInterface.bridge_stp,
       bridge_fd: $scope.newBridgeInterface.bridge_fd,
+      bridge_type: $scope.newBridgeInterface.bridge_type,
       vlan: vlan_id,
       subnet: subnet_id,
       mode: $scope.newBridgeInterface.mode,

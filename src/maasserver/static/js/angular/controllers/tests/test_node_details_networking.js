@@ -4169,7 +4169,8 @@ describe("NodeNetworkingController", function() {
         vlan: {},
         fabric: "",
         bridge_stp: false,
-        bridge_fd: 15
+        bridge_fd: 15,
+        bridge_type: "standard"
       });
     });
   });
@@ -4271,6 +4272,7 @@ describe("NodeNetworkingController", function() {
         parents: [nic1.id],
         bridge_stp: false,
         bridge_fd: 15,
+        bridge_type: "standard",
         vlan: vlan.id,
         subnet: subnet.id,
         mode: "static",
