@@ -299,3 +299,14 @@ maas-dhcp-snippets-table {
 .page-header__message {
   margin-bottom: 1rem;
 }
+
+.p-warning-message {
+  position: relative;
+  padding-left: 1.5rem;
+}
+
+.p-warning-message__icon {
+  position: absolute;
+  top: 0.2rem;
+  left: 0;
+}

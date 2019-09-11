@@ -1542,6 +1542,7 @@ export function NodeNetworkingController(
     $scope.newInterface = {};
     $scope.newBondInterface = {};
     $scope.newBridgeInterface = {};
+    $scope.isChangingConnectionStatus = false;
     $scope.clearCreateBondError();
     if ($scope.selectedMode === SELECTION_MODE.CREATE_BOND) {
       $scope.selectedMode = SELECTION_MODE.MULTI;
@@ -2258,6 +2259,25 @@ export function NodeNetworkingController(
     }
 
     return "No DHCP";
+  };
+
+  $scope.isChangingConnectionStatus = false;
+
+  $scope.changeConnectionStatus = nic => {
+    $scope.isChangingConnectionStatus = true;
+    $scope.selectedInterfaces = [$scope.getUniqueKey(nic)];
+  };
+
+  $scope.saveConnectionStatus = nic => {
+    const editInterface = angular.copy(nic);
+    editInterface.link_connected = !nic.link_connected;
+
+    $scope.$parent.nodesManager
+      .updateInterfaceForm($scope.preProcessInterface(editInterface))
+      .then(() => {
+        $scope.isChangingConnectionStatus = false;
+        $scope.selectedInterfaces = [];
+      });
   };
 
   // Load all the required managers. NodesManager and GeneralManager

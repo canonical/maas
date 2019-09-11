@@ -2813,6 +2813,13 @@ describe("NodeNetworkingController", function() {
       expect($scope.newBondInterface).not.toBe(newBondInterface);
       expect($scope.selectedMode).toBe("multi");
     });
+
+    it("sets isChangingConnectionStatus to false", () => {
+      makeController();
+      $scope.isChangingConnectionStatus = true;
+      $scope.cancel();
+      expect($scope.isChangingConnectionStatus).toBe(false);
+    });
   });
 
   describe("confirmRemove", function() {
@@ -4917,6 +4924,27 @@ describe("NodeNetworkingController", function() {
       makeController();
       const vlan = { external_dhcp: null, dhcp_on: false };
       expect($scope.getDHCPStatus(vlan)).toEqual("No DHCP");
+    });
+  });
+
+  describe("changeConnectionStatus", () => {
+    it("sets isChangingConnectionStatus to true", () => {
+      makeController();
+      $scope.isChangingConnectionStatus = false;
+      $scope.changeConnectionStatus({});
+      expect($scope.isChangingConnectionStatus).toBe(true);
+    });
+
+    it("sets selected interfaces to supplied nic", () => {
+      makeController();
+      const nic = {
+        id: 1,
+        link_id: -1,
+        vlan: { id: 2 },
+        fabric: { name: "fabric-2" }
+      };
+      $scope.changeConnectionStatus(nic);
+      expect($scope.selectedInterfaces).toEqual(["1/-1"]);
     });
   });
 });

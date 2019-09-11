@@ -2316,6 +2316,12 @@
                                     <div class="p-contextual-menu" toggle-ctrl data-ng-if="(!isAllNetworkingDisabled() || isLimitedEditingAllowed(interface)) && !isEditing(interface) && !(isShowingDeleteConfirm() && isInterfaceSelected(interface))">
                                         <button class="p-button--base is-small p-contextual-menu__toggle u-no-margin--right" data-ng-click="toggleMenu()"><i class="p-icon--contextual-menu u-no-margin--right">Actions</i></button>
                                         <div class="p-contextual-menu__dropdown" role="menu" data-ng-show="isToggled">
+                                            <button class="p-contextual-menu__link" role="menu" data-ng-show="isToggled" data-ng-if="!cannotEditInterface(interface) && !interface.link_connected" aria-label="Mark as connected" data-ng-click="toggleMenu(); changeConnectionStatus(interface)">
+                                                Mark as connected
+                                            </button>
+                                            <button class="p-contextual-menu__link" role="menu" data-ng-show="isToggled" data-ng-if="!cannotEditInterface(interface) && interface.link_connected" aria-label="Mark as disconnected" data-ng-click="toggleMenu(); changeConnectionStatus(interface)">
+                                                Mark as disconnected
+                                            </button>
                                             <button class="p-contextual-menu__link"
                                                 aria-label="Add Alias or VLAN"
                                                 data-ng-if="canAddAliasOrVLAN(interface)"
@@ -2331,7 +2337,7 @@
                                         </div>
                                     </div>
                                 </td>
-                                <td class="p-table-expanding__panel col-12"  data-ng-if="isInterfaceSelected(interface) && (isShowingAdd() || isEditing(interface) || isShowingDeleteConfirm() || isShowingAdd() && !newInterface.saving)">
+                                <td class="p-table-expanding__panel col-12"  data-ng-if="isInterfaceSelected(interface) && (isShowingAdd() || isEditing(interface) || isShowingDeleteConfirm() || isChangingConnectionStatus || isShowingAdd() && !newInterface.saving)">
                                     <div class="row">
                                         <div class="u-position-relative u-clearfix" data-ng-if="windowWidth <= 772">
                                             <h2 data-ng-click="cancel()" class="u-float--left p-heading--four">
@@ -2345,6 +2351,25 @@
                                             </button>
                                         </div>
                                         <hr />
+                                        <div class="row" data-ng-if="isChangingConnectionStatus">
+                                            <div class="p-warning-message">
+                                                <i class="p-icon--warning p-warning-message__icon"></i>
+                                                <div data-ng-if="interface.link_connected">
+                                                    This interface was detected as <strong>connected</strong>. Are you sure you want to mark it as disconnected?
+                                                    <br>
+                                                    When the interface is disconnected, it cannot be configured.
+                                                </div>
+                                                <div data-ng-if="!interface.link_connected">
+                                                    This interface was detected as <strong>disconnected</strong>. Are you sure you want to mark it as connected?
+                                                </div>
+                                            </div>
+                                            <div class="u-align--right">
+                                                <button class="p-button--base" data-ng-click="cancel()">Cancel</button>
+                                                <button class="u-no-margin--top" data-ng-click="saveConnectionStatus(interface)" data-ng-class="{'p-button--positive': !interface.link_connected, 'p-button--negative': interface.link_connected}">
+                                                    Mark as <span data-ng-if="interface.link_connected">disconnected</span><span data-ng-if="!interface.link_connected">connected</span>
+                                                </button>
+                                            </div>
+                                        </div>
                                         <div class="p-form p-form--stacked" data-ng-class="{ 'is-active': isEditing(interface) || isShowingAdd() }">
                                             <div class="row" data-ng-if="isShowingAdd()">
                                                 <div class="col-6">

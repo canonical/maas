@@ -40682,6 +40682,7 @@ function NodeNetworkingController($scope, $filter, FabricsManager, VLANsManager,
     $scope.newInterface = {};
     $scope.newBondInterface = {};
     $scope.newBridgeInterface = {};
+    $scope.isChangingConnectionStatus = false;
     $scope.clearCreateBondError();
 
     if ($scope.selectedMode === SELECTION_MODE.CREATE_BOND) {
@@ -41373,6 +41374,22 @@ function NodeNetworkingController($scope, $filter, FabricsManager, VLANsManager,
     }
 
     return "No DHCP";
+  };
+
+  $scope.isChangingConnectionStatus = false;
+
+  $scope.changeConnectionStatus = function (nic) {
+    $scope.isChangingConnectionStatus = true;
+    $scope.selectedInterfaces = [$scope.getUniqueKey(nic)];
+  };
+
+  $scope.saveConnectionStatus = function (nic) {
+    var editInterface = angular.copy(nic);
+    editInterface.link_connected = !nic.link_connected;
+    $scope.$parent.nodesManager.updateInterfaceForm($scope.preProcessInterface(editInterface)).then(function () {
+      $scope.isChangingConnectionStatus = false;
+      $scope.selectedInterfaces = [];
+    });
   }; // Load all the required managers. NodesManager and GeneralManager
   // are loaded by the parent controller "NodeDetailsController".
 
