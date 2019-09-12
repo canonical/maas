@@ -2663,8 +2663,8 @@ class FormatPartitionForm(Form):
         return self.partition
 
 
-class NUMANodeForm(MAASModelForm):
-    """Base class for forms taking a NUMANode index and setting the NUMANode
+class NUMANodeFormMixin:
+    """Mixin class for forms taking a NUMANode index and setting the NUMANode
     object.
 
     The form must have an integer "numa_node" integer field which contains the
@@ -2678,15 +2678,23 @@ class NUMANodeForm(MAASModelForm):
     """
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if self.is_update:
-            # replace the ID of the NUMANode with the index
-            numa_node_id = self.initial['numa_node']
-            self.initial['numa_node'] = self.node.numanode_set.get(
-                id=numa_node_id).index
+        is_update = bool(kwargs.get('instance'))
+        if not is_update or not self.node.is_machine:
+            return
+
+        # replace the ID of the NUMANode with the index
+        numa_node_id = self.initial['numa_node']
+        self.initial['numa_node'] = self.node.numanode_set.get(
+            id=numa_node_id).index
 
     def clean_numa_node(self):
         index = self.cleaned_data['numa_node']
+        if not self.node.is_machine:
+            if index is None:
+                return None
+            raise ValidationError(
+                'Only interfaces for machines are linked to a NUMA node')
+
         if index is None:
             index = self.instance.numa_node.index if self.is_update else 0
 
@@ -2698,7 +2706,7 @@ class NUMANodeForm(MAASModelForm):
         return self.cleaned_data['numa_node']
 
 
-class CreatePhysicalBlockDeviceForm(NUMANodeForm):
+class CreatePhysicalBlockDeviceForm(MAASModelForm, NUMANodeFormMixin):
     """For creating physical block device."""
 
     id_path = AbsolutePathField(required=False)
@@ -2720,7 +2728,8 @@ class CreatePhysicalBlockDeviceForm(NUMANodeForm):
         ]
 
     def __init__(self, node, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        MAASModelForm.__init__(self, *args, **kwargs)
+        NUMANodeFormMixin.__init__(self, *args, **kwargs)
         self.node = node
 
     def save(self):
@@ -2730,7 +2739,7 @@ class CreatePhysicalBlockDeviceForm(NUMANodeForm):
         return block_device
 
 
-class UpdatePhysicalBlockDeviceForm(NUMANodeForm):
+class UpdatePhysicalBlockDeviceForm(MAASModelForm, NUMANodeFormMixin):
     """For updating physical block device."""
 
     name = forms.CharField(required=False)
@@ -2751,6 +2760,10 @@ class UpdatePhysicalBlockDeviceForm(NUMANodeForm):
             "block_size",
             "numa_node"
         ]
+
+    def __init__(self, *args, **kwargs):
+        MAASModelForm.__init__(self, *args, **kwargs)
+        NUMANodeFormMixin.__init__(self, *args, **kwargs)
 
     @property
     def node(self):

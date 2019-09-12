@@ -24,6 +24,7 @@ from maasserver.enum import (
 )
 from maasserver.forms import (
     MAASModelForm,
+    NUMANodeFormMixin,
     set_form_error,
 )
 from maasserver.models.interface import (
@@ -293,10 +294,12 @@ class DeployedInterfaceForm(MAASModelForm):
         return super().clean()
 
 
-class PhysicalInterfaceForm(InterfaceForm):
+class PhysicalInterfaceForm(InterfaceForm, NUMANodeFormMixin):
     """Form used to create/edit a physical interface."""
 
     enabled = forms.NullBooleanField(required=False)
+    numa_node = forms.IntegerField(
+        required=False, min_value=0, label="NUMA node")
 
     class Meta:
         model = PhysicalInterface
@@ -304,10 +307,13 @@ class PhysicalInterfaceForm(InterfaceForm):
             'mac_address',
             'name',
             'enabled',
+            'numa_node',
         )
 
     def __init__(self, *args, **kwargs):
-        super(PhysicalInterfaceForm, self).__init__(*args, **kwargs)
+        InterfaceForm.__init__(self, *args, **kwargs)
+        kwargs.pop('node', None)  # don't pass it to NUMANodeForm
+        NUMANodeFormMixin.__init__(self, *args, **kwargs)
         # Force MAC to be non-null.
         self.fields['mac_address'].required = True
         # Allow the name to be auto-generated if missing.
@@ -321,7 +327,7 @@ class PhysicalInterfaceForm(InterfaceForm):
             raise ValidationError("A physical interface cannot have parents.")
 
     def clean(self):
-        cleaned_data = super(PhysicalInterfaceForm, self).clean()
+        cleaned_data = InterfaceForm.clean(self)
         new_name = cleaned_data.get('name')
         if self.fields_ok(['name']):
             if new_name:

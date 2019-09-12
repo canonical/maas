@@ -191,11 +191,13 @@ class DeployedInterfaceFormTest(MAASServerTestCase):
             form.errors['__all__'][0])
 
 
-class PhysicalInterfaceFormTest(MAASServerTestCase):
+class TestPhysicalInterfaceForm(MAASServerTestCase):
 
     def test__updates_interface(self):
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, name='eth0', link_connected=False)
+        node = interface.node
+        numa_node = factory.make_NUMANode(node=node)
         new_name = 'eth1'
         new_mac = factory.make_mac_address()
         new_link_connected = True
@@ -209,6 +211,7 @@ class PhysicalInterfaceFormTest(MAASServerTestCase):
                 'link_connected': new_link_connected,
                 'link_speed': new_link_speed,
                 'interface_speed': new_interface_speed,
+                'numa_node': numa_node.index
             })
         self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
@@ -218,7 +221,9 @@ class PhysicalInterfaceFormTest(MAASServerTestCase):
                 name=new_name, mac_address=new_mac,
                 link_connected=new_link_connected,
                 link_speed=new_link_speed,
-                interface_speed=new_interface_speed))
+                interface_speed=new_interface_speed,
+                numa_node=numa_node
+            ))
 
     def test__updates_interface_errors_for_not_link_connected_and_speed(self):
         interface = factory.make_Interface(
@@ -261,8 +266,33 @@ class PhysicalInterfaceFormTest(MAASServerTestCase):
             interface,
             MatchesStructure.byEquality(
                 node=node, mac_address=mac_address, name=interface_name,
-                type=INTERFACE_TYPE.PHYSICAL, tags=tags))
+                type=INTERFACE_TYPE.PHYSICAL, tags=tags,
+                numa_node=node.default_numanode))
         self.assertItemsEqual([], interface.parents.all())
+
+    def test__creates_physical_interface_with_numa_node(self):
+        node = factory.make_Node()
+        numa_node = factory.make_NUMANode(node=node)
+        mac_address = factory.make_mac_address()
+        interface_name = 'eth0'
+        vlan = factory.make_VLAN()
+        tags = [
+            factory.make_name("tag")
+            for _ in range(3)
+        ]
+        form = PhysicalInterfaceForm(
+            node=node,
+            data={
+                'name': interface_name,
+                'mac_address': mac_address,
+                'vlan': vlan.id,
+                'tags': ",".join(tags),
+                'numa_node': numa_node.index
+            })
+        self.assertTrue(form.is_valid(), dict(form.errors))
+        interface = form.save()
+        self.assertEqual(interface.node, node)
+        self.assertEqual(interface.numa_node, numa_node)
 
     def test__creates_physical_interface_generates_name(self):
         node = factory.make_Node()
@@ -369,6 +399,20 @@ class PhysicalInterfaceFormTest(MAASServerTestCase):
         self.assertIn(
             "already has an interface named '%s'." % interface.name,
             form.errors['name'][0])
+
+    def test_rejects_interface_with_numa_node_for_device(self):
+        node = factory.make_Device()
+        form = PhysicalInterfaceForm(
+            node=node,
+            data={
+                'mac_address': factory.make_mac_address(),
+                'numa_node': 2
+            })
+        self.assertFalse(form.is_valid())
+        self.assertEqual(
+            form.errors,
+            {'numa_node': [
+                'Only interfaces for machines are linked to a NUMA node']})
 
     def test_allows_interface_on_tagged_vlan_for_device(self):
         device = factory.make_Device()
