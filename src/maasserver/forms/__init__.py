@@ -2201,6 +2201,8 @@ class LicenseKeyForm(MAASModelForm):
 
 BOOT_RESOURCE_FILE_TYPE_CHOICES_UPLOAD = (
     ('tgz', "Root Image (tar.gz)"),
+    ('tbz', "Root Image (tar.bz2)"),
+    ('txz', "Root Image (tar.xz)"),
     ('ddtgz', "Root Compressed DD (dd -> tar.gz)"),
     ('ddtbz', "Root Compressed DD (dd -> root-dd.tar.bz2)"),
     ('ddtxz', "Root Compressed DD (dd -> root-dd.tar.xz)"),
@@ -2329,6 +2331,8 @@ class BootResourceForm(MAASModelForm):
         """Convert the upload filetype to the filetype for `BootResource`."""
         filetypes = {
             'tgz': BOOT_RESOURCE_FILE_TYPE.ROOT_TGZ,
+            'tbz': BOOT_RESOURCE_FILE_TYPE.ROOT_TBZ,
+            'txz': BOOT_RESOURCE_FILE_TYPE.ROOT_TXZ,
             'ddtgz': BOOT_RESOURCE_FILE_TYPE.ROOT_DDTGZ,
             'ddtar': BOOT_RESOURCE_FILE_TYPE.ROOT_DDTAR,
             'ddraw': BOOT_RESOURCE_FILE_TYPE.ROOT_DDRAW,

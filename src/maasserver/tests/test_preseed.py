@@ -1778,12 +1778,12 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
             ))
         self.assertIn(msg, "%s" % error)
 
-    def test_get_curtin_installer_url_doesnt_append_on_tgz(self):
+    def test_get_curtin_installer_url_doesnt_append_on_root_tar(self):
         osystem = make_usable_osystem(self)
         series = osystem['default_release']
         architecture = make_usable_architecture(self)
         xinstall_path = factory.make_name('xi_path')
-        xinstall_type = 'tgz'
+        xinstall_type = random.choice(['tgz', 'tbz', 'txz'])
         cluster_ip = factory.make_ipv4_address()
         node = factory.make_Node_with_Interface_on_Subnet(
             primary_rack=self.rpc_rack_controller, osystem=osystem['name'],

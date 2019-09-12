@@ -1,4 +1,4 @@
-# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `BootSourceForm`."""
@@ -43,6 +43,8 @@ class TestBootResourceForm(MAASServerTestCase):
     def pick_filetype(self):
         filetypes = {
             'tgz': BOOT_RESOURCE_FILE_TYPE.ROOT_TGZ,
+            'tbz': BOOT_RESOURCE_FILE_TYPE.ROOT_TBZ,
+            'txz': BOOT_RESOURCE_FILE_TYPE.ROOT_TXZ,
             'ddtgz': BOOT_RESOURCE_FILE_TYPE.ROOT_DDTGZ,
             'ddtar': BOOT_RESOURCE_FILE_TYPE.ROOT_DDTAR,
             'ddraw': BOOT_RESOURCE_FILE_TYPE.ROOT_DDRAW,

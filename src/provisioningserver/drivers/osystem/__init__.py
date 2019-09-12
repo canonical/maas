@@ -1,4 +1,4 @@
-# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Osystem Drivers."""
@@ -197,7 +197,11 @@ class OperatingSystem(metaclass=ABCMeta):
         if squashfs:
             filetypes.update({'squashfs': 'squashfs'})
         if tgz:
-            filetypes.update({'root-tgz': 'tgz'})
+            filetypes.update({
+                'root-tgz': 'tgz',
+                'root-txz': 'txz',
+                'root-tbz': 'tbz',
+            })
         if dd:
             filetypes.update({
                 # root-dd maps to dd-tgz for backwards compatibility.

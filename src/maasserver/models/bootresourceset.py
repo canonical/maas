@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Boot Resource Set."""
@@ -25,6 +25,8 @@ XINSTALL_TYPES = (
     BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE,
     BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE,
     BOOT_RESOURCE_FILE_TYPE.ROOT_TGZ,
+    BOOT_RESOURCE_FILE_TYPE.ROOT_TBZ,
+    BOOT_RESOURCE_FILE_TYPE.ROOT_TXZ,
     BOOT_RESOURCE_FILE_TYPE.ROOT_DD,
     )
 

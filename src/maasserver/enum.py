@@ -380,6 +380,8 @@ class BOOT_RESOURCE_FILE_TYPE:
     """The vocabulary of possible file types for `BootResource`."""
     #: Tarball of root image.
     ROOT_TGZ = 'root-tgz'
+    ROOT_TBZ = 'root-tbz'
+    ROOT_TXZ = 'root-txz'
 
     #: Tarball of dd image.
     ROOT_DD = 'root-dd'
@@ -429,6 +431,8 @@ class BOOT_RESOURCE_FILE_TYPE:
 # representation).
 BOOT_RESOURCE_FILE_TYPE_CHOICES = (
     (BOOT_RESOURCE_FILE_TYPE.ROOT_TGZ, "Root Image (tar.gz)"),
+    (BOOT_RESOURCE_FILE_TYPE.ROOT_TBZ, "Root Image (tar.bz2)"),
+    (BOOT_RESOURCE_FILE_TYPE.ROOT_TXZ, "Root image (tar.xz)"),
     (BOOT_RESOURCE_FILE_TYPE.ROOT_DD, "Root Compressed DD (dd -> tar.gz)"),
     (BOOT_RESOURCE_FILE_TYPE.ROOT_DDTGZ, "Root Compressed DD (dd -> tar.gz)"),
     (BOOT_RESOURCE_FILE_TYPE.ROOT_DDTAR,

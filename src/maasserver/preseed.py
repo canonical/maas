@@ -467,7 +467,7 @@ def get_curtin_installer_url(node):
             url_prepend = "fsimage:"
         else:
             return 'cp:///media/root-ro'
-    elif image['xinstall_type'] == 'tgz':
+    elif image['xinstall_type'] in {'tgz', 'tbz', 'txz'}:
         url_prepend = ''
     else:
         url_prepend = '%s:' % image['xinstall_type']

@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `BootResouce`."""
@@ -199,8 +199,9 @@ class BootResourcesHandler(OperationsHandler):
         @param (string) "title" [required=false] Title for the boot resource.
 
         @param (string) "filetype" [required=false] Filetype for uploaded
-        content. (Default: ``tgz``. Supported: ``tgz``, ``ddtgz``, ``ddtbz``,
-        ``ddtxz``, ``ddtar``, ``ddbz2``, ``ddgz``, ``ddxz``, ``ddraw``)
+        content. (Default: ``tgz``. Supported: ``tgz``, ``tbz``, ``txz``,
+        ``ddtgz``, ``ddtbz``, ``ddtxz``, ``ddtar``, ``ddbz2``, ``ddgz``,
+        ``ddxz``, ``ddraw``)
 
         @param (string) "content" [required=false] Image content. Note: this is
         not a normal parameter, but an ``application/octet-stream`` file

@@ -125,6 +125,20 @@ class TestFindImage(MAASTestCase):
             'fname': None,
             'expected': ('root-tgz', 'tgz'),
         }),
+        ('root-tbz', {
+            'squashfs': False,
+            'tgz': True,
+            'dd': True,
+            'fname': 'root-tbz',
+            'expected': ('root-tbz', 'tbz'),
+        }),
+        ('root-txz', {
+            'squashfs': False,
+            'tgz': True,
+            'dd': True,
+            'fname': 'root-txz',
+            'expected': ('root-txz', 'txz'),
+        }),
         ('root-dd', {
             'squashfs': False,
             'tgz': False,
