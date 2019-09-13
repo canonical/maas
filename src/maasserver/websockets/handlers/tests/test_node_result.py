@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.node_result`"""
@@ -36,6 +36,7 @@ class TestNodeResultHandler(MAASServerTestCase):
             "script": script_result.script_id,
             "parameters": script_result.parameters,
             "physical_blockdevice": script_result.physical_blockdevice_id,
+            "interface": script_result.interface_id,
             "script_version": script_result.script_version_id,
             "status": script_result.status,
             "status_name": script_result.status_name,
@@ -196,6 +197,28 @@ class TestNodeResultHandler(MAASServerTestCase):
             {
                 "system_id": node.system_id,
                 "physical_blockdevice_id": physical_blockdevice.id,
+            }))
+
+    def test_list_interface_id(self):
+        user = factory.make_User()
+        handler = NodeResultHandler(user, {}, None)
+        node = factory.make_Node()
+        interface = factory.make_Interface(node=node)
+        script_result = factory.make_ScriptResult(
+            status=SCRIPT_STATUS.PASSED,
+            interface=interface,
+            script_set=factory.make_ScriptSet(node=node))
+        # Create extra script results with different interfaces.
+        for _ in range(3):
+            factory.make_ScriptResult(
+                interface=factory.make_Interface(node=node),
+                script_set=factory.make_ScriptSet(node=node))
+        expected_output = [self.dehydrate_script_result(
+            script_result, handler)]
+        self.assertItemsEqual(expected_output, handler.list(
+            {
+                "system_id": node.system_id,
+                "interface_id": interface.id,
             }))
 
     def test_list_has_surfaced(self):

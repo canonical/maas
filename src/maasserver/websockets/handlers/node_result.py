@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The NodeResult handler for the WebSocket connection."""
@@ -53,6 +53,7 @@ class NodeResultHandler(TimestampedModelHandler):
             "script",
             "parameters",
             "physical_blockdevice",
+            "interface",
             "script_version",
             "status",
             "exit_status",
@@ -159,6 +160,8 @@ class NodeResultHandler(TimestampedModelHandler):
         :param hardware_type: Only return results with this hardware type.
         :param physical_blockdevice_id: Only return the results associated
            with the blockdevice_id.
+        :param interface_id: Only return the results assoicated with the
+           interface_id.
         :param has_surfaced: Only return results if they have surfaced.
         """
         node = self.get_node(params)
@@ -176,6 +179,8 @@ class NodeResultHandler(TimestampedModelHandler):
         if "physical_blockdevice_id" in params:
             queryset = queryset.filter(physical_blockdevice_id=params[
                 "physical_blockdevice_id"])
+        if "interface_id" in params:
+            queryset = queryset.filter(interface_id=params["interface_id"])
         if "has_surfaced" in params:
             if params["has_surfaced"]:
                 queryset = queryset.exclude(result='')
@@ -212,11 +217,11 @@ class NodeResultHandler(TimestampedModelHandler):
         id = params.get('id')
         script_result = ScriptResult.objects.filter(id=id).only(
             'status', 'script_id', 'script_set_id', 'physical_blockdevice_id',
-            'script_name').first()
+            'interface_id', 'script_name').first()
         history_qs = script_result.history.only(
             'id', 'updated', 'status', 'started', 'ended', 'script_id',
             'script_name', 'script_set_id', 'physical_blockdevice_id',
-            'suppressed')
+            'interface_id', 'suppressed')
         return [{
             'id': history.id,
             'updated': dehydrate_datetime(history.updated),
