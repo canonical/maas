@@ -8,7 +8,6 @@ __all__ = [
     'DHCP_EXPLORE_OUTPUT_NAME',
     'GET_FRUID_DATA_OUTPUT_NAME',
     'IPADDR_OUTPUT_NAME',
-    'IPADDR_OUTPUT_NAME',
     'LIST_MODALIASES_OUTPUT_NAME',
     'LLDP_INSTALL_OUTPUT_NAME',
     'LLDP_OUTPUT_NAME',
@@ -127,7 +126,6 @@ LXD_SCRIPT = dedent("""\
     chmod +x $DOWNLOAD_PATH/$BINARY
     $DOWNLOAD_PATH/$BINARY
     """)
-
 
 # Built-in script to run `ip addr`
 IPADDR_SCRIPT = dedent("""\

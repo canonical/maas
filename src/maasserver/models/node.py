@@ -24,6 +24,7 @@ from datetime import (
 )
 from functools import partial
 from itertools import count
+import json
 import logging
 from operator import attrgetter
 import random
@@ -211,8 +212,8 @@ from provisioningserver.refresh import (
     refresh,
 )
 from provisioningserver.refresh.node_info_scripts import (
-    IPADDR_OUTPUT_NAME,
     LIST_MODALIASES_OUTPUT_NAME,
+    LXD_OUTPUT_NAME,
 )
 from provisioningserver.rpc.cluster import (
     AddChassis,
@@ -3983,9 +3984,8 @@ class Node(CleanSave, TimestampedModel):
         from metadataserver.builtin_scripts.hooks import (
             update_node_network_information)
         script = self.current_commissioning_script_set.find_script_result(
-            script_name=IPADDR_OUTPUT_NAME)
-        update_node_network_information(
-            self, script.output, script.exit_status)
+            script_name=LXD_OUTPUT_NAME)
+        update_node_network_information(self, json.loads(script.output))
 
     def set_initial_networking_configuration(self):
         """Set the networking configuration to the default for this node.

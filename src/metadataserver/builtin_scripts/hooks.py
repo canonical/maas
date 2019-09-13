@@ -78,7 +78,9 @@ SWITCH_HARDWARE = [
 SWITCH_OPENBMC_MAC = "02:00:00:00:00:02"
 
 
-def _create_default_physical_interface(node, ifname, mac, **kwargs):
+def _create_default_physical_interface(
+        node, ifname, mac, link_connected,
+        interface_speed, link_speed, **kwargs):
     """Assigns the specified interface to the specified Node.
 
     Creates or updates a PhysicalInterface that corresponds to the given MAC.
@@ -145,23 +147,49 @@ def parse_lshw_nic_info(node):
     return nics
 
 
-def update_node_network_information(node, output, exit_status):
-    """Updates the network interfaces from the results of `IPADDR_SCRIPT`.
+def _parse_interface_speed(port):
+    supported_modes = port.get('supported_modes')
+    if supported_modes is not None:
+        # Iterate over supported modes and choose the highest
+        # supported speed.
+        speeds = []
+        for supported_mode in supported_modes:
+            speeds.append(int(supported_mode.split('base')[0]))
+        return max(speeds)
 
-    Creates and deletes an Interface according to what we currently know about
-    this node's hardware.
 
-    If `exit_status` is non-zero, this function returns without doing
-    anything.
-
-    """
-    if exit_status != 0:
+def _parse_interfaces(node, data):
+    # Retrieve informaton from IPADDR_SCRIPT
+    script_set = node.current_commissioning_script_set
+    script_result = script_set.find_script_result(
+        script_name=IPADDR_OUTPUT_NAME)
+    if not script_result or script_result.status != SCRIPT_STATUS.PASSED:
         logger.error(
-            "%s: node network information script failed with status: %s." % (
-                node.hostname, exit_status))
-        return
-    assert isinstance(output, bytes)
+            '%s: Unable to discover NIC IP addresses due to missing '
+            'passed output from %s' % (node.hostname, IPADDR_OUTPUT_NAME))
+    assert isinstance(script_result.output, bytes)
 
+    ip_addr_info = parse_ip_addr(script_result.output)
+    interfaces = []
+    network_cards = data.get('network', {}).get('cards', {})
+    for card in network_cards:
+        interface = {}
+        ports = card.get('ports', {})
+        for port in ports:
+            interface['name'] = port.get('id')
+            interface['mac'] = port.get('address')
+            interface['link_connected'] = port.get('link_detected')
+            interface['interface_speed'] = _parse_interface_speed(port)
+            interface['link_speed'] = port.get('link_speed')
+            # Assign the IP addresses to this interface
+            link = ip_addr_info[interface['name']]
+            interface['ips'] = link.get('inet', []) + link.get('inet6', [])
+        interfaces.append(interface)
+
+    return interfaces
+
+
+def update_node_network_information(node, data):
     # Skip network configuration if set by the user.
     if node.skip_networking:
         # Turn off skip_networking now that the hook has been called.
@@ -169,26 +197,28 @@ def update_node_network_information(node, output, exit_status):
         node.save(update_fields=['skip_networking'])
         return
 
-    # Get the MAC addresses of all connected interfaces.
-    ip_addr_info = parse_ip_addr(output)
+    interfaces = _parse_interfaces(node, data)
     current_interfaces = set()
     extended_nic_info = parse_lshw_nic_info(node)
 
-    for link in ip_addr_info.values():
-        link_mac = link.get('mac')
+    for iface in interfaces:
+        mac = iface.get('mac')
         # Ignore loopback interfaces.
-        if link_mac is None:
+        if mac is None:
             continue
-        elif link_mac == SWITCH_OPENBMC_MAC:
+        elif mac == SWITCH_OPENBMC_MAC:
             # Ignore OpenBMC interfaces on switches which all share the same,
             # hard-coded OpenBMC MAC address.
             continue
         else:
-            ifname = link['name']
-            extra_info = extended_nic_info.get(link_mac, {})
+            ifname = iface['name']
+            link_connected = iface['link_connected']
+            interface_speed = iface['interface_speed']
+            link_speed = iface['link_speed']
+            extra_info = extended_nic_info.get(mac, {})
             try:
                 interface = PhysicalInterface.objects.get(
-                    mac_address=link_mac)
+                    mac_address=mac)
                 update_fields = []
                 if interface.node is not None and interface.node != node:
                     logger.warning(
@@ -198,7 +228,8 @@ def update_node_network_information(node, output, exit_status):
                          node.fqdn))
                     interface.delete()
                     interface = _create_default_physical_interface(
-                        node, ifname, link_mac, **extra_info)
+                        node, ifname, mac, link_connected,
+                        interface_speed, link_speed, **extra_info)
                 else:
                     # Interface already exists on this Node, so just update
                     # the name and NIC info.
@@ -215,12 +246,13 @@ def update_node_network_information(node, output, exit_status):
                             update_fields=['updated', *update_fields])
             except PhysicalInterface.DoesNotExist:
                 interface = _create_default_physical_interface(
-                    node, ifname, link_mac, **extra_info)
+                    node, ifname, mac, link_connected,
+                    interface_speed, link_speed, **extra_info)
 
             current_interfaces.add(interface)
-            ips = link.get('inet', []) + link.get('inet6', [])
-            interface.update_ip_addresses(ips)
-            if 'NO-CARRIER' in link.get('flags', []):
+            interface.update_ip_addresses(iface['ips'])
+
+            if not link_connected:
                 # This interface is now disconnected.
                 if interface.vlan is not None:
                     interface.vlan = None
@@ -373,9 +405,11 @@ def process_lxd_results(node, output, exit_status):
         raise ValueError(e.message + ': ' + output)
 
     # Update CPU details.
-    node.cpu_count, node.cpu_speed, cpu_model = _parse_lxd_cpuinfo(data)
+    node.cpu_count, node.cpu_speed, cpu_model = _parse_cpuinfo(data)
     # Update memory.
     node.memory = data.get('memory', {}).get('total', 0) / 1024 / 1024
+    # Network interfaces.
+    update_node_network_information(node, data)
 
     if cpu_model:
         NodeMetadata.objects.update_or_create(
@@ -384,7 +418,7 @@ def process_lxd_results(node, output, exit_status):
     node.save(update_fields=['cpu_count', 'cpu_speed', 'memory'])
 
 
-def _parse_lxd_cpuinfo(data):
+def _parse_cpuinfo(data):
     """Retrieve cpu_count, cpu_speed, and cpu_model."""
     cpu_speed = 0
     cpu_model = None
@@ -966,8 +1000,6 @@ NODE_INFO_SCRIPTS[GET_FRUID_DATA_OUTPUT_NAME]['hook'] = (
     update_node_fruid_metadata)
 NODE_INFO_SCRIPTS[BLOCK_DEVICES_OUTPUT_NAME]['hook'] = (
     update_node_physical_block_devices)
-NODE_INFO_SCRIPTS[IPADDR_OUTPUT_NAME]['hook'] = (
-    update_node_network_information)
 NODE_INFO_SCRIPTS[SRIOV_OUTPUT_NAME]['hook'] = (
     update_node_network_interface_tags)
 NODE_INFO_SCRIPTS[LIST_MODALIASES_OUTPUT_NAME]['hook'] = (

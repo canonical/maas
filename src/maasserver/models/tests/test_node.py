@@ -6,11 +6,13 @@
 __all__ = []
 
 import base64
+from copy import deepcopy
 from datetime import (
     datetime,
     timedelta,
 )
 import email
+import json
 import logging
 import os
 import random
@@ -210,6 +212,7 @@ from provisioningserver.events import (
 from provisioningserver.refresh.node_info_scripts import (
     IPADDR_OUTPUT_NAME,
     LSHW_OUTPUT_NAME,
+    LXD_OUTPUT_NAME,
     NODE_INFO_SCRIPTS,
 )
 from provisioningserver.rpc.cluster import (
@@ -6323,24 +6326,33 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
             alloc_type=IPADDRESS_TYPE.AUTO)
         self.assertEqual(1, auto_ips.count())
 
-    def test_restore_commisioned_network_interfaces(self):
+    def test_restore_commissioned_network_interfaces(self):
         node = factory.make_Node()
         IP_ADDR_OUTPUT_FILE = os.path.join(
             os.path.dirname(test_hooks.__file__), 'ip_addr_results_xenial.txt')
         with open(IP_ADDR_OUTPUT_FILE, "rb") as fd:
             IP_ADDR_OUTPUT_XENIAL = fd.read()
-        script = factory.make_Script(
+        lxd_script = factory.make_Script(
+            name=LXD_OUTPUT_NAME, script_type=SCRIPT_TYPE.COMMISSIONING)
+        ip_addr_script = factory.make_Script(
             name=IPADDR_OUTPUT_NAME, script_type=SCRIPT_TYPE.COMMISSIONING)
+        XENIAL_NETWORK = deepcopy(test_hooks.SAMPLE_LXD_JSON)
+        XENIAL_NETWORK['network'] = test_hooks.SAMPLE_LXD_XENIAL_NETWORK_JSON
         commissioning_script_set = (
             ScriptSet.objects.create_commissioning_script_set(
-                node, scripts=[script.name]))
+                node, scripts=[lxd_script.name, ip_addr_script.name]))
         node.current_commissioning_script_set = commissioning_script_set
         factory.make_ScriptResult(
-            script_set=commissioning_script_set, script=script, exit_status=0,
+            script_set=commissioning_script_set,
+            script=lxd_script, exit_status=0,
+            output=json.dumps(XENIAL_NETWORK).encode('utf-8'))
+        factory.make_ScriptResult(
+            script_set=commissioning_script_set,
+            script=ip_addr_script, exit_status=0,
             output=IP_ADDR_OUTPUT_XENIAL)
 
         # restore_network_interfaces() will set up the network intefaces
-        # specified in ip_addr_results_xenial.txt.
+        # specified in ip_addr_results_xenial.txt
         node.restore_network_interfaces()
         self.assertEqual(
             ["ens10", "ens11", "ens12", "ens3"],
@@ -6352,14 +6364,23 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
             os.path.dirname(test_hooks.__file__), 'ip_addr_results_xenial.txt')
         with open(IP_ADDR_OUTPUT_FILE, "rb") as fd:
             IP_ADDR_OUTPUT_XENIAL = fd.read()
-        script = factory.make_Script(
+        lxd_script = factory.make_Script(
+            name=LXD_OUTPUT_NAME, script_type=SCRIPT_TYPE.COMMISSIONING)
+        ip_addr_script = factory.make_Script(
             name=IPADDR_OUTPUT_NAME, script_type=SCRIPT_TYPE.COMMISSIONING)
+        XENIAL_NETWORK = deepcopy(test_hooks.SAMPLE_LXD_JSON)
+        XENIAL_NETWORK['network'] = test_hooks.SAMPLE_LXD_XENIAL_NETWORK_JSON
         commissioning_script_set = (
             ScriptSet.objects.create_commissioning_script_set(
-                node, scripts=[script.name]))
+                node, scripts=[lxd_script.name, ip_addr_script.name]))
         node.current_commissioning_script_set = commissioning_script_set
         factory.make_ScriptResult(
-            script_set=commissioning_script_set, script=script, exit_status=0,
+            script_set=commissioning_script_set,
+            script=lxd_script, exit_status=0,
+            output=json.dumps(XENIAL_NETWORK).encode('utf-8'))
+        factory.make_ScriptResult(
+            script_set=commissioning_script_set,
+            script=ip_addr_script, exit_status=0,
             output=IP_ADDR_OUTPUT_XENIAL)
         node.restore_network_interfaces()
 

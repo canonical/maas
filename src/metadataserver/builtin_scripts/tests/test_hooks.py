@@ -51,10 +51,17 @@ from metadataserver.builtin_scripts.hooks import (
     update_node_network_interface_tags,
     update_node_physical_block_devices,
 )
-from metadataserver.enum import SCRIPT_TYPE
+import metadataserver.builtin_scripts.hooks as hooks_module
+from metadataserver.enum import (
+    SCRIPT_STATUS,
+    SCRIPT_TYPE,
+)
 from metadataserver.models import ScriptSet
 from netaddr import IPNetwork
-from provisioningserver.refresh.node_info_scripts import LSHW_OUTPUT_NAME
+from provisioningserver.refresh.node_info_scripts import (
+    IPADDR_OUTPUT_NAME,
+    LSHW_OUTPUT_NAME,
+)
 from testtools.matchers import (
     Contains,
     ContainsAll,
@@ -243,8 +250,41 @@ SAMPLE_LXD_JSON = {
                 "driver_version": "3.2.6-k",
                 "ports": [
                     {
-                        "id": "enp0s25",
-                        "address": "54:ee:75:13:aa:52",
+                        "id": "eth0",
+                        "address": "00:00:00:00:00:01",
+                        "port": 0,
+                        "protocol": "ethernet",
+                        "supported_modes": [
+                            "10baseT/Half",
+                            "10baseT/Full",
+                            "100baseT/Half",
+                            "100baseT/Full",
+                            "1000baseT/Full"
+                        ],
+                        "supported_ports": [
+                            "twisted pair"
+                        ],
+                        "port_type": "twisted pair",
+                        "transceiver_type": "internal",
+                        "auto_negotiation": True,
+                        "link_detected": True,
+                        "link_speed": 1000
+                    }
+                ],
+                "numa_node": 0,
+                "pci_address": "0000:00:19.0",
+                "vendor": "Intel Corporation",
+                "vendor_id": "8086",
+                "product": "Ethernet Connection I217-LM",
+                "product_id": "153a"
+            },
+            {
+                "driver": "e1000e",
+                "driver_version": "3.2.6-k",
+                "ports": [
+                    {
+                        "id": "eth1",
+                        "address": "00:00:00:00:00:02",
                         "port": 0,
                         "protocol": "ethernet",
                         "supported_modes": [
@@ -271,12 +311,12 @@ SAMPLE_LXD_JSON = {
                 "product_id": "153a"
             },
             {
-                "driver": "iwlwifi",
-                "driver_version": "4.15.0-58-generic",
+                "driver": "e1000e",
+                "driver_version": "3.2.6-k",
                 "ports": [
                     {
-                        "id": "wlp4s0",
-                        "address": "e8:2a:ea:22:0b:d2",
+                        "id": "eth2",
+                        "address": "00:00:00:00:00:03",
                         "port": 0,
                         "protocol": "ethernet",
                         "auto_negotiation": False,
@@ -291,7 +331,7 @@ SAMPLE_LXD_JSON = {
                 "product_id": "08b2"
             }
         ],
-        "total": 2
+        "total": 3
     },
     "storage": {
         "disks": [
@@ -342,6 +382,119 @@ SAMPLE_LXD_JSON = {
         ],
         "total": 5
     }
+}
+
+
+# This matches ip_addr_results_xenial.txt for the unit tests
+SAMPLE_LXD_XENIAL_NETWORK_JSON = {
+    "cards": [
+        {
+            "driver": "e1000e",
+            "driver_version": "3.2.6-k",
+            "ports": [
+                {
+                    "id": "ens3",
+                    "address": "52:54:00:2d:39:49",
+                    "port": 0,
+                    "protocol": "ethernet",
+                    "supported_modes": [
+                        "10baseT/Half",
+                        "10baseT/Full",
+                        "100baseT/Half",
+                        "100baseT/Full",
+                        "1000baseT/Full"
+                    ],
+                    "supported_ports": [
+                        "twisted pair"
+                    ],
+                    "port_type": "twisted pair",
+                    "transceiver_type": "internal",
+                    "auto_negotiation": True,
+                    "link_detected": True,
+                    "link_speed": 1000
+                }
+            ],
+            "numa_node": 0,
+            "pci_address": "0000:00:19.0",
+            "vendor": "Intel Corporation",
+            "vendor_id": "8086",
+            "product": "Ethernet Connection I217-LM",
+            "product_id": "153a"
+        },
+        {
+            "driver": "e1000e",
+            "driver_version": "3.2.6-k",
+            "ports": [
+                {
+                    "id": "ens10",
+                    "address": "52:54:00:e5:c6:6b",
+                    "port": 0,
+                    "protocol": "ethernet",
+                    "supported_modes": [
+                        "10baseT/Half",
+                        "10baseT/Full",
+                        "100baseT/Half",
+                        "100baseT/Full",
+                        "1000baseT/Full"
+                    ],
+                    "supported_ports": [
+                        "twisted pair"
+                    ],
+                    "port_type": "twisted pair",
+                    "transceiver_type": "internal",
+                    "auto_negotiation": True,
+                    "link_detected": False
+                }
+            ],
+            "numa_node": 0,
+            "pci_address": "0000:00:19.0",
+            "vendor": "Intel Corporation",
+            "vendor_id": "8086",
+            "product": "Ethernet Connection I217-LM",
+            "product_id": "153a"
+        },
+        {
+            "driver": "e1000e",
+            "driver_version": "3.2.6-k",
+            "ports": [
+                {
+                    "id": "ens11",
+                    "address": "52:54:00:ed:9f:9d",
+                    "port": 0,
+                    "protocol": "ethernet",
+                    "auto_negotiation": False,
+                    "link_detected": False
+                }
+            ],
+            "numa_node": 0,
+            "pci_address": "0000:04:00.0",
+            "vendor": "Intel Corporation",
+            "vendor_id": "8086",
+            "product": "Wireless 7260",
+            "product_id": "08b2"
+        },
+        {
+            "driver": "e1000e",
+            "driver_version": "3.2.6-k",
+            "ports": [
+                {
+                    "id": "ens12",
+                    "address": "52:54:00:ed:9f:00",
+                    "port": 0,
+                    "protocol": "ethernet",
+                    "auto_negotiation": False,
+                    "link_detected": False
+                }
+            ],
+            "numa_node": 0,
+            "pci_address": "0000:04:00.0",
+            "vendor": "Intel Corporation",
+            "vendor_id": "8086",
+            "product": "Wireless 7260",
+            "product_id": "08b2"
+        }
+    ],
+    "total": 4
 }
 
 
@@ -1049,6 +1202,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         node = factory.make_Node()
         node.memory = random.randint(4096, 8192)
         node.save()
+        self.patch(hooks_module, 'update_node_network_information')
 
         process_lxd_results(
             node, json.dumps(SAMPLE_LXD_JSON).encode('utf-8'), 0)
@@ -1059,6 +1213,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         node = factory.make_Node()
         node.cpu_speed = 9999
         node.save()
+        self.patch(hooks_module, 'update_node_network_information')
 
         process_lxd_results(
             node, json.dumps(SAMPLE_LXD_JSON).encode('utf-8'), 0)
@@ -1071,6 +1226,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         node = factory.make_Node()
         node.cpu_speed = 9999
         node.save()
+        self.patch(hooks_module, 'update_node_network_information')
 
         NO_SPEED_IN_NAME = deepcopy(SAMPLE_LXD_JSON)
         NO_SPEED_IN_NAME['cpu']['sockets'][0]['name'] = (
@@ -1084,6 +1240,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         node = factory.make_Node()
         node.cpu_speed = 9999
         node.save()
+        self.patch(hooks_module, 'update_node_network_information')
 
         NO_NAME_OR_MAX_FREQ = deepcopy(SAMPLE_LXD_JSON)
         del NO_NAME_OR_MAX_FREQ['cpu']['sockets'][0]['name']
@@ -1520,14 +1677,12 @@ class TestUpdateNodeNetworkInterfaceTags(MAASServerTestCase):
 
 
 class TestUpdateNodeNetworkInformation(MAASServerTestCase):
-    """Tests the update_node_network_information function using data from the
-    ip_addr_results.txt file to simulate `ip addr`'s output.
+    """Tests the update_node_network_information function using data from LXD.
 
     The EXPECTED_MACS dictionary below must match the contents of the file,
     which should specify a list of physical interfaces (such as what would
     be expected to be found during commissioning).
     """
-
     EXPECTED_INTERFACES = {
         'eth0': MAC("00:00:00:00:00:01"),
         'eth1': MAC("00:00:00:00:00:02"),
@@ -1553,6 +1708,17 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         os.path.dirname(__file__), 'ip_addr_results_wedge100.txt')
     with open(IP_ADDR_WEDGE_OUTPUT_FILE, "rb") as fd:
         IP_ADDR_WEDGE_OUTPUT = fd.read()
+
+    def create_IPADDR_OUTPUT_NAME_script(self, node, output):
+        script = factory.make_Script(
+            name=IPADDR_OUTPUT_NAME, script_type=SCRIPT_TYPE.COMMISSIONING)
+        commissioning_script_set = (
+            ScriptSet.objects.create_commissioning_script_set(
+                node, scripts=[script.name]))
+        node.current_commissioning_script_set = commissioning_script_set
+        factory.make_ScriptResult(
+            script_set=commissioning_script_set, script=script,
+            exit_status=0, status=SCRIPT_STATUS.PASSED, output=output)
 
     def assert_expected_interfaces_and_macs_exist_for_node(
             self, node, expected_interfaces=EXPECTED_INTERFACES):
@@ -1584,7 +1750,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
     def test__does_nothing_if_skip_networking(self):
         node = factory.make_Node(interface=True, skip_networking=True)
         boot_interface = node.get_boot_interface()
-        update_node_network_information(node, self.IP_ADDR_OUTPUT, 0)
+        update_node_network_information(node, SAMPLE_LXD_JSON)
         self.assertIsNotNone(reload_object(boot_interface))
         self.assertFalse(reload_object(node).skip_networking)
 
@@ -1593,11 +1759,12 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         need to add a series of interfaces.
         """
         node = factory.make_Node()
+        self.create_IPADDR_OUTPUT_NAME_script(node, self.IP_ADDR_OUTPUT)
 
         # Delete all Interfaces created by factory attached to this node.
         Interface.objects.filter(node_id=node.id).delete()
 
-        update_node_network_information(node, self.IP_ADDR_OUTPUT, 0)
+        update_node_network_information(node, SAMPLE_LXD_JSON)
 
         # Makes sure all the test dataset MAC addresses were added to the node.
         self.assert_expected_interfaces_and_macs_exist_for_node(node)
@@ -1607,11 +1774,13 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         need to add a series of interfaces.
         """
         node = factory.make_Node()
+        self.create_IPADDR_OUTPUT_NAME_script(node, self.IP_ADDR_OUTPUT_XENIAL)
 
         # Delete all Interfaces created by factory attached to this node.
         Interface.objects.filter(node_id=node.id).delete()
-
-        update_node_network_information(node, self.IP_ADDR_OUTPUT_XENIAL, 0)
+        XENIAL_NETWORK = deepcopy(SAMPLE_LXD_JSON)
+        XENIAL_NETWORK['network'] = SAMPLE_LXD_XENIAL_NETWORK_JSON
+        update_node_network_information(node, XENIAL_NETWORK)
 
         # Makes sure all the test dataset MAC addresses were added to the node.
         self.assert_expected_interfaces_and_macs_exist_for_node(
@@ -1621,7 +1790,8 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         """Test a node that has no previously known interfaces gets info from
         lshw added.
         """
-        node = factory.make_Node(with_empty_script_sets=True)
+        node = factory.make_Node()
+        self.create_IPADDR_OUTPUT_NAME_script(node, self.IP_ADDR_OUTPUT)
 
         # Delete all Interfaces created by factory attached to this node.
         Interface.objects.filter(node_id=node.id).delete()
@@ -1643,7 +1813,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         """ % (vendor, product, firmware_version)).encode()
         lshw.store_result(0, stdout=lshw_xml)
 
-        update_node_network_information(node, self.IP_ADDR_OUTPUT, 0)
+        update_node_network_information(node, SAMPLE_LXD_JSON)
 
         nic = Interface.objects.get(mac_address='00:00:00:00:00:01')
         self.assertEqual(vendor, nic.vendor)
@@ -1654,7 +1824,8 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         """Test a node that has no previous known interfaces ignores bad lshw
         data.
         """
-        node = factory.make_Node(with_empty_script_sets=True)
+        node = factory.make_Node()
+        self.create_IPADDR_OUTPUT_NAME_script(node, self.IP_ADDR_OUTPUT)
 
         # Delete all Interfaces created by factory attached to this node.
         Interface.objects.filter(node_id=node.id).delete()
@@ -1663,7 +1834,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
             script_name=LSHW_OUTPUT_NAME)
         lshw.store_result(0, stdout=factory.make_string().encode())
 
-        update_node_network_information(node, self.IP_ADDR_OUTPUT, 0)
+        update_node_network_information(node, SAMPLE_LXD_JSON)
 
         nic = Interface.objects.get(mac_address='00:00:00:00:00:01')
         self.assertIsNone(nic.vendor)
@@ -1674,7 +1845,8 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         """Test a node that has no previously known interfaces gets info from
         lshw added.
         """
-        node = factory.make_Node(with_empty_script_sets=True)
+        node = factory.make_Node()
+        self.create_IPADDR_OUTPUT_NAME_script(node, self.IP_ADDR_OUTPUT)
 
         # Delete all Interfaces created by factory attached to this node.
         Interface.objects.filter(node_id=node.id).delete()
@@ -1692,7 +1864,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         """).encode()
         lshw.store_result(0, stdout=lshw_xml)
 
-        update_node_network_information(node, self.IP_ADDR_OUTPUT, 0)
+        update_node_network_information(node, SAMPLE_LXD_JSON)
 
         nic = Interface.objects.get(mac_address='00:00:00:00:00:01')
         self.assertIsNone(nic.vendor)
@@ -1704,12 +1876,13 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         connected to the node.
         """
         node = factory.make_Node()
+        self.create_IPADDR_OUTPUT_NAME_script(node, self.IP_ADDR_OUTPUT)
 
         # Create a MAC address that we know is not in the test dataset.
         factory.make_Interface(
             node=node, mac_address="01:23:45:67:89:ab")
 
-        update_node_network_information(node, self.IP_ADDR_OUTPUT, 0)
+        update_node_network_information(node, SAMPLE_LXD_JSON)
 
         # These should have been added to the node.
         self.assert_expected_interfaces_and_macs_exist_for_node(node)
@@ -1732,7 +1905,8 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         interface_to_be_reassigned.save()
 
         node2 = factory.make_Node()
-        update_node_network_information(node2, self.IP_ADDR_OUTPUT, 0)
+        self.create_IPADDR_OUTPUT_NAME_script(node2, self.IP_ADDR_OUTPUT)
+        update_node_network_information(node2, SAMPLE_LXD_JSON)
 
         self.assert_expected_interfaces_and_macs_exist_for_node(node2)
 
@@ -1744,7 +1918,17 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         """Test whether we can assign interfaces previously connected to a
         different node to the current one"""
         node1 = factory.make_Node()
-        update_node_network_information(node1, self.IP_ADDR_OUTPUT, 0)
+        script = factory.make_Script(
+            name=IPADDR_OUTPUT_NAME, script_type=SCRIPT_TYPE.COMMISSIONING)
+        commissioning_script_set_node1 = (
+            ScriptSet.objects.create_commissioning_script_set(
+                node1, scripts=[script.name]))
+        node1.current_commissioning_script_set = commissioning_script_set_node1
+        factory.make_ScriptResult(
+            script_set=commissioning_script_set_node1,
+            script=script, exit_status=0, status=SCRIPT_STATUS.PASSED,
+            output=self.IP_ADDR_OUTPUT)
+        update_node_network_information(node1, SAMPLE_LXD_JSON)
 
         # First make sure the first node has all the expected interfaces.
         self.assert_expected_interfaces_and_macs_exist_for_node(node1)
@@ -1754,7 +1938,15 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
 
         # Now make sure the second node has them all.
         node2 = factory.make_Node()
-        update_node_network_information(node2, self.IP_ADDR_OUTPUT, 0)
+        commissioning_script_set_node2 = (
+            ScriptSet.objects.create_commissioning_script_set(
+                node2, scripts=[script.name]))
+        node2.current_commissioning_script_set = commissioning_script_set_node2
+        factory.make_ScriptResult(
+            script_set=commissioning_script_set_node2,
+            script=script, exit_status=0, status=SCRIPT_STATUS.PASSED,
+            output=self.IP_ADDR_OUTPUT)
+        update_node_network_information(node2, SAMPLE_LXD_JSON)
 
         self.assert_expected_interfaces_and_macs_exist_for_node(node2)
 
@@ -1773,6 +1965,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         ETH1_MAC = self.EXPECTED_INTERFACES['eth1'].get_raw()
         BOND_NAME = 'bond0'
         node = factory.make_Node()
+        self.create_IPADDR_OUTPUT_NAME_script(node, self.IP_ADDR_OUTPUT)
 
         eth0 = factory.make_Interface(
             name="eth0", mac_address=ETH0_MAC, node=node)
@@ -1786,7 +1979,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
             INTERFACE_TYPE.BOND, mac_address=ETH1_MAC, parents=[eth1],
             node=node, name=BOND_NAME)
 
-        update_node_network_information(node, self.IP_ADDR_OUTPUT, 0)
+        update_node_network_information(node, SAMPLE_LXD_JSON)
         self.assert_expected_interfaces_and_macs_exist_for_node(node)
 
     def test__interface_names_changed(self):
@@ -1794,6 +1987,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         ETH0_MAC = self.EXPECTED_INTERFACES['eth1'].get_raw()
         ETH1_MAC = self.EXPECTED_INTERFACES['eth0'].get_raw()
         node = factory.make_Node()
+        self.create_IPADDR_OUTPUT_NAME_script(node, self.IP_ADDR_OUTPUT)
 
         factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, name="eth0", mac_address=ETH0_MAC,
@@ -1802,7 +1996,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
             INTERFACE_TYPE.PHYSICAL, name="eth1", mac_address=ETH1_MAC,
             node=node)
 
-        update_node_network_information(node, self.IP_ADDR_OUTPUT, 0)
+        update_node_network_information(node, SAMPLE_LXD_JSON)
 
         # This will ensure that the interfaces were renamed appropriately.
         self.assert_expected_interfaces_and_macs_exist_for_node(node)
@@ -1811,10 +2005,11 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         """Test whether MAC address entities are preserved and not recreated"""
         ETH0_MAC = self.EXPECTED_INTERFACES['eth0'].get_raw()
         node = factory.make_Node()
+        self.create_IPADDR_OUTPUT_NAME_script(node, self.IP_ADDR_OUTPUT)
         iface_to_be_preserved = factory.make_Interface(
             mac_address=ETH0_MAC, node=node)
 
-        update_node_network_information(node, self.IP_ADDR_OUTPUT, 0)
+        update_node_network_information(node, SAMPLE_LXD_JSON)
 
         self.assertIsNotNone(reload_object(iface_to_be_preserved))
 
@@ -1822,10 +2017,11 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         ETH0_MAC = self.EXPECTED_INTERFACES['eth0'].get_raw()
         ETH1_MAC = self.EXPECTED_INTERFACES['eth1'].get_raw()
         node = factory.make_Node()
+        self.create_IPADDR_OUTPUT_NAME_script(node, self.IP_ADDR_OUTPUT)
         eth0 = factory.make_Interface(mac_address=ETH0_MAC, node=node)
         eth1 = factory.make_Interface(mac_address=ETH1_MAC, node=node)
 
-        update_node_network_information(node, self.IP_ADDR_OUTPUT, 0)
+        update_node_network_information(node, SAMPLE_LXD_JSON)
 
         self.assertEqual(eth0, Interface.objects.get(id=eth0.id))
         self.assertEqual(eth1, Interface.objects.get(id=eth1.id))
@@ -1838,12 +2034,13 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         ETH2_MAC = self.EXPECTED_INTERFACES['eth2'].get_raw()
         ETH3_MAC = '00:00:00:00:01:04'
         node = factory.make_Node()
+        self.create_IPADDR_OUTPUT_NAME_script(node, self.IP_ADDR_OUTPUT)
         eth0 = factory.make_Interface(mac_address=ETH0_MAC, node=node)
         eth1 = factory.make_Interface(mac_address=ETH1_MAC, node=node)
         eth2 = factory.make_Interface(mac_address=ETH2_MAC, node=node)
         eth3 = factory.make_Interface(mac_address=ETH3_MAC, node=node)
 
-        update_node_network_information(node, self.IP_ADDR_OUTPUT, 0)
+        update_node_network_information(node, SAMPLE_LXD_JSON)
 
         self.assert_expected_interfaces_and_macs_exist_for_node(node)
 
@@ -1860,6 +2057,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         ETH1_MAC = self.EXPECTED_INTERFACES['eth1'].get_raw()
         BOND_MAC = '00:00:00:00:01:02'
         node = factory.make_Node()
+        self.create_IPADDR_OUTPUT_NAME_script(node, self.IP_ADDR_OUTPUT)
         eth0 = factory.make_Interface(mac_address=ETH0_MAC, node=node)
         eth1 = factory.make_Interface(mac_address=ETH1_MAC, node=node)
         factory.make_Interface(
@@ -1868,13 +2066,14 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
             INTERFACE_TYPE.BOND, mac_address=BOND_MAC, node=node,
             parents=[eth1])
 
-        update_node_network_information(node, self.IP_ADDR_OUTPUT, 0)
+        update_node_network_information(node, SAMPLE_LXD_JSON)
         self.assert_expected_interfaces_and_macs_exist_for_node(node)
 
     def test__deletes_virtual_interfaces_linked_to_removed_macs(self):
         VLAN_MAC = '00:00:00:00:01:01'
         BOND_MAC = '00:00:00:00:01:02'
         node = factory.make_Node()
+        self.create_IPADDR_OUTPUT_NAME_script(node, self.IP_ADDR_OUTPUT)
         eth0 = factory.make_Interface(
             name='eth0', mac_address=VLAN_MAC, node=node)
         eth1 = factory.make_Interface(
@@ -1884,7 +2083,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         factory.make_Interface(
             INTERFACE_TYPE.BOND, mac_address=BOND_MAC, parents=[eth1])
 
-        update_node_network_information(node, self.IP_ADDR_OUTPUT, 0)
+        update_node_network_information(node, SAMPLE_LXD_JSON)
         self.assert_expected_interfaces_and_macs_exist_for_node(node)
 
     def test__creates_discovered_ip_address(self):
@@ -1892,8 +2091,9 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         cidr = '192.168.0.3/24'
         subnet = factory.make_Subnet(
             cidr=cidr, vlan=VLAN.objects.get_default_vlan())
+        self.create_IPADDR_OUTPUT_NAME_script(node, self.IP_ADDR_OUTPUT)
 
-        update_node_network_information(node, self.IP_ADDR_OUTPUT, 0)
+        update_node_network_information(node, SAMPLE_LXD_JSON)
         eth0 = Interface.objects.get(node=node, name='eth0')
         address = str(IPNetwork(cidr).ip)
         ipv4_ip = eth0.ip_addresses.get(ip=address)
@@ -1905,52 +2105,60 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
 
     def test__creates_discovered_ip_address_on_xenial(self):
         node = factory.make_Node()
+        self.create_IPADDR_OUTPUT_NAME_script(node, self.IP_ADDR_OUTPUT_XENIAL)
         cidr = '172.16.100.108/24'
         subnet = factory.make_Subnet(
             cidr=cidr, vlan=VLAN.objects.get_default_vlan())
-
-        update_node_network_information(node, self.IP_ADDR_OUTPUT_XENIAL, 0)
-        eth0 = Interface.objects.get(node=node, name='ens3')
+        XENIAL_NETWORK = deepcopy(SAMPLE_LXD_JSON)
+        XENIAL_NETWORK['network'] = SAMPLE_LXD_XENIAL_NETWORK_JSON
+        update_node_network_information(node, XENIAL_NETWORK)
+        ens3 = Interface.objects.get(node=node, name='ens3')
         address = str(IPNetwork(cidr).ip)
-        ipv4_ip = eth0.ip_addresses.get(ip=address)
+        ipv4_ip = ens3.ip_addresses.get(ip=address)
         self.assertThat(
             ipv4_ip,
             MatchesStructure.byEquality(
                 alloc_type=IPADDRESS_TYPE.DISCOVERED, subnet=subnet,
                 ip=address))
         # First IP is DISCOVERED second is AUTO configured.
-        self.assertThat(eth0.ip_addresses.count(), Equals(2))
+        self.assertThat(ens3.ip_addresses.count(), Equals(2))
 
     def test__handles_disconnected_interfaces(self):
         node = factory.make_Node()
-        update_node_network_information(node, self.IP_ADDR_OUTPUT_XENIAL, 0)
+        self.create_IPADDR_OUTPUT_NAME_script(node, self.IP_ADDR_OUTPUT_XENIAL)
+        XENIAL_NETWORK = deepcopy(SAMPLE_LXD_JSON)
+        XENIAL_NETWORK['network'] = SAMPLE_LXD_XENIAL_NETWORK_JSON
+        update_node_network_information(node, XENIAL_NETWORK)
         ens12 = Interface.objects.get(node=node, name='ens12')
         self.assertThat(ens12.vlan, Is(None))
 
     def test__disconnects_previously_connected_interface(self):
         node = factory.make_Node()
+        self.create_IPADDR_OUTPUT_NAME_script(node, self.IP_ADDR_OUTPUT_XENIAL)
         subnet = factory.make_Subnet()
         ens12 = factory.make_Interface(
             name='ens12', node=node, mac_address='52:54:00:ed:9f:00',
             subnet=subnet)
         self.assertThat(ens12.vlan, Equals(subnet.vlan))
-        update_node_network_information(node, self.IP_ADDR_OUTPUT_XENIAL, 0)
+        XENIAL_NETWORK = deepcopy(SAMPLE_LXD_JSON)
+        XENIAL_NETWORK['network'] = SAMPLE_LXD_XENIAL_NETWORK_JSON
+        update_node_network_information(node, XENIAL_NETWORK)
         ens12 = Interface.objects.get(node=node, name='ens12')
         self.assertThat(ens12.vlan, Is(None))
 
     def test__ignores_openbmc_interface(self):
         """Ensure that OpenBMC interface is ignored."""
         node = factory.make_Node()
-
+        self.create_IPADDR_OUTPUT_NAME_script(node, self.IP_ADDR_OUTPUT)
         # Delete all Interfaces created by factory attached to this node.
         Interface.objects.filter(node_id=node.id).delete()
 
-        # Ensure test data is not broken by default.
-        self.assertIn(
-            SWITCH_OPENBMC_MAC.encode("ascii"),
-            self.IP_ADDR_WEDGE_OUTPUT)
+        SWITCH_OPENBMC_MAC_JSON = deepcopy(SAMPLE_LXD_JSON)
+        SWITCH_OPENBMC_MAC_JSON[
+            'network']['cards'][0]['ports'][0]['address'] = (
+                SWITCH_OPENBMC_MAC)
 
-        update_node_network_information(node, self.IP_ADDR_WEDGE_OUTPUT, 0)
+        update_node_network_information(node, SWITCH_OPENBMC_MAC_JSON)
 
         # Specifically, there is no OpenBMC interface with a fixed MAC address.
         node_interfaces = Interface.objects.filter(node=node)
@@ -1967,8 +2175,9 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         node.boot_interface = None
         node.boot_cluster_ip = '192.168.0.1'
         node.save()
+        self.create_IPADDR_OUTPUT_NAME_script(node, self.IP_ADDR_OUTPUT)
 
-        update_node_network_information(node, self.IP_ADDR_OUTPUT, 0)
+        update_node_network_information(node, SAMPLE_LXD_JSON)
         node = reload_object(node)
 
         self.assertIsNotNone(
@@ -1977,6 +2186,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
     def test__regenerates_testing_script_set(self):
         factory.make_Subnet(cidr='192.168.0.3/24')
         node = factory.make_Node(boot_cluster_ip='192.168.0.1')
+        self.create_IPADDR_OUTPUT_NAME_script(node, self.IP_ADDR_OUTPUT)
         script = factory.make_Script(
             script_type=SCRIPT_TYPE.TESTING,
             parameters={'interface': {'type': 'interface'}})
@@ -1985,7 +2195,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
                 node=node, scripts=[script.name]))
         node.save()
 
-        update_node_network_information(node, self.IP_ADDR_OUTPUT, 0)
+        update_node_network_information(node, SAMPLE_LXD_JSON)
 
         self.assertEquals(1, len(node.get_latest_testing_script_results))
         # The default network layout only configures the boot interface.
@@ -2004,8 +2214,9 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
     def test__sets_default_configuration(self):
         factory.make_Subnet(cidr='192.168.0.3/24')
         node = factory.make_Node(boot_cluster_ip='192.168.0.1')
+        self.create_IPADDR_OUTPUT_NAME_script(node, self.IP_ADDR_OUTPUT)
 
-        update_node_network_information(node, self.IP_ADDR_OUTPUT, 0)
+        update_node_network_information(node, SAMPLE_LXD_JSON)
 
         # 2 devices configured, one for IPv4 one for IPv6.
         self.assertEquals(2, node.interface_set.filter(
