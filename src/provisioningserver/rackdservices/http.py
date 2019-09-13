@@ -190,6 +190,9 @@ class RackHTTPService(TimerService):
             rendered = template.substitute({
                 'upstream_http': list(sorted(upstream_http)),
                 'resource_root': self._resource_root,
+                'machine_resources': os.path.join(
+                    snappy.get_snap_path(), 'usr/share/maas') if (
+                        snappy.running_in_snap()) else '/usr/share/maas',
             })
         except NameError as error:
             raise HTTPConfigFail(*error.args)

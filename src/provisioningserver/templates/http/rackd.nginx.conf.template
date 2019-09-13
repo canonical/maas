@@ -24,9 +24,8 @@ server {
     }
     {{endif}}
 
-
     location /machine-resources/ {
-	root /snap/maas/current/usr/share/maas;
+	root {{machine_resources}};
 	autoindex on;
 	gzip on;
     }
