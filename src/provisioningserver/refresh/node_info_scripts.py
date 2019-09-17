@@ -4,7 +4,6 @@
 """Builtin node info scripts."""
 
 __all__ = [
-    'BLOCK_DEVICES_OUTPUT_NAME',
     'DHCP_EXPLORE_OUTPUT_NAME',
     'GET_FRUID_DATA_OUTPUT_NAME',
     'IPADDR_OUTPUT_NAME',
@@ -38,7 +37,6 @@ LLDP_INSTALL_OUTPUT_NAME = '00-maas-03-install-lldpd'
 LIST_MODALIASES_OUTPUT_NAME = '00-maas-04-list-modaliases'
 DHCP_EXPLORE_OUTPUT_NAME = '00-maas-05-dhcp-unconfigured-ifaces'
 GET_FRUID_DATA_OUTPUT_NAME = '00-maas-06-get-fruid-api-data'
-BLOCK_DEVICES_OUTPUT_NAME = '00-maas-07-block-devices'
 SERIAL_PORTS_OUTPUT_NAME = '00-maas-08-serial-ports'
 LXD_OUTPUT_NAME = '50-maas-01-commissioning'
 LLDP_OUTPUT_NAME = '99-maas-02-capture-lldp'
@@ -458,178 +456,6 @@ GET_FRUID_DATA_SCRIPT = dedent("""\
     """)
 
 
-def gather_physical_block_devices(dev_disk_byid='/dev/disk/by-id/'):
-    """Gathers information about a nodes physical block devices.
-
-    The following commands are ran in order to gather the required information.
-
-    lsblk       Gathers the initial block devices not including slaves or
-                holders. Gets the name, read-only, removable, model, and
-                if rotary.
-
-    udevadm     Grabs the device path, serial number, if connected over
-                SATA and rotational speed.
-
-    blockdev    Grabs the block size and size of the disk in bytes.
-
-    """
-    import json
-    import os
-    import shlex
-    import sys
-    from subprocess import check_output
-
-    import yaml
-
-    # XXX: Set LC_* and LANG environment variables to C.UTF-8 explicitly.
-
-    def _path_to_idpath(path):
-        """Searches dev_disk_byid for a device symlinked to /dev/[path]"""
-        if os.path.exists(dev_disk_byid):
-            for link in os.listdir(dev_disk_byid):
-                if os.path.exists(path) and os.path.samefile(
-                        os.path.join(dev_disk_byid, link), path):
-                    return os.path.join(dev_disk_byid, link)
-        return None
-
-    running_dir = os.path.dirname(__file__)
-    # Results are stored differently when being run as part of node
-    # commissioning vs controller refresh.
-    virtuality_result_paths = [
-        os.path.join(running_dir, '..', '..', 'out', '00-maas-02-virtuality'),
-        os.path.join(running_dir, 'out', '00-maas-02-virtuality'),
-    ]
-    # This script doesn't work in containers as they don't have any block
-    # device. If the virtuality script detected its in one don't report
-    # anything.
-    for virtuality_result_path in virtuality_result_paths:
-        if not os.path.exists(virtuality_result_path):
-            continue
-        virtuality_result = open(virtuality_result_path, 'r').read().strip()
-        # Names from man SYSTEMD-DETECT-VIRT(1)
-        if virtuality_result in {
-                'openvz', 'lxc', 'lxc-libvirt', 'systemd-nspawn', 'docker',
-                'rkt'}:
-            print(
-                'Unable to detect block devices while running in container!',
-                file=sys.stderr)
-            print('[]')
-            result_path = os.environ.get('RESULT_PATH')
-            if result_path is not None:
-                with open(result_path, 'w') as results_file:
-                    yaml.safe_dump({'status': 'skipped'}, results_file)
-            return
-
-    # Grab the block devices from lsblk. Excludes RAM devices
-    # (default for lsblk), floppy disks, and loopback devices.
-    blockdevs = []
-    block_list = check_output((
-        "lsblk", "--exclude", "1,2,7", "-d", "-P",
-        "-o", "NAME,RO,RM,MODEL,ROTA,MAJ:MIN"))
-    block_list = block_list.decode("utf-8")
-    for blockdev in block_list.splitlines():
-        tokens = shlex.split(blockdev)
-        current_block = {}
-        for token in tokens:
-            k, v = token.split("=", 1)
-            current_block[k] = v.strip()
-        blockdevs.append(current_block)
-
-    # Sort drives by MAJ:MIN so MAAS picks the correct boot drive.
-    # lsblk -x MAJ:MIN can't be used as the -x flag only appears in
-    # lsblk 2.71.1 or newer which is unavailable on Trusty. See LP:1673724
-    blockdevs = sorted(
-        blockdevs,
-        key=lambda blockdev: [int(i) for i in blockdev['MAJ:MIN'].split(':')])
-
-    # Grab the device path, serial number, and sata connection.
-    UDEV_MAPPINGS = {
-        "DEVNAME": "PATH",
-        "DEVPATH": "DEVPATH",
-        "ID_SERIAL_SHORT": "SERIAL",
-        "ID_ATA_SATA": "SATA",
-        "ID_ATA_ROTATION_RATE_RPM": "RPM",
-        "ID_REVISION": "FIRMWARE_VERSION",
-        }
-    del_blocks = set()
-    seen_devices = set()
-    for block_info in blockdevs:
-        # Some RAID devices return the name of the device seperated with "!",
-        # but udevadm expects it to be a "/".
-        block_name = block_info["NAME"].replace("!", "/")
-        udev_info = check_output(
-            ("udevadm", "info", "-q", "all", "-n", block_name))
-        udev_info = udev_info.decode("utf-8")
-        for info_line in udev_info.splitlines():
-            info_line = info_line.strip()
-            if info_line == "":
-                continue
-            _, info = info_line.split(" ", 1)
-            if "=" not in info:
-                continue
-            k, v = info.split("=", 1)
-            if k in UDEV_MAPPINGS:
-                block_info[UDEV_MAPPINGS[k]] = v.strip()
-            if k == "ID_CDROM" and v == "1":
-                # Remove any type of CDROM from the blockdevs, as we
-                # cannot use this device for installation.
-                del_blocks.add(block_name)
-                break
-
-        # If the udevadm does not know the firmware version of an NVME drive
-        # try to read it from /sys
-        if "ID_REVISION" not in block_info and "nvme" in block_info["NAME"]:
-            firmware_ver_path = os.path.join(
-                "/sys", block_info.get("DEVPATH", ""), "..", "firmware_rev")
-            if os.path.exists(firmware_ver_path):
-                block_info["FIRMWARE_VERSION"] = open(
-                    firmware_ver_path, 'r').read().strip()
-
-        if block_name in del_blocks:
-            continue
-
-        # Skip duplicate (serial, model) for multipath.
-        serial = block_info.get("SERIAL")
-        if serial:
-            model = block_info.get("MODEL", "").strip()
-            if (serial, model) in seen_devices:
-                del_blocks.add(block_name)
-                continue
-            seen_devices.add((serial, model))
-
-    # Remove any devices that need to be removed.
-    blockdevs = [
-        block_info
-        for block_info in blockdevs
-        if block_info["NAME"] not in del_blocks
-        ]
-
-    # Grab the size of the device, block size and id-path.
-    for block_info in blockdevs:
-        block_path = block_info["PATH"]
-        id_path = _path_to_idpath(block_path)
-        if id_path is not None:
-            block_info["ID_PATH"] = id_path
-        # This code runs on a commissioning machine and on a controller. So
-        # the code must check itself if its being ran inside of a snap.
-        if 'SNAP' in os.environ:
-            device_size = check_output(
-                ("blockdev", "--getsize64", block_path))
-            device_block_size = check_output(
-                ("blockdev", "--getbsz", block_path))
-        else:
-            device_size = check_output(
-                ("sudo", "-n", "blockdev", "--getsize64", block_path))
-            device_block_size = check_output(
-                ("sudo", "-n", "blockdev", "--getbsz", block_path))
-        block_info["SIZE"] = device_size.decode("utf-8").strip()
-        block_info["BLOCK_SIZE"] = device_block_size.decode("utf-8").strip()
-
-    # Output block device information in json
-    json_output = json.dumps(blockdevs, indent=True)
-    print(json_output)  # json_outout is ASCII-only.
-
-
 def null_hook(node, output, exit_status):
     """Intentionally do nothing.
 
@@ -709,12 +535,6 @@ NODE_INFO_SCRIPTS = OrderedDict([
         'hook': null_hook,
         'timeout': timedelta(minutes=1),
         'run_on_controller': False,
-    }),
-    (BLOCK_DEVICES_OUTPUT_NAME, {
-        'content': make_function_call_script(gather_physical_block_devices),
-        'hook': null_hook,
-        'timeout': timedelta(minutes=5),
-        'run_on_controller': True,
     }),
     (SERIAL_PORTS_OUTPUT_NAME, {
         'content': SERIAL_PORTS_SCRIPT.encode('ascii'),

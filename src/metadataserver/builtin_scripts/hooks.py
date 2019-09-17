@@ -32,7 +32,6 @@ from maasserver.models.tag import Tag
 from maasserver.utils.orm import get_one
 from metadataserver.enum import SCRIPT_STATUS
 from provisioningserver.refresh.node_info_scripts import (
-    BLOCK_DEVICES_OUTPUT_NAME,
     GET_FRUID_DATA_OUTPUT_NAME,
     IPADDR_OUTPUT_NAME,
     LIST_MODALIASES_OUTPUT_NAME,
@@ -410,6 +409,8 @@ def process_lxd_results(node, output, exit_status):
     node.memory = data.get('memory', {}).get('total', 0) / 1024 / 1024
     # Network interfaces.
     update_node_network_information(node, data)
+    # Storage.
+    update_node_physical_block_devices(node, data)
 
     if cpu_model:
         NodeMetadata.objects.update_or_create(
@@ -522,16 +523,15 @@ def get_tags_from_block_info(block_info):
         sata: Storage device that is connected over SATA.
     """
     tags = []
-    if block_info["ROTA"] == "1":
-        tags.append("rotary")
+    if block_info['rpm'] > 0:
+        tags.append('rotary')
+        tags.append("%srpm" % block_info['rpm'])
     else:
-        tags.append("ssd")
-    if block_info["RM"] == "1":
-        tags.append("removable")
-    if "SATA" in block_info and block_info["SATA"] == "1":
-        tags.append("sata")
-    if "RPM" in block_info and block_info["RPM"] != "0":
-        tags.append("%srpm" % block_info["RPM"])
+        tags.append('ssd')
+    if block_info['removable']:
+        tags.append('removable')
+    if block_info['type'] == 'sata':
+        tags.append('sata')
     return tags
 
 
@@ -549,21 +549,7 @@ def get_matching_block_device(block_devices, serial=None, id_path=None):
     return None
 
 
-def update_node_physical_block_devices(node, output, exit_status):
-    """Process the results of `gather_physical_block_devices`.
-
-    This updates the physical block devices that are attached to a node.
-
-    If `exit_status` is non-zero, this function returns without doing
-    anything.
-    """
-    if exit_status != 0:
-        logger.error(
-            "%s: physical block device detection script failed with status: "
-            "%s." % (node.hostname, exit_status))
-        return
-    assert isinstance(output, bytes)
-
+def update_node_physical_block_devices(node, data):
     # Skip storage configuration if set by the user.
     if node.skip_storage:
         # Turn off skip_storage now that the hook has been called.
@@ -571,29 +557,27 @@ def update_node_physical_block_devices(node, output, exit_status):
         node.save(update_fields=['skip_storage'])
         return
 
-    try:
-        blockdevs = json.loads(output.decode("ascii"))
-    except ValueError as e:
-        raise ValueError(e.message + ': ' + output)
+    blockdevs = data.get('storage', {}).get('disks', [])
     previous_block_devices = list(
         PhysicalBlockDevice.objects.filter(node=node).all())
     for block_info in blockdevs:
         # Skip the read-only devices. We keep them in the output for
         # the user to view but they do not get an entry in the database.
-        if block_info["RO"] == "1":
+        if block_info['read_only']:
             continue
-        name = block_info["NAME"]
-        model = block_info.get("MODEL", "")
-        serial = block_info.get("SERIAL", "")
-        id_path = block_info.get("ID_PATH", "")
+        name = block_info['id']
+        model = block_info.get('model', '')
+        serial = block_info.get('serial', '')
+        id_path = block_info.get('device_path', '')
         if not id_path or not serial:
-            # Fallback to the dev path if id_path missing or there is no
-            # serial number. (No serial number is a strong indicator that this
-            # is a virtual disk, so it's unlikely that the ID_PATH would work.)
-            id_path = block_info["PATH"]
-        size = int(block_info["SIZE"])
-        block_size = int(block_info["BLOCK_SIZE"])
-        firmware_version = block_info.get("FIRMWARE_VERSION")
+            # Fallback to the dev path if device_path missing or there is
+            # no serial number. (No serial number is a strong indicator that
+            # this is a virtual disk, so it's unlikely that the device_path
+            # would work.)
+            id_path = '/dev/' + block_info.get('id')
+        size = block_info.get('size', 0)
+        block_size = block_info.get('block_size', 0)
+        firmware_version = block_info.get('firmware_version')
         tags = get_tags_from_block_info(block_info)
 
         # First check if there is an existing device with the same name.
@@ -998,10 +982,8 @@ NODE_INFO_SCRIPTS[LSHW_OUTPUT_NAME]['hook'] = update_hardware_details
 NODE_INFO_SCRIPTS[VIRTUALITY_OUTPUT_NAME]['hook'] = set_virtual_tag
 NODE_INFO_SCRIPTS[GET_FRUID_DATA_OUTPUT_NAME]['hook'] = (
     update_node_fruid_metadata)
-NODE_INFO_SCRIPTS[BLOCK_DEVICES_OUTPUT_NAME]['hook'] = (
-    update_node_physical_block_devices)
-NODE_INFO_SCRIPTS[SRIOV_OUTPUT_NAME]['hook'] = (
-    update_node_network_interface_tags)
 NODE_INFO_SCRIPTS[LIST_MODALIASES_OUTPUT_NAME]['hook'] = (
     create_metadata_by_modalias)
 NODE_INFO_SCRIPTS[LXD_OUTPUT_NAME]['hook'] = process_lxd_results
+NODE_INFO_SCRIPTS[SRIOV_OUTPUT_NAME]['hook'] = (
+    update_node_network_interface_tags)

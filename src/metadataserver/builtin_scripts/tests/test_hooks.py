@@ -339,11 +339,16 @@ SAMPLE_LXD_JSON = {
                 "id": "sda",
                 "device": "8:0",
                 "model": "Crucial_CT512M55",
-                "type": "scsi",
+                "type": "sata",
                 "read_only": False,
                 "size": 512110190592,
                 "removable": False,
                 "numa_node": 0,
+                "device_path": "pci-0000:00:1f.2-ata-1",
+                "block_size": 4096,
+                "rpm": 0,
+                "firmware_version": "MU01",
+                "serial": "14060968BCD8",
                 "partitions": [
                     {
                         "id": "sda1",
@@ -369,18 +374,39 @@ SAMPLE_LXD_JSON = {
                 ]
             },
             {
-                "id": "sr0",
-                "device": "11:0",
-                "model": "DVD-RAM UJ8E2",
+                # For testing purposes...
+                # No device_path, rpm > 0, removable
+                "id": "sdb",
+                "device": "8:16",
+                "model": "WDC WD60EFRX-68M",
                 "type": "scsi",
                 "read_only": False,
-                "size": 1073741312,
+                "size": 6001175126016,
+                "block_size": 4096,
                 "removable": True,
+                "rpm": 5400,
                 "numa_node": 0,
-                "partitions": []
+                "firmware_version": "MU01",
+                "serial": "14060968BCD8",
+                "partitions": [
+                    {
+                        "id": "sdb1",
+                        "device": "8:17",
+                        "read_only": False,
+                        "size": 6001165074432,
+                        "partition": 1
+                    },
+                    {
+                        "id": "sdb9",
+                        "device": "8:25",
+                        "read_only": False,
+                        "size": 8388608,
+                        "partition": 9
+                    }
+                ]
             }
         ],
-        "total": 5
+        "total": 7
     }
 }
 
@@ -1253,52 +1279,12 @@ class TestProcessLXDResults(MAASServerTestCase):
 
 class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
 
-    def make_block_device(
-            self, name=None, path=None, id_path=None, size=None,
-            block_size=None, model=None, serial=None, rotary=True, rpm=None,
-            removable=False, sata=False, firmware_version=None):
-        if name is None:
-            name = factory.make_name('name')
-        if path is None:
-            path = '/dev/%s' % name
-        if id_path is None:
-            id_path = '/dev/disk/by-id/deviceid'
-        if size is None:
-            size = random.randint(
-                MIN_BLOCK_DEVICE_SIZE * 10, MIN_BLOCK_DEVICE_SIZE * 100)
-        if block_size is None:
-            block_size = random.choice([512, 1024, 4096])
-        if model is None:
-            model = factory.make_name('model')
-        if serial is None:
-            serial = factory.make_name('serial')
-        if rpm is None:
-            rpm = random.choice(('4800', '5400', '10000', '15000'))
-        if firmware_version is None:
-            firmware_version = factory.make_name('firmware_version')
-        return {
-            "NAME": name,
-            "PATH": path,
-            "ID_PATH": id_path,
-            "SIZE": '%s' % size,
-            "BLOCK_SIZE": '%s' % block_size,
-            "MODEL": model,
-            "SERIAL": serial,
-            "RO": "0",
-            "RM": "1" if removable else "0",
-            "ROTA": "1" if rotary else "0",
-            "SATA": "1" if sata else "0",
-            "RPM": "0" if not rotary else rpm,
-            "FIRMWARE_VERSION": firmware_version,
-            }
-
     def test__idempotent_block_devices(self):
-        devices = [self.make_block_device() for _ in range(3)]
-        device_names = [device['NAME'] for device in devices]
+        device_names = [
+            device['id'] for device in SAMPLE_LXD_JSON['storage']['disks']]
         node = factory.make_Node()
-        json_output = json.dumps(devices).encode('utf-8')
-        update_node_physical_block_devices(node, json_output, 0)
-        update_node_physical_block_devices(node, json_output, 0)
+        update_node_physical_block_devices(node, SAMPLE_LXD_JSON)
+        update_node_physical_block_devices(node, SAMPLE_LXD_JSON)
         devices = list(PhysicalBlockDevice.objects.filter(node=node))
         created_names = []
         for device in devices:
@@ -1306,31 +1292,24 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             self.assertEqual(device.numa_node, node.default_numanode)
         self.assertItemsEqual(device_names, created_names)
 
-    def test__does_nothing_when_exit_status_is_not_zero(self):
-        node = factory.make_Node()
-        block_device = factory.make_PhysicalBlockDevice(node=node)
-        update_node_physical_block_devices(node, b"garbage", exit_status=1)
-        self.assertIsNotNone(reload_object(block_device))
-
     def test__does_nothing_if_skip_storage(self):
         node = factory.make_Node(skip_storage=True)
         block_device = factory.make_PhysicalBlockDevice(node=node)
-        update_node_physical_block_devices(node, b"garbage", exit_status=0)
+        update_node_physical_block_devices(node, {})
         self.assertIsNotNone(reload_object(block_device))
         self.assertFalse(reload_object(node).skip_storage)
 
     def test__removes_previous_physical_block_devices(self):
         node = factory.make_Node()
         block_device = factory.make_PhysicalBlockDevice(node=node)
-        update_node_physical_block_devices(node, b"[]", 0)
+        update_node_physical_block_devices(node, {})
         self.assertIsNone(reload_object(block_device))
 
     def test__creates_physical_block_devices(self):
-        devices = [self.make_block_device() for _ in range(3)]
-        device_names = [device['NAME'] for device in devices]
+        device_names = [
+            device['id'] for device in SAMPLE_LXD_JSON['storage']['disks']]
         node = factory.make_Node()
-        json_output = json.dumps(devices).encode('utf-8')
-        update_node_physical_block_devices(node, json_output, 0)
+        update_node_physical_block_devices(node, SAMPLE_LXD_JSON)
         created_names = [
             device.name
             for device in PhysicalBlockDevice.objects.filter(node=node)
@@ -1338,17 +1317,13 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         self.assertItemsEqual(device_names, created_names)
 
     def test__handles_renamed_block_device(self):
-        devices = [self.make_block_device(name='sda', serial='first')]
         node = factory.make_Node()
-        json_output = json.dumps(devices).encode('utf-8')
-        update_node_physical_block_devices(node, json_output, 0)
-        devices = [
-            self.make_block_device(name='sda', serial='second'),
-            self.make_block_device(name='sdb', serial='first'),
-        ]
-        json_output = json.dumps(devices).encode('utf-8')
-        update_node_physical_block_devices(node, json_output, 0)
-        device_names = [device['NAME'] for device in devices]
+        update_node_physical_block_devices(node, SAMPLE_LXD_JSON)
+        NEW_NAMES = deepcopy(SAMPLE_LXD_JSON)
+        NEW_NAMES['storage']['disks'][0]['id'] = 'sdy'
+        NEW_NAMES['storage']['disks'][1]['id'] = 'sdz'
+        update_node_physical_block_devices(node, NEW_NAMES)
+        device_names = ['sdy', 'sdz']
         created_names = [
             device.name
             for device in PhysicalBlockDevice.objects.filter(node=node)
@@ -1360,47 +1335,52 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         # this test, there need to be at least two disks in order to
         # simulate a condition like the one in bug #1662343.
         node = factory.make_Node()
-        device1 = self.make_block_device(name='sda')
-        device2 = self.make_block_device(name='sdb')
         update_node_physical_block_devices(
-            node, json.dumps([device1, device2]).encode('utf-8'), 0)
+            node, SAMPLE_LXD_JSON)
 
         # Now, we simulate that we insert a new disk in the machine that
-        # becomes sda, thus pushing the other disks to sdb and sdc.
-        recommission_device1 = self.make_block_device(name='sda')
-        recommission_device2 = device1.copy()
-        recommission_device2["NAME"] = 'sdb'
-        recommission_device2["PATH"] = '/dev/sdb'
-        recommission_device3 = device2.copy()
-        recommission_device3["NAME"] = 'sdc'
-        recommission_device3["PATH"] = '/dev/sdc'
-        recommission_devices = [
-            recommission_device1, recommission_device2, recommission_device3]
+        # becomes sdx, thus pushing the other disks to sdy and sdz.
+        NEW_NAMES = deepcopy(SAMPLE_LXD_JSON)
+        NEW_NAMES['storage']['disks'][0]['id'] = 'sdx'
+        NEW_NAMES['storage']['disks'][1]['id'] = 'sdy'
+        NEW_NAMES['storage']['disks'].append(
+            {
+                "id": "sdz",
+                "device": "8:0",
+                "model": "Crucial_CT512M55",
+                "type": "sata",
+                "read_only": False,
+                "size": 512110190789,
+                "removable": False,
+                "numa_node": 0,
+                "device_path": "",
+                "block_size": 4096,
+                "rpm": 0,
+                "firmware_version": "MU01",
+                "serial": "14060968BC12"
+            })
 
         # After recommissioning the node, we'll have three devices, as
         # expected.
-        update_node_physical_block_devices(
-            node, json.dumps(recommission_devices).encode('utf-8'), 0)
+        update_node_physical_block_devices(node, NEW_NAMES)
         device_names = [
             (device.name, device.serial)
             for device in PhysicalBlockDevice.objects.filter(node=node)
             ]
         self.assertItemsEqual(
-            [('sda', recommission_device1["SERIAL"]),
-             ('sdb', recommission_device2["SERIAL"]),
-             ('sdc', recommission_device3["SERIAL"])],
+            [('sdx', NEW_NAMES['storage']['disks'][0]['serial']),
+             ('sdy', NEW_NAMES['storage']['disks'][1]['serial']),
+             ('sdz', NEW_NAMES['storage']['disks'][2]['serial'])],
             device_names)
 
     def test__only_updates_physical_block_devices(self):
-        devices = [self.make_block_device() for _ in range(3)]
         node = factory.make_Node()
-        json_output = json.dumps(devices).encode('utf-8')
-        update_node_physical_block_devices(node, json_output, 0)
+        update_node_physical_block_devices(node, SAMPLE_LXD_JSON)
         created_ids_one = [
             device.id
             for device in PhysicalBlockDevice.objects.filter(node=node)
             ]
-        update_node_physical_block_devices(node, json_output, 0)
+        update_node_physical_block_devices(node, SAMPLE_LXD_JSON)
         created_ids_two = [
             device.id
             for device in PhysicalBlockDevice.objects.filter(node=node)
@@ -1408,31 +1388,25 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         self.assertItemsEqual(created_ids_two, created_ids_one)
 
     def test__doesnt_reset_boot_disk(self):
-        devices = [self.make_block_device() for _ in range(3)]
         node = factory.make_Node()
-        json_output = json.dumps(devices).encode('utf-8')
-        update_node_physical_block_devices(node, json_output, 0)
+        update_node_physical_block_devices(node, SAMPLE_LXD_JSON)
         boot_disk = PhysicalBlockDevice.objects.filter(node=node).first()
         node.boot_disk = boot_disk
         node.save()
-        update_node_physical_block_devices(node, json_output, 0)
+        update_node_physical_block_devices(node, SAMPLE_LXD_JSON)
         self.assertEqual(boot_disk, reload_object(node).boot_disk)
 
     def test__clears_boot_disk(self):
-        devices = [self.make_block_device() for _ in range(3)]
         node = factory.make_Node()
-        json_output = json.dumps(devices).encode('utf-8')
-        update_node_physical_block_devices(node, json_output, 0)
-        update_node_physical_block_devices(
-            node, json.dumps([]).encode('utf-8'), 0)
+        update_node_physical_block_devices(node, SAMPLE_LXD_JSON)
+        update_node_physical_block_devices(node, {})
         self.assertIsNone(reload_object(node).boot_disk)
 
     def test__creates_physical_block_devices_in_order(self):
-        devices = [self.make_block_device() for _ in range(3)]
-        device_names = [device['NAME'] for device in devices]
+        device_names = [
+            device['id'] for device in SAMPLE_LXD_JSON['storage']['disks']]
         node = factory.make_Node()
-        json_output = json.dumps(devices).encode('utf-8')
-        update_node_physical_block_devices(node, json_output, 0)
+        update_node_physical_block_devices(node, SAMPLE_LXD_JSON)
         created_names = [
             device.name
             for device in (
@@ -1441,19 +1415,17 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         self.assertEqual(device_names, created_names)
 
     def test__creates_physical_block_device(self):
-        name = factory.make_name('name')
-        id_path = '/dev/disk/by-id/deviceid'
-        size = random.randint(MIN_BLOCK_DEVICE_SIZE, 1000 * 1000 * 1000)
-        block_size = random.choice([512, 1024, 4096])
-        model = factory.make_name('model')
-        serial = factory.make_name('serial')
-        firmware_version = factory.make_name('firmware_version')
-        device = self.make_block_device(
-            name=name, size=size, block_size=block_size,
-            model=model, serial=serial, firmware_version=firmware_version)
+        # Check first device from SAMPLE_LXD_JSON
+        device = SAMPLE_LXD_JSON['storage']['disks'][0]
+        name = device['id']
+        id_path = device['device_path']
+        size = device['size']
+        block_size = device['block_size']
+        model = device['model']
+        serial = device['serial']
+        firmware_version = device['firmware_version']
         node = factory.make_Node()
-        json_output = json.dumps([device]).encode('utf-8')
-        update_node_physical_block_devices(node, json_output, 0)
+        update_node_physical_block_devices(node, SAMPLE_LXD_JSON)
         self.assertThat(
             PhysicalBlockDevice.objects.filter(node=node).first(),
             MatchesStructure.byEquality(
@@ -1462,19 +1434,17 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
                 firmware_version=firmware_version))
 
     def test__creates_physical_block_device_with_path(self):
-        name = factory.make_name('name')
-        size = random.randint(MIN_BLOCK_DEVICE_SIZE, 1000 * 1000 * 1000)
-        block_size = random.choice([512, 1024, 4096])
-        model = factory.make_name('model')
-        serial = factory.make_name('serial')
-        firmware_version = factory.make_name('firmware_version')
-        device = self.make_block_device(
-            name=name, size=size, block_size=block_size,
-            model=model, serial=serial, id_path='',
-            firmware_version=firmware_version)
+        NO_DEVICE_PATH = deepcopy(SAMPLE_LXD_JSON)
+        NO_DEVICE_PATH['storage']['disks'][0]['device_path'] = ''
+        device = NO_DEVICE_PATH['storage']['disks'][0]
+        name = device['id']
+        size = device['size']
+        block_size = device['block_size']
+        model = device['model']
+        serial = device['serial']
+        firmware_version = device['firmware_version']
         node = factory.make_Node()
-        json_output = json.dumps([device]).encode('utf-8')
-        update_node_physical_block_devices(node, json_output, 0)
+        update_node_physical_block_devices(node, NO_DEVICE_PATH)
         self.assertThat(
             PhysicalBlockDevice.objects.filter(node=node).first(),
             MatchesStructure.byEquality(
@@ -1483,62 +1453,52 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
                 firmware_version=firmware_version))
 
     def test__creates_physical_block_device_with_path_for_missing_serial(self):
-        name = factory.make_name('name')
-        size = random.randint(MIN_BLOCK_DEVICE_SIZE + 1, 1000 * 1000 * 1000)
-        block_size = random.choice([512, 1024, 4096])
-        model = factory.make_name('model')
-        serial = ''
-        device = self.make_block_device(
-            name=name, size=size, block_size=block_size,
-            model=model, serial=serial, id_path='bogus')
+        NO_SERIAL = deepcopy(SAMPLE_LXD_JSON)
+        NO_SERIAL['storage']['disks'][0]['serial'] = ''
+        device = NO_SERIAL['storage']['disks'][0]
+        name = device['id']
+        size = device['size']
+        block_size = device['block_size']
+        model = device['model']
         node = factory.make_Node()
-        json_output = json.dumps([device]).encode('utf-8')
-        update_node_physical_block_devices(node, json_output, 0)
+        update_node_physical_block_devices(node, NO_SERIAL)
         self.assertThat(
             PhysicalBlockDevice.objects.filter(node=node).first(),
             MatchesStructure.byEquality(
                 name=name, id_path='/dev/%s' % name, size=size,
-                block_size=block_size, model=model, serial=serial))
+                block_size=block_size, model=model, serial=''))
 
     def test__creates_physical_block_device_only_for_node(self):
-        device = self.make_block_device()
         node = factory.make_Node(with_boot_disk=False)
         other_node = factory.make_Node(with_boot_disk=False)
-        json_output = json.dumps([device]).encode('utf-8')
-        update_node_physical_block_devices(node, json_output, 0)
+        update_node_physical_block_devices(node, SAMPLE_LXD_JSON)
         self.assertEqual(
             0, PhysicalBlockDevice.objects.filter(node=other_node).count(),
             "Created physical block device for the incorrect node.")
 
     def test__creates_physical_block_device_with_rotary_tag(self):
-        device = self.make_block_device(rotary=True)
         node = factory.make_Node()
-        json_output = json.dumps([device]).encode('utf-8')
-        update_node_physical_block_devices(node, json_output, 0)
+        update_node_physical_block_devices(node, SAMPLE_LXD_JSON)
         self.expectThat(
-            PhysicalBlockDevice.objects.filter(node=node).first().tags,
+            PhysicalBlockDevice.objects.filter(node=node).last().tags,
             Contains('rotary'))
         self.expectThat(
-            PhysicalBlockDevice.objects.filter(node=node).first().tags,
+            PhysicalBlockDevice.objects.filter(node=node).last().tags,
             Not(Contains('ssd')))
 
     def test__creates_physical_block_device_with_rotary_and_rpm_tags(self):
-        device = self.make_block_device(rotary=True, rpm=5400)
         node = factory.make_Node()
-        json_output = json.dumps([device]).encode('utf-8')
-        update_node_physical_block_devices(node, json_output, 0)
+        update_node_physical_block_devices(node, SAMPLE_LXD_JSON)
         self.expectThat(
-            PhysicalBlockDevice.objects.filter(node=node).first().tags,
+            PhysicalBlockDevice.objects.filter(node=node).last().tags,
             Contains('rotary'))
         self.expectThat(
-            PhysicalBlockDevice.objects.filter(node=node).first().tags,
+            PhysicalBlockDevice.objects.filter(node=node).last().tags,
             Contains('5400rpm'))
 
     def test__creates_physical_block_device_with_ssd_tag(self):
-        device = self.make_block_device(rotary=False)
         node = factory.make_Node()
-        json_output = json.dumps([device]).encode('utf-8')
-        update_node_physical_block_devices(node, json_output, 0)
+        update_node_physical_block_devices(node, SAMPLE_LXD_JSON)
         self.expectThat(
             PhysicalBlockDevice.objects.filter(node=node).first().tags,
             ContainsAll(['ssd']))
@@ -1547,60 +1507,45 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             Not(Contains('rotary')))
 
     def test__creates_physical_block_device_without_removable_tag(self):
-        device = self.make_block_device(removable=False)
         node = factory.make_Node()
-        json_output = json.dumps([device]).encode('utf-8')
-        update_node_physical_block_devices(node, json_output, 0)
+        update_node_physical_block_devices(node, SAMPLE_LXD_JSON)
         self.assertThat(
             PhysicalBlockDevice.objects.filter(node=node).first().tags,
             Not(Contains('removable')))
 
     def test__creates_physical_block_device_with_removable_tag(self):
-        device = self.make_block_device(removable=True)
         node = factory.make_Node()
-        json_output = json.dumps([device]).encode('utf-8')
-        update_node_physical_block_devices(node, json_output, 0)
+        update_node_physical_block_devices(node, SAMPLE_LXD_JSON)
         self.assertThat(
-            PhysicalBlockDevice.objects.filter(node=node).first().tags,
+            PhysicalBlockDevice.objects.filter(node=node).last().tags,
             Contains('removable'))
 
     def test__creates_physical_block_device_without_sata_tag(self):
-        device = self.make_block_device(sata=False)
         node = factory.make_Node()
-        json_output = json.dumps([device]).encode('utf-8')
-        update_node_physical_block_devices(node, json_output, 0)
+        update_node_physical_block_devices(node, SAMPLE_LXD_JSON)
         self.assertThat(
-            PhysicalBlockDevice.objects.filter(node=node).first().tags,
+            PhysicalBlockDevice.objects.filter(node=node).last().tags,
             Not(Contains('sata')))
 
     def test__creates_physical_block_device_with_sata_tag(self):
-        device = self.make_block_device(sata=True)
         node = factory.make_Node()
-        json_output = json.dumps([device]).encode('utf-8')
-        update_node_physical_block_devices(node, json_output, 0)
+        update_node_physical_block_devices(node, SAMPLE_LXD_JSON)
         self.assertThat(
             PhysicalBlockDevice.objects.filter(node=node).first().tags,
             Contains('sata'))
 
     def test__ignores_min_block_device_size_devices(self):
-        device = self.make_block_device(
-            size=random.randint(1, MIN_BLOCK_DEVICE_SIZE))
+        UNDER_MIN_BLOCK_SIZE = deepcopy(SAMPLE_LXD_JSON)
+        UNDER_MIN_BLOCK_SIZE['storage']['disks'][0]['size'] = random.randint(
+            1, MIN_BLOCK_DEVICE_SIZE)
+        UNDER_MIN_BLOCK_SIZE['storage']['disks'][1]['size'] = random.randint(
+            1, MIN_BLOCK_DEVICE_SIZE)
         node = factory.make_Node()
-        json_output = json.dumps([device]).encode('utf-8')
-        update_node_physical_block_devices(node, json_output, 0)
-        self.assertEquals(
-            0, len(PhysicalBlockDevice.objects.filter(node=node)))
-
-    def test__ignores_loop_devices(self):
-        device = self.make_block_device(id_path='/dev/loop0')
-        node = factory.make_Node()
-        json_output = json.dumps([device]).encode('utf-8')
-        update_node_physical_block_devices(node, json_output, 0)
+        update_node_physical_block_devices(node, UNDER_MIN_BLOCK_SIZE)
         self.assertEquals(
             0, len(PhysicalBlockDevice.objects.filter(node=node)))
 
     def test__regenerates_testing_script_set(self):
-        device = self.make_block_device()
         node = factory.make_Node()
         script = factory.make_Script(
             script_type=SCRIPT_TYPE.TESTING,
@@ -1610,8 +1555,10 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
                 node=node, scripts=[script.name]))
         node.save()
 
-        json_output = json.dumps([device]).encode('utf-8')
-        update_node_physical_block_devices(node, json_output, 0)
+        ONE_DISK = deepcopy(SAMPLE_LXD_JSON)
+        del ONE_DISK['storage']['disks'][1]
+        device = ONE_DISK['storage']['disks'][0]
+        update_node_physical_block_devices(node, ONE_DISK)
 
         self.assertEquals(1, len(node.get_latest_testing_script_results))
         script_result = node.get_latest_testing_script_results.get(
@@ -1619,20 +1566,18 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         self.assertDictEqual({'storage': {
             'type': 'storage',
             'value': {
-                'id_path': device['ID_PATH'],
+                'id_path': device['device_path'],
                 'physical_blockdevice_id': (
                     node.physicalblockdevice_set.first().id),
-                'name': device['NAME'],
-                'serial': device['SERIAL'],
-                'model': device['MODEL'],
+                'name': device['id'],
+                'serial': device['serial'],
+                'model': device['model'],
             }}}, script_result.parameters)
 
     def test__sets_default_configuration(self):
-        device = self.make_block_device()
         node = factory.make_Node()
 
-        json_output = json.dumps([device]).encode('utf-8')
-        update_node_physical_block_devices(node, json_output, 0)
+        update_node_physical_block_devices(node, SAMPLE_LXD_JSON)
 
         _, layout = get_applied_storage_layout_for_node(node)
         self.assertEquals(
