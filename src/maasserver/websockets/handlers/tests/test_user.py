@@ -57,6 +57,7 @@ class TestUserHandler(MAASServerTestCase):
             "sshkeys_count": sshkeys_count,
             "last_login": dehydrate_datetime(user.last_login),
             "is_local": user.userprofile.is_local,
+            "completed_intro": user.userprofile.completed_intro,
             "machines_count": user.node_set.count(),
         }
         if for_self:

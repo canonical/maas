@@ -62,6 +62,7 @@ class UserHandler(Handler):
             "last_login",
             'is_local',
             'machines_count',
+            'completed_intro',
         ]
         listen_channels = [
             "user",
@@ -151,6 +152,7 @@ class UserHandler(Handler):
         data.update(
             {'sshkeys_count': obj.sshkeys_count,
              'is_local': obj.userprofile.is_local,
+             'completed_intro': obj.userprofile.completed_intro,
              'machines_count': obj.machines_count,
              'last_login': dehydrate_datetime(obj.last_login)})
         if obj.id == self.user.id:

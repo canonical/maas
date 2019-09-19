@@ -1655,14 +1655,14 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         IP_ADDR_WEDGE_OUTPUT = fd.read()
 
     def create_IPADDR_OUTPUT_NAME_script(self, node, output):
-        script = factory.make_Script(
-            name=IPADDR_OUTPUT_NAME, script_type=SCRIPT_TYPE.COMMISSIONING)
         commissioning_script_set = (
-            ScriptSet.objects.create_commissioning_script_set(
-                node, scripts=[script.name]))
+            ScriptSet.objects.create_commissioning_script_set(node))
+        commissioning_script_set.find_script_result(
+            script_name=IPADDR_OUTPUT_NAME).delete()
         node.current_commissioning_script_set = commissioning_script_set
         factory.make_ScriptResult(
-            script_set=commissioning_script_set, script=script,
+            script_set=commissioning_script_set,
+            script_name=IPADDR_OUTPUT_NAME,
             exit_status=0, status=SCRIPT_STATUS.PASSED, output=output)
 
     def assert_expected_interfaces_and_macs_exist_for_node(
