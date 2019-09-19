@@ -34,7 +34,6 @@
                     data-ng-disabled="editHeaderInvalid()"
                     data-ng-click="saveEditHeader()">Save</button>
 
-                <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
                 <ul class="p-inline-list page-header__status u-no-margin--top" data-ng-if="!isController && !isDevice && !header.editing && !header.editing_domain">
                     <li class="p-inline-list__item">
                         <span data-ng-if="node.locked" class="p-tooltip--top-left" aria-describedby="header-locked-state">
@@ -51,7 +50,6 @@
             </div>
 
             <div class="col-medium-2 col-4">
-                <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
                 <div class="u-align--right" data-ng-show="!header.editing && action.availableOptions.length">
                     <div data-maas-cta="action.availableOptions"
                         data-ng-click="updateAvailableActions('machines')"
@@ -61,7 +59,6 @@
                 </div>
             </div>
         </div>
-        <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
         <div class="page-header__dropdown" data-ng-class="{ 'u-hide': !action.option }">
             <hr />
             <div class="row ng-hide" data-ng-if="!isDevice && !node.dhcp_on">
@@ -70,7 +67,6 @@
                 </div>
             </div>
             <div class="row ng-hide u-no-margin--top" data-ng-hide="isActionError() || isDeployError() || isSSHKeyError() || hasActionPowerError(action.option.name)">
-                <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
                 <div class="page-header__section">
                     <form class="p-form">
                         <div class="row">
@@ -230,7 +226,6 @@
                 </div>
             </div>
             <div class="row u-equal-height ng-hide" data-ng-show="isActionError()">
-                <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
                 <div class="col-9 u-vertically-center">
                     <p class="u-remove-max-width">
                         <i class="p-icon--error">Error:</i> {$ getHardwareTestErrorText(action.error) $}
@@ -244,7 +239,6 @@
                 </div>
             </div>
             <div class="row u-equal-height ng-hide" data-ng-show="isDeployError()">
-                <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
                 <div class="col-9 u-vertically-center">
                     <p class="u-remove-max-width">
                         <i class="p-icon--error">Error:</i> Node cannot be {$ action.option.sentence $}, because the required boot images have not been imported. To import boot images, visit the <a href="images/">images page</a>.

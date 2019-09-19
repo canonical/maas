@@ -1,7 +1,6 @@
 <header class="p-strip--light is-shallow u-no-padding--bottom page-header" data-ng-class="{'u-no-padding--bottom': currentpage === 'machines' || currentpage === 'pools'}" media-query="min-width: 769px">
     <div class="row flex-row">
         <div class="flex-item">
-            <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
             <h1 class="page-header__title">{$ title $}</h1>
             <p class="page-header__status u-no-margin--top" data-ng-show="loading">
                 <span class="u-text--loading"><i class="p-icon--spinner u-animation--spin"></i> Loading...</span>
@@ -13,7 +12,6 @@
             </p>
         </div>
         <div class="u-align--right" data-ng-show="currentpage === 'machines'">
-            <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
             <div>
                 <ul class="p-inline-list u-no-margin--bottom">
                     <li class="p-inline-list__item" data-ng-show="tabs.machines.selectedItems.length">
@@ -55,7 +53,6 @@
         </div>
 
         <div data-ng-show="currentpage === 'devices' || currentpage === 'controllers'">
-            <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
             <div class="page-header__controls" data-ng-show="currentpage === 'devices'">
                 <div data-ng-hide="tabs.devices.selectedItems.length">
                     <button class="p-button--neutral u-no-margin--bottom"
@@ -81,7 +78,6 @@
                 </ul>
             </div>
 
-            <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
             <div class="page-header__controls page-header__controls--controllers u-no-margin--top" data-ng-show="currentpage === 'controllers'">
                 <div data-ng-if="!tabs.controllers.selectedItems.length">
                     <button class="p-button--neutral"
@@ -158,9 +154,7 @@
     </div>
 
     <div data-ng-repeat="tab in ['machines', 'switches', 'devices']" data-ng-class="{ 'u-hide': !tabs[tab].actionOption }">
-        <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
         <div class="page-header__dropdown">
-            <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
             <div class="row">
                 <div class="col-12">
                     <hr />
@@ -409,7 +403,6 @@
                 </div>
             </section>
 
-            <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
             <section class="page-header__section row u-no-margin--top" data-ng-hide="!isActionError(tab) || hasActionsInProgress(tab)">
                 <div class="col-12">
                     <div class="row">
@@ -447,7 +440,6 @@
                     </div>
                 </div>
             </section>
-            <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
             <section class="page-header__section row u-no-margin--top ng-hide" data-ng-show="hasActionsInProgress(tab) || hasActionsFailed(tab)">
                 <div class="col-12">
                     <p class="page-header__message" data-ng-show="hasActionsInProgress(tab)">
@@ -465,7 +457,6 @@
         </div>
     </div>
 
-    <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
     <div class="page-header__dropdown row u-no-margin--top"
         data-ng-class="{ 'u-hide': !addHardwareScope.viewable }"
         data-ng-controller="AddHardwareController">
@@ -491,7 +482,6 @@
                 </div>
             </form>
         </section>
-        <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
         <section class="page-header__section col-12 ng-hide" data-ng-show="showChassis()">
             <p class="page-header__message page-header__message--error ng-hide" data-ng-show="error">{$ error $}</p>
             <div class="page-header__controls p-strip u-align--right u-no-padding--bottom">
@@ -506,7 +496,6 @@
             </div>
         </section>
 
-        <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
         <section class="page-header__section row" data-ng-hide="architectures.length">
             <p class="page-header__message page-header__message--error">
                 Cannot add {$ mode $} until boot images have been imported. To fix, visit the <a href="#/images">images page</a>.
@@ -514,7 +503,6 @@
         </section>
     </div>
 
-    <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
     <div class="page-header__dropdown" data-ng-class="{ 'u-hide': !addDeviceScope.viewable }" data-ng-controller="AddDeviceController">
         <section class="page-header__section row">
             <hr />
@@ -620,11 +608,8 @@
         </section>
     </div>
 
-    <!-- XXX blake_r 2015-04-02 - Need to add e2e test. -->
     <div class="page-header__dropdown" data-ng-class="{ 'u-hide': !tabs.controllers.actionOption }">
-        <!-- XXX blake_r 2015-04-02 - Need to add e2e test. -->
         <div class="page-header__section col-12 ng-hide" data-ng-hide="isActionError('controllers') || hasActionsInProgress('controllers')">
-            <!-- XXX blake_r 2015-04-02 - Need to add e2e test. -->
             <div class="row" data-ng-if="tabs.controllers.actionOption.name === 'set-zone' || tabs.controllers.actionOption.name === 'test'">
                 <form class="p-form p-form--inline">
                     <div class="ng-hide" data-ng-show="tabs.controllers.actionOption.name === 'set-zone'">
@@ -703,7 +688,6 @@
             </div>
         </div>
 
-        <!-- XXX blake_r 2015-04-02 - Need to add e2e test. -->
         <div class="page-header__section col-12 ng-hide" data-ng-show="isActionError('controllers')">
             <div class="row">
                 <div class="p-form p-form--inline">
@@ -738,7 +722,6 @@
             </div>
         </section>
 
-        <!-- XXX blake_r 2015-05-07 - Need to add e2e test. -->
         <div class="page-header__section col-12 ng-hide" data-ng-show="hasActionsInProgress('controllers') || hasActionsFailed('controllers')">
             <div class="row">
                 <form class="p-form p-form--inline">
@@ -756,7 +739,6 @@
     </div>
 
     <div class="page-header__dropdown row u-no-margin--top" data-ng-class="{ 'u-hide': !tabs.controllers.addController }">
-        <!-- XXX blake_r 2015-05-07 - Need to add e2e test. -->
         <div class="page-header__section col-12 ng-hide" data-ng-show="tabs.controllers.addController">
             <hr />
             <h4 class="page-header__dropdown-title">Add rack controller</h4>
@@ -881,7 +863,6 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
             <thead>
                 <tr class="p-table__row">
                     <th class="p-table__cell">
-                        <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
                         <span class="u-float--left">
                             <input type="checkbox" class="u-float--none" data-ng-click="toggleCheckAll('devices')" data-ng-checked="tabs.devices.allViewableChecked" id="check-all-devices" data-ng-disabled="hasActionsInProgress('devices')" />
                             <label for="check-all-devices" class="p-form__label"></label>
@@ -894,13 +875,11 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                     <th class="p-table__cell" role="columnheader" data-ng-click="sortTable('ip_assignment', 'devices')" data-ng-class="{'is-sorted': tabs.devices.predicate === 'ip_assignment', 'sort-asc': tabs.devices.reverse === false, 'sort-desc': tabs.devices.reverse === true}" media-query="min-width: 1000px">IP Assignment</th>
                     <th class="p-table__cell" role="columnheader" data-ng-click="sortTable('ip_address', 'devices')" data-ng-class="{'is-sorted': tabs.devices.predicate === 'ip_address', 'sort-asc': tabs.devices.reverse === false, 'sort-desc': tabs.devices.reverse === true}">IP Address</th>
                     <th class="p-table__cell" role="columnheader" data-ng-click="sortTable('owner', 'devices')" data-ng-class="{'is-sorted': tabs.devices.predicate === 'owner', 'sort-asc': tabs.devices.reverse === false, 'sort-desc': tabs.devices.reverse === true}">
-                        <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
                         Owner
                     </th>
                 </tr>
             </thead>
             <tbody vs-repeat vs-scroll-parent="window">
-                <!-- XXX rvba 2015-02-25 - Need to add e2e test. This really needs lots of tests. -->
                 <tr class="p-table__row"
                     data-ng-repeat="device in tabs.devices.filtered_items = (devices | nodesFilter:tabs.devices.search | orderBy:tabs.devices.predicate:tabs.devices.reverse) track by device.system_id"
                     data-ng-class="{ 'table--error': !supportsAction(device, 'devices'), 'is-active': device.$selected }">
@@ -1045,7 +1024,6 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                     <tr class="p-table__row">
                         <th class="p-table__cell">
                             <span class="u-float--left">
-                                <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
                                 <input type="checkbox" class="u-float--none" data-ng-click="toggleCheckAll('controllers')" data-ng-checked="tabs.controllers.allViewableChecked" id="check-all-controllers" data-ng-disabled="hasActionsInProgress('controllers')" />
                                 <label for="check-all-controllers" class="p-form__label"></label>
                             </span>
@@ -1063,7 +1041,6 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                     </tr>
                 </thead>
                 <tbody vs-repeat vs-scroll-parent="window">
-                    <!-- XXX rvba 2015-02-25 - Need to add e2e test. This really needs lots of tests. -->
                     <tr class="p-table__row"
                         data-ng-repeat="controller in tabs.controllers.filtered_items = (controllers | nodesFilter:tabs.controllers.search | orderBy:tabs.controllers.predicate:tabs.controllers.reverse) track by controller.system_id"
                         data-ng-class="{ 'table--error': !supportsAction(controller, 'controllers'), 'is-active': controller.$selected }">
@@ -1106,7 +1083,6 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
         <form class="p-search-box">
             <div class="p-form-validation"
                 data-ng-class="{ 'is-error': !tabs.switches.searchValid }">
-            <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
             <input
                 type="search" placeholder="Search switches"
                 class="p-search-box__input p-form-validation__input"

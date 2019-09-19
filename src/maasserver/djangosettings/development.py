@@ -71,12 +71,6 @@ DATABASES = {
     },
 }
 
-# Allow the database name to be overwritten using an environment variable.
-# This is only used for test.e2e. This might be better handled by using
-# RegionConfigurationFixture; see test_dbupgrade.py for an example.
-if 'DEV_DB_NAME' in os.environ:
-    DATABASES['default']['NAME'] = os.environ['DEV_DB_NAME']
-
 # Absolute filesystem path to the directory that will hold user-uploaded files.
 # Example: "/home/media/media.lawrence.com/media/"
 # To allow tests to run in parallel the current process's PID is part of this

@@ -293,21 +293,8 @@ Tests = files(
     "src/**/testing.py")
 
 
-TestProtractor = files(
-    "src/maastesting/protractor/**/*.py")
-TestProtractorRule = Rule(
-    Allow("django|django.**"),
-    Allow("maasserver.eventloop"),  # XXX: Dodgy!
-    Allow("provisioningserver.testing.config.*"),
-    Allow("twisted.scripts.twistd"),
-    Allow(StandardLibraries),
-    Allow(TestingLibraries),
-)
+TestHelpers = files("src/maastesting/**/*.py")
 
-
-TestHelpers = (
-    files("src/maastesting/**/*.py") -
-    TestProtractor)
 TestHelpersRule = Rule(
     Allow("crochet|crochet.**"),
     Allow("django|django.**"),
@@ -427,13 +414,6 @@ checks = [
     (
         TestHelpers,
         TestHelpersRule,
-    ),
-    #
-    # TESTING HELPERS: PROTRACTOR
-    #
-    (
-        TestProtractor,
-        TestProtractorRule,
     ),
 ]
 

@@ -68,7 +68,6 @@ build: \
   bin/test.region \
   bin/test.region.legacy \
   bin/test.testing \
-  bin/test.e2e \
   bin/test.parallel \
   bin/py bin/ipy \
   pycharm
@@ -102,7 +101,7 @@ bin/buildout: bootstrap-buildout.py
 	@touch --no-create $@  # Ensure it's newer than its dependencies.
 
 # buildout.cfg refers to .run and .run-e2e.
-buildout.cfg: .run .run-e2e
+buildout.cfg: .run
 
 bin/database: bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install database
@@ -136,11 +135,6 @@ bin/maas: bin/buildout buildout.cfg versions.cfg setup.py
 
 bin/test.cli: bin/buildout buildout.cfg versions.cfg setup.py bin/maas
 	$(buildout) install cli-test
-	@touch --no-create $@
-
-bin/test.e2e: \
-    bin/protractor bin/buildout buildout.cfg versions.cfg setup.py
-	$(buildout) install e2e-test
 	@touch --no-create $@
 
 # bin/flake8 is needed for checking lint and bin/node-sass is needed for
@@ -196,7 +190,6 @@ node_modules: include/nodejs/bin/node bin/yarn
 	@touch --no-create $@
 
 define js_bins
-  bin/protractor
   bin/node-sass
   bin/webpack
 endef
@@ -219,7 +212,6 @@ define node_packages
   macaroon-bakery
   node-sass
   prop-types
-  protractor
   react
   react-dom
   react2angular
@@ -456,7 +448,7 @@ clean: stop clean-failed clean-assets
 	$(RM) tags TAGS .installed.cfg
 	$(RM) -r *.egg *.egg-info src/*.egg-info
 	$(RM) -r services/*/supervise
-	$(RM) -r .run .run-e2e
+	$(RM) -r .run
 	$(RM) -r .idea
 	$(RM) xunit.*.xml
 	$(RM) .failed
