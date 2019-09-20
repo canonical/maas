@@ -129,6 +129,7 @@ from maasserver.models.interface import (
 )
 from maasserver.models.iscsiblockdevice import ISCSIBlockDevice
 from maasserver.models.licensekey import LicenseKey
+from maasserver.models.numa import NUMANode
 from maasserver.models.ownerdata import OwnerData
 from maasserver.models.partitiontable import PartitionTable
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
@@ -3985,7 +3986,9 @@ class Node(CleanSave, TimestampedModel):
             update_node_network_information)
         script = self.current_commissioning_script_set.find_script_result(
             script_name=LXD_OUTPUT_NAME)
-        update_node_network_information(self, json.loads(script.output))
+        update_node_network_information(
+            self, json.loads(script.output),
+            NUMANode.objects.filter(node=self))
 
     def set_initial_networking_configuration(self):
         """Set the networking configuration to the default for this node.

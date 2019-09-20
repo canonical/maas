@@ -6350,7 +6350,8 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
             script_set=commissioning_script_set,
             script=ip_addr_script, exit_status=0,
             output=IP_ADDR_OUTPUT_XENIAL)
-
+        # Create NUMA nodes.
+        test_hooks.create_numa_nodes(node)
         # restore_network_interfaces() will set up the network intefaces
         # specified in ip_addr_results_xenial.txt
         node.restore_network_interfaces()
@@ -6382,6 +6383,8 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
             script_set=commissioning_script_set,
             script=ip_addr_script, exit_status=0,
             output=IP_ADDR_OUTPUT_XENIAL)
+        # Create NUMA nodes.
+        test_hooks.create_numa_nodes(node)
         node.restore_network_interfaces()
 
         # If extra interfaces are added, they will be removed when

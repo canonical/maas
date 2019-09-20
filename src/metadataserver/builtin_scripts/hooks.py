@@ -18,6 +18,7 @@ from lxml import etree
 from maasserver.enum import NODE_METADATA
 from maasserver.models import (
     Fabric,
+    NUMANode,
     Subnet,
 )
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
@@ -78,8 +79,8 @@ SWITCH_OPENBMC_MAC = "02:00:00:00:00:02"
 
 
 def _create_default_physical_interface(
-        node, ifname, mac, link_connected,
-        interface_speed, link_speed, **kwargs):
+        node, ifname, mac, link_connected, interface_speed,
+        link_speed, numa_node, **kwargs):
     """Assigns the specified interface to the specified Node.
 
     Creates or updates a PhysicalInterface that corresponds to the given MAC.
@@ -96,7 +97,7 @@ def _create_default_physical_interface(
     vlan = fabric.get_default_vlan()
     interface = PhysicalInterface.objects.create(
         mac_address=mac, name=ifname, node=node,
-        numa_node=node.default_numanode, vlan=vlan, **kwargs)
+        numa_node=numa_node, vlan=vlan, **kwargs)
 
     return interface
 
@@ -183,12 +184,15 @@ def _parse_interfaces(node, data):
             # Assign the IP addresses to this interface
             link = ip_addr_info[interface['name']]
             interface['ips'] = link.get('inet', []) + link.get('inet6', [])
+
+        # Add numa_node.
+        interface['numa_node'] = card.get('numa_node')
         interfaces.append(interface)
 
     return interfaces
 
 
-def update_node_network_information(node, data):
+def update_node_network_information(node, data, numa_nodes):
     # Skip network configuration if set by the user.
     if node.skip_networking:
         # Turn off skip_networking now that the hook has been called.
@@ -210,10 +214,11 @@ def update_node_network_information(node, data):
             # hard-coded OpenBMC MAC address.
             continue
         else:
-            ifname = iface['name']
-            link_connected = iface['link_connected']
-            interface_speed = iface['interface_speed']
-            link_speed = iface['link_speed']
+            ifname = iface.get('name')
+            link_connected = iface.get('link_connected')
+            interface_speed = iface.get('interface_speed')
+            link_speed = iface.get('link_speed')
+            numa_index = iface.get('numa_node')
             extra_info = extended_nic_info.get(mac, {})
             try:
                 interface = PhysicalInterface.objects.get(
@@ -227,8 +232,8 @@ def update_node_network_information(node, data):
                          node.fqdn))
                     interface.delete()
                     interface = _create_default_physical_interface(
-                        node, ifname, mac, link_connected,
-                        interface_speed, link_speed, **extra_info)
+                        node, ifname, mac, link_connected, interface_speed,
+                        link_speed, numa_nodes[numa_index], **extra_info)
                 else:
                     # Interface already exists on this Node, so just update
                     # the name and NIC info.
@@ -245,11 +250,11 @@ def update_node_network_information(node, data):
                             update_fields=['updated', *update_fields])
             except PhysicalInterface.DoesNotExist:
                 interface = _create_default_physical_interface(
-                    node, ifname, mac, link_connected,
-                    interface_speed, link_speed, **extra_info)
+                    node, ifname, mac, link_connected, interface_speed,
+                    link_speed, numa_nodes[numa_index], **extra_info)
 
             current_interfaces.add(interface)
-            interface.update_ip_addresses(iface['ips'])
+            interface.update_ip_addresses(iface.get('ips'))
 
             if not link_connected:
                 # This interface is now disconnected.
@@ -404,13 +409,23 @@ def process_lxd_results(node, output, exit_status):
         raise ValueError(e.message + ': ' + output)
 
     # Update CPU details.
-    node.cpu_count, node.cpu_speed, cpu_model = _parse_cpuinfo(data)
+    node.cpu_count, node.cpu_speed, cpu_model, numa_nodes = (
+        _parse_cpuinfo(data))
     # Update memory.
-    node.memory = data.get('memory', {}).get('total', 0) / 1024 / 1024
+    node.memory, numa_nodes = _parse_memory(data, numa_nodes)
+
+    # Create or update NUMA nodes.
+    numa_nodes = [
+        NUMANode.objects.update_or_create(
+            node=node, index=numa_index, defaults={
+                'memory': numa_data['memory'],
+                'cores': numa_data['cores']}
+        )[0] for numa_index, numa_data in numa_nodes.items()]
+
     # Network interfaces.
-    update_node_network_information(node, data)
+    update_node_network_information(node, data, numa_nodes)
     # Storage.
-    update_node_physical_block_devices(node, data)
+    update_node_physical_block_devices(node, data, numa_nodes)
 
     if cpu_model:
         NodeMetadata.objects.update_or_create(
@@ -425,12 +440,22 @@ def _parse_cpuinfo(data):
     cpu_model = None
     cpu_count = data.get('cpu', {}).get('total', 0)
     # Only update the cpu_model if all the socket names match.
-    sockets = data.get('cpu', {}).get('sockets', {})
+    sockets = data.get('cpu', {}).get('sockets', [])
     names = []
+    numa_nodes = {}
     for socket in sockets:
         name = socket.get('name')
         if name is not None:
             names.append(name)
+        for core in socket.get('cores', []):
+            numa_node = core.get('numa_node')
+            if numa_node not in numa_nodes:
+                numa_nodes[numa_node] = {
+                    "cores": [core.get('core')]
+                    }
+            else:
+                numa_nodes[numa_node]['cores'].append(
+                    core.get('core'))
     if len(names) > 0 and all(name == names[0] for name in names):
         cpu = names[0]
         m = re.search(
@@ -469,7 +494,17 @@ def _parse_cpuinfo(data):
                 # effected by CPU scaling.
                 cpu_speed = round(current_average / 100) * 100
 
-    return cpu_count, cpu_speed, cpu_model
+    return cpu_count, cpu_speed, cpu_model, numa_nodes
+
+
+def _parse_memory(data, numa_nodes):
+
+    total_memory = data.get('memory', {}).get('total', 0) / 1024 / 1024
+    for memory_node in data.get('memory', {}).get('nodes', []):
+        numa_nodes[memory_node['numa_node']]['memory'] = (
+            memory_node['total'] / 1024 / 1024)
+
+    return total_memory, numa_nodes
 
 
 def set_virtual_tag(node, output, exit_status):
@@ -549,7 +584,7 @@ def get_matching_block_device(block_devices, serial=None, id_path=None):
     return None
 
 
-def update_node_physical_block_devices(node, data):
+def update_node_physical_block_devices(node, data, numa_nodes):
     # Skip storage configuration if set by the user.
     if node.skip_storage:
         # Turn off skip_storage now that the hook has been called.
@@ -578,6 +613,7 @@ def update_node_physical_block_devices(node, data):
         size = block_info.get('size', 0)
         block_size = block_info.get('block_size', 0)
         firmware_version = block_info.get('firmware_version')
+        numa_index = block_info.get('numa_node')
         tags = get_tags_from_block_info(block_info)
 
         # First check if there is an existing device with the same name.
@@ -616,9 +652,10 @@ def update_node_physical_block_devices(node, data):
             # Skip loopback devices as they won't be available on next boot
             if id_path.startswith('/dev/loop'):
                 continue
+
             # New block device. Create it on the node.
             PhysicalBlockDevice.objects.create(
-                numa_node=node.default_numanode,
+                numa_node=numa_nodes[numa_index],
                 name=name,
                 id_path=id_path,
                 size=size,
