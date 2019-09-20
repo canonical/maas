@@ -210,7 +210,7 @@ class Handler(metaclass=HandlerMetaclass):
                 data[field_name] = dehydrate_method(field_obj)
             else:
                 value = field.value_from_object(obj)
-                if is_protected_type(value):
+                if is_protected_type(value) or isinstance(value, dict):
                     data[field_name] = value
                 elif isinstance(field, ArrayField):
                     data[field_name] = field.to_python(value)

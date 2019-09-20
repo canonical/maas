@@ -5,7 +5,6 @@
 
 __all__ = []
 
-import json
 
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -25,9 +24,9 @@ class TestScriptHandler(MAASServerTestCase):
             'script_type': script.script_type,
             'hardware_type': script.hardware_type,
             'parallel': script.parallel,
-            'results': json.dumps(script.results),
-            'parameters': json.dumps(script.parameters),
-            'packages': json.dumps(script.packages),
+            'results': script.results,
+            'parameters': script.parameters,
+            'packages': script.packages,
             'timeout': '0%s' % str(script.timeout),
             'destructive': script.destructive,
             'default': script.default,
@@ -43,8 +42,9 @@ class TestScriptHandler(MAASServerTestCase):
     def test_list(self):
         user = factory.make_User()
         handler = ScriptHandler(user, {}, None)
+        parameters = {'interface': {'type': 'interface'}}
         expected_scripts = sorted([
-            self.dehydrate_script(factory.make_Script())
+            self.dehydrate_script(factory.make_Script(parameters=parameters))
             for _ in range(3)
         ], key=lambda i: i['id'])
         sorted_results = sorted(handler.list({}), key=lambda i: i['id'])
