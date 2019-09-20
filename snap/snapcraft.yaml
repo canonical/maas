@@ -221,14 +221,14 @@ parts:
     build-snaps:
       - go
     artifacts:
-      - '386'
+      - 'i386'
       - 'amd64'
       - 'arm'
       - 'arm64'
       - 'ppc64le'
       - 's390x'
     organize:
-      '386': usr/share/maas/machine-resources/
+      'i386': usr/share/maas/machine-resources/
       'amd64': usr/share/maas/machine-resources/
       'arm': usr/share/maas/machine-resources/
       'arm64': usr/share/maas/machine-resources/

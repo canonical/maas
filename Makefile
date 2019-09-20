@@ -647,7 +647,6 @@ packaging-orig-targz := $(packaging-dir).orig.tar.gz
 	tar -rf $(packaging-build-area)/$(packaging-orig-tar) src/machine-resources/vendor \
 		--transform 's,^,$(packaging-dir)/,'
 	gzip -f $(packaging-build-area)/$(packaging-orig-tar)
-	(cd src/machine-resources/ && ${MAKE} clean)
 
 -packaging-export-orig-uncommitted: $(packaging-build-area)
 	git ls-files --others --exclude-standard --cached | grep -v '^debian' | \
@@ -657,7 +656,6 @@ packaging-orig-targz := $(packaging-dir).orig.tar.gz
 	tar -rf $(packaging-build-area)/$(packaging-orig-tar) src/machine-resources/vendor \
 		--transform 's,^,$(packaging-dir)/,'
 	gzip -f $(packaging-build-area)/$(packaging-orig-tar)
-	(cd src/machine-resources/ && ${MAKE} clean)
 
 -packaging-export: -packaging-export-orig$(if $(export-uncommitted),-uncommitted,)
 

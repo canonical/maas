@@ -2,7 +2,7 @@
 # Makefile to build the machine-resources binary on all relevant platforms.
 #
 
-ARCHES := amd64 386 arm arm64 ppc64le s390x
+ARCHES := amd64 i386 arm arm64 ppc64le s390x
 BINARIES = $(ARCHES)
 
 .DEFAULT_GOAL := build

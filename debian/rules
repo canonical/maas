@@ -3,7 +3,7 @@
 export GOPATH := $(CURDIR)
 BUILDHOME = $(CURDIR)/debian/build
 PYTHON3 = $(shell py3versions -d)
-COMMISSIONING_ARCHES := amd64 386 arm arm64 ppc64le s390x
+COMMISSIONING_ARCHES := amd64 i386 arm arm64 ppc64le s390x
 
 %:
 	dh $@ --with python3,apport,systemd --buildsystem=pybuild
