@@ -119,7 +119,7 @@ LXD_SCRIPT = dedent("""\
         exit 1
     fi
 
-    BINARY="$(archdetect | cut -d '/' -f1)"
+    BINARY="$(archdetect | cut -d '/' -f1 | sed 's/i386/386/g')"
     wget $url/machine-resources/$BINARY -O $DOWNLOAD_PATH/$BINARY 1>&2
     chmod +x $DOWNLOAD_PATH/$BINARY
     $DOWNLOAD_PATH/$BINARY
