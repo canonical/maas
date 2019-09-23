@@ -328,31 +328,26 @@
                                             </select>
                                         </div>
                                     </div>
-                                    <div class="p-form__group row p-form-validation" data-ng-class="{ 'is-error': isMountPointInvalid(item.$options.mountPoint) }">
-                                        <maas-obj-field type="text" key="mount_point" label="Mount point"
-                                            data-ng-disabled="!usesMountPoint(item.$options.fstype)"
-                                            subtle="false" placeholder="Absolute path" label-width="2" input-width="4"></maas-obj-field>
-                                        <maas-obj-field type="text" key="mount_options" label="Mount options"
-                                            data-ng-disabled="item.$options.fstype === null"
-                                            subtle="false" placeholder="Separated by commas, no spaces" label-width="2" input-width="4">
-                                        </maas-obj-field>
-                                    </div>
+                                    <maas-obj-field type="text" key="mount_point" label="Mount point"
+                                        data-ng-disabled="!usesMountPoint(item.$options.fstype)"
+                                        subtle="false" placeholder="Absolute path" label-width="2" input-width="4"></maas-obj-field>
+                                    <maas-obj-field type="text" key="mount_options" label="Mount options"
+                                        data-ng-disabled="item.$options.fstype === null"
+                                        subtle="false" placeholder="Separated by commas, no spaces" label-width="2" input-width="4"></maas-obj-field>
                                 </div>
                             </div>
                             <div class="row">
-                                <div class="p-space-between">
-                                    <hr>
-                                    <div class="col-6">
-                                        <p><maas-obj-errors></maas-obj-errors></p>
-                                    </div>
-                                    <div class="p-space-between__align-right">
-                                        <button class="p-button--base" type="button"
-                                            data-ng-click="availableCancel(item)">Cancel</button>
-                                        <button class="p-button--positive u-no-margin--top"
-                                            data-ng-click="availableConfirmPartition(item)"
-                                            data-ng-disabled="isAddPartitionSizeInvalid(item) || isMountPointInvalid(item.$options.mountPoint)"
-                                            maas-obj-save>Add partition</button>
-                                    </div>
+                                <hr>
+                                <div class="col-6">
+                                    <p><maas-obj-errors></maas-obj-errors></p>
+                                </div>
+                                <div class="col-6 u-align--right">
+                                    <button class="p-button--base" type="button"
+                                        data-ng-click="availableCancel(item)">Cancel</button>
+                                    <button class="p-button--positive u-no-margin--top"
+                                        data-ng-click="availableConfirmPartition(item)"
+                                        data-ng-disabled="isAddPartitionSizeInvalid(item) || isMountPointInvalid(item.$options.mountPoint)"
+                                        maas-obj-save>Add partition</button>
                                 </div>
                             </div>
                         </maas-obj-form>
