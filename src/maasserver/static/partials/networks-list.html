@@ -253,8 +253,7 @@
                             <a href="#/vlan/{$ row.vlan.id $}">{$ row.vlan_name $}</a>
                         </td>
                         <td aria-label="DHCP">
-                            <span data-ng-if="row.vlan.dhcp_on === true || row.vlan.relay_vlan !== null || row.vlan.external_dhcp === true" title="Enabled">Enabled</span>
-                            <span data-ng-if="row.vlan.dhcp_on !== true && row.vlan.relay_vlan === null" title="Disabled">Disabled</span>
+                            {$ getDHCPStatus(row.vlan) $}
                         </td>
                         <td aria-label="Subnet" title="{$ row.subnet_name $}">
                             <a href="#/subnet/{$ row.subnet.id $}">{$ row.subnet_name $}</a>

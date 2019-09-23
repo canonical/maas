@@ -53947,6 +53947,18 @@ function NetworksListController($scope, $rootScope, $filter, $location, SubnetsM
     return obj;
   };
 
+  $scope.getDHCPStatus = function (vlan) {
+    if (vlan.external_dhcp) {
+      return "External (".concat(vlan.external_dhcp, ")");
+    }
+
+    if (vlan.dhcp_on) {
+      return "MAAS-provided";
+    }
+
+    return "No DHCP";
+  };
+
   ManagerHelperService.loadManagers($scope, [SubnetsManager, FabricsManager, SpacesManager, VLANsManager, UsersManager]).then(function () {
     $scope.loading = false; // Set flag for RSD navigation item.
 

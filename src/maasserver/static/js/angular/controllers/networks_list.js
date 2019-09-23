@@ -292,6 +292,18 @@ function NetworksListController(
     return obj;
   };
 
+  $scope.getDHCPStatus = vlan => {
+    if (vlan.external_dhcp) {
+      return `External (${vlan.external_dhcp})`;
+    }
+
+    if (vlan.dhcp_on) {
+      return "MAAS-provided";
+    }
+
+    return "No DHCP";
+  };
+
   ManagerHelperService.loadManagers($scope, [
     SubnetsManager,
     FabricsManager,
