@@ -27,6 +27,7 @@ from django.http import (
 )
 from django.middleware.csrf import get_token
 from django.shortcuts import render
+from django.views.decorators.csrf import csrf_exempt
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT
 from maasserver.models import UserProfile
@@ -153,6 +154,7 @@ def authenticate(request):
     })
 
 
+@csrf_exempt
 def csrf(request):
     """Get the CSRF token for the authenticated user."""
     if request.method != "POST":

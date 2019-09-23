@@ -385,6 +385,9 @@ class TestCSRF(MAASServerTestCase):
         self.assertThat(response, HasStatusCode(HTTPStatus.FORBIDDEN))
 
     def test__returns_csrf(self):
+        # Force the client to test for CSRF because the view should be CSRF
+        # exempt. If not exempt then the `client.post` would fail.
+        self.client.handler.enforce_csrf_checks = True
         self.client.login(user=factory.make_User())
         response = self.client.post(reverse('csrf'))
         self.assertThat(response, HasStatusCode(HTTPStatus.OK))
