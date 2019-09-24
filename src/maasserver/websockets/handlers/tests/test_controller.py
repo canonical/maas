@@ -5,13 +5,20 @@
 
 __all__ = []
 
+from maasserver.config import RegionConfiguration
 from maasserver.enum import NODE_TYPE
 from maasserver.forms import ControllerForm
-from maasserver.models import ControllerInfo
+from maasserver.models import (
+    Config,
+    ControllerInfo,
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import RBACForceOffFixture
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.websockets.base import dehydrate_datetime
+from maasserver.websockets.base import (
+    dehydrate_datetime,
+    HandlerPermissionError,
+)
 from maasserver.websockets.handlers.controller import ControllerHandler
 from maastesting.djangotestcase import count_queries
 from metadataserver.enum import (
@@ -193,6 +200,23 @@ class TestControllerHandler(MAASServerTestCase):
             tags.append(tag.name)
         result = handler.list({})
         self.assertEqual(tags, result[0].get('tags'))
+
+    def test_register_info_non_admin(self):
+        user = factory.make_User()
+        handler = ControllerHandler(user, {}, None)
+        self.assertRaises(HandlerPermissionError, handler.register_info, {})
+
+    def test_register_info(self):
+        admin = factory.make_admin()
+        handler = ControllerHandler(admin, {}, None)
+        observed = handler.register_info({})
+        rpc_shared_secret = Config.objects.get_config("rpc_shared_secret")
+        with RegionConfiguration.open() as config:
+            maas_url = config.maas_url
+        self.assertEqual({
+            "url": maas_url,
+            "secret": rpc_shared_secret,
+        }, observed)
 
 
 class TestControllerHandlerScenarios(MAASServerTestCase):

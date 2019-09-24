@@ -13,14 +13,19 @@ from django.db.models import (
     OuterRef,
     Subquery,
 )
+from maasserver.config import RegionConfiguration
 from maasserver.forms import ControllerForm
+from maasserver.models.config import Config
 from maasserver.models.event import Event
 from maasserver.models.node import (
     Controller,
     RackController,
 )
 from maasserver.permissions import NodePermission
-from maasserver.websockets.base import HandlerError
+from maasserver.websockets.base import (
+    HandlerError,
+    HandlerPermissionError,
+)
 from maasserver.websockets.handlers.machine import MachineHandler
 from maasserver.websockets.handlers.node import node_prefetch
 from provisioningserver.utils.version import get_version_tuple
@@ -169,3 +174,20 @@ class ControllerHandler(MachineHandler):
     def dehydrate_show_os_info(self, obj):
         """Always show the OS information for controllers in the UI."""
         return True
+
+    def register_info(self, params):
+        """Return the registration info for a new controller.
+
+        User must be a superuser to perform this action.
+        """
+        if not self.user.is_superuser:
+            raise HandlerPermissionError()
+
+        rpc_shared_secret = Config.objects.get_config("rpc_shared_secret")
+        with RegionConfiguration.open() as config:
+            maas_url = config.maas_url
+
+        return {
+            "url": maas_url,
+            "secret": rpc_shared_secret,
+        }
