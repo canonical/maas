@@ -185,6 +185,16 @@ class TestMachineAPI(APITestCase.ForUser):
         parsed_result = json_load_bytes(response.content)
         self.assertEqual([tag.name], parsed_result['tag_names'])
 
+    def test_GET_returns_bios_boot_method(self):
+        machine = factory.make_Node(bios_boot_method="pxe")
+        tag = factory.make_Tag()
+        machine.tags.add(tag)
+        response = self.client.get(self.get_machine_uri(machine))
+
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json_load_bytes(response.content)
+        self.assertEqual("pxe", parsed_result['bios_boot_method'])
+
     def test_GET_returns_associated_ip_addresses(self):
         machine = factory.make_Node()
         nic = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=machine)

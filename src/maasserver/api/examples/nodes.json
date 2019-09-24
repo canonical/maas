@@ -1,5 +1,6 @@
 {
   "read-node": {
+    "bios_boot_method": "pxe",
     "boot_interface": {
       "system_id": "g8xyqs",
       "name": "eth-jJ5ZwN",
@@ -764,6 +765,7 @@
       "somekey": "somevalue"
     },
     "cpu_speed": 0,
+    "bios_boot_method": "pxe",
     "boot_interface": {
       "system_id": "q46awd",
       "effective_mtu": 1500,
@@ -1485,6 +1487,7 @@
     "cpu_test_status_name": "Unknown",
     "testing_status": 2,
     "iscsiblockdevice_set": [],
+    "bios_boot_method": "pxe",
     "boot_interface": {
       "vlan": {
         "vid": 0,
@@ -1881,6 +1884,7 @@
     "cpu_test_status_name": "Unknown",
     "testing_status": 2,
     "iscsiblockdevice_set": [],
+    "bios_boot_method": "pxe",
     "boot_interface": {
       "vlan": {
         "vid": 0,
@@ -2353,6 +2357,7 @@
         "resource_uri": "/MAAS/api/2.0/nodes/e8xa8m/blockdevices/2/"
       }
     ],
+    "bios_boot_method": "pxe",
     "boot_interface": {
       "firmware_version": null,
       "vlan": {

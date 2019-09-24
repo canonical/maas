@@ -633,6 +633,7 @@
       "current_commissioning_result_id": 152,
       "status": 16,
       "hwe_kernel": null,
+      "bios_boot_method": "pxe",
       "boot_interface": {
         "id": 94,
         "name": "eth-x2dFvx",
@@ -1654,6 +1655,7 @@
       "current_commissioning_result_id": 152,
       "status": 16,
       "hwe_kernel": null,
+      "bios_boot_method": "pxe",
       "boot_interface": {
         "id": 94,
         "name": "eth-x2dFvx",

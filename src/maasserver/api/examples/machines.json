@@ -403,6 +403,7 @@
     "architecture": "amd64/generic",
     "min_hwe_kernel": "",
     "virtualblockdevice_set": [],
+    "bios_boot_method": "pxe",
     "boot_interface": {
       "type": "physical",
       "vlan": {
@@ -869,6 +870,7 @@
     "architecture": "amd64/generic",
     "min_hwe_kernel": "",
     "virtualblockdevice_set": [],
+    "bios_boot_method": "pxe",
     "boot_interface": {
       "type": "physical",
       "vlan": {
@@ -1002,6 +1004,7 @@
     "raids": [],
     "node_type_name": "Machine",
     "memory_test_status_name": "Passed",
+    "bios_boot_method": "pxe",
     "boot_interface": {
       "discovered": null,
       "vlan": {
@@ -1957,6 +1960,7 @@
         "resource_uri": "/MAAS/api/2.0/nodes/8bk8nn/blockdevices/1/"
       }
     ],
+    "bios_boot_method": "pxe",
     "boot_interface": {
       "children": [],
       "discovered": null,
@@ -2217,6 +2221,7 @@
         "resource_uri": "/MAAS/api/2.0/nodes/8bk8nn/blockdevices/1/"
       }
     ],
+    "bios_boot_method": "pxe",
     "boot_interface": {
       "children": [],
       "discovered": null,
@@ -3051,6 +3056,7 @@
     "tag_names": [],
     "memory_test_status": 2,
     "testing_status": 2,
+    "bios_boot_method": "pxe",
     "boot_interface": {
       "parents": [],
       "params": "",
@@ -3987,6 +3993,7 @@
     "tag_names": [],
     "memory_test_status": 2,
     "testing_status": 2,
+    "bios_boot_method": "pxe",
     "boot_interface": {
       "parents": [],
       "params": "",
@@ -4258,6 +4265,7 @@
     "raids": [],
     "other_test_status": 2,
     "memory_test_status_name": "Passed",
+    "bios_boot_method": "pxe",
     "boot_interface": {
       "type": "physical",
       "vlan": {
@@ -5197,6 +5205,7 @@
     "current_testing_result_id": 22,
     "node_type": 0,
     "distro_series": "",
+    "bios_boot_method": "pxe",
     "boot_interface": null,
     "node_type_name": "Machine",
     "blockdevice_set": [
@@ -5548,6 +5557,7 @@
     "raids": [],
     "status_name": "Ready",
     "storage": 9204.621312000001,
+    "bios_boot_method": "pxe",
     "boot_interface": null,
     "boot_disk": {
       "firmware_version": "firmware_version-Jf2fDS",
@@ -5930,6 +5940,7 @@
       "mainboard_firmware_version": "Unknown",
       "mainboard_firmware_date": "Unknown"
     },
+    "bios_boot_method": "pxe",
     "boot_interface": null,
     "physicalblockdevice_set": [
       {
@@ -6612,6 +6623,7 @@
     "fqdn": "above-robin.sample",
     "hwe_kernel": null,
     "other_test_status": 2,
+    "bios_boot_method": "pxe",
     "boot_interface": null,
     "virtualblockdevice_set": [],
     "interface_test_status_name": "Unknown",
@@ -6713,6 +6725,7 @@
     "locked": false,
     "other_test_status_name": "Passed",
     "owner_data": {},
+    "bios_boot_method": "pxe",
     "boot_interface": null,
     "osystem": "",
     "current_commissioning_result_id": 21,
@@ -7072,6 +7085,7 @@
         "resource_uri": "/MAAS/api/2.0/nodes/a8m7sr/blockdevices/3/"
       }
     ],
+    "bios_boot_method": "pxe",
     "boot_interface": {
       "children": [],
       "discovered": null,
@@ -7332,6 +7346,7 @@
         "resource_uri": "/MAAS/api/2.0/nodes/a8m7sr/blockdevices/3/"
       }
     ],
+    "bios_boot_method": "pxe",
     "boot_interface": {
       "children": [],
       "discovered": null,
@@ -8032,6 +8047,7 @@
       }
     ],
     "raids": [],
+    "bios_boot_method": "pxe",
     "boot_interface": {
       "parents": [],
       "name": "eth-xMPy44",
@@ -9251,6 +9267,7 @@
     "commissioning_status_name": "Passed",
     "hostname": "aware-elk",
     "description": "Optional description for the machine.",
+    "bios_boot_method": "pxe",
     "boot_interface": {
       "mac_address": "2f:00:35:fd:94:0a",
       "product": null,
@@ -9402,6 +9419,7 @@
       "id": 0,
       "resource_uri": "/MAAS/api/2.0/resourcepool/0/"
     },
+    "bios_boot_method": "pxe",
     "boot_interface": {
       "children": [],
       "tags": [],
@@ -9726,6 +9744,7 @@
     ],
     "node_type": 0,
     "special_filesystems": [],
+    "bios_boot_method": "pxe",
     "boot_interface": {
       "firmware_version": null,
       "vlan": {

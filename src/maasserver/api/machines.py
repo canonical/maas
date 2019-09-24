@@ -139,6 +139,7 @@ DISPLAYED_MACHINE_FIELDS = (
     'locked',
     'cache_sets',
     'bcaches',
+    'bios_boot_method',
     'boot_interface',
     'architecture',
     'min_hwe_kernel',
