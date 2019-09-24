@@ -30,6 +30,7 @@ from maasserver.websockets.base import (
     dehydrate_datetime,
     HandlerDoesNotExistError,
     HandlerPermissionError,
+    HandlerValidationError,
 )
 from maasserver.websockets.handlers.user import UserHandler
 from maastesting.djangotestcase import count_queries
@@ -348,3 +349,25 @@ class TestUserHandler(MAASServerTestCase):
         handler = UserHandler(user, {}, None)
         last_login_serialised = handler.get({"id": user.id})['last_login']
         self.assertEqual(last_login_serialised, now.strftime(DATETIME_FORMAT))
+
+    def test_change_password_invalid(self):
+        user = factory.make_User()
+        user.set_password("oldpassword")
+        handler = UserHandler(user, {}, None)
+        self.assertRaises(HandlerValidationError, handler.change_password, {
+            "new_password1": "newpassword",
+            "new_password2": "mismatchpassword",
+            "old_password": "oldpassword",
+        })
+
+    def test_change_password(self):
+        user = factory.make_User()
+        user.set_password("oldpassword")
+        handler = UserHandler(user, {}, None)
+        observed = handler.change_password({
+            "new_password1": "newpassword",
+            "new_password2": "newpassword",
+            "old_password": "oldpassword",
+        })
+        self.assertEqual(self.dehydrate_user(user, for_self=True), observed)
+        self.assertTrue(user.check_password("newpassword"))

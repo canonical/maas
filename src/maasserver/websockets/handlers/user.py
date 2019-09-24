@@ -7,6 +7,7 @@ __all__ = [
     "UserHandler",
 ]
 
+from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.models import User
 from django.db.models import Count
 from django.http import HttpRequest
@@ -22,11 +23,13 @@ from maasserver.permissions import (
     PodPermission,
     ResourcePoolPermission,
 )
+from maasserver.utils.forms import get_QueryDict
 from maasserver.websockets.base import (
     dehydrate_datetime,
     Handler,
     HandlerDoesNotExistError,
     HandlerPermissionError,
+    HandlerValidationError,
 )
 from provisioningserver.events import EVENT_TYPES
 
@@ -50,6 +53,7 @@ class UserHandler(Handler):
             'create_authorisation_token',
             'update_token_name',
             'delete_authorisation_token',
+            'change_password',
         ]
         fields = [
             "id",
@@ -232,3 +236,14 @@ class UserHandler(Handler):
         profile.delete_authorisation_token(params['key'])
         self.create_audit_event(EVENT_TYPES.AUTHORISATION, "Deleted token.")
         return {}
+
+    def change_password(self, params):
+        """Update the authenticated user password."""
+        form = PasswordChangeForm(user=self.user, data=get_QueryDict(params))
+        if form.is_valid():
+            form.save()
+            self.user.sshkeys_count = self.user.sshkey_set.count()
+            self.user.machines_count = self.user.node_set.count()
+            return self.full_dehydrate(self.user)
+        else:
+            raise HandlerValidationError(form.errors)
