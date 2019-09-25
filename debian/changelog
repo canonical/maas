@@ -1,3 +1,10 @@
+maas (2.6.1-0ubuntu1) UNRELEASED; urgency=medium
+
+  * New upstream release, MAAS 2.6.1.
+  * Fixes performance issues and critical bugs.
+
+ -- Adam Collard <adam.collard@canonical.com>  Wed, 25 Sep 2019 11:14:04 +0100
+
 maas (2.6.1~rc1-7830-gee83011f2-ubuntu1) UNRELEASED; urgency=medium
 
   * New upstream release, MAAS 2.6.1 RC 1.
