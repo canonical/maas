@@ -1045,4 +1045,12 @@ describe("VLANDetailsController", function() {
       expect(controller.getAvailableVLANS()).toBe(1);
     });
   });
+
+  describe("canPerformAction", () => {
+    it("returns true if actionOption is delete", () => {
+      const controller = makeController();
+      controller.actionOption = controller.DELETE_ACTION;
+      expect(controller.canPerformAction()).toBe(true);
+    });
+  });
 });

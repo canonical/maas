@@ -378,7 +378,9 @@ export function VLANDetailsController(
 
   // Return True if the current action can be performed.
   vm.canPerformAction = function() {
-    if (vm.provideDHCP) {
+    if (vm.actionOption.name === "delete") {
+      return true;
+    } else if (vm.provideDHCP) {
       return vm.relatedSubnets.length > 0;
     } else if (vm.relayVLAN) {
       return angular.isObject(vm.provideDHCPAction.relayVLAN);

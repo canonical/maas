@@ -44566,7 +44566,9 @@ function VLANDetailsController($scope, $rootScope, $routeParams, $filter, $locat
 
 
   vm.canPerformAction = function () {
-    if (vm.provideDHCP) {
+    if (vm.actionOption.name === "delete") {
+      return true;
+    } else if (vm.provideDHCP) {
       return vm.relatedSubnets.length > 0;
     } else if (vm.relayVLAN) {
       return angular.isObject(vm.provideDHCPAction.relayVLAN);
