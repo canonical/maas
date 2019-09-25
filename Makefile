@@ -74,19 +74,21 @@ build: \
 
 all: build doc
 
+REQUIRED_DEPS_FILES = base build dev doc
+FORBIDDEN_DEPS_FILES = forbidden
+
+# list package names from a required-packages/ file
+list_required = $(shell sort -u required-packages/$1 | sed '/^\#/d')
+
 # Install all packages required for MAAS development & operation on
 # the system. This may prompt for a password.
 install-dependencies: release := $(shell lsb_release -c -s)
 install-dependencies:
-	sudo DEBIAN_FRONTEND=noninteractive apt-get -y \
-	    --no-install-recommends install $(shell sort -u \
-	        $(addprefix required-packages/,base build dev doc) | sed '/^\#/d')
-	sudo DEBIAN_FRONTEND=noninteractive apt-get -y \
-	    purge $(shell sort -u required-packages/forbidden | sed '/^\#/d')
+	sudo DEBIAN_FRONTEND=noninteractive apt install --no-install-recommends -y \
+		$(foreach deps,$(REQUIRED_DEPS_FILES),$(call list_required,$(deps)))
+	sudo DEBIAN_FRONTEND=noninteractive apt purge -y \
+		$(foreach deps,$(FORBIDDEN_DEPS_FILES),$(call list_required,$(deps)))
 	if [ -x /usr/bin/snap ]; then sudo snap install --classic snapcraft; fi
-
-.gitignore:
-	sed 's:^[.]/:/:' $^ > $@
 
 configure-buildout:
 	utilities/configure-buildout
@@ -819,5 +821,5 @@ secondary = $(sort $(strip $(secondary_binaries)))
 # Usage: $(call available,<command>,<package>)
 define available
   $(if $(shell which $(1)),$(1),$(error $(1) not found; \
-    install it with 'sudo apt-get install $(2)'))
+    install it with 'sudo apt install $(2)'))
 endef
