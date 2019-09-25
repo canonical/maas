@@ -102,7 +102,6 @@ bin/buildout: bootstrap-buildout.py
 	$(python) bootstrap-buildout.py --allow-site-packages
 	@touch --no-create $@  # Ensure it's newer than its dependencies.
 
-# buildout.cfg refers to .run and .run-e2e.
 buildout.cfg: .run
 
 bin/database: bin/buildout buildout.cfg versions.cfg setup.py
@@ -401,7 +400,7 @@ sampledata: bin/maas-region bin/database syncdb
 
 doc: api-docs.rst
 
-.run .run-e2e: run-skel
+.run: run-skel
 	@cp --archive --verbose $^ $@
 
 .idea: contrib/pycharm
