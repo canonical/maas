@@ -7,5 +7,5 @@ debian/tmp/usr/lib/maas/maas-test-enlistment
 # Install all other stuff
 debian/extras/99-maas-sudoers etc/sudoers.d
 debian/extras/maas-rack usr/sbin
-debian/extras/rackd usr/sbin
+usr/bin/rackd usr/sbin
 debian/extras/nginx.conf var/lib/maas/http

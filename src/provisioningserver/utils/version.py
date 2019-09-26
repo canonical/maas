@@ -14,6 +14,7 @@ from collections import namedtuple
 from functools import lru_cache
 import re
 
+import pkg_resources
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils import (
     shell,
@@ -23,7 +24,8 @@ from provisioningserver.utils import (
 
 maaslog = get_maas_logger('version')
 
-DEFAULT_VERSION = "2.7.0"
+# the first requirement is always the required package itself
+DEFAULT_VERSION = pkg_resources.require('maas')[0].version
 
 # Only import apt_pkg and initialize when not running in a snap.
 if not snappy.running_in_snap():

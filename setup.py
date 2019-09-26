@@ -13,21 +13,18 @@ from setuptools import (
     setup,
 )
 
-# The directory in which setup.py lives.
-here = dirname(__file__)
-
 
 def read(filename):
     """Return the whitespace-stripped content of `filename`."""
-    path = join(here, filename)
+    path = join(dirname(__file__), filename)
     with open(path, "r") as fin:
         return fin.read().strip()
 
 
 setup(
     name="maas",
-    version="1.10a1",
-    url="https://launchpad.net/maas",
+    version="2.7.0",
+    url="https://maas.io/",
     license="AGPLv3",
     description="Metal As A Service",
     long_description=read('README.rst'),
@@ -46,6 +43,14 @@ setup(
     ),
     package_dir={'': 'src'},
     include_package_data=True,
+
+    entry_points={
+        'console_scripts': [
+            'maas = maascli:main',
+            'rackd = provisioningserver.server:run',
+            'regiond = maasserver.server:run',
+        ],
+    },
 
     data_files=[
         ('/etc/maas',

@@ -366,7 +366,8 @@ lint-js:
 
 # Go fmt
 lint-go:
-	@find src/ -name '*.go' -execdir gofmt -l {} + | tee /tmp/gofmt.lint
+	@find src/ -name vendor -prune -o -name '*.go' -exec gofmt -l {} + | \
+		tee /tmp/gofmt.lint
 	@test ! -s /tmp/gofmt.lint
 
 format.parallel:
