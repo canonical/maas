@@ -1,17 +1,5 @@
-#!/usr/bin/python3
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-)
-
-str = None
-
-__metaclass__ = type
-__all__ = []
 
 import grp
 import os
@@ -48,18 +36,6 @@ def set_umask():
 
 
 def run():
-    # Run the main provisioning script.
-    from provisioningserver.__main__ import main
-    main()
-
-
-def main():
-    if 'maas-provision' in sys.argv[0]:
-        sys.stderr.write(
-            "WARNING: The maas-provision command is deprecated and will be "
-            "removed in a future version. From now on please use 'maas-rack' "
-            "instead.\n")
-
     # Allow dhcpd user to call dhcp-notify, and maas user to call observe-arp.
     users = ["root"]
     if len(sys.argv) > 1:
@@ -80,8 +56,6 @@ def main():
         set_umask()
 
     # Run the script.
-    run()
-
-
-if __name__ == "__main__":
+    # Run the main provisioning script.
+    from provisioningserver.__main__ import main
     main()

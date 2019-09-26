@@ -1,21 +1,8 @@
-#!/usr/bin/python3
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-)
-
-str = None
-
-__metaclass__ = type
-__all__ = []
 
 import grp
 import os
-import sys
 
 
 def check_user():
@@ -39,7 +26,7 @@ def set_umask():
     os.umask(0o007)
 
 
-def run():
+def run_django():
     # Force the production MAAS Django configuration.
     os.environ.setdefault(
         "DJANGO_SETTINGS_MODULE", "maasserver.djangosettings.settings")
@@ -49,17 +36,8 @@ def run():
     management.execute_from_command_line()
 
 
-def main():
-    if 'maas-region-admin' in sys.argv[0]:
-        sys.stderr.write(
-            "WARNING: The maas-region-admin command is deprecated and will be "
-            "removed in a future version. From now on please use 'maas-region' "
-            "instead.\n")
+def run():
     check_user()
     set_group()
     set_umask()
-    run()
-
-
-if __name__ == "__main__":
-    main()
+    run_django()

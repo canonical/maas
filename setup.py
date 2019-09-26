@@ -47,6 +47,9 @@ setup(
     entry_points={
         'console_scripts': [
             'maas = maascli:main',
+            'maas-common = provisioningserver.rack_script:run',
+            'maas-rack = provisioningserver.rack_script:run',
+            'maas-region = maasserver.region_script:run',
             'rackd = provisioningserver.server:run',
             'regiond = maasserver.server:run',
         ],

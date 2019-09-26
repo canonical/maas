@@ -1,5 +1,3 @@
-#!/usr/bin/dh-exec --with=install
-
 debian/extras/99-maas-common-sudoers etc/sudoers.d
 debian/tmp/usr/lib/maas/maas-delete-file
 debian/tmp/usr/lib/maas/maas-write-file
@@ -9,12 +7,9 @@ debian/tmp/usr/lib/maas/network-monitor
 debian/tmp/usr/lib/maas/beacon-monitor
 debian/tmp/usr/lib/maas/dhcp-monitor
 
-# Install an alias to maas-rack as maas-common.
-# For information on the usage of '=>' here, see:
-# https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=245554
-debian/extras/maas-rack => /usr/lib/maas/maas-common
-
 # Install unverified-ssh
 # This is used for KVM host communication:
 # https://bugs.launchpad.net/maas/+bug/1807231
 debian/tmp/usr/lib/maas/unverified-ssh
+
+usr/bin/maas-common /usr/lib/maas
