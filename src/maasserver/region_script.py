@@ -26,10 +26,27 @@ def set_umask():
     os.umask(0o007)
 
 
-def run_django():
+def run_django(is_snap):
     # Force the production MAAS Django configuration.
-    os.environ.setdefault(
-        "DJANGO_SETTINGS_MODULE", "maasserver.djangosettings.settings")
+    if is_snap:
+        snap_data = os.environ["SNAP_DATA"]
+        os.environ.update({
+            "DJANGO_SETTINGS_MODULE": "maasserver.djangosettings.snappy",
+            "MAAS_PATH": os.environ["SNAP"],
+            "MAAS_ROOT": snap_data,
+            "MAAS_REGION_CONFIG": os.path.join(snap_data, "regiond.conf"),
+            "MAAS_DNS_CONFIG_DIR": os.path.join(snap_data, "bind"),
+            "MAAS_PROXY_CONFIG_DIR": os.path.join(snap_data, "proxy"),
+            "MAAS_SYSLOG_CONFIG_DIR": os.path.join(snap_data, "syslog"),
+            "MAAS_IMAGES_KEYRING_FILEPATH": (
+                "/snap/maas/current/usr/share/keyrings/"
+                "ubuntu-cloudimage-keyring.gpg"),
+            "MAAS_THIRD_PARTY_DRIVER_SETTINGS": os.path.join(
+                os.environ["SNAP"], "etc/maas/drivers.yaml")
+        })
+    else:
+        os.environ["DJANGO_SETTINGS_MODULE"] = (
+            "maasserver.djangosettings.settings")
 
     # Let Django do the rest.
     from django.core import management
@@ -37,7 +54,9 @@ def run_django():
 
 
 def run():
+    is_snap = 'SNAP' in os.environ
     check_user()
-    set_group()
+    if not is_snap:
+        set_group()
     set_umask()
-    run_django()
+    run_django(is_snap)

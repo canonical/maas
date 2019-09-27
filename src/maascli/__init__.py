@@ -7,13 +7,27 @@ __all__ = [
     "main",
     ]
 
+import os
 import sys
 
 from maascli.parser import prepare_parser
 
 
+def snap_setup():
+    if 'SNAP' in os.environ:
+        os.environ.update({
+            "DJANGO_SETTINGS_MODULE": "maasserver.djangosettings.snappy",
+            "MAAS_PATH": os.environ["SNAP"],
+            "MAAS_ROOT": os.environ["SNAP_DATA"],
+            "MAAS_REGION_CONFIG": os.path.join(
+                os.environ["SNAP_DATA"], "regiond.conf")
+        })
+
+
 def main(argv=sys.argv):
     # If no arguments have been passed be helpful and point out --help.
+    snap_setup()
+
     if len(argv) == 1:
         sys.stderr.write(
             "Error: no arguments given.\n"

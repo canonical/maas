@@ -36,9 +36,19 @@ def set_umask():
 
 
 def run():
-    # Allow dhcpd user to call dhcp-notify, and maas user to call observe-arp.
+    is_snap = 'SNAP' in os.environ
+
+    if is_snap:
+        os.environ.update({
+            "MAAS_PATH": os.environ["SNAP"],
+            "MAAS_ROOT": os.environ["SNAP_DATA"],
+            "MAAS_CLUSTER_CONFIG": os.path.join(
+                os.environ["SNAP_DATA"], "rackd.conf")
+        })
+
     users = ["root"]
-    if len(sys.argv) > 1:
+    # Allow dhcpd user to call dhcp-notify, and maas user to call observe-arp.
+    if not is_snap and len(sys.argv) > 1:
         if sys.argv[1] == "dhcp-notify":
             users.append("dhcpd")
         if sys.argv[1] == "observe-arp":
@@ -52,7 +62,8 @@ def run():
 
     # Only set the group and umask when running as root.
     if check_users(users) == "root":
-        set_group()
+        if not is_snap:
+            set_group()
         set_umask()
 
     # Run the script.
