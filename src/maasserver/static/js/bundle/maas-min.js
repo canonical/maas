@@ -2076,7 +2076,7 @@ function isnan (val) {
 /* 8 */
 /***/ (function(module, exports, __webpack_require__) {
 
-var store = __webpack_require__(68)('wks');
+var store = __webpack_require__(69)('wks');
 var uid = __webpack_require__(42);
 var Symbol = __webpack_require__(3).Symbol;
 var USE_SYMBOL = typeof Symbol == 'function';
@@ -5600,7 +5600,7 @@ var elliptic = exports;
 elliptic.version = __webpack_require__(455).version;
 elliptic.utils = __webpack_require__(456);
 elliptic.rand = __webpack_require__(183);
-elliptic.curve = __webpack_require__(86);
+elliptic.curve = __webpack_require__(87);
 elliptic.curves = __webpack_require__(461);
 
 // Protocols
@@ -6229,7 +6229,7 @@ if (__webpack_require__(9)) {
   var global = __webpack_require__(3);
   var fails = __webpack_require__(4);
   var $export = __webpack_require__(0);
-  var $typed = __webpack_require__(78);
+  var $typed = __webpack_require__(79);
   var $buffer = __webpack_require__(114);
   var ctx = __webpack_require__(25);
   var anInstance = __webpack_require__(49);
@@ -6253,11 +6253,11 @@ if (__webpack_require__(9)) {
   var uid = __webpack_require__(42);
   var wks = __webpack_require__(8);
   var createArrayMethod = __webpack_require__(33);
-  var createArrayIncludes = __webpack_require__(69);
-  var speciesConstructor = __webpack_require__(76);
+  var createArrayIncludes = __webpack_require__(70);
+  var speciesConstructor = __webpack_require__(77);
   var ArrayIterators = __webpack_require__(110);
   var Iterators = __webpack_require__(55);
-  var $iterDetect = __webpack_require__(73);
+  var $iterDetect = __webpack_require__(74);
   var setSpecies = __webpack_require__(48);
   var arrayFill = __webpack_require__(109);
   var arrayCopyWithin = __webpack_require__(144);
@@ -6711,7 +6711,7 @@ if (__webpack_require__(9)) {
 
 var Map = __webpack_require__(149);
 var $export = __webpack_require__(0);
-var shared = __webpack_require__(68)('metadata');
+var shared = __webpack_require__(69)('metadata');
 var store = shared.store || (shared.store = new (__webpack_require__(152))());
 
 var getOrCreateMetadataMap = function (target, targetKey, create) {
@@ -7029,7 +7029,7 @@ module.exports = function (key) {
 /***/ (function(module, exports, __webpack_require__) {
 
 var Buffer = __webpack_require__(6).Buffer
-var Transform = __webpack_require__(82).Transform
+var Transform = __webpack_require__(83).Transform
 var StringDecoder = __webpack_require__(121).StringDecoder
 var inherits = __webpack_require__(1)
 
@@ -7355,7 +7355,7 @@ module.exports = function (target, src, safe) {
 
 /*<replacement>*/
 
-var pna = __webpack_require__(83);
+var pna = __webpack_require__(84);
 /*</replacement>*/
 
 /*<replacement>*/
@@ -8019,6 +8019,97 @@ base.Node = __webpack_require__(481);
 /* 68 */
 /***/ (function(module, exports, __webpack_require__) {
 
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.HardwareType = exports.NodeTypes = exports.ScriptStatus = exports.NodeStatus = void 0;
+var NodeStatus = {
+  // The node has been created and has a system ID assigned to it.
+  NEW: 0,
+  // Testing and other commissioning steps are taking place.
+  COMMISSIONING: 1,
+  // The commissioning step failed.
+  FAILED_COMMISSIONING: 2,
+  // The node can't be contacted.
+  MISSING: 3,
+  // The node is in the general pool ready to be deployed.
+  READY: 4,
+  // The node is ready for named deployment.
+  RESERVED: 5,
+  // The node has booted into the operating system of its owner's choice
+  // and is ready for use.
+  DEPLOYED: 6,
+  // The node has been removed from service manually until an admin
+  // overrides the retirement.
+  RETIRED: 7,
+  // The node is broken: a step in the node lifecycle failed.
+  // More details can be found in the node's event log.
+  BROKEN: 8,
+  // The node is being installed.
+  DEPLOYING: 9,
+  // The node has been allocated to a user and is ready for deployment.
+  ALLOCATED: 10,
+  // The deployment of the node failed.
+  FAILED_DEPLOYMENT: 11,
+  // The node is powering down after a release request.
+  RELEASING: 12,
+  // The releasing of the node failed.
+  FAILED_RELEASING: 13,
+  // The node is erasing its disks.
+  DISK_ERASING: 14,
+  // The node failed to erase its disks.
+  FAILED_DISK_ERASING: 15,
+  // The node is in rescue mode.
+  RESCUE_MODE: 16,
+  // The node is entering rescue mode.
+  ENTERING_RESCUE_MODE: 17,
+  // The node failed to enter rescue mode.
+  FAILED_ENTERING_RESCUE_MODE: 18,
+  // The node is exiting rescue mode.
+  EXITING_RESCUE_MODE: 19,
+  // The node failed to exit rescue mode.
+  FAILED_EXITING_RESCUE_MODE: 20,
+  // Running tests on Node
+  TESTING: 21,
+  // Testing has failed
+  FAILED_TESTING: 22
+};
+exports.NodeStatus = NodeStatus;
+var ScriptStatus = {
+  PENDING: 0,
+  RUNNING: 1,
+  PASSED: 2,
+  FAILED: 3,
+  TIMEDOUT: 4,
+  ABORTED: 5,
+  DEGRADED: 6,
+  INSTALLING: 7,
+  FAILED_INSTALLING: 8,
+  SKIPPED: 9,
+  APPLYING_NETCONF: 10,
+  FAILED_APPLYING_NETCONF: 11
+};
+exports.ScriptStatus = ScriptStatus;
+var NodeTypes = {
+  REGION_CONTROLLER: 3
+};
+exports.NodeTypes = NodeTypes;
+var HardwareType = {
+  NODE: 0,
+  CPU: 1,
+  MEMORY: 2,
+  STORAGE: 3,
+  NETWORK: 4
+};
+exports.HardwareType = HardwareType;
+
+/***/ }),
+/* 69 */
+/***/ (function(module, exports, __webpack_require__) {
+
 var global = __webpack_require__(3);
 var SHARED = '__core-js_shared__';
 var store = global[SHARED] || (global[SHARED] = {});
@@ -8028,7 +8119,7 @@ module.exports = function (key) {
 
 
 /***/ }),
-/* 69 */
+/* 70 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // false -> Array#indexOf
@@ -8057,14 +8148,14 @@ module.exports = function (IS_INCLUDES) {
 
 
 /***/ }),
-/* 70 */
+/* 71 */
 /***/ (function(module, exports) {
 
 exports.f = Object.getOwnPropertySymbols;
 
 
 /***/ }),
-/* 71 */
+/* 72 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 7.2.2 IsArray(argument)
@@ -8075,7 +8166,7 @@ module.exports = Array.isArray || function isArray(arg) {
 
 
 /***/ }),
-/* 72 */
+/* 73 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 7.2.8 IsRegExp(argument)
@@ -8089,7 +8180,7 @@ module.exports = function (it) {
 
 
 /***/ }),
-/* 73 */
+/* 74 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var ITERATOR = __webpack_require__(8)('iterator');
@@ -8117,7 +8208,7 @@ module.exports = function (exec, skipClosing) {
 
 
 /***/ }),
-/* 74 */
+/* 75 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -8137,7 +8228,7 @@ module.exports = function () {
 
 
 /***/ }),
-/* 75 */
+/* 76 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -8172,7 +8263,7 @@ module.exports = function (KEY, length, exec) {
 
 
 /***/ }),
-/* 76 */
+/* 77 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 7.3.20 SpeciesConstructor(O, defaultConstructor)
@@ -8187,7 +8278,7 @@ module.exports = function (O, D) {
 
 
 /***/ }),
-/* 77 */
+/* 78 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -8201,7 +8292,7 @@ var forOf = __webpack_require__(50);
 var anInstance = __webpack_require__(49);
 var isObject = __webpack_require__(5);
 var fails = __webpack_require__(4);
-var $iterDetect = __webpack_require__(73);
+var $iterDetect = __webpack_require__(74);
 var setToStringTag = __webpack_require__(53);
 var inheritIfRequired = __webpack_require__(96);
 
@@ -8279,7 +8370,7 @@ module.exports = function (NAME, wrapper, methods, common, IS_MAP, IS_WEAK) {
 
 
 /***/ }),
-/* 78 */
+/* 79 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var global = __webpack_require__(3);
@@ -8313,7 +8404,7 @@ module.exports = {
 
 
 /***/ }),
-/* 79 */
+/* 80 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -8329,7 +8420,7 @@ module.exports = __webpack_require__(43) || !__webpack_require__(4)(function () 
 
 
 /***/ }),
-/* 80 */
+/* 81 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -8348,7 +8439,7 @@ module.exports = function (COLLECTION) {
 
 
 /***/ }),
-/* 81 */
+/* 82 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -8383,7 +8474,7 @@ module.exports = function (COLLECTION) {
 
 
 /***/ }),
-/* 82 */
+/* 83 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // Copyright Joyent, Inc. and other Node contributors.
@@ -8516,7 +8607,7 @@ Stream.prototype.pipe = function(dest, options) {
 
 
 /***/ }),
-/* 83 */
+/* 84 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -8568,7 +8659,7 @@ function nextTick(fn, arg1, arg2, arg3) {
 /* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(37)))
 
 /***/ }),
-/* 84 */
+/* 85 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var Buffer = __webpack_require__(6).Buffer
@@ -8619,7 +8710,7 @@ module.exports = EVP_BytesToKey
 
 
 /***/ }),
-/* 85 */
+/* 86 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // based on the aes implimentation in triple sec
@@ -8853,7 +8944,7 @@ module.exports.AES = AES
 
 
 /***/ }),
-/* 86 */
+/* 87 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -8868,7 +8959,7 @@ curve.edwards = __webpack_require__(460);
 
 
 /***/ }),
-/* 87 */
+/* 88 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /* WEBPACK VAR INJECTION */(function(Buffer) {var asn1 = __webpack_require__(476)
@@ -8981,94 +9072,6 @@ function decrypt (data, password) {
 /* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(7).Buffer))
 
 /***/ }),
-/* 88 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.HardwareType = exports.NodeTypes = exports.ScriptStatus = exports.NodeStatus = void 0;
-var NodeStatus = {
-  // The node has been created and has a system ID assigned to it.
-  NEW: 0,
-  // Testing and other commissioning steps are taking place.
-  COMMISSIONING: 1,
-  // The commissioning step failed.
-  FAILED_COMMISSIONING: 2,
-  // The node can't be contacted.
-  MISSING: 3,
-  // The node is in the general pool ready to be deployed.
-  READY: 4,
-  // The node is ready for named deployment.
-  RESERVED: 5,
-  // The node has booted into the operating system of its owner's choice
-  // and is ready for use.
-  DEPLOYED: 6,
-  // The node has been removed from service manually until an admin
-  // overrides the retirement.
-  RETIRED: 7,
-  // The node is broken: a step in the node lifecycle failed.
-  // More details can be found in the node's event log.
-  BROKEN: 8,
-  // The node is being installed.
-  DEPLOYING: 9,
-  // The node has been allocated to a user and is ready for deployment.
-  ALLOCATED: 10,
-  // The deployment of the node failed.
-  FAILED_DEPLOYMENT: 11,
-  // The node is powering down after a release request.
-  RELEASING: 12,
-  // The releasing of the node failed.
-  FAILED_RELEASING: 13,
-  // The node is erasing its disks.
-  DISK_ERASING: 14,
-  // The node failed to erase its disks.
-  FAILED_DISK_ERASING: 15,
-  // The node is in rescue mode.
-  RESCUE_MODE: 16,
-  // The node is entering rescue mode.
-  ENTERING_RESCUE_MODE: 17,
-  // The node failed to enter rescue mode.
-  FAILED_ENTERING_RESCUE_MODE: 18,
-  // The node is exiting rescue mode.
-  EXITING_RESCUE_MODE: 19,
-  // The node failed to exit rescue mode.
-  FAILED_EXITING_RESCUE_MODE: 20,
-  // Running tests on Node
-  TESTING: 21,
-  // Testing has failed
-  FAILED_TESTING: 22
-};
-exports.NodeStatus = NodeStatus;
-var ScriptStatus = {
-  PENDING: 0,
-  RUNNING: 1,
-  PASSED: 2,
-  FAILED: 3,
-  TIMEDOUT: 4,
-  ABORTED: 5,
-  DEGRADED: 6,
-  INSTALLING: 7,
-  FAILED_INSTALLING: 8,
-  SKIPPED: 9
-};
-exports.ScriptStatus = ScriptStatus;
-var NodeTypes = {
-  REGION_CONTROLLER: 3
-};
-exports.NodeTypes = NodeTypes;
-var HardwareType = {
-  NODE: 0,
-  CPU: 1,
-  MEMORY: 2,
-  STORAGE: 3
-};
-exports.HardwareType = HardwareType;
-
-/***/ }),
 /* 89 */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -9100,7 +9103,7 @@ module.exports = function (name) {
 /* 91 */
 /***/ (function(module, exports, __webpack_require__) {
 
-var shared = __webpack_require__(68)('keys');
+var shared = __webpack_require__(69)('keys');
 var uid = __webpack_require__(42);
 module.exports = function (key) {
   return shared[key] || (shared[key] = uid(key));
@@ -9350,7 +9353,7 @@ module.exports = function (Constructor, NAME, next) {
 /***/ (function(module, exports, __webpack_require__) {
 
 // helper for String#{startsWith, endsWith, includes}
-var isRegExp = __webpack_require__(72);
+var isRegExp = __webpack_require__(73);
 var defined = __webpack_require__(30);
 
 module.exports = function (that, searchString, NAME) {
@@ -9693,7 +9696,7 @@ module.exports.f = function (C) {
 var global = __webpack_require__(3);
 var DESCRIPTORS = __webpack_require__(9);
 var LIBRARY = __webpack_require__(43);
-var $typed = __webpack_require__(78);
+var $typed = __webpack_require__(79);
 var hide = __webpack_require__(17);
 var redefineAll = __webpack_require__(51);
 var fails = __webpack_require__(4);
@@ -10789,7 +10792,7 @@ exports.PassThrough = __webpack_require__(416);
 
 /*<replacement>*/
 
-var pna = __webpack_require__(83);
+var pna = __webpack_require__(84);
 /*</replacement>*/
 
 module.exports = Writable;
@@ -11909,7 +11912,7 @@ exports.f = __webpack_require__(8);
 
 var has = __webpack_require__(16);
 var toIObject = __webpack_require__(21);
-var arrayIndexOf = __webpack_require__(69)(false);
+var arrayIndexOf = __webpack_require__(70)(false);
 var IE_PROTO = __webpack_require__(91)('IE_PROTO');
 
 module.exports = function (object, names) {
@@ -11978,7 +11981,7 @@ module.exports.f = function getOwnPropertyNames(it) {
 
 // 19.1.2.1 Object.assign(target, source, ...)
 var getKeys = __webpack_require__(44);
-var gOPS = __webpack_require__(70);
+var gOPS = __webpack_require__(71);
 var pIE = __webpack_require__(60);
 var toObject = __webpack_require__(13);
 var IObject = __webpack_require__(59);
@@ -12257,7 +12260,7 @@ module.exports = function (done, value) {
 // 21.2.5.3 get RegExp.prototype.flags()
 if (__webpack_require__(9) && /./g.flags != 'g') __webpack_require__(10).f(RegExp.prototype, 'flags', {
   configurable: true,
-  get: __webpack_require__(74)
+  get: __webpack_require__(75)
 });
 
 
@@ -12303,7 +12306,7 @@ var validate = __webpack_require__(56);
 var MAP = 'Map';
 
 // 23.1 Map Objects
-module.exports = __webpack_require__(77)(MAP, function (get) {
+module.exports = __webpack_require__(78)(MAP, function (get) {
   return function Map() { return get(this, arguments.length > 0 ? arguments[0] : undefined); };
 }, {
   // 23.1.3.6 Map.prototype.get(key)
@@ -12480,7 +12483,7 @@ var validate = __webpack_require__(56);
 var SET = 'Set';
 
 // 23.2 Set Objects
-module.exports = __webpack_require__(77)(SET, function (get) {
+module.exports = __webpack_require__(78)(SET, function (get) {
   return function Set() { return get(this, arguments.length > 0 ? arguments[0] : undefined); };
 }, {
   // 23.2.3.1 Set.prototype.add(value)
@@ -12533,7 +12536,7 @@ var methods = {
 };
 
 // 23.3 WeakMap Objects
-var $WeakMap = module.exports = __webpack_require__(77)(WEAK_MAP, wrapper, methods, weak, true, true);
+var $WeakMap = module.exports = __webpack_require__(78)(WEAK_MAP, wrapper, methods, weak, true, true);
 
 // IE11 WeakMap frozen keys fix
 if (fails(function () { return new $WeakMap().set((Object.freeze || Object)(tmp), 7).get(tmp) != 7; })) {
@@ -12670,7 +12673,7 @@ module.exports = function (it) {
 
 // all object keys, includes non-enumerable and symbols
 var gOPN = __webpack_require__(47);
-var gOPS = __webpack_require__(70);
+var gOPS = __webpack_require__(71);
 var anObject = __webpack_require__(2);
 var Reflect = __webpack_require__(3).Reflect;
 module.exports = Reflect && Reflect.ownKeys || function ownKeys(it) {
@@ -12687,7 +12690,7 @@ module.exports = Reflect && Reflect.ownKeys || function ownKeys(it) {
 "use strict";
 
 // https://tc39.github.io/proposal-flatMap/#sec-FlattenIntoArray
-var isArray = __webpack_require__(71);
+var isArray = __webpack_require__(72);
 var isObject = __webpack_require__(5);
 var toLength = __webpack_require__(11);
 var ctx = __webpack_require__(25);
@@ -13479,7 +13482,7 @@ module.exports = Array.isArray || function (arr) {
 
 /*<replacement>*/
 
-var pna = __webpack_require__(83);
+var pna = __webpack_require__(84);
 /*</replacement>*/
 
 module.exports = Readable;
@@ -14487,7 +14490,7 @@ module.exports = __webpack_require__(118).EventEmitter;
 
 /*<replacement>*/
 
-var pna = __webpack_require__(83);
+var pna = __webpack_require__(84);
 /*</replacement>*/
 
 // undocumented cb() API, needed for core, not for public API
@@ -15485,7 +15488,7 @@ module.exports = {"aes-128-ecb":{"cipher":"AES","key":128,"iv":0,"mode":"ECB","t
 /* 179 */
 /***/ (function(module, exports, __webpack_require__) {
 
-var aes = __webpack_require__(85)
+var aes = __webpack_require__(86)
 var Buffer = __webpack_require__(6).Buffer
 var Transform = __webpack_require__(40)
 var inherits = __webpack_require__(1)
@@ -15608,7 +15611,7 @@ module.exports = StreamCipher
 /* 180 */
 /***/ (function(module, exports, __webpack_require__) {
 
-var aes = __webpack_require__(85)
+var aes = __webpack_require__(86)
 var Buffer = __webpack_require__(6).Buffer
 var Transform = __webpack_require__(40)
 var inherits = __webpack_require__(1)
@@ -18202,14 +18205,14 @@ var $export = __webpack_require__(0);
 var redefine = __webpack_require__(18);
 var META = __webpack_require__(38).KEY;
 var $fails = __webpack_require__(4);
-var shared = __webpack_require__(68);
+var shared = __webpack_require__(69);
 var setToStringTag = __webpack_require__(53);
 var uid = __webpack_require__(42);
 var wks = __webpack_require__(8);
 var wksExt = __webpack_require__(129);
 var wksDefine = __webpack_require__(90);
 var enumKeys = __webpack_require__(204);
-var isArray = __webpack_require__(71);
+var isArray = __webpack_require__(72);
 var anObject = __webpack_require__(2);
 var isObject = __webpack_require__(5);
 var toIObject = __webpack_require__(21);
@@ -18344,7 +18347,7 @@ if (!USE_NATIVE) {
   $DP.f = $defineProperty;
   __webpack_require__(47).f = gOPNExt.f = $getOwnPropertyNames;
   __webpack_require__(60).f = $propertyIsEnumerable;
-  __webpack_require__(70).f = $getOwnPropertySymbols;
+  __webpack_require__(71).f = $getOwnPropertySymbols;
 
   if (DESCRIPTORS && !__webpack_require__(43)) {
     redefine(ObjectProto, 'propertyIsEnumerable', $propertyIsEnumerable, true);
@@ -18435,7 +18438,7 @@ setToStringTag(global.JSON, 'JSON', true);
 
 // all enumerable object keys, includes symbols
 var getKeys = __webpack_require__(44);
-var gOPS = __webpack_require__(70);
+var gOPS = __webpack_require__(71);
 var pIE = __webpack_require__(60);
 module.exports = function (it) {
   var result = getKeys(it);
@@ -19854,7 +19857,7 @@ module.exports = function (hint) {
 // 22.1.2.2 / 15.4.3.2 Array.isArray(arg)
 var $export = __webpack_require__(0);
 
-$export($export.S, 'Array', { isArray: __webpack_require__(71) });
+$export($export.S, 'Array', { isArray: __webpack_require__(72) });
 
 
 /***/ }),
@@ -19872,7 +19875,7 @@ var toLength = __webpack_require__(11);
 var createProperty = __webpack_require__(106);
 var getIterFn = __webpack_require__(107);
 
-$export($export.S + $export.F * !__webpack_require__(73)(function (iter) { Array.from(iter); }), 'Array', {
+$export($export.S + $export.F * !__webpack_require__(74)(function (iter) { Array.from(iter); }), 'Array', {
   // 22.1.2.1 Array.from(arrayLike, mapfn = undefined, thisArg = undefined)
   from: function from(arrayLike /* , mapfn = undefined, thisArg = undefined */) {
     var O = toObject(arrayLike);
@@ -20034,7 +20037,7 @@ $export($export.P + $export.F * !STRICT, 'Array', {
 /***/ (function(module, exports, __webpack_require__) {
 
 var isObject = __webpack_require__(5);
-var isArray = __webpack_require__(71);
+var isArray = __webpack_require__(72);
 var SPECIES = __webpack_require__(8)('species');
 
 module.exports = function (original) {
@@ -20160,7 +20163,7 @@ $export($export.P + $export.F * !__webpack_require__(27)([].reduceRight, true), 
 "use strict";
 
 var $export = __webpack_require__(0);
-var $indexOf = __webpack_require__(69)(false);
+var $indexOf = __webpack_require__(70)(false);
 var $native = [].indexOf;
 var NEGATIVE_ZERO = !!$native && 1 / [1].indexOf(1, -0) < 0;
 
@@ -20285,8 +20288,8 @@ var global = __webpack_require__(3);
 var inheritIfRequired = __webpack_require__(96);
 var dP = __webpack_require__(10).f;
 var gOPN = __webpack_require__(47).f;
-var isRegExp = __webpack_require__(72);
-var $flags = __webpack_require__(74);
+var isRegExp = __webpack_require__(73);
+var $flags = __webpack_require__(75);
 var $RegExp = global.RegExp;
 var Base = $RegExp;
 var proto = $RegExp.prototype;
@@ -20334,7 +20337,7 @@ __webpack_require__(48)('RegExp');
 
 __webpack_require__(146);
 var anObject = __webpack_require__(2);
-var $flags = __webpack_require__(74);
+var $flags = __webpack_require__(75);
 var DESCRIPTORS = __webpack_require__(9);
 var TO_STRING = 'toString';
 var $toString = /./[TO_STRING];
@@ -20363,7 +20366,7 @@ if (__webpack_require__(4)(function () { return $toString.call({ source: 'a', fl
 /***/ (function(module, exports, __webpack_require__) {
 
 // @@match logic
-__webpack_require__(75)('match', 1, function (defined, MATCH, $match) {
+__webpack_require__(76)('match', 1, function (defined, MATCH, $match) {
   // 21.1.3.11 String.prototype.match(regexp)
   return [function match(regexp) {
     'use strict';
@@ -20379,7 +20382,7 @@ __webpack_require__(75)('match', 1, function (defined, MATCH, $match) {
 /***/ (function(module, exports, __webpack_require__) {
 
 // @@replace logic
-__webpack_require__(75)('replace', 2, function (defined, REPLACE, $replace) {
+__webpack_require__(76)('replace', 2, function (defined, REPLACE, $replace) {
   // 21.1.3.14 String.prototype.replace(searchValue, replaceValue)
   return [function replace(searchValue, replaceValue) {
     'use strict';
@@ -20397,7 +20400,7 @@ __webpack_require__(75)('replace', 2, function (defined, REPLACE, $replace) {
 /***/ (function(module, exports, __webpack_require__) {
 
 // @@search logic
-__webpack_require__(75)('search', 1, function (defined, SEARCH, $search) {
+__webpack_require__(76)('search', 1, function (defined, SEARCH, $search) {
   // 21.1.3.15 String.prototype.search(regexp)
   return [function search(regexp) {
     'use strict';
@@ -20413,9 +20416,9 @@ __webpack_require__(75)('search', 1, function (defined, SEARCH, $search) {
 /***/ (function(module, exports, __webpack_require__) {
 
 // @@split logic
-__webpack_require__(75)('split', 2, function (defined, SPLIT, $split) {
+__webpack_require__(76)('split', 2, function (defined, SPLIT, $split) {
   'use strict';
-  var isRegExp = __webpack_require__(72);
+  var isRegExp = __webpack_require__(73);
   var _split = $split;
   var $push = [].push;
   var $SPLIT = 'split';
@@ -20500,7 +20503,7 @@ var isObject = __webpack_require__(5);
 var aFunction = __webpack_require__(14);
 var anInstance = __webpack_require__(49);
 var forOf = __webpack_require__(50);
-var speciesConstructor = __webpack_require__(76);
+var speciesConstructor = __webpack_require__(77);
 var task = __webpack_require__(111).set;
 var microtask = __webpack_require__(112)();
 var newPromiseCapabilityModule = __webpack_require__(113);
@@ -20719,7 +20722,7 @@ $export($export.S + $export.F * (LIBRARY || !USE_NATIVE), PROMISE, {
     return promiseResolve(LIBRARY && this === Wrapper ? $Promise : this, x);
   }
 });
-$export($export.S + $export.F * !(USE_NATIVE && __webpack_require__(73)(function (iter) {
+$export($export.S + $export.F * !(USE_NATIVE && __webpack_require__(74)(function (iter) {
   $Promise.all(iter)['catch'](empty);
 })), PROMISE, {
   // 25.4.4.1 Promise.all(iterable)
@@ -20776,7 +20779,7 @@ var validate = __webpack_require__(56);
 var WEAK_SET = 'WeakSet';
 
 // 23.4 WeakSet Objects
-__webpack_require__(77)(WEAK_SET, function (get) {
+__webpack_require__(78)(WEAK_SET, function (get) {
   return function WeakSet() { return get(this, arguments.length > 0 ? arguments[0] : undefined); };
 }, {
   // 23.4.3.1 WeakSet.prototype.add(value)
@@ -20793,14 +20796,14 @@ __webpack_require__(77)(WEAK_SET, function (get) {
 "use strict";
 
 var $export = __webpack_require__(0);
-var $typed = __webpack_require__(78);
+var $typed = __webpack_require__(79);
 var buffer = __webpack_require__(114);
 var anObject = __webpack_require__(2);
 var toAbsoluteIndex = __webpack_require__(45);
 var toLength = __webpack_require__(11);
 var isObject = __webpack_require__(5);
 var ArrayBuffer = __webpack_require__(3).ArrayBuffer;
-var speciesConstructor = __webpack_require__(76);
+var speciesConstructor = __webpack_require__(77);
 var $ArrayBuffer = buffer.ArrayBuffer;
 var $DataView = buffer.DataView;
 var $isView = $typed.ABV && ArrayBuffer.isView;
@@ -20844,7 +20847,7 @@ __webpack_require__(48)(ARRAY_BUFFER);
 /***/ (function(module, exports, __webpack_require__) {
 
 var $export = __webpack_require__(0);
-$export($export.G + $export.W + $export.F * !__webpack_require__(78).ABV, {
+$export($export.G + $export.W + $export.F * !__webpack_require__(79).ABV, {
   DataView: __webpack_require__(114).DataView
 });
 
@@ -21290,7 +21293,7 @@ if (setProto) $export($export.S, 'Reflect', {
 
 // https://github.com/tc39/Array.prototype.includes
 var $export = __webpack_require__(0);
-var $includes = __webpack_require__(69)(true);
+var $includes = __webpack_require__(70)(true);
 
 $export($export.P, 'Array', {
   includes: function includes(el /* , fromIndex = 0 */) {
@@ -21451,8 +21454,8 @@ __webpack_require__(54)('trimRight', function ($trim) {
 var $export = __webpack_require__(0);
 var defined = __webpack_require__(30);
 var toLength = __webpack_require__(11);
-var isRegExp = __webpack_require__(72);
-var getFlags = __webpack_require__(74);
+var isRegExp = __webpack_require__(73);
+var getFlags = __webpack_require__(75);
 var RegExpProto = RegExp.prototype;
 
 var $RegExpStringIterator = function (regexp, string) {
@@ -21562,7 +21565,7 @@ var aFunction = __webpack_require__(14);
 var $defineProperty = __webpack_require__(10);
 
 // B.2.2.2 Object.prototype.__defineGetter__(P, getter)
-__webpack_require__(9) && $export($export.P + __webpack_require__(79), 'Object', {
+__webpack_require__(9) && $export($export.P + __webpack_require__(80), 'Object', {
   __defineGetter__: function __defineGetter__(P, getter) {
     $defineProperty.f(toObject(this), P, { get: aFunction(getter), enumerable: true, configurable: true });
   }
@@ -21581,7 +21584,7 @@ var aFunction = __webpack_require__(14);
 var $defineProperty = __webpack_require__(10);
 
 // B.2.2.3 Object.prototype.__defineSetter__(P, setter)
-__webpack_require__(9) && $export($export.P + __webpack_require__(79), 'Object', {
+__webpack_require__(9) && $export($export.P + __webpack_require__(80), 'Object', {
   __defineSetter__: function __defineSetter__(P, setter) {
     $defineProperty.f(toObject(this), P, { set: aFunction(setter), enumerable: true, configurable: true });
   }
@@ -21601,7 +21604,7 @@ var getPrototypeOf = __webpack_require__(23);
 var getOwnPropertyDescriptor = __webpack_require__(22).f;
 
 // B.2.2.4 Object.prototype.__lookupGetter__(P)
-__webpack_require__(9) && $export($export.P + __webpack_require__(79), 'Object', {
+__webpack_require__(9) && $export($export.P + __webpack_require__(80), 'Object', {
   __lookupGetter__: function __lookupGetter__(P) {
     var O = toObject(this);
     var K = toPrimitive(P, true);
@@ -21626,7 +21629,7 @@ var getPrototypeOf = __webpack_require__(23);
 var getOwnPropertyDescriptor = __webpack_require__(22).f;
 
 // B.2.2.5 Object.prototype.__lookupSetter__(P)
-__webpack_require__(9) && $export($export.P + __webpack_require__(79), 'Object', {
+__webpack_require__(9) && $export($export.P + __webpack_require__(80), 'Object', {
   __lookupSetter__: function __lookupSetter__(P) {
     var O = toObject(this);
     var K = toPrimitive(P, true);
@@ -21663,7 +21666,7 @@ $export($export.P + $export.R, 'Set', { toJSON: __webpack_require__(159)('Set') 
 /***/ (function(module, exports, __webpack_require__) {
 
 // https://tc39.github.io/proposal-setmap-offrom/#sec-map.of
-__webpack_require__(80)('Map');
+__webpack_require__(81)('Map');
 
 
 /***/ }),
@@ -21671,7 +21674,7 @@ __webpack_require__(80)('Map');
 /***/ (function(module, exports, __webpack_require__) {
 
 // https://tc39.github.io/proposal-setmap-offrom/#sec-set.of
-__webpack_require__(80)('Set');
+__webpack_require__(81)('Set');
 
 
 /***/ }),
@@ -21679,7 +21682,7 @@ __webpack_require__(80)('Set');
 /***/ (function(module, exports, __webpack_require__) {
 
 // https://tc39.github.io/proposal-setmap-offrom/#sec-weakmap.of
-__webpack_require__(80)('WeakMap');
+__webpack_require__(81)('WeakMap');
 
 
 /***/ }),
@@ -21687,7 +21690,7 @@ __webpack_require__(80)('WeakMap');
 /***/ (function(module, exports, __webpack_require__) {
 
 // https://tc39.github.io/proposal-setmap-offrom/#sec-weakset.of
-__webpack_require__(80)('WeakSet');
+__webpack_require__(81)('WeakSet');
 
 
 /***/ }),
@@ -21695,7 +21698,7 @@ __webpack_require__(80)('WeakSet');
 /***/ (function(module, exports, __webpack_require__) {
 
 // https://tc39.github.io/proposal-setmap-offrom/#sec-map.from
-__webpack_require__(81)('Map');
+__webpack_require__(82)('Map');
 
 
 /***/ }),
@@ -21703,7 +21706,7 @@ __webpack_require__(81)('Map');
 /***/ (function(module, exports, __webpack_require__) {
 
 // https://tc39.github.io/proposal-setmap-offrom/#sec-set.from
-__webpack_require__(81)('Set');
+__webpack_require__(82)('Set');
 
 
 /***/ }),
@@ -21711,7 +21714,7 @@ __webpack_require__(81)('Set');
 /***/ (function(module, exports, __webpack_require__) {
 
 // https://tc39.github.io/proposal-setmap-offrom/#sec-weakmap.from
-__webpack_require__(81)('WeakMap');
+__webpack_require__(82)('WeakMap');
 
 
 /***/ }),
@@ -21719,7 +21722,7 @@ __webpack_require__(81)('WeakMap');
 /***/ (function(module, exports, __webpack_require__) {
 
 // https://tc39.github.io/proposal-setmap-offrom/#sec-weakset.from
-__webpack_require__(81)('WeakSet');
+__webpack_require__(82)('WeakSet');
 
 
 /***/ }),
@@ -21948,7 +21951,7 @@ $export($export.S, 'Math', { signbit: function signbit(x) {
 var $export = __webpack_require__(0);
 var core = __webpack_require__(28);
 var global = __webpack_require__(3);
-var speciesConstructor = __webpack_require__(76);
+var speciesConstructor = __webpack_require__(77);
 var promiseResolve = __webpack_require__(148);
 
 $export($export.P + $export.R, 'Promise', { 'finally': function (onFinally) {
@@ -24888,7 +24891,7 @@ module.exports = function hash (buf, fn) {
 
 "use strict";
 /* WEBPACK VAR INJECTION */(function(Buffer) {
-var Transform = __webpack_require__(82).Transform
+var Transform = __webpack_require__(83).Transform
 var inherits = __webpack_require__(1)
 
 function HashBase (blockSize) {
@@ -25981,7 +25984,7 @@ module.exports = function (password, salt, iterations, keylen, digest, callback)
 /* 428 */
 /***/ (function(module, exports, __webpack_require__) {
 
-var ebtk = __webpack_require__(84)
+var ebtk = __webpack_require__(85)
 var aes = __webpack_require__(123)
 var DES = __webpack_require__(440)
 var desModes = __webpack_require__(446)
@@ -26216,7 +26219,7 @@ module.exports = MD5
 "use strict";
 
 var Buffer = __webpack_require__(6).Buffer
-var Transform = __webpack_require__(82).Transform
+var Transform = __webpack_require__(83).Transform
 var inherits = __webpack_require__(1)
 
 function throwIfNotStringOrBuffer (val, prefix) {
@@ -26320,8 +26323,8 @@ var AuthCipher = __webpack_require__(179)
 var Buffer = __webpack_require__(6).Buffer
 var StreamCipher = __webpack_require__(180)
 var Transform = __webpack_require__(40)
-var aes = __webpack_require__(85)
-var ebtk = __webpack_require__(84)
+var aes = __webpack_require__(86)
+var ebtk = __webpack_require__(85)
 var inherits = __webpack_require__(1)
 
 function Cipher (mode, key, iv) {
@@ -26712,8 +26715,8 @@ var Buffer = __webpack_require__(6).Buffer
 var MODES = __webpack_require__(124)
 var StreamCipher = __webpack_require__(180)
 var Transform = __webpack_require__(40)
-var aes = __webpack_require__(85)
-var ebtk = __webpack_require__(84)
+var aes = __webpack_require__(86)
+var ebtk = __webpack_require__(85)
 var inherits = __webpack_require__(1)
 
 function Decipher (mode, key, iv) {
@@ -27876,7 +27879,7 @@ function formatReturnValue(bn, enc) {
 /***/ (function(module, exports, __webpack_require__) {
 
 /* WEBPACK VAR INJECTION */(function(Buffer) {var createHash = __webpack_require__(62)
-var stream = __webpack_require__(82)
+var stream = __webpack_require__(83)
 var inherits = __webpack_require__(1)
 var sign = __webpack_require__(454)
 var verify = __webpack_require__(490)
@@ -27978,7 +27981,7 @@ var createHmac = __webpack_require__(170)
 var crt = __webpack_require__(126)
 var EC = __webpack_require__(15).ec
 var BN = __webpack_require__(12)
-var parseKeys = __webpack_require__(87)
+var parseKeys = __webpack_require__(88)
 var curves = __webpack_require__(192)
 
 function sign (hash, key, hashType, signType, tag) {
@@ -28643,7 +28646,7 @@ BasePoint.prototype.dblp = function dblp(k) {
 "use strict";
 
 
-var curve = __webpack_require__(86);
+var curve = __webpack_require__(87);
 var elliptic = __webpack_require__(15);
 var BN = __webpack_require__(12);
 var inherits = __webpack_require__(1);
@@ -29588,7 +29591,7 @@ JPoint.prototype.isInfinity = function isInfinity() {
 "use strict";
 
 
-var curve = __webpack_require__(86);
+var curve = __webpack_require__(87);
 var BN = __webpack_require__(12);
 var inherits = __webpack_require__(1);
 var Base = curve.base;
@@ -29775,7 +29778,7 @@ Point.prototype.getX = function getX() {
 "use strict";
 
 
-var curve = __webpack_require__(86);
+var curve = __webpack_require__(87);
 var elliptic = __webpack_require__(15);
 var BN = __webpack_require__(12);
 var inherits = __webpack_require__(1);
@@ -33904,7 +33907,7 @@ module.exports = {"2.16.840.1.101.3.4.1.1":"aes-128-ecb","2.16.840.1.101.3.4.1.2
 var findProc = /Proc-Type: 4,ENCRYPTED\n\r?DEK-Info: AES-((?:128)|(?:192)|(?:256))-CBC,([0-9A-H]+)\n\r?\n\r?([0-9A-z\n\r\+\/\=]+)\n\r?/m
 var startRegex = /^-----BEGIN ((?:.* KEY)|CERTIFICATE)-----\n/m
 var fullRegex = /^-----BEGIN ((?:.* KEY)|CERTIFICATE)-----\n\r?([0-9A-z\n\r\+\/\=]+)\n\r?-----END \1-----$/m
-var evp = __webpack_require__(84)
+var evp = __webpack_require__(85)
 var ciphers = __webpack_require__(123)
 module.exports = function (okey, password) {
   var key = okey.toString()
@@ -33940,7 +33943,7 @@ module.exports = function (okey, password) {
 /* WEBPACK VAR INJECTION */(function(Buffer) {// much of this based on https://github.com/indutny/self-signed/blob/gh-pages/lib/rsa.js
 var BN = __webpack_require__(12)
 var EC = __webpack_require__(15).ec
-var parseKeys = __webpack_require__(87)
+var parseKeys = __webpack_require__(88)
 var curves = __webpack_require__(192)
 
 function verify (sig, hash, key, signType, tag) {
@@ -34171,7 +34174,7 @@ exports.publicDecrypt = function publicDecrypt(key, buf) {
 /* 493 */
 /***/ (function(module, exports, __webpack_require__) {
 
-/* WEBPACK VAR INJECTION */(function(Buffer) {var parseKeys = __webpack_require__(87);
+/* WEBPACK VAR INJECTION */(function(Buffer) {var parseKeys = __webpack_require__(88);
 var randomBytes = __webpack_require__(57);
 var createHash = __webpack_require__(62);
 var mgf = __webpack_require__(193);
@@ -34272,7 +34275,7 @@ function nonZero(len, crypto) {
 /* 494 */
 /***/ (function(module, exports, __webpack_require__) {
 
-/* WEBPACK VAR INJECTION */(function(Buffer) {var parseKeys = __webpack_require__(87);
+/* WEBPACK VAR INJECTION */(function(Buffer) {var parseKeys = __webpack_require__(88);
 var mgf = __webpack_require__(193);
 var xor = __webpack_require__(194);
 var bn = __webpack_require__(12);
@@ -39206,7 +39209,10 @@ exports.filterEditInterface = filterEditInterface;
 exports.filterSelectedInterfaces = filterSelectedInterfaces;
 exports.filterLinkModes = filterLinkModes;
 exports.NodeNetworkingController = NodeNetworkingController;
-NodeNetworkingController.$inject = ["$scope", "$filter", "FabricsManager", "VLANsManager", "SubnetsManager", "ControllersManager", "GeneralManager", "UsersManager", "ManagerHelperService", "ValidationService", "JSONService", "DHCPSnippetsManager", "$log"];
+
+var _enum = __webpack_require__(68);
+
+NodeNetworkingController.$inject = ["$scope", "$filter", "FabricsManager", "VLANsManager", "SubnetsManager", "ControllersManager", "GeneralManager", "UsersManager", "NodeResultsManagerFactory", "ManagerHelperService", "ValidationService", "JSONService", "DHCPSnippetsManager", "$log", "$routeParams"];
 
 /* Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
@@ -39413,7 +39419,7 @@ function filterLinkModes() {
 /* @ngInject */
 
 
-function NodeNetworkingController($scope, $filter, FabricsManager, VLANsManager, SubnetsManager, ControllersManager, GeneralManager, UsersManager, ManagerHelperService, ValidationService, JSONService, DHCPSnippetsManager, $log) {
+function NodeNetworkingController($scope, $filter, FabricsManager, VLANsManager, SubnetsManager, ControllersManager, GeneralManager, UsersManager, NodeResultsManagerFactory, ManagerHelperService, ValidationService, JSONService, DHCPSnippetsManager, $log, $routeParams) {
   // Different interface types.
   var INTERFACE_TYPE = {
     PHYSICAL: "physical",
@@ -39470,7 +39476,10 @@ function NodeNetworkingController($scope, $filter, FabricsManager, VLANsManager,
   }, {
     name: IP_ASSIGNMENT.STATIC,
     text: "Static"
-  }]; // Set the initial values for this scope.
+  }];
+  $scope.section = {
+    area: angular.isString($routeParams.area) ? $routeParams.area : "summary"
+  }; // Set the initial values for this scope.
 
   $scope.loaded = false;
   $scope.nodeHasLoaded = false;
@@ -39498,6 +39507,8 @@ function NodeNetworkingController($scope, $filter, FabricsManager, VLANsManager,
   $scope.isSaving = false;
   $scope.snippets = DHCPSnippetsManager.getItems();
   $scope.filteredSnippets = [];
+  $scope.nodeResultsManager = null;
+  $scope.networkTestingResults = null;
   $scope.modes = [{
     mode: LINK_MODE.AUTO,
     text: LINK_MODE_TEXTS[LINK_MODE.AUTO]
@@ -39862,6 +39873,13 @@ function NodeNetworkingController($scope, $filter, FabricsManager, VLANsManager,
       $scope.$watch("subnets", updateInterfaces, true);
     }
 
+    $scope.nodeResultsManager = NodeResultsManagerFactory.getManager($scope.node, $scope.section.area);
+    $scope.nodeResultsManager.loadItems().then(function () {
+      var testingResults = $scope.nodeResultsManager.testing_results;
+      $scope.networkTestingResults = testingResults.find(function (res) {
+        return res.hardware_type === _enum.HardwareType.NETWORK;
+      }).results;
+    });
     $scope.nodeHasLoaded = true;
     updateLoaded();
   }; // Return true if only the name or mac address of an interface can
@@ -41390,6 +41408,28 @@ function NodeNetworkingController($scope, $filter, FabricsManager, VLANsManager,
       $scope.isChangingConnectionStatus = false;
       $scope.selectedInterfaces = [];
     });
+  };
+
+  $scope.getNetworkTestingStatus = function (nic) {
+    var results = $scope.networkTestingResults;
+    var resultKey = "".concat(nic.name, " (").concat(nic.mac_address, ")");
+    var failedTests = [];
+
+    if (results[resultKey]) {
+      failedTests = results[resultKey].filter(function (res) {
+        return res.status_name === "Failed";
+      });
+    }
+
+    if (failedTests.length > 1) {
+      return "".concat(failedTests.length, " failed tests");
+    }
+
+    if (failedTests.length === 1) {
+      return "".concat(failedTests[0].name, " failed");
+    }
+
+    return;
   }; // Load all the required managers. NodesManager and GeneralManager
   // are loaded by the parent controller "NodeDetailsController".
 
@@ -49903,7 +49943,7 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.default = void 0;
 
-var _enum = __webpack_require__(88);
+var _enum = __webpack_require__(68);
 
 /* Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
@@ -49938,6 +49978,10 @@ function NodeResultsManagerFactory(RegionConnection, Manager) {
       title: "Storage",
       hardware_type: _enum.HardwareType.STORAGE,
       results: {}
+    }, {
+      title: "Network",
+      hardware_type: _enum.HardwareType.NETWORK,
+      results: {}
     }];
     this.testing_results = [{
       title: "CPU",
@@ -49954,6 +49998,10 @@ function NodeResultsManagerFactory(RegionConnection, Manager) {
     }, {
       title: "Other Results",
       hardware_type: _enum.HardwareType.NODE,
+      results: {}
+    }, {
+      title: "Network",
+      hardware_type: _enum.HardwareType.NETWORK,
       results: {}
     }];
     this.installation_results = []; // Listen for notify events for the ScriptResult object.
@@ -49999,9 +50047,7 @@ function NodeResultsManagerFactory(RegionConnection, Manager) {
   };
 
   NodeResultsManager.prototype._addOrReplace = function (results, result) {
-    var i;
-
-    for (i = 0; i < results.length; i++) {
+    for (var i = 0; i < results.length; i++) {
       if (results[i].name === result.name) {
         // Object already exists, update fields.
         result.$selected = results[i].$selected;
@@ -50014,9 +50060,9 @@ function NodeResultsManagerFactory(RegionConnection, Manager) {
     } // No result with the same name exists, add it to the sorted list.
 
 
-    for (i = 0; i < results.length; i++) {
-      if (results[i].name > result.name) {
-        results.splice(i, 0, result);
+    for (var _i = 0; _i < results.length; _i++) {
+      if (results[_i].name > result.name) {
+        results.splice(_i, 0, result);
         return;
       }
     }
@@ -50044,14 +50090,13 @@ function NodeResultsManagerFactory(RegionConnection, Manager) {
       // another result type is ever added.
       results = this.testing_results;
       result.result_section = "tests";
-    }
-
-    var i; // Fallback to storing results in other results incase a new type
+    } // Fallback to storing results in other results incase a new type
     // is added
+
 
     var hardware_type_results = results[3];
 
-    for (i = 0; i < results.length; i++) {
+    for (var i = 0; i < results.length; i++) {
       if (results[i].hardware_type === result.hardware_type) {
         hardware_type_results = results[i].results;
         break;
@@ -50063,8 +50108,8 @@ function NodeResultsManagerFactory(RegionConnection, Manager) {
       var disk, subtext; // If the storage result is associated with a specific
       // component generate subtext for that component.
 
-      for (i = 0; i < this._node.disks.length; i++) {
-        disk = this._node.disks[i];
+      for (var _i2 = 0; _i2 < this._node.disks.length; _i2++) {
+        disk = this._node.disks[_i2];
 
         if (disk.id === result.physical_blockdevice) {
           subtext = this._getStorageSubtext(disk);
@@ -50077,6 +50122,22 @@ function NodeResultsManagerFactory(RegionConnection, Manager) {
 
           break;
         }
+      }
+    } else if (result.hardware_type === _enum.HardwareType.NETWORK && result.interface && this._node.interfaces) {
+      var nic = this._node.interfaces.find(function (item) {
+        return item.id === result.interface;
+      });
+
+      var resultTitle = "";
+
+      if (nic) {
+        resultTitle = "".concat(nic.name, " (").concat(nic.mac_address, ")");
+
+        if (!angular.isArray(hardware_type_results[resultTitle])) {
+          hardware_type_results[resultTitle] = [];
+        }
+
+        this._addOrReplace(hardware_type_results[resultTitle], result);
       }
     } else {
       // Other hardware types are not split into individual
@@ -50185,9 +50246,7 @@ function NodeResultsManagerFactory(RegionConnection, Manager) {
 
 
   NodeResultsManagerFactory.prototype._getManager = function (node) {
-    var i;
-
-    for (i = 0; i < this._managers.length; i++) {
+    for (var i = 0; i < this._managers.length; i++) {
       if (this._managers[i]._node.system_id === node.system_id) {
         return this._managers[i];
       }
@@ -54148,7 +54207,7 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.default = void 0;
 
-var _enum = __webpack_require__(88);
+var _enum = __webpack_require__(68);
 
 NodeDetailsController.$inject = ["$scope", "$rootScope", "$routeParams", "$location", "DevicesManager", "MachinesManager", "ControllersManager", "ZonesManager", "GeneralManager", "UsersManager", "TagsManager", "DomainsManager", "ManagerHelperService", "ServicesManager", "ErrorService", "ValidationService", "ScriptsManager", "ResourcePoolsManager", "VLANsManager", "$log", "$window"];
 
@@ -55647,7 +55706,7 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.default = void 0;
 
-var _enum = __webpack_require__(88);
+var _enum = __webpack_require__(68);
 
 NodeResultsController.$inject = ["$scope", "$routeParams", "$location", "MachinesManager", "ControllersManager", "NodeResultsManagerFactory", "ManagerHelperService", "ErrorService"];
 
@@ -55864,7 +55923,7 @@ function NodeResultsController($scope, $routeParams, $location, MachinesManager,
   };
 
   $scope.isSuppressible = function (result) {
-    return result.status === _enum.ScriptStatus.FAILED || result.status === _enum.ScriptStatus.FAILED_INSTALLING || result.status === _enum.ScriptStatus.TIMEDOUT;
+    return result.status === _enum.ScriptStatus.FAILED || result.status === _enum.ScriptStatus.FAILED_INSTALLING || result.status === _enum.ScriptStatus.TIMEDOUT || result.status === _enum.ScriptStatus.FAILED_APPLYING_NETCONF;
   };
 
   $scope.getSuppressedCount = function () {
@@ -58826,7 +58885,7 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.default = void 0;
 
-var _enum = __webpack_require__(88);
+var _enum = __webpack_require__(68);
 
 maasMachinesTable.$inject = ["MachinesManager", "NotificationsManager", "UsersManager", "GeneralManager", "$filter", "$document", "$window", "$log"];
 

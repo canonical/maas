@@ -1,3 +1,5 @@
+import { HardwareType } from "../enum";
+
 /* Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
@@ -215,11 +217,13 @@ export function NodeNetworkingController(
   ControllersManager,
   GeneralManager,
   UsersManager,
+  NodeResultsManagerFactory,
   ManagerHelperService,
   ValidationService,
   JSONService,
   DHCPSnippetsManager,
-  $log
+  $log,
+  $routeParams
 ) {
   // Different interface types.
   var INTERFACE_TYPE = {
@@ -287,6 +291,10 @@ export function NodeNetworkingController(
     }
   ];
 
+  $scope.section = {
+    area: angular.isString($routeParams.area) ? $routeParams.area : "summary"
+  };
+
   // Set the initial values for this scope.
   $scope.loaded = false;
   $scope.nodeHasLoaded = false;
@@ -312,6 +320,8 @@ export function NodeNetworkingController(
   $scope.isSaving = false;
   $scope.snippets = DHCPSnippetsManager.getItems();
   $scope.filteredSnippets = [];
+  $scope.nodeResultsManager = null;
+  $scope.networkTestingResults = null;
   $scope.modes = [
     {
       mode: LINK_MODE.AUTO,
@@ -690,6 +700,18 @@ export function NodeNetworkingController(
     if ($scope.$parent.isController) {
       $scope.$watch("subnets", updateInterfaces, true);
     }
+    $scope.nodeResultsManager = NodeResultsManagerFactory.getManager(
+      $scope.node,
+      $scope.section.area
+    );
+
+    $scope.nodeResultsManager.loadItems().then(() => {
+      const testingResults = $scope.nodeResultsManager.testing_results;
+      $scope.networkTestingResults = testingResults.find(
+        res => res.hardware_type === HardwareType.NETWORK
+      ).results;
+    });
+
     $scope.nodeHasLoaded = true;
     updateLoaded();
   };
@@ -2278,6 +2300,28 @@ export function NodeNetworkingController(
         $scope.isChangingConnectionStatus = false;
         $scope.selectedInterfaces = [];
       });
+  };
+
+  $scope.getNetworkTestingStatus = nic => {
+    const results = $scope.networkTestingResults;
+    const resultKey = `${nic.name} (${nic.mac_address})`;
+    let failedTests = [];
+
+    if (results[resultKey]) {
+      failedTests = results[resultKey].filter(
+        res => res.status_name === "Failed"
+      );
+    }
+
+    if (failedTests.length > 1) {
+      return `${failedTests.length} failed tests`;
+    }
+
+    if (failedTests.length === 1) {
+      return `${failedTests[0].name} failed`;
+    }
+
+    return;
   };
 
   // Load all the required managers. NodesManager and GeneralManager

@@ -60,7 +60,9 @@ export const ScriptStatus = {
   DEGRADED: 6,
   INSTALLING: 7,
   FAILED_INSTALLING: 8,
-  SKIPPED: 9
+  SKIPPED: 9,
+  APPLYING_NETCONF: 10,
+  FAILED_APPLYING_NETCONF: 11
 };
 
 export const NodeTypes = {
@@ -71,5 +73,6 @@ export const HardwareType = {
   NODE: 0,
   CPU: 1,
   MEMORY: 2,
-  STORAGE: 3
+  STORAGE: 3,
+  NETWORK: 4
 };

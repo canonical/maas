@@ -235,7 +235,8 @@ function NodeResultsController(
   $scope.isSuppressible = result =>
     result.status === ScriptStatus.FAILED ||
     result.status === ScriptStatus.FAILED_INSTALLING ||
-    result.status === ScriptStatus.TIMEDOUT;
+    result.status === ScriptStatus.TIMEDOUT ||
+    result.status === ScriptStatus.FAILED_APPLYING_NETCONF;
 
   $scope.getSuppressedCount = () => {
     const suppressibleTests = $scope.results.reduce((acc, type) => {

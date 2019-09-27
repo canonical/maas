@@ -5,6 +5,7 @@
  */
 
 import { makeInteger, makeName } from "testing/utils";
+import MockWebSocket from "testing/websocket";
 
 describe("filterByUnusedForInterface", function() {
   // Load the MAAS module.
@@ -508,6 +509,8 @@ describe("NodeNetworkingController", function() {
   // Load the required dependencies for the NodeNetworkingController.
   var FabricsManager, VLANsManager, SubnetsManager;
   var MachinesManager, DevicesManager, GeneralManager, ManagerHelperService;
+  var NodeResultsManagerFactory, RegionConnection;
+  var webSocket;
   beforeEach(inject(function($injector) {
     FabricsManager = $injector.get("FabricsManager");
     VLANsManager = $injector.get("VLANsManager");
@@ -516,6 +519,12 @@ describe("NodeNetworkingController", function() {
     DevicesManager = $injector.get("DevicesManager");
     GeneralManager = $injector.get("GeneralManager");
     ManagerHelperService = $injector.get("ManagerHelperService");
+    NodeResultsManagerFactory = $injector.get("NodeResultsManagerFactory");
+    RegionConnection = $injector.get("RegionConnection");
+    // Mock buildSocket so an actual connection is not made.
+    webSocket = new MockWebSocket();
+    spyOn(RegionConnection, "buildSocket").and.returnValue(webSocket);
+    spyOn(RegionConnection, "callMethod").and.returnValue($q.defer().promise);
   }));
 
   var node;
@@ -551,7 +560,9 @@ describe("NodeNetworkingController", function() {
       MachinesManager: MachinesManager,
       DevicesManager: DevicesManager,
       GeneralManager: GeneralManager,
-      ManagerHelperService: ManagerHelperService
+      ManagerHelperService: ManagerHelperService,
+      NodeResultsManagerFactory: NodeResultsManagerFactory,
+      RegionConnection: RegionConnection
     });
     return controller;
   }
@@ -4945,6 +4956,58 @@ describe("NodeNetworkingController", function() {
       };
       $scope.changeConnectionStatus(nic);
       expect($scope.selectedInterfaces).toEqual(["1/-1"]);
+    });
+  });
+
+  describe("getNetworkTestingStatus", () => {
+    it("returns nothing if all tests pass", () => {
+      makeController();
+      $scope.networkTestingResults = {
+        "eth-OoUNoz (e4:4c:80:18:90:15)": [
+          { status_name: "Passed", name: "Test script 1" },
+          { status_name: "Passed", name: "Test script 2" }
+        ]
+      };
+      expect(
+        $scope.getNetworkTestingStatus({
+          name: "eth-OoUNoz",
+          mac_address: "e4:4c:80:18:90:15"
+        })
+      ).toBeUndefined();
+    });
+
+    it("returns n failed tests if multiple failed", () => {
+      makeController();
+      $scope.networkTestingResults = {
+        "eth-OoUNoz (e4:4c:80:18:90:15)": [
+          { status_name: "Passed", name: "Test script 1" },
+          { status_name: "Failed", name: "Test script 2" },
+          { status_name: "Failed", name: "Test script 3" }
+        ]
+      };
+      expect(
+        $scope.getNetworkTestingStatus({
+          name: "eth-OoUNoz",
+          mac_address: "e4:4c:80:18:90:15"
+        })
+      ).toEqual("2 failed tests");
+    });
+
+    it("returns failed test name if only one failed", () => {
+      makeController();
+      $scope.networkTestingResults = {
+        "eth-OoUNoz (e4:4c:80:18:90:15)": [
+          { status_name: "Passed", name: "Test script 1" },
+          { status_name: "Passed", name: "Test script 2" },
+          { status_name: "Failed", name: "Test script 3" }
+        ]
+      };
+      expect(
+        $scope.getNetworkTestingStatus({
+          name: "eth-OoUNoz",
+          mac_address: "e4:4c:80:18:90:15"
+        })
+      ).toEqual("Test script 3 failed");
     });
   });
 });

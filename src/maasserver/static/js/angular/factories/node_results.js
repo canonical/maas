@@ -40,6 +40,11 @@ function NodeResultsManagerFactory(RegionConnection, Manager) {
         title: "Storage",
         hardware_type: HardwareType.STORAGE,
         results: {}
+      },
+      {
+        title: "Network",
+        hardware_type: HardwareType.NETWORK,
+        results: {}
       }
     ];
     this.testing_results = [
@@ -61,6 +66,11 @@ function NodeResultsManagerFactory(RegionConnection, Manager) {
       {
         title: "Other Results",
         hardware_type: HardwareType.NODE,
+        results: {}
+      },
+      {
+        title: "Network",
+        hardware_type: HardwareType.NETWORK,
         results: {}
       }
     ];
@@ -110,8 +120,7 @@ function NodeResultsManagerFactory(RegionConnection, Manager) {
   };
 
   NodeResultsManager.prototype._addOrReplace = function(results, result) {
-    var i;
-    for (i = 0; i < results.length; i++) {
+    for (let i = 0; i < results.length; i++) {
       if (results[i].name === result.name) {
         // Object already exists, update fields.
         result.$selected = results[i].$selected;
@@ -123,7 +132,7 @@ function NodeResultsManagerFactory(RegionConnection, Manager) {
       }
     }
     // No result with the same name exists, add it to the sorted list.
-    for (i = 0; i < results.length; i++) {
+    for (let i = 0; i < results.length; i++) {
       if (results[i].name > result.name) {
         results.splice(i, 0, result);
         return;
@@ -152,11 +161,10 @@ function NodeResultsManagerFactory(RegionConnection, Manager) {
       results = this.testing_results;
       result.result_section = "tests";
     }
-    var i;
     // Fallback to storing results in other results incase a new type
     // is added
     var hardware_type_results = results[3];
-    for (i = 0; i < results.length; i++) {
+    for (let i = 0; i < results.length; i++) {
       if (results[i].hardware_type === result.hardware_type) {
         hardware_type_results = results[i].results;
         break;
@@ -169,10 +177,10 @@ function NodeResultsManagerFactory(RegionConnection, Manager) {
       this._node.disks
     ) {
       // Storage results are split into individual components.
-      var disk, subtext;
+      let disk, subtext;
       // If the storage result is associated with a specific
       // component generate subtext for that component.
-      for (i = 0; i < this._node.disks.length; i++) {
+      for (let i = 0; i < this._node.disks.length; i++) {
         disk = this._node.disks[i];
         if (disk.id === result.physical_blockdevice) {
           subtext = this._getStorageSubtext(disk);
@@ -182,6 +190,26 @@ function NodeResultsManagerFactory(RegionConnection, Manager) {
           this._addOrReplace(hardware_type_results[subtext], result);
           break;
         }
+      }
+    } else if (
+      result.hardware_type === HardwareType.NETWORK &&
+      result.interface &&
+      this._node.interfaces
+    ) {
+      const nic = this._node.interfaces.find(
+        item => item.id === result.interface
+      );
+
+      let resultTitle = "";
+
+      if (nic) {
+        resultTitle = `${nic.name} (${nic.mac_address})`;
+
+        if (!angular.isArray(hardware_type_results[resultTitle])) {
+          hardware_type_results[resultTitle] = [];
+        }
+
+        this._addOrReplace(hardware_type_results[resultTitle], result);
       }
     } else {
       // Other hardware types are not split into individual
@@ -285,8 +313,7 @@ function NodeResultsManagerFactory(RegionConnection, Manager) {
 
   // Gets the NodeResultsManager for the nodes with node_system_id.
   NodeResultsManagerFactory.prototype._getManager = function(node) {
-    var i;
-    for (i = 0; i < this._managers.length; i++) {
+    for (let i = 0; i < this._managers.length; i++) {
       if (this._managers[i]._node.system_id === node.system_id) {
         return this._managers[i];
       }

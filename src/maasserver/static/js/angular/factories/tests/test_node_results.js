@@ -70,6 +70,11 @@ describe("NodeResultsManagerFactory", function() {
         title: "Storage",
         hardware_type: 3,
         results: {}
+      },
+      {
+        title: "Network",
+        hardware_type: 4,
+        results: {}
       }
     ]);
     expect(nodeResultsManager.testing_results).toEqual([
@@ -91,6 +96,11 @@ describe("NodeResultsManagerFactory", function() {
       {
         title: "Other Results",
         hardware_type: 0,
+        results: {}
+      },
+      {
+        title: "Network",
+        hardware_type: 4,
         results: {}
       }
     ]);
@@ -208,6 +218,51 @@ describe("NodeResultsManagerFactory", function() {
             ]);
           }
         );
+      });
+
+      it("add " + result_type_name + " network result", () => {
+        const node = makenode();
+        const manager = NodeResultsManagerFactory.getManager(
+          node,
+          result_type_name
+        );
+        const nic = {
+          id: makeInteger(0, 100),
+          name: makeName("name"),
+          mac_address: makeName("mac_address")
+        };
+
+        node.interfaces = [nic];
+
+        const resultTitle = `${nic.name} (${nic.mac_address})`;
+        const resultSection =
+          result_type_name === "commissioning" ? "scripts" : "tests";
+
+        const result = {
+          name: makeName("name"),
+          status: makeInteger(0, 100),
+          status_name: makeName("status_name"),
+          result_type: parseInt(result_type, 10),
+          result_section: resultSection,
+          hardware_type: 4,
+          showing_results: false,
+          showing_menu: false,
+          showing_history: false,
+          $selected: false,
+          interface: nic.id
+        };
+
+        let results = [];
+
+        for (let i = 0, ii = manager.results.length; i < ii; i++) {
+          if (manager.results[i].hardware_type === 4) {
+            results = manager.results[i].results[resultTitle] = [];
+            break;
+          }
+        }
+
+        manager._processItem(result);
+        expect(results).toEqual([result]);
       });
 
       it("add " + result_type_name + " storage result", function() {

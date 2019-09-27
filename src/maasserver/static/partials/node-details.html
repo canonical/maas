@@ -2151,7 +2151,7 @@
                                 </th>
                                 <th class="p-double-row">
                                     <div>IP Address</div>
-                                    <div>IP Mode</div>
+                                    <div>Status</div>
                                 </th>
                                 <th>DHCP</th>
                                 <th class="u-align--right">Actions</th>
@@ -2287,9 +2287,9 @@
                                                 <span data-ng-if="!interface.ip_address">{$ getLinkModeText(interface) $}</span>
                                             </div>
                                         </div>
-                                        <div class="p-double-row__muted-row" aria-label="Link mode" title="{$ getLinkModeText(interface) $}">
+                                        <div class="p-double-row__muted-row" aria-label="Status" title="{$ getNetworkTestingStatus(interface) $}">
                                             <div class="u-text-overflow">
-                                                <span data-ng-if="interface.ip_address">{$ getLinkModeText(interface) $}</span>
+                                                {$ getNetworkTestingStatus(interface) $}
                                             </div>
                                         </div>
                                     </div>
