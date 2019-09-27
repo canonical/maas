@@ -40503,6 +40503,12 @@ function NodeNetworkingController($scope, $filter, FabricsManager, VLANsManager,
       delete params.ip_address;
     }
 
+    if (nic.tags) {
+      params.tags = nic.tags.map(function (tag) {
+        return tag.text;
+      });
+    }
+
     return params;
   }; // Save the following interface on the node.
 
@@ -40701,6 +40707,7 @@ function NodeNetworkingController($scope, $filter, FabricsManager, VLANsManager,
     $scope.newBondInterface = {};
     $scope.newBridgeInterface = {};
     $scope.isChangingConnectionStatus = false;
+    $scope.showEditWarning = false;
     $scope.clearCreateBondError();
 
     if ($scope.selectedMode === SELECTION_MODE.CREATE_BOND) {
@@ -41399,15 +41406,29 @@ function NodeNetworkingController($scope, $filter, FabricsManager, VLANsManager,
   $scope.changeConnectionStatus = function (nic) {
     $scope.isChangingConnectionStatus = true;
     $scope.selectedInterfaces = [$scope.getUniqueKey(nic)];
+    $scope.showEditWarning = false;
   };
 
   $scope.saveConnectionStatus = function (nic) {
-    var editInterface = angular.copy(nic);
-    editInterface.link_connected = !nic.link_connected;
-    $scope.$parent.nodesManager.updateInterfaceForm($scope.preProcessInterface(editInterface)).then(function () {
+    var params = $scope.preProcessInterface(angular.copy(nic));
+    params.link_connected = !nic.link_connected;
+    $scope.$parent.nodesManager.updateInterface($scope.node, nic.id, params).then(function () {
       $scope.isChangingConnectionStatus = false;
       $scope.selectedInterfaces = [];
+    }).catch(function (err) {
+      return $log.error(err);
     });
+  };
+
+  $scope.showEditWarning = false;
+
+  $scope.checkIfConnected = function (nic) {
+    if (nic.link_connected) {
+      $scope.edit(nic);
+    } else {
+      $scope.selectedInterfaces = [$scope.getUniqueKey(nic)];
+      $scope.showEditWarning = true;
+    }
   };
 
   $scope.getNetworkTestingStatus = function (nic) {

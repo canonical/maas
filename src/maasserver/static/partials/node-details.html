@@ -2323,11 +2323,26 @@
                                             <button class="p-contextual-menu__link"
                                                 data-ng-if="!cannotEditInterface(interface)"
                                                 aria-label="Edit"
-                                                data-ng-click="toggleMenu(); edit(interface)">Edit {$ getInterfaceTypeText(interface) $}</button>
+                                                data-ng-click="toggleMenu(); checkIfConnected(interface)">Edit {$ getInterfaceTypeText(interface) $}</button>
                                             <button class="p-contextual-menu__link"
                                                 data-ng-if="canBeRemoved()"
                                                 aria-label="Remove"
                                                 data-ng-click="toggleMenu(); quickRemove(interface)">Remove {$ getInterfaceTypeText(interface) $}&hellip;</button>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="p-table-expanding__panel col-12" data-ng-if="isInterfaceSelected(interface) && showEditWarning">
+                                    <div class="row">
+                                        <div class="p-warning-message">
+                                            <i class="p-icon--warning p-warning-message__icon"></i>
+                                            <div>
+                                                This interface is <strong>disconnected</strong>, it cannot be configured unless a cable is connected.
+                                                <br>
+                                                If this is no longer true, <a href="" data-ng-click="changeConnectionStatus(interface)">mark cable as connected</a>.
+                                            </div>
+                                        </div>
+                                        <div class="u-align--right">
+                                            <button class="p-button--base" data-ng-click="cancel()">Cancel</button>
                                         </div>
                                     </div>
                                 </td>

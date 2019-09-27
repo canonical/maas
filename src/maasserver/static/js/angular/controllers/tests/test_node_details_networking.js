@@ -2831,6 +2831,13 @@ describe("NodeNetworkingController", function() {
       $scope.cancel();
       expect($scope.isChangingConnectionStatus).toBe(false);
     });
+
+    it("sets showEditWarning to false", () => {
+      makeController();
+      $scope.showEditWarning = true;
+      $scope.cancel();
+      expect($scope.showEditWarning).toBe(false);
+    });
   });
 
   describe("confirmRemove", function() {
@@ -4946,6 +4953,13 @@ describe("NodeNetworkingController", function() {
       expect($scope.isChangingConnectionStatus).toBe(true);
     });
 
+    it("sets showEditWarning to false", () => {
+      makeController();
+      $scope.showEditWarning = true;
+      $scope.changeConnectionStatus({});
+      expect($scope.showEditWarning).toBe(false);
+    });
+
     it("sets selected interfaces to supplied nic", () => {
       makeController();
       const nic = {
@@ -5008,6 +5022,48 @@ describe("NodeNetworkingController", function() {
           mac_address: "e4:4c:80:18:90:15"
         })
       ).toEqual("Test script 3 failed");
+    });
+  });
+
+  describe("checkIfConnected", () => {
+    it("calls edit method if connected", () => {
+      makeController();
+      const nic = {
+        id: 1,
+        link_id: -1,
+        vlan: { id: 2 },
+        fabric: { name: "fabric-2" },
+        link_connected: true
+      };
+      spyOn($scope, "edit");
+      $scope.checkIfConnected(nic);
+      expect($scope.edit).toHaveBeenCalled();
+    });
+
+    it("doesn't call edit method if not connected", () => {
+      makeController();
+      const nic = {
+        id: 1,
+        link_id: -1,
+        vlan: { id: 2 },
+        fabric: { name: "fabric-2" },
+        link_connected: false
+      };
+      spyOn($scope, "edit");
+      $scope.checkIfConnected(nic);
+      expect($scope.edit).not.toHaveBeenCalled();
+    });
+
+    it("sets selected interfaces to supplied nic", () => {
+      makeController();
+      const nic = {
+        id: 1,
+        link_id: -1,
+        vlan: { id: 2 },
+        fabric: { name: "fabric-2" }
+      };
+      $scope.checkIfConnected(nic);
+      expect($scope.selectedInterfaces).toEqual(["1/-1"]);
     });
   });
 });

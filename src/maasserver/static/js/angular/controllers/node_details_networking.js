@@ -1368,6 +1368,9 @@ export function NodeNetworkingController(
     } else {
       delete params.ip_address;
     }
+    if (nic.tags) {
+      params.tags = nic.tags.map(tag => tag.text);
+    }
     return params;
   };
 
@@ -1565,6 +1568,7 @@ export function NodeNetworkingController(
     $scope.newBondInterface = {};
     $scope.newBridgeInterface = {};
     $scope.isChangingConnectionStatus = false;
+    $scope.showEditWarning = false;
     $scope.clearCreateBondError();
     if ($scope.selectedMode === SELECTION_MODE.CREATE_BOND) {
       $scope.selectedMode = SELECTION_MODE.MULTI;
@@ -2288,18 +2292,30 @@ export function NodeNetworkingController(
   $scope.changeConnectionStatus = nic => {
     $scope.isChangingConnectionStatus = true;
     $scope.selectedInterfaces = [$scope.getUniqueKey(nic)];
+    $scope.showEditWarning = false;
   };
 
   $scope.saveConnectionStatus = nic => {
-    const editInterface = angular.copy(nic);
-    editInterface.link_connected = !nic.link_connected;
+    const params = $scope.preProcessInterface(angular.copy(nic));
+    params.link_connected = !nic.link_connected;
 
     $scope.$parent.nodesManager
-      .updateInterfaceForm($scope.preProcessInterface(editInterface))
+      .updateInterface($scope.node, nic.id, params)
       .then(() => {
         $scope.isChangingConnectionStatus = false;
         $scope.selectedInterfaces = [];
-      });
+      })
+      .catch(err => $log.error(err));
+  };
+
+  $scope.showEditWarning = false;
+  $scope.checkIfConnected = nic => {
+    if (nic.link_connected) {
+      $scope.edit(nic);
+    } else {
+      $scope.selectedInterfaces = [$scope.getUniqueKey(nic)];
+      $scope.showEditWarning = true;
+    }
   };
 
   $scope.getNetworkTestingStatus = nic => {
