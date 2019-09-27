@@ -1269,6 +1269,23 @@ class TestNode(MAASServerTestCase):
             node=node, mac_address=mac).count()
         self.assertEqual(1, interfaces)
 
+    def test_add_physical_interface_link_numanode_machine(self):
+        mac = factory.make_mac_address()
+        node = factory.make_Node()
+        node.add_physical_interface(mac)
+        interface = PhysicalInterface.objects.get(
+            node=node, mac_address=mac)
+        self.assertIsNotNone(interface.numa_node)
+        self.assertEqual(interface.numa_node, node.default_numanode)
+
+    def test_add_physical_interface_link_numanode_device(self):
+        mac = factory.make_mac_address()
+        node = factory.make_Device()
+        node.add_physical_interface(mac)
+        interface = PhysicalInterface.objects.get(
+            node=node, mac_address=mac)
+        self.assertIsNone(interface.numa_node)
+
     def test_add_already_attached_mac_address_doesnt_raise_error(self):
         """Re-adding a MAC address should not fail"""
         node = factory.make_Node()

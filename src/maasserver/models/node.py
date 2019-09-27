@@ -1893,12 +1893,11 @@ class Node(CleanSave, TimestampedModel):
             name = self.get_next_ifname()
         mac = MAC(mac_address)
         UnknownInterface.objects.filter(mac_address=mac).delete()
-        try:
-            iface = PhysicalInterface.objects.get(mac_address=mac)
-        except PhysicalInterface.DoesNotExist:
-            return PhysicalInterface.objects.create(
-                node=self, mac_address=mac, name=name)
-        if iface.node != self:
+        numa_node = self.default_numanode if self.is_machine else None
+        iface, created = PhysicalInterface.objects.get_or_create(
+            mac_address=mac, defaults={
+                'node': self, 'name': name, 'numa_node': numa_node})
+        if not created and iface.node != self:
             # This MAC address is already registered to a different node.
             raise ValidationError(
                 "MAC address %s already in use on %s." % (
