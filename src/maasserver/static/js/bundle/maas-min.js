@@ -41390,12 +41390,14 @@ function NodeNetworkingController($scope, $filter, FabricsManager, VLANsManager,
   };
 
   $scope.getDHCPStatus = function (vlan) {
-    if (vlan.external_dhcp) {
-      return "External (".concat(vlan.external_dhcp, ")");
-    }
+    if (vlan) {
+      if (vlan.external_dhcp) {
+        return "External (".concat(vlan.external_dhcp, ")");
+      }
 
-    if (vlan.dhcp_on) {
-      return "MAAS-provided";
+      if (vlan.dhcp_on) {
+        return "MAAS-provided";
+      }
     }
 
     return "No DHCP";

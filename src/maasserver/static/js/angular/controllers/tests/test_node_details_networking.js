@@ -4943,6 +4943,11 @@ describe("NodeNetworkingController", function() {
       const vlan = { external_dhcp: null, dhcp_on: false };
       expect($scope.getDHCPStatus(vlan)).toEqual("No DHCP");
     });
+
+    it("returns correct text if vlan is null", () => {
+      makeController();
+      expect($scope.getDHCPStatus(null)).toEqual("No DHCP");
+    });
   });
 
   describe("changeConnectionStatus", () => {
