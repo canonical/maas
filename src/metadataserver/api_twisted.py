@@ -9,6 +9,7 @@ from collections import defaultdict
 from datetime import datetime
 import json
 
+from django.db.utils import DatabaseError
 from maasserver.api.utils import extract_oauth_key_from_auth_header
 from maasserver.enum import (
     NODE_STATUS,
@@ -211,6 +212,15 @@ def _create_pod_for_deployment(node):
         if pod_form.is_valid():
             try:
                 pod_form.save()
+            except DatabaseError:
+                # Re-raise database errors, since we want it to be
+                # retried if possible. If it's not retriable, we
+                # couldn't mark the node as failed anyway, since the
+                # transaction will be broken.
+                # XXX: We should refactor the processing of messages so
+                # that the node is marked failed/deployed in a seperate
+                # transaction than the one doing the processing.
+                raise
             except Exception:
                 node.mark_failed(comment=POD_CREATION_ERROR, commit=False)
                 log.err(None, "Exception while saving pod form.")
