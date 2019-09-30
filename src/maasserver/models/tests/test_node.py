@@ -377,6 +377,46 @@ class TestNodeGetLatestScriptResults(MAASServerTestCase):
             sorted(latest_script_results, key=lambda x: x.name),
             node.get_latest_script_results)
 
+    def test_get_latest_script_results_storage(self):
+        # Verify multiple instances of the same script are shown as the latest.
+        node = factory.make_Node()
+        script = factory.make_Script(parameters={
+            'storage': {'type': 'storage'}})
+        script_set = factory.make_ScriptSet(
+            result_type=script.script_type, node=node)
+        script_results = []
+        for _ in range(5):
+            bd = factory.make_PhysicalBlockDevice(node=node)
+            script_result = factory.make_ScriptResult(
+                script=script, script_set=script_set, physical_blockdevice=bd)
+            script_results.append(script_result)
+
+        self.assertItemsEqual(
+            sorted([script_result.id for script_result in script_results]),
+            sorted([
+                script_result.id
+                for script_result in node.get_latest_script_results]))
+
+    def test_get_latest_script_results_interface(self):
+        # Verify multiple instances of the same script are shown as the latest.
+        node = factory.make_Node()
+        script = factory.make_Script(parameters={
+            'interface': {'type': 'interface'}})
+        script_set = factory.make_ScriptSet(
+            result_type=script.script_type, node=node)
+        script_results = []
+        for _ in range(5):
+            nic = factory.make_Interface(node=node)
+            script_result = factory.make_ScriptResult(
+                script=script, script_set=script_set, interface=nic)
+            script_results.append(script_result)
+
+        self.assertItemsEqual(
+            sorted([script_result.id for script_result in script_results]),
+            sorted([
+                script_result.id
+                for script_result in node.get_latest_script_results]))
+
     def test_get_latest_commissioning_script_results(self):
         node = factory.make_Node()
         latest_script_results = []

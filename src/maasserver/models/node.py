@@ -5253,8 +5253,10 @@ class Node(CleanSave, TimestampedModel):
 
         qs = ScriptResult.objects.filter(script_set__node_id=self.id)
         qs = qs.select_related('script_set', 'script')
-        qs = qs.order_by('script_name', 'physical_blockdevice_id', '-id')
-        qs = qs.distinct('script_name', 'physical_blockdevice_id')
+        qs = qs.order_by(
+            'script_name', 'physical_blockdevice_id', 'interface_id', '-id')
+        qs = qs.distinct(
+            'script_name', 'physical_blockdevice_id', 'interface_id')
         return qs
 
     @property
