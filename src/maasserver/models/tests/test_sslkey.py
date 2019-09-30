@@ -60,6 +60,12 @@ class GetHTMLDisplayForKeyTest(MAASServerTestCase):
         display = get_html_display_for_key(key_string)
         self.assertThat(display, Contains(cn))
 
+    def test_decode_md5_as_ascii(self):
+        # the key MD5 is correctly printed (and not repr'd)
+        key_string = get_data('data/test_x509_0.pem')
+        display = get_html_display_for_key(key_string)
+        self.assertNotIn("b\\'", display)
+
 
 class SSLKeyTest(MAASServerTestCase):
     """Testing for the :class:`SSLKey`."""
