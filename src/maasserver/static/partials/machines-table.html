@@ -442,7 +442,7 @@
                 </span>
             </td>
         </tr>
-        <tr data-ng-if="getLimit(group)">
+        <tr data-ng-if="group.machines && group.machines.length > getLimit(group)">
             <td colspan="12">
                 <div class="p-table__group-label" style="padding: .25rem 0 .3rem">
                     <a class="p-muted-text" data-ng-click="loadAll(group)">
