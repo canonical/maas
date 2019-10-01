@@ -62,6 +62,7 @@ from netaddr import IPNetwork
 from provisioningserver.refresh.node_info_scripts import (
     IPADDR_OUTPUT_NAME,
     LSHW_OUTPUT_NAME,
+    LXD_OUTPUT_NAME,
 )
 from testtools.matchers import (
     Contains,
@@ -1380,6 +1381,11 @@ class TestProcessLXDResults(MAASServerTestCase):
         self.assertEqual(2, len(numa_nodes))
         self.assertEqual(node_interfaces[0].numa_node, numa_nodes[0])
         self.assertEqual(node_interfaces[1].numa_node, numa_nodes[1])
+
+    def test__ipaddr_script_before(self):
+        self.assertLess(
+            IPADDR_OUTPUT_NAME, LXD_OUTPUT_NAME,
+            "The LXD script hook depends on the IPADDR script result")
 
 
 class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):

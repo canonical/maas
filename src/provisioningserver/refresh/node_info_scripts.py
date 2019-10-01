@@ -38,10 +38,10 @@ LIST_MODALIASES_OUTPUT_NAME = '00-maas-04-list-modaliases'
 DHCP_EXPLORE_OUTPUT_NAME = '00-maas-05-dhcp-unconfigured-ifaces'
 GET_FRUID_DATA_OUTPUT_NAME = '00-maas-06-get-fruid-api-data'
 SERIAL_PORTS_OUTPUT_NAME = '00-maas-08-serial-ports'
+IPADDR_OUTPUT_NAME = '40-maas-01-network-interfaces'
+SRIOV_OUTPUT_NAME = '40-maas-02-network-interfaces-with-sriov'
 LXD_OUTPUT_NAME = '50-maas-01-commissioning'
-LLDP_OUTPUT_NAME = '99-maas-02-capture-lldp'
-IPADDR_OUTPUT_NAME = '99-maas-03-network-interfaces'
-SRIOV_OUTPUT_NAME = '99-maas-04-network-interfaces-with-sriov'
+LLDP_OUTPUT_NAME = '99-maas-01-capture-lldp'
 
 
 def make_function_call_script(function, *args, **kwargs):
