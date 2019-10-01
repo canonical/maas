@@ -2310,10 +2310,10 @@
                                     <div class="p-contextual-menu" toggle-ctrl data-ng-if="(!isAllNetworkingDisabled() || isLimitedEditingAllowed(interface)) && !isEditing(interface) && !(isShowingDeleteConfirm() && isInterfaceSelected(interface))">
                                         <button class="p-button--base is-small p-contextual-menu__toggle u-no-margin--right" data-ng-click="toggleMenu()"><i class="p-icon--contextual-menu u-no-margin--right">Actions</i></button>
                                         <div class="p-contextual-menu__dropdown" role="menu" data-ng-show="isToggled">
-                                            <button class="p-contextual-menu__link" role="menu" data-ng-show="isToggled" data-ng-if="!cannotEditInterface(interface) && !interface.link_connected" aria-label="Mark as connected" data-ng-click="toggleMenu(); changeConnectionStatus(interface)">
+                                            <button class="p-contextual-menu__link" role="menu" data-ng-show="isToggled" data-ng-if="canMarkAsConnected(interface)" aria-label="Mark as connected" data-ng-click="toggleMenu(); changeConnectionStatus(interface)">
                                                 Mark as connected
                                             </button>
-                                            <button class="p-contextual-menu__link" role="menu" data-ng-show="isToggled" data-ng-if="!cannotEditInterface(interface) && interface.link_connected" aria-label="Mark as disconnected" data-ng-click="toggleMenu(); changeConnectionStatus(interface)">
+                                            <button class="p-contextual-menu__link" role="menu" data-ng-show="isToggled" data-ng-if="canMarkAsDisconnected(interface)" aria-label="Mark as disconnected" data-ng-click="toggleMenu(); changeConnectionStatus(interface)">
                                                 Mark as disconnected
                                             </button>
                                             <button class="p-contextual-menu__link"

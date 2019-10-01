@@ -341,9 +341,9 @@ export function NodeNetworkingController(
     }
   ];
 
-  $scope.isBond = function(item) {
-    return item.type === "bond";
-  };
+  $scope.isBond = item => item.type === "bond";
+  $scope.isBridge = item => item.type === "bridge";
+  $scope.isInterface = item => item.type === "physical";
 
   // Sets loaded to true if both the node has been loaded at the
   // other required managers for this scope have been loaded.
@@ -2340,6 +2340,22 @@ export function NodeNetworkingController(
     }
 
     return;
+  };
+
+  $scope.canMarkAsConnected = nic => {
+    return (
+      !$scope.cannotEditInterface(nic) &&
+      !nic.link_connected &&
+      $scope.isInterface(nic)
+    );
+  };
+
+  $scope.canMarkAsDisconnected = nic => {
+    return (
+      !$scope.cannotEditInterface(nic) &&
+      nic.link_connected &&
+      $scope.isInterface(nic)
+    );
   };
 
   // Load all the required managers. NodesManager and GeneralManager

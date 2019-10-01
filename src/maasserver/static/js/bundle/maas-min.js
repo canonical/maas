@@ -39525,6 +39525,14 @@ function NodeNetworkingController($scope, $filter, FabricsManager, VLANsManager,
 
   $scope.isBond = function (item) {
     return item.type === "bond";
+  };
+
+  $scope.isBridge = function (item) {
+    return item.type === "bridge";
+  };
+
+  $scope.isInterface = function (item) {
+    return item.type === "physical";
   }; // Sets loaded to true if both the node has been loaded at the
   // other required managers for this scope have been loaded.
 
@@ -41453,6 +41461,14 @@ function NodeNetworkingController($scope, $filter, FabricsManager, VLANsManager,
     }
 
     return;
+  };
+
+  $scope.canMarkAsConnected = function (nic) {
+    return !$scope.cannotEditInterface(nic) && !nic.link_connected && $scope.isInterface(nic);
+  };
+
+  $scope.canMarkAsDisconnected = function (nic) {
+    return !$scope.cannotEditInterface(nic) && nic.link_connected && $scope.isInterface(nic);
   }; // Load all the required managers. NodesManager and GeneralManager
   // are loaded by the parent controller "NodeDetailsController".
 

@@ -4639,6 +4639,34 @@ describe("NodeNetworkingController", function() {
     });
   });
 
+  describe("isBridge", function() {
+    it("returns true if has type of bridge", function() {
+      makeController();
+      var item = { type: "bridge" };
+      expect($scope.isBridge(item)).toBe(true);
+    });
+
+    it("returns false if doesn't have type of bridge", function() {
+      makeController();
+      var item = { type: "physical" };
+      expect($scope.isBridge(item)).toBe(false);
+    });
+  });
+
+  describe("isInterface", function() {
+    it("returns true if has type of physical", function() {
+      makeController();
+      var item = { type: "physical" };
+      expect($scope.isInterface(item)).toBe(true);
+    });
+
+    it("returns false if doesn't have type of physical", function() {
+      makeController();
+      var item = { type: "bond" };
+      expect($scope.isInterface(item)).toBe(false);
+    });
+  });
+
   describe("showEditButton", function() {
     it("returns true if all conditions are met", function() {
       makeController();
@@ -5069,6 +5097,94 @@ describe("NodeNetworkingController", function() {
       };
       $scope.checkIfConnected(nic);
       expect($scope.selectedInterfaces).toEqual(["1/-1"]);
+    });
+  });
+
+  describe("canMarkAsConnected", () => {
+    it("returns false if nic type is not physical", () => {
+      makeController();
+      const nic = {
+        type: "bond",
+        link_connected: false
+      };
+      $scope.selectedMode = null;
+      expect($scope.canMarkAsConnected(nic)).toBe(false);
+    });
+
+    it("returns false if link is connected", () => {
+      makeController();
+      const nic = {
+        type: "physical",
+        link_connected: true
+      };
+      $scope.selectedMode = null;
+      expect($scope.canMarkAsConnected(nic)).toBe(false);
+    });
+
+    it("returns false if cannotEditInterface is true", () => {
+      makeController();
+      const nic = {
+        type: "physical",
+        link_connected: false
+      };
+      $scope.selectedMode = "multi";
+      $scope.selectedInterfaces = [];
+      expect($scope.canMarkAsConnected(nic)).toBe(false);
+    });
+
+    it("returns true if all conditions are met", () => {
+      makeController();
+      const nic = {
+        type: "physical",
+        link_connected: false
+      };
+      $scope.selectedMode = null;
+      expect($scope.canMarkAsConnected(nic)).toBe(true);
+    });
+  });
+
+  describe("canMarkAsDisconnected", () => {
+    it("returns false if nic type is not physical", () => {
+      makeController();
+      const nic = {
+        type: "bond",
+        link_connected: true
+      };
+      $scope.selectedMode = null;
+      expect($scope.canMarkAsDisconnected(nic)).toBe(false);
+    });
+
+    it("returns false if link is disconnected", () => {
+      makeController();
+      const nic = {
+        type: "physical",
+        link_connected: false
+      };
+      $scope.selectedMode = null;
+      expect($scope.canMarkAsDisconnected(nic)).toBe(false);
+    });
+
+    it("returns false if cannotEditInterface is true", () => {
+      makeController();
+      const nic = {
+        id: makeInteger(0, 100),
+        link_id: makeInteger(0, 100),
+        type: "physical",
+        link_connected: true
+      };
+      $scope.selectedMode = "multi";
+      $scope.selectedInterfaces = [];
+      expect($scope.canMarkAsDisconnected(nic)).toBe(false);
+    });
+
+    it("returns true if all conditions are met", () => {
+      makeController();
+      const nic = {
+        type: "physical",
+        link_connected: true
+      };
+      $scope.selectedMode = null;
+      expect($scope.canMarkAsDisconnected(nic)).toBe(true);
     });
   });
 });
