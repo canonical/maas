@@ -21,6 +21,7 @@ from unittest.mock import (
 )
 
 from crochet import wait_for
+from django.db.utils import DatabaseError
 from maasserver.enum import NODE_STATUS
 from maasserver.models import (
     Event,
@@ -1125,3 +1126,19 @@ class TestCreatePodForDeployment(MAASServerTestCase):
         self.assertThat(node.status, Equals(NODE_STATUS.FAILED_DEPLOYMENT))
         self.assertThat(node.error_description, DocTestMatches(
             POD_CREATION_ERROR))
+
+    def test__raises_if_save_raises_database_error(self):
+        mock_pod_form = Mock()
+        self.mock_PodForm.return_value = mock_pod_form
+        mock_pod_form.errors = {}
+        mock_pod_form.is_valid = Mock()
+        mock_pod_form.is_valid.return_value = True
+        mock_pod_form.save = Mock()
+        mock_pod_form.save.side_effect = DatabaseError('broken transaction')
+        node = factory.make_Node_with_Interface_on_Subnet(
+            status=NODE_STATUS.DEPLOYING, agent_name="maas-kvm-pod",
+            install_kvm=True)
+        factory.make_StaticIPAddress(interface=node.boot_interface)
+        NodeMetadata.objects.create(
+            node=node, key="virsh_password", value="xyz123")
+        self.assertRaises(DatabaseError, _create_pod_for_deployment, node)
