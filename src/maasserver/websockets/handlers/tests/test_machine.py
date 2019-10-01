@@ -286,6 +286,10 @@ class TestMachineHandler(MAASServerTestCase):
             "link_type": NODE_TYPE_TO_LINK_TYPE[node.node_type],
             "memory": node.display_memory(),
             "node_type_display": node.get_node_type_display(),
+            "numa_nodes": [
+                handler.dehydrate_numanode(numa_node)
+                for numa_node in node.numanode_set.all().order_by('index')
+            ],
             "min_hwe_kernel": node.min_hwe_kernel,
             "osystem": node.osystem,
             "owner": handler.dehydrate_owner(node.owner),
@@ -557,10 +561,10 @@ class TestMachineHandler(MAASServerTestCase):
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
         self.assertEqual(
-            queries_one, 21,
+            queries_one, 23,
             "Number of queries has changed; make sure this is expected.")
         self.assertEqual(
-            queries_total, 21,
+            queries_total, 23,
             "Number of queries has changed; make sure this is expected.")
 
     def test_list_num_queries_is_the_expected_number_with_rbac(self):
@@ -601,10 +605,10 @@ class TestMachineHandler(MAASServerTestCase):
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
         self.assertEqual(
-            queries_one, 21,
+            queries_one, 23,
             "Number of queries has changed; make sure this is expected.")
         self.assertEqual(
-            queries_total, 21,
+            queries_total, 23,
             "Number of queries has changed; make sure this is expected.")
 
     def test_get_num_queries_is_the_expected_number(self):
@@ -624,6 +628,8 @@ class TestMachineHandler(MAASServerTestCase):
             factory.make_ScriptResult(
                 status=SCRIPT_STATUS.PASSED,
                 script_set=testing_script_set)
+        for __ in range(random.randint(4, 16)):
+            factory.make_NUMANode(node=node)
 
         handler = MachineHandler(owner, {}, None)
         queries, _ = count_queries(handler.get, {'system_id': node.system_id})
@@ -633,7 +639,7 @@ class TestMachineHandler(MAASServerTestCase):
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
         self.assertEqual(
-            queries, 50,
+            queries, 55,
             "Number of queries has changed; make sure this is expected.")
 
     def test_trigger_update_updates_script_result_cache(self):
@@ -1026,6 +1032,7 @@ class TestMachineHandler(MAASServerTestCase):
             "id": blockdevice.id,
             "is_boot": is_boot,
             "name": blockdevice.get_name(),
+            "numa_node": blockdevice.numa_node.index,
             "tags": blockdevice.tags,
             "type": blockdevice.type,
             "path": blockdevice.path,
@@ -1060,6 +1067,7 @@ class TestMachineHandler(MAASServerTestCase):
             "id": blockdevice.id,
             "is_boot": is_boot,
             "name": blockdevice.get_name(),
+            "numa_node": blockdevice.numa_node.index,
             "tags": blockdevice.tags,
             "type": blockdevice.type,
             "path": blockdevice.path,
@@ -1093,6 +1101,7 @@ class TestMachineHandler(MAASServerTestCase):
             "id": blockdevice.id,
             "is_boot": False,
             "name": blockdevice.get_name(),
+            "numa_node": None,
             "tags": blockdevice.tags,
             "type": blockdevice.type,
             "path": blockdevice.path,
@@ -1260,6 +1269,7 @@ class TestMachineHandler(MAASServerTestCase):
             "id": interface.id,
             "type": interface.type,
             "name": interface.get_name(),
+            "numa_node": interface.numa_node.index,
             "enabled": interface.is_enabled(),
             "tags": interface.tags,
             "is_boot": True,
@@ -1284,6 +1294,7 @@ class TestMachineHandler(MAASServerTestCase):
             "id": interface2.id,
             "type": interface2.type,
             "name": interface2.get_name(),
+            "numa_node": interface2.numa_node.index,
             "enabled": interface2.is_enabled(),
             "tags": interface2.tags,
             "is_boot": False,
@@ -1319,6 +1330,7 @@ class TestMachineHandler(MAASServerTestCase):
             "id": interface.id,
             "type": interface.type,
             "name": interface.get_name(),
+            "numa_node": interface.numa_node.index,
             "tags": interface.tags,
             "enabled": interface.is_enabled(),
             "is_boot": interface == node.get_boot_interface(),
@@ -1362,6 +1374,7 @@ class TestMachineHandler(MAASServerTestCase):
             "id": interface.id,
             "type": interface.type,
             "name": interface.get_name(),
+            "numa_node": interface.numa_node.index,
             "tags": interface.tags,
             "enabled": interface.is_enabled(),
             "is_boot": interface == node.get_boot_interface(),
@@ -1441,6 +1454,7 @@ class TestMachineHandler(MAASServerTestCase):
             "id": interface.id,
             "type": interface.type,
             "name": interface.get_name(),
+            "numa_node": interface.numa_node.index,
             "tags": interface.tags,
             "enabled": interface.is_enabled(),
             "is_boot": interface == node.get_boot_interface(),
@@ -1485,6 +1499,7 @@ class TestMachineHandler(MAASServerTestCase):
             "id": interface.id,
             "type": interface.type,
             "name": interface.get_name(),
+            "numa_node": interface.numa_node.index,
             "tags": interface.tags,
             "enabled": interface.is_enabled(),
             "is_boot": interface == node.get_boot_interface(),
@@ -1531,6 +1546,7 @@ class TestMachineHandler(MAASServerTestCase):
             "id": interface.id,
             "type": interface.type,
             "name": interface.get_name(),
+            "numa_node": interface.numa_node.index,
             "tags": interface.tags,
             "enabled": interface.is_enabled(),
             "is_boot": interface == node.get_boot_interface(),
@@ -1827,6 +1843,32 @@ class TestMachineHandler(MAASServerTestCase):
             name: Equals(value) for name, value in expected.items()
         }))
 
+    def test_get_numa_node_only_physical_interfaces(self):
+        user = factory.make_User()
+        handler = MachineHandler(user, {}, None)
+        node = factory.make_Node()
+        nic = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        factory.make_Interface(INTERFACE_TYPE.VLAN, parents=[nic])
+        result = handler.get({"system_id": node.system_id})
+        for interface in result['interfaces']:
+            if interface['type'] == 'physical':
+                self.assertEqual(interface['numa_node'], 0)
+            else:
+                self.assertIsNone(interface['numa_node'])
+
+    def test_get_numa_node_only_physical_blockdevices(self):
+        user = factory.make_User()
+        handler = MachineHandler(user, {}, None)
+        node = factory.make_Node()
+        factory.make_PhysicalBlockDevice(node)
+        factory.make_ISCSIBlockDevice(node=node)
+        result = handler.get({"system_id": node.system_id})
+        for disk in result['disks']:
+            if disk['type'] == 'physical':
+                self.assertEqual(disk['numa_node'], 0)
+            else:
+                self.assertIsNone(disk['numa_node'])
+
     def test_get_includes_not_acquired_special_filesystems(self):
         owner = factory.make_User()
         handler = MachineHandler(owner, {}, None)
@@ -1871,6 +1913,39 @@ class TestMachineHandler(MAASServerTestCase):
             info['ip'] for info in dehydrated_machine['ip_addresses']]
         self.assertEqual(
             sorted(dehydrated_ips), sorted([ip_address1.ip, ip_address2.ip]))
+
+    def test_get_numa_nodes_prefetched(self):
+        user = factory.make_User()
+        machine1 = factory.make_Machine(owner=user)
+        for __ in range(4):
+            factory.make_NUMANode(node=machine1)
+        machine2 = factory.make_Machine(owner=user)
+        for __ in range(16):
+            factory.make_NUMANode(node=machine2)
+        handler = MachineHandler(user, {}, None)
+        count1, _ = count_queries(
+            handler.get, {"system_id": machine1.system_id})
+        count2, _ = count_queries(
+            handler.get, {"system_id": machine1.system_id})
+        # there's a 1-query difference between counts because of caching
+        self.assertEqual(count1, count2 + 1)
+
+    def test_get_numa_nodes_for_machine(self):
+        user = factory.make_User()
+        machine = factory.make_Machine(owner=user)
+        memory_cores = (
+            (512, [0, 1]), (1024, [2, 3]), (2048, [4, 5]))
+        for memory, cores in memory_cores:
+            factory.make_NUMANode(
+                node=machine, memory=memory, cores=cores)
+        handler = MachineHandler(user, {}, None)
+        result = handler.get({"system_id": machine.system_id})
+        self.assertEqual(
+            result['numa_nodes'],
+            [{'index': 0, 'memory': 0, 'cores': []},
+             {'index': 1, 'memory': 512, 'cores': [0, 1]},
+             {'index': 2, 'memory': 1024, 'cores': [2, 3]},
+             {'index': 3, 'memory': 2048, 'cores': [4, 5]}])
 
     def test_list(self):
         user = factory.make_User()

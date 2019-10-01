@@ -140,7 +140,7 @@ class TestControllerHandler(MAASServerTestCase):
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
         self.assertEqual(
-            queries, 33,
+            queries, 36,
             "Number of queries has changed; make sure this is expected.")
 
     def test_get_form_class_for_create(self):

@@ -124,6 +124,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
             "interface_speed": interface.interface_speed,
             "link_connected": interface.link_connected,
             "link_speed": interface.link_speed,
+            "numa_node": None,
         }
         return data
 
@@ -284,6 +285,13 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         self.assertEqual(
             queries, 19,
             "Number of queries has changed; make sure this is expected.")
+
+    def test_get_no_numa_nodes_for_device(self):
+        user = factory.make_User()
+        device = factory.make_Device()
+        handler = DeviceHandler(user, {}, None)
+        result = handler.get({"system_id": device.system_id})
+        self.assertNotIn('numa_nodes', result)
 
     @transactional
     def test_list(self):

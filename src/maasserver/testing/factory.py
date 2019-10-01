@@ -1416,7 +1416,11 @@ class Factory(maastesting.factory.Factory):
             vendor = factory.make_name('vendor')
         if product is None:
             product = factory.make_name('product')
-        if numa_node is None and node is not None and node.is_machine:
+        if (
+                iftype == INTERFACE_TYPE.PHYSICAL and
+                numa_node is None and
+                node is not None and
+                node.is_machine):
             numa_node = node.default_numanode
         interface = Interface(
             node=node, mac_address=mac_address, type=iftype,

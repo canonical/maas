@@ -84,14 +84,17 @@ def node_prefetch(queryset, *args):
         .prefetch_related('blockdevice_set__partitiontable_set__partitions')
         .prefetch_related('blockdevice_set__iscsiblockdevice')
         .prefetch_related('blockdevice_set__physicalblockdevice')
+        .prefetch_related('blockdevice_set__physicalblockdevice__numa_node')
         .prefetch_related('blockdevice_set__virtualblockdevice')
         .prefetch_related('interface_set__ip_addresses__subnet__vlan__space')
         .prefetch_related('interface_set__ip_addresses__subnet__vlan__fabric')
+        .prefetch_related('interface_set__numa_node')
         .prefetch_related('interface_set__vlan__fabric')
         .prefetch_related('boot_interface__vlan__fabric')
         .prefetch_related('nodemetadata_set')
         .prefetch_related('special_filesystems')
         .prefetch_related('tags')
+        .prefetch_related('numanode_set')
     )
 
 
@@ -140,6 +143,12 @@ class NodeHandler(TimestampedModelHandler):
         return {
             "id": pod.id,
             "name": pod.name,
+        }
+
+    def dehydrate_numanode(self, numa_node):
+        return {
+            attr: getattr(numa_node, attr)
+            for attr in ('index', 'memory', 'cores')
         }
 
     def dehydrate_last_image_sync(self, last_image_sync):
@@ -195,7 +204,6 @@ class NodeHandler(TimestampedModelHandler):
             tag.name
             for tag in obj.tags.all()
         ]
-
         if obj.node_type == NODE_TYPE.MACHINE or (
                 obj.is_controller and not for_list):
             # Disk count and storage amount is shown on the machine listing
@@ -279,6 +287,10 @@ class NodeHandler(TimestampedModelHandler):
         if not for_list:
             data["on_network"] = obj.on_network()
             if obj.node_type != NODE_TYPE.DEVICE:
+                data["numa_nodes"] = [
+                    self.dehydrate_numanode(numa_node)
+                    for numa_node in obj.numanode_set.all().order_by('index')
+                ]
                 # XXX lamont 2017-02-15 Much of this should be split out into
                 # individual methods, rather than having this huge block of
                 # dense code here.
@@ -452,6 +464,10 @@ class NodeHandler(TimestampedModelHandler):
         else:
             partition_table_type = ""
         is_boot = blockdevice.id == obj.get_boot_disk().id
+        numa_node_index = (
+            blockdevice.numa_node.index
+            if hasattr(blockdevice, 'numa_node')
+            else None)
         data = {
             "id": blockdevice.id,
             "is_boot": is_boot,
@@ -477,6 +493,7 @@ class NodeHandler(TimestampedModelHandler):
                 blockdevice.get_effective_filesystem()),
             "partitions": self.dehydrate_partitions(
                 blockdevice.get_partitiontable()),
+            "numa_node": numa_node_index,
         }
         if isinstance(blockdevice, VirtualBlockDevice):
             data["parent"] = {
@@ -599,6 +616,8 @@ class NodeHandler(TimestampedModelHandler):
             subnet = link.pop("subnet", None)
             if subnet is not None:
                 link["subnet_id"] = subnet.id
+        numa_node_index = (
+            interface.numa_node.index if interface.numa_node else None)
         data = {
             "id": interface.id,
             "type": interface.type,
@@ -621,6 +640,7 @@ class NodeHandler(TimestampedModelHandler):
             "interface_speed": interface.interface_speed,
             "link_connected": interface.link_connected,
             "link_speed": interface.link_speed,
+            "numa_node": numa_node_index,
         }
 
         # When the node is an ephemeral state display the discovered IP address

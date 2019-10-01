@@ -130,12 +130,15 @@ class MachineHandler(NodeHandler):
                 'blockdevice_set__physicalblockdevice__'
                 'partitiontable_set__partitions')
             .prefetch_related(
+                'blockdevice_set__physicalblockdevice__numa_node')
+            .prefetch_related(
                 'blockdevice_set__virtualblockdevice__'
                 'partitiontable_set__partitions')
             .prefetch_related(
                 'interface_set__ip_addresses__subnet__vlan__space')
             .prefetch_related(
                 'interface_set__ip_addresses__subnet__vlan__fabric')
+            .prefetch_related('interface_set__numa_node')
             .prefetch_related('interface_set__vlan__fabric')
             .prefetch_related('boot_interface__vlan__fabric')
             .prefetch_related('tags')
