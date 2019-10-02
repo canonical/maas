@@ -1,0 +1,103 @@
+<span class="l-grid__machine-overview p-card u-no-padding">
+
+  <div class="overview">
+    <strong class="p-muted-heading u-sv1">Overview</strong>
+    <h4 class="u-no-margin--bottom">{$ node.status $}</h4>
+    <p ng-if="node.show_os_info" class="p-text--muted">
+      <span data-maas-release-name="node.osystem + '/' + node.distro_series"></span>
+    </p>
+  </div>
+
+  <div class="test-warning u-flex-bottom">
+    <span ng-if="showFailedTestWarning()">
+      <i class="p-icon--warning">Warning:</i> Some tests failed, use with caution.
+    </span>
+  </div>
+
+  <div class="cpu">
+    <div class="u-space-between">
+      <strong class="p-muted-heading u-no-margin--bottom">CPU</strong>
+      <span ng-if="windowWidth > 1300 || windowWidth <= 1036" class="p-text--muted">{$ node.architecture $}</span>
+    </div>
+    <h4 class="u-no-margin--bottom">{$ getCPUSubtext() $}</h4>
+    <p ng-if="windowWidth > 1300 || windowWidth <= 1036" class="p-text--muted">
+      {$ node.metadata.cpu_model || "Unknown model" $}
+    </p>
+  </div>
+
+  <div class="cpu-tests u-space-vertically">
+    <div>
+      <div ng-if="windowWidth <= 1300 && windowWidth > 1036">
+        <p class="p-text--muted u-sv-1">{$ node.architecture $}</p>
+        <p class="p-text--muted">{$ node.metadata.cpu_model || "Unknown model" $}</p>
+      </div>
+    </div>
+    <span node.cpu_test_status="script-status" data-script-status="node.cpu_test_status"></span>
+    {$ node.cpu_test_status_tooltip $}
+  </div>
+
+  <div class="memory">
+    <strong class="p-muted-heading u-sv1">Memory</strong>
+    <h4>{$ node.memory ? node.memory + " GiB" : "Unknown" $}</h4>
+  </div>
+
+  <div class="memory-tests u-flex-bottom">
+    <span node.memory_test_status="script-status" data-script-status="node.memory_test_status"></span>
+    {$ node.memory_test_status_tooltip $}
+  </div>
+
+  <div class="storage">
+    <strong class="p-muted-heading u-sv1">
+      <a ng-click="section.area = 'storage'">Storage&nbsp;&rsaquo;</a>
+    </strong>
+    <h4>
+      <span>{$ node.storage ? node.storage + " GB" : "Unknown" $}</span>
+      <span
+        class="p-muted-text"
+        ng-if="node.storage && node.physical_disk_count"
+      >over {$ node.physical_disk_count > 1 ? node.physical_disk_count + " disks" : "1 disk" $}
+      </span>
+    </h4>
+  </div>
+
+  <div class="storage-tests u-flex-bottom">
+    <span node.storage_test_status="script-status" data-script-status="node.storage_test_status"></span>
+    {$ node.storage_test_status_tooltip $}
+  </div>
+
+  <div class="details u-space-between--grid">
+    <div>
+      <div class="p-text--muted">Owner</div>
+      <span title="{$ node.owner || '-' $}">{$ node.owner || '-' $}</span>
+    </div>
+    <div>
+      <div class="p-text--muted">Domain</div>
+      <span title="{$ header.domain.selected.name $}">{$ header.domain.selected.name $}</span>
+    </div>
+    <div>
+      <div>
+        <a ng-click="section.area = 'configuration'">Zone&nbsp;&rsaquo;</a>
+      </div>
+      <span title="{$ summary.zone.selected.name $}">{$ summary.zone.selected.name $}</span>
+    </div>
+    <div>
+      <div>
+        <a ng-click="section.area = 'configuration'">Resource pool&nbsp;&rsaquo;</a>
+      </div>
+      <span title="{$ node.pool.name $}">{$ node.pool.name $}</span>
+    </div>
+    <div>
+      <div>
+        <a ng-click="section.area = 'configuration'">Power type&nbsp;&rsaquo;</a>
+      </div>
+      <span title="{$ node.power_type $}">{$ node.power_type $}</span>
+    </div>
+    <div class="u-text-overflow">
+      <div>
+        <a ng-click="section.area = 'configuration'">Tags&nbsp;&rsaquo;</a>
+      </div>
+      <em ng-if="!node.tags.length">No tags</em>
+      <span ng-if="node.tags.length" title="{$ node.tags.join(', ') $}">{$ node.tags.join(', ') $}</span>
+    </div>
+  </div>
+</div>

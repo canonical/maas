@@ -1240,15 +1240,21 @@ function NodeDetailsController(
 
   // Get the subtext for the CPU card. Only nodes commissioned after
   // MAAS 2.4 will have the CPU speed.
-  $scope.getCPUSubtext = function() {
-    var label = $scope.node.cpu_count + " cores";
-    if (!$scope.node.cpu_speed || $scope.node.cpu_speed === 0) {
-      return label;
-    } else if ($scope.node.cpu_speed < 1000) {
-      return label + " @ " + $scope.node.cpu_speed + " Mhz";
-    } else {
-      return label + " @ " + $scope.node.cpu_speed / 1000 + " Ghz";
+  $scope.getCPUSubtext = () => {
+    const { node } = $scope;
+    let text = "Unknown";
+
+    if (node.cpu_count) {
+      text = `${node.cpu_count} core${node.cpu_count > 1 ? "s" : ""}`;
     }
+    if (node.cpu_speed) {
+      const speedText =
+        node.cpu_speed > 1000
+          ? `${node.cpu_speed / 1000} GHz`
+          : `${node.cpu_speed} MHz`;
+      text += `, ${speedText}`;
+    }
+    return text;
   };
 
   $scope.getHardwareTestErrorText = function(error) {

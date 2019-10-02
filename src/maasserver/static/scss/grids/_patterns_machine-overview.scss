@@ -1,0 +1,260 @@
+@mixin pseudo-border($pos) {
+  position: relative;
+
+  &::after,
+  &::before {
+    background-color: $color-mid-light;
+    content: "";
+    position: absolute;
+  }
+
+  @if $pos == top {
+    &::before {
+      height: 1px;
+      left: 0;
+      right: 0;
+      top: 0;
+    }
+  } @else if $pos == left {
+    &::after {
+      bottom: 0;
+      left: -#{map-get($grid-gutter-widths, large) / 2};
+      top: 0;
+      width: 1px;
+    }
+  }
+}
+
+@mixin maas-machine-overview {
+  .l-grid__machine-overview {
+    @extend %base-grid;
+    grid:
+      [row1-start] "overview cpu memory storage" min-content [row1-end]
+      [row2-start] "test-warning cpu-tests memory-tests storage-tests" min-content [row2-end]
+      [row3-start] "details details details details" min-content [row2-end]
+      / 1fr 1fr 1fr 1fr;
+
+    .overview {
+      grid-area: overview;
+      padding: $spv-inner--large 0 0 $sph-inner;
+    }
+
+    .cpu {
+      @include pseudo-border(left);
+      grid-area: cpu;
+      padding: $spv-inner--large 0 0 0;
+      &::after {
+        top: $spv-inner--large;
+      }
+    }
+
+    .memory {
+      @include pseudo-border(left);
+      grid-area: memory;
+      padding: $spv-inner--large 0 0 0;
+      &::after {
+        top: $spv-inner--large;
+      }
+    }
+
+    .storage {
+      @include pseudo-border(left);
+      grid-area: storage;
+      padding: $spv-inner--large $sph-inner 0 0;
+      &::after {
+        top: $spv-inner--large;
+      }
+    }
+
+    .test-warning {
+      grid-area: test-warning;
+      padding: $spv-inner--large 0 $spv-inner--large $sph-inner;
+    }
+
+    .cpu-tests {
+      @include pseudo-border(left);
+      grid-area: cpu-tests;
+      padding: $spv-inner--large 0;
+      &::after {
+        bottom: $spv-inner--large;
+      }
+    }
+
+    .memory-tests {
+      @include pseudo-border(left);
+      grid-area: memory-tests;
+      padding: $spv-inner--large 0;
+      &::after {
+        bottom: $spv-inner--large;
+      }
+    }
+
+    .storage-tests {
+      @include pseudo-border(left);
+      grid-area: storage-tests;
+      padding: $spv-inner--large $sph-inner $spv-inner--large 0;
+      &::after {
+        bottom: $spv-inner--large;
+      }
+    }
+
+    .details {
+      @include pseudo-border(top);
+      display: grid;
+      grid-area: details;
+      grid-column-gap: map-get($grid-gutter-widths, large);
+      grid-template-columns: repeat(6, 1fr);
+      padding: $spv-inner--large $sph-inner;
+    }
+
+    @media only screen and (max-width: $breakpoint-x-large) {
+      grid:
+        [row1-start] "cpu cpu-tests memory storage" min-content [row1-end]
+        [row2-start] "cpu cpu-tests memory-tests storage-tests" min-content [row2-end]
+        [row3-start] "overview details details details" min-content [row3-end]
+        [row4-start] "overview test-warning test-warning test-warning" min-content [row4-end]
+        / 1fr 1fr 1fr 1fr;
+
+      .cpu {
+        padding: $spv-inner--large 0 $spv-inner--large $sph-inner;
+      }
+
+      .cpu-tests {
+        &::after {
+          content: none;
+        }
+      }
+
+      .details {
+        padding: $spv-inner--large 0;
+        > *:last-child {
+          padding-right: $sph-inner;
+        }
+      }
+
+      .overview {
+        @include pseudo-border(top);
+        padding: $spv-inner--large 0 $spv-inner--large $sph-inner;
+        &::before {
+          right: -#{map-get($grid-gutter-widths, large)};
+        }
+      }
+
+      .test-warning {
+        @include pseudo-border(top);
+        padding: $spv-inner--large $sph-inner $spv-inner--large 0;
+      }
+    }
+
+    @media only screen and (max-width: $breakpoint-large) {
+      grid:
+        [row1-start] "overview cpu" min-content [row1-end]
+        [row2-start] "test-warning cpu-tests" min-content [row2-end]
+        [row3-start] "memory storage" min-content [row3-end]
+        [row4-start] "memory-tests storage-tests" min-content [row4-end]
+        [row5-start] "details details" min-content [row5-end]
+        / 1fr 1fr;
+
+      .overview,
+      .memory {
+        padding: $spv-inner--large 0 0 $sph-inner;
+        &::before {
+          content: none;
+        }
+      }
+
+      .test-warning,
+      .memory-tests {
+        padding: $spv-inner--large 0 $spv-inner--large $sph-inner;
+        &::before {
+          content: none;
+        }
+      }
+
+      .cpu,
+      .storage {
+        @include pseudo-border(left);
+        padding: $spv-inner--large $sph-inner 0 0;
+        &::after {
+          top: $spv-inner--large;
+        }
+      }
+
+      .cpu-tests,
+      .storage-tests {
+        @include pseudo-border(left);
+        padding: $spv-inner--large $sph-inner $spv-inner--large 0;
+        &::after {
+          bottom: $spv-inner--large;
+        }
+      }
+
+      .memory {
+        @include pseudo-border(top);
+        &::before {
+          right: -#{map-get($grid-gutter-widths, large)};
+        }
+      }
+
+      .storage {
+        @include pseudo-border(top);
+      }
+
+      .details {
+        padding: $spv-inner--large $sph-inner;
+        > *:last-child {
+          padding-right: 0;
+        }
+      }
+    }
+
+    @media only screen and (max-width: $breakpoint-medium) {
+      grid:
+        [row1-start] "overview" min-content [row1-end]
+        [row2-start] "test-warning" min-content [row2-end]
+        [row3-start] "cpu" min-content [row3-end]
+        [row4-start] "cpu-tests" min-content [row4-end]
+        [row5-start] "memory" min-content [row5-end]
+        [row6-start] "memory-tests" min-content [row6-end]
+        [row7-start] "storage" min-content [row7-end]
+        [row8-start] "storage-tests" min-content [row8-end]
+        [row9-start] "details" min-content [row9-end]
+        / 1fr;
+
+      .overview {
+        padding: $spv-inner--large $sph-inner 0 $sph-inner;
+      }
+
+      .cpu,
+      .memory,
+      .storage {
+        @include pseudo-border(top);
+        padding: $spv-inner--large $sph-inner 0 $sph-inner;
+        &::before {
+          left: 0;
+          right: 0;
+        }
+      }
+
+      .test-warning,
+      .cpu-tests,
+      .memory-tests,
+      .storage-tests,
+      .details {
+        padding: $spv-inner--large $sph-inner;
+      }
+
+      .details {
+        grid-column-gap: map-get($grid-gutter-widths, medium);
+        grid-row-gap: $spv-inner--large;
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    @media only screen and (max-width: $breakpoint-small) {
+      .details {
+        grid-column-gap: map-get($grid-gutter-widths, small);
+      }
+    }
+  }
+}

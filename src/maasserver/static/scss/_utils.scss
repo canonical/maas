@@ -63,6 +63,19 @@ $table-h-indent: $sph-inner--small;
   justify-content: space-between;
 }
 
+.u-space-vertically {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.u-flex-bottom {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  justify-content: flex-end;
+}
+
 .u-disable {
   opacity: 0.5;
   pointer-events: none !important;

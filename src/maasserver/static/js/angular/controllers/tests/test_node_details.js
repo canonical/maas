@@ -2389,28 +2389,28 @@ describe("NodeDetailsController", function() {
     });
   });
 
-  describe("getCPUSubtext", function() {
-    it("returns only cores when unknown speed", function() {
+  describe("getCPUSubtext", () => {
+    it("returns only cores when unknown speed", () => {
       makeController();
       $scope.node = node;
       expect($scope.getCPUSubtext()).toEqual(node.cpu_count + " cores");
     });
 
-    it("returns speed in mhz", function() {
+    it("returns speed in mhz", () => {
       makeController();
       node.cpu_speed = makeInteger(100, 999);
       $scope.node = node;
       expect($scope.getCPUSubtext()).toEqual(
-        node.cpu_count + " cores @ " + node.cpu_speed + " Mhz"
+        node.cpu_count + " cores, " + node.cpu_speed + " MHz"
       );
     });
 
-    it("returns speed in ghz", function() {
+    it("returns speed in ghz", () => {
       makeController();
       node.cpu_speed = makeInteger(1000, 10000);
       $scope.node = node;
       expect($scope.getCPUSubtext()).toEqual(
-        node.cpu_count + " cores @ " + node.cpu_speed / 1000 + " Ghz"
+        node.cpu_count + " cores, " + node.cpu_speed / 1000 + " GHz"
       );
     });
   });

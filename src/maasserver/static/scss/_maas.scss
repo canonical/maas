@@ -257,9 +257,10 @@
 
 // Apply text overflow ellipsis to any element
 .u-text-overflow {
+  cursor: text;
   overflow: hidden;
-  white-space: nowrap;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 // Default styles for maas elements e.g. <maas-obj...

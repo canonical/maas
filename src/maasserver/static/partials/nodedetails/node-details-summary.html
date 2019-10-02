@@ -31,11 +31,6 @@
                 Commission the machine to get CPU, Memory and Storage information.
             </p>
         </div>
-        <div class="p-notification--caution" data-ng-if="showFailedTestWarning()">
-            <p class="p-notification__response">
-                <span class="p-notification__status">Warning:</span> Machine has failed tests; use with caution!
-            </p>
-        </div>
     </div>
 </section>
 
@@ -43,27 +38,11 @@
 
     <!-- Machine overview -->
     <div ng-if="node.node_type === 0">
-        <div class="row u-equal-height">
-            <div class="col-4 p-card--highlighted" ng-class="{ 'is-error': node.cpu_test_status === 3 }">
-                <div maas-card-loader="cpu"></div>
-            </div>
-            <div class="col-4 p-card--highlighted" ng-class="{ 'is-error': node.memory_test_status === 3 }">
-                <div maas-card-loader="memory"></div>
-            </div>
-            <div class="col-4 p-card--highlighted" ng-class="{ 'is-error': node.storage_test_status === 3 }">
-                <div maas-card-loader="storage"></div>
-            </div>
-        </div>
-        <div class="row u-equal-height">
-            <div class="col-4 p-card--highlighted">
-                <div maas-card-loader="machine"></div>
-            </div>
-            <div class="col-4 p-card--highlighted">
-                <div maas-card-loader="hardware_info"></div>
-            </div>
-            <div class="col-4 p-card--highlighted">
-                <div maas-card-loader="tags"></div>
-            </div>
+        <div class="l-grid__machine-summary-cards">
+            <div class="overview-card" maas-card-loader="machine-overview"></div>
+            <div class="system-card" maas-card-loader="system"></div>
+            <div class="numa-card" maas-card-loader="numa"></div>
+            <div class="network-card" maas-card-loader="network"></div>
         </div>
     </div>
 

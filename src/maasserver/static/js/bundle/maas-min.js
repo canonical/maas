@@ -55388,15 +55388,19 @@ function NodeDetailsController($scope, $rootScope, $routeParams, $location, Devi
 
 
   $scope.getCPUSubtext = function () {
-    var label = $scope.node.cpu_count + " cores";
+    var node = $scope.node;
+    var text = "Unknown";
 
-    if (!$scope.node.cpu_speed || $scope.node.cpu_speed === 0) {
-      return label;
-    } else if ($scope.node.cpu_speed < 1000) {
-      return label + " @ " + $scope.node.cpu_speed + " Mhz";
-    } else {
-      return label + " @ " + $scope.node.cpu_speed / 1000 + " Ghz";
+    if (node.cpu_count) {
+      text = "".concat(node.cpu_count, " core").concat(node.cpu_count > 1 ? "s" : "");
     }
+
+    if (node.cpu_speed) {
+      var speedText = node.cpu_speed > 1000 ? "".concat(node.cpu_speed / 1000, " GHz") : "".concat(node.cpu_speed, " MHz");
+      text += ", ".concat(speedText);
+    }
+
+    return text;
   };
 
   $scope.getHardwareTestErrorText = function (error) {

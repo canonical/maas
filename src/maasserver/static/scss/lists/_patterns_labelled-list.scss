@@ -1,0 +1,23 @@
+@mixin maas-labelled-lists {
+  .p-list--labelled {
+    @include vf-list;
+
+    .p-list__item {
+      @extend %vf-list-item;
+      display: flex;
+      padding: $spv-inner--x-small--scaleable 0;
+      word-wrap: break-word;
+    }
+
+    .p-list__item-label {
+      color: $color-mid-dark;
+      flex: 1 0 0;
+      margin-right: $sph-outer;
+      text-align: right;
+    }
+
+    .p-list__item-value {
+      flex: 2 1 0;
+    }
+  }
+}

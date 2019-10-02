@@ -1,0 +1,33 @@
+@mixin maas-b-grids {
+  %base-grid {
+    display: grid;
+    grid-column-gap: map-get($grid-gutter-widths, large);
+    margin-left: auto;
+    margin-right: auto;
+    max-width: $grid-max-width;
+
+    @media only screen and (max-width: $breakpoint-medium) {
+      grid-column-gap: map-get($grid-gutter-widths, medium);
+    }
+
+    @media only screen and (max-width: $breakpoint-small) {
+      grid-column-gap: map-get($grid-gutter-widths, small);
+    }
+  }
+
+  %full-span-grid {
+    @extend %base-grid;
+    padding-left: map-get($grid-margin-widths, large);
+    padding-right: map-get($grid-margin-widths, large);
+
+    @media only screen and (max-width: $breakpoint-medium) {
+      padding-left: map-get($grid-margin-widths, medium);
+      padding-right: map-get($grid-margin-widths, medium);
+    }
+
+    @media only screen and (max-width: $breakpoint-small) {
+      padding-left: map-get($grid-margin-widths, small);
+      padding-right: map-get($grid-margin-widths, small);
+    }
+  }
+}

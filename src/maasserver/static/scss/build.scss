@@ -10,11 +10,11 @@
 @import 'utils';
 // Import local patterns
 @import 'maas';
-@import 'patterns_inline-list';
-@import 'patterns_divided-list';
 @import 'base_typography';
 @import 'base_forms';
 @import 'base_links';
+@import 'lists';
+@import 'grids';
 @import 'patterns_action-button';
 @import 'patterns_button';
 @import 'patterns_cta';
@@ -45,8 +45,6 @@
 
 // Include local patterns
 @include maas;
-@include maas-inline-lists;
-@include maas-divided-lists;
 
 @include maas-b-forms;
 @include maas-b-links;

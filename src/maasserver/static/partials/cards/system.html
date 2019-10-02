@@ -1,0 +1,46 @@
+<div class="p-card">
+  <strong class="p-muted-heading u-sv1">System</strong>
+  <hr>
+  <ul class="p-list--labelled">
+    <li class="p-list__item">
+      <div class="p-list__item-label">Vendor</div>
+      <div class="p-list__item-value">{$ node.metadata.system_vendor || "Unknown" $}</div>
+    </li>
+    <li class="p-list__item">
+      <div class="p-list__item-label">Product</div>
+      <div class="p-list__item-value">{$ node.metadata.system_product || "Unknown" $}</div>
+    </li>
+    <li class="p-list__item">
+      <div class="p-list__item-label">Version</div>
+      <div class="p-list__item-value">{$ node.metadata.system_version || "Unknown" $}</div>
+    </li>
+    <li class="p-list__item">
+      <div class="p-list__item-label">Serial</div>
+      <div class="p-list__item-value">{$ node.metadata.system_serial || "Unknown" $}</div>
+    </li>
+  </ul>
+  <hr>
+  <span class="u-sv1">Mainboard</span>
+  <ul class="p-list--labelled u-no-margin--bottom">
+    <li class="p-list__item">
+      <div class="p-list__item-label">Vendor</div>
+      <div class="p-list__item-value">{$ node.metadata.mainboard_vendor || "Unknown" $}</div>
+    </li>
+    <li class="p-list__item">
+      <div class="p-list__item-label">Product</div>
+      <div class="p-list__item-value u-sv1">{$ node.metadata.mainboard_product || "Unknown" $}</div>
+    </li>
+    <li class="p-list__item">
+      <div class="p-list__item-label">Firmware:</div>
+      <div class="p-list__item-value"> </div>
+    </li>
+    <li class="p-list__item">
+      <div class="p-list__item-label">Version</div>
+      <div class="p-list__item-value">{$ node.metadata.mainboard_firmware_version || "Unknown" $}</div>
+    </li>
+    <li class="p-list__item">
+      <div class="p-list__item-label">Date</div>
+      <div class="p-list__item-value">{$ node.metadata.mainboard_firmware_date || "Unknown" $}</div>
+    </li>
+  </ul>
+</div>
