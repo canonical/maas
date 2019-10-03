@@ -176,7 +176,7 @@ parts:
       ln -s -f ../../../../../../var/lib/ieee-data/iab.txt $SNAPCRAFT_PART_INSTALL/usr/lib/python3/dist-packages/netaddr/eui/iab.txt
     override-prime: |
       set -e
-      snapcraftctl set-version $($SNAPCRAFT_PART_SRC/utilities/package-version)
+      snapcraftctl set-version $(cd $SNAPCRAFT_PART_SRC; utilities/package-version)
       snapcraftctl prime
 
   region-static:
@@ -223,19 +223,9 @@ parts:
     build-packages:
       - go-dep
     artifacts:
-      - '386'
-      - 'amd64'
-      - 'arm'
-      - 'arm64'
-      - 'ppc64le'
-      - 's390x'
+      - bin
     organize:
-      '386': usr/share/maas/machine-resources/
-      'amd64': usr/share/maas/machine-resources/
-      'arm': usr/share/maas/machine-resources/
-      'arm64': usr/share/maas/machine-resources/
-      'ppc64le': usr/share/maas/machine-resources/
-      's390x': usr/share/maas/machine-resources/
+      bin: usr/share/maas/machine-resources
 
   postgres-95:
     plugin: autotools
