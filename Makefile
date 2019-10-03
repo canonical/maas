@@ -629,8 +629,7 @@ packaging-repo = https://git.launchpad.net/maas/
 packaging-branch = "packaging"
 
 packaging-build-area := $(abspath ../build-area)
-packaging-version = $(shell \
-    utilities/calc-snap-version | sed s/[-]snap//)
+packaging-version := $(shell utilities/package-version)
 tmp_changelog := $(shell tempfile)
 packaging-dir := maas_$(packaging-version)
 packaging-orig-tar := $(packaging-dir).orig.tar

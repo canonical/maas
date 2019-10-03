@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# need the full path, otherwise the python from the stage area is used when run
+# inside a snap.  Also, replace the first - with a ~ for debian version
+# compatibility.
+VERSION=$(/usr/bin/python3 setup.py --version | sed 's/-/~/')
+GIT_REF=HEAD
+GIT_HASH=$(git rev-parse --short "$GIT_REF")
+GIT_REV_COUNT=$(git rev-list --count "$GIT_REF")
+
+echo "${VERSION}-${GIT_REV_COUNT}-g.${GIT_HASH}"
