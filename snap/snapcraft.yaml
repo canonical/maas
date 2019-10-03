@@ -13,6 +13,13 @@ passthrough:
     system-usernames:
       snap_daemon: shared
 
+plugs:
+  maas-cli:
+    interface: content
+    content: maas-cli
+    target: $SNAP/maas-cli/lib
+    default-provider: maas-cli
+
 apps:
   supervisor:
     daemon: simple
