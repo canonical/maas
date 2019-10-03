@@ -215,7 +215,7 @@ def pick_best_power_state(power_states):
 
 
 @asynchronous(timeout=FOREVER)
-def power_query_all(system_id, hostname, power_info, timeout=30):
+def power_query_all(system_id, hostname, power_info, timeout=60):
     """Query every connected rack controller and get the power status from all
     rack controllers.
 

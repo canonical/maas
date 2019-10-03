@@ -224,6 +224,7 @@ class TestRedfishPowerDriver(MAASTestCase):
         authorization = b64encode(creds.encode('utf-8'))
         attributes = {
             b"User-Agent": [b"MAAS"],
+            b"Accept": [b"application/json"],
             b"Authorization": [b"Basic " + authorization],
             b"Content-Type": [b"application/json; charset=utf-8"],
         }
@@ -253,6 +254,60 @@ class TestRedfishPowerDriver(MAASTestCase):
         response, headers = yield driver.redfish_request(b"GET", uri, headers)
         self.assertEquals(expected_response, response)
         self.assertEquals(expected_headers.headers, headers)
+
+    @inlineCallbacks
+    def test_wrap_redfish_request_retries_404s_trailing_slash(self):
+        driver = RedfishPowerDriver()
+        context = make_context()
+        url = driver.get_url(context)
+        uri = join(url, b"redfish/v1/Systems")
+        headers = driver.make_auth_headers(**context)
+        mock_agent = self.patch(redfish_module, 'Agent')
+        mock_agent.return_value.request = Mock()
+        expected_headers = Mock()
+        expected_headers.code = HTTPStatus.NOT_FOUND
+        expected_headers.headers = "Testing Headers"
+        happy_headers = Mock()
+        happy_headers.code = HTTPStatus.OK
+        happy_headers.headers = "Testing Headers"
+        mock_agent.return_value.request.side_effect = [
+            succeed(expected_headers),
+            succeed(happy_headers)
+        ]
+        mock_readBody = self.patch(redfish_module, 'readBody')
+        mock_readBody.return_value = succeed(
+            json.dumps(SAMPLE_JSON_SYSTEMS).encode('utf-8'))
+        expected_response = SAMPLE_JSON_SYSTEMS
+
+        response, return_headers = yield driver.redfish_request(
+            b"GET", uri, headers)
+        self.assertThat(
+            mock_agent.return_value.request,
+            MockCallsMatch(
+                call(b"GET", uri, headers, None),
+                call(b"GET", uri + "/".encode('utf-8'), headers, None)))
+        self.assertEquals(expected_response, response)
+        self.assertEquals(expected_headers.headers, return_headers)
+
+    @inlineCallbacks
+    def test_redfish_request_raises_invalid_json_error(self):
+        driver = RedfishPowerDriver()
+        context = make_context()
+        url = driver.get_url(context)
+        uri = join(url, b"redfish/v1/Systems")
+        headers = driver.make_auth_headers(**context)
+        mock_agent = self.patch(redfish_module, 'Agent')
+        mock_agent.return_value.request = Mock()
+        expected_headers = Mock()
+        expected_headers.code = HTTPStatus.OK
+        expected_headers.headers = "Testing Headers"
+        mock_agent.return_value.request.return_value = succeed(
+            expected_headers)
+        mock_readBody = self.patch(redfish_module, 'readBody')
+        mock_readBody.return_value = succeed(
+            '{"invalid": "json"'.encode('utf-8'))
+        with ExpectedException(PowerActionError):
+            yield driver.redfish_request(b"GET", uri, headers)
 
     @inlineCallbacks
     def test_redfish_request_continues_partial_download_error(self):
@@ -371,7 +426,7 @@ class TestRedfishPowerDriver(MAASTestCase):
 
         yield driver.set_pxe_boot(url, node_id, headers)
         self.assertThat(mock_redfish_request, MockCalledOnceWith(
-            b"PATCH", join(url, b"redfish/v1/Systems/%s/" % node_id),
+            b"PATCH", join(url, b"redfish/v1/Systems/%s" % node_id),
             headers, payload))
 
     @inlineCallbacks
@@ -409,6 +464,8 @@ class TestRedfishPowerDriver(MAASTestCase):
         mock_redfish_request.return_value = (
             SAMPLE_JSON_SYSTEMS, None)
         mock_set_pxe_boot = self.patch(driver, 'set_pxe_boot')
+        mock_power_query = self.patch(driver, 'power_query')
+        mock_power_query.return_value = "on"
         mock_power = self.patch(driver, 'power')
 
         yield driver.power_off(node_id, context)
@@ -416,6 +473,26 @@ class TestRedfishPowerDriver(MAASTestCase):
             url, node_id, headers))
         self.assertThat(mock_power, MockCalledOnceWith(
             "ForceOff", url, node_id, headers))
+
+    @inlineCallbacks
+    def test__power_off_already_off(self):
+        driver = RedfishPowerDriver()
+        context = make_context()
+        url = driver.get_url(context)
+        headers = driver.make_auth_headers(**context)
+        node_id = b'1'
+        mock_redfish_request = self.patch(driver, 'redfish_request')
+        mock_redfish_request.return_value = (
+            SAMPLE_JSON_SYSTEMS, None)
+        mock_set_pxe_boot = self.patch(driver, 'set_pxe_boot')
+        mock_power_query = self.patch(driver, 'power_query')
+        mock_power_query.return_value = "off"
+        mock_power = self.patch(driver, 'power')
+
+        yield driver.power_off(node_id, context)
+        self.assertThat(mock_set_pxe_boot, MockCalledOnceWith(
+            url, node_id, headers))
+        self.assertThat(mock_power, MockNotCalled())
 
     @inlineCallbacks
     def test_power_query_queries_on(self):

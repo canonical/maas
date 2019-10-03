@@ -930,7 +930,7 @@ class PowerMixin:
             system_id=system_id, user=request.user,
             perm=NodePermission.view)
         return {
-            "state": node.power_query().wait(45),
+            "state": node.power_query().wait(60),
         }
 
     @operation(idempotent=False)

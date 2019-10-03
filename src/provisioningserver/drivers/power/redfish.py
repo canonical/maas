@@ -34,14 +34,15 @@ from twisted.web.client import (
     FileBodyProducer,
     PartialDownloadError,
     readBody,
+    RedirectAgent,
 )
 from twisted.web.http_headers import Headers
 
-
+# no trailing slashes
 REDFISH_POWER_CONTROL_ENDPOINT = (
-    b"redfish/v1/Systems/%s/Actions/ComputerSystem.Reset/")
+    b"redfish/v1/Systems/%s/Actions/ComputerSystem.Reset")
 
-REDFISH_SYSTEMS_ENDPOINT = b"redfish/v1/Systems/"
+REDFISH_SYSTEMS_ENDPOINT = b"redfish/v1/Systems"
 
 
 class RedfishPowerDriverBase(PowerDriver):
@@ -61,6 +62,7 @@ class RedfishPowerDriverBase(PowerDriver):
         return Headers(
             {
                 b"User-Agent": [b"MAAS"],
+                b"Accept": [b"application/json"],
                 b"Authorization": [b"Basic " + authorization],
                 b"Content-Type": [b"application/json; charset=utf-8"],
             }
@@ -69,7 +71,8 @@ class RedfishPowerDriverBase(PowerDriver):
     @asynchronous
     def redfish_request(self, method, uri, headers=None, bodyProducer=None):
         """Send the redfish request and return the response."""
-        agent = Agent(reactor, contextFactory=WebClientContextFactory())
+        agent = RedirectAgent(
+            Agent(reactor, contextFactory=WebClientContextFactory()))
         d = agent.request(
             method, uri, headers=headers, bodyProducer=bodyProducer)
 
@@ -90,16 +93,33 @@ class RedfishPowerDriverBase(PowerDriver):
                 data = data.decode('utf-8')
                 # Only decode non-empty response bodies.
                 if data:
-                    return json.loads(data)
+                    # occasionally invalid json is returned. provide a clear
+                    # error in that case
+                    try:
+                        return json.loads(data)
+                    except ValueError as error:
+                        raise PowerActionError(
+                            "Redfish request failed from a JSON parse error:"
+                            " %s." % error)
 
             def cb_attach_headers(data, headers):
                 return data, headers
 
             # Error out if the response has a status code of 400 or above.
             if response.code >= int(HTTPStatus.BAD_REQUEST):
-                raise PowerActionError(
-                    "Redfish request failed with response status code:"
-                    " %s." % response.code)
+                # if there was no trailing slash, retry with a trailing slash
+                # because of varying requirements of BMC manufacturers
+                if (response.code == HTTPStatus.NOT_FOUND and
+                        uri.decode('utf-8')[-1] != "/"):
+                    d = agent.request(
+                        method,
+                        uri + "/".encode('utf-8'),
+                        headers=headers,
+                        bodyProducer=bodyProducer)
+                else:
+                    raise PowerActionError(
+                        "Redfish request failed with response status code:"
+                        " %s." % response.code)
 
             d = readBody(response)
             d.addErrback(eb_catch_partial)
@@ -165,7 +185,7 @@ class RedfishPowerDriver(RedfishPowerDriverBase):
     @inlineCallbacks
     def set_pxe_boot(self, url, node_id, headers):
         """Set the machine with node_id to PXE boot."""
-        endpoint = REDFISH_SYSTEMS_ENDPOINT + b'%s/' % node_id
+        endpoint = join(REDFISH_SYSTEMS_ENDPOINT, b'%s' % node_id)
         payload = FileBodyProducer(
             BytesIO(
                 json.dumps(
@@ -213,14 +233,16 @@ class RedfishPowerDriver(RedfishPowerDriverBase):
         url, node_id, headers = yield self.process_redfish_context(context)
         # Set to PXE boot.
         yield self.set_pxe_boot(url, node_id, headers)
-        # Power off the machine.
-        yield self.power("ForceOff", url, node_id, headers)
+        # Power off the machine if it is not already off
+        power_state = yield self.power_query(node_id, context)
+        if power_state != 'off':
+            yield self.power("ForceOff", url, node_id, headers)
 
     @asynchronous
     @inlineCallbacks
     def power_query(self, node_id, context):
         """Power query machine."""
         url, node_id, headers = yield self.process_redfish_context(context)
-        uri = join(url, REDFISH_SYSTEMS_ENDPOINT + b'%s/' % node_id)
+        uri = join(url, REDFISH_SYSTEMS_ENDPOINT, b'%s' % node_id)
         node_data, _ = yield self.redfish_request(b"GET", uri, headers)
         return node_data.get('PowerState').lower()
