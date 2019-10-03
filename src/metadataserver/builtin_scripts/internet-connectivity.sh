@@ -38,7 +38,7 @@
 #                  the specified interface has access to. Any protocol
 #                  supported by curl is support. If no protocol or icmp is
 #                  given the URL will be pinged.
-#     default: https://images.maas.io/ephemeral-v3/daily/streams/v1/index.sjson
+#     default: https://connectivity-check.ubuntu.com
 #     required: True
 #     allow_list: True
 # apply_configured_networking: True
@@ -78,7 +78,7 @@ while true; do
             echo "  -i, --interface    The interface to test internet connectivity with."
             echo "                     Default: Any interface"
             echo "  -u, --url          A URL or comma seperated list of URLs that should be accessible."
-            echo "                     Default: https://images.maas.io/ephemeral-v3/daily/streams/v1/index.sjson"
+            echo "                     Default: https://connectivity-check.ubuntu.com"
             exit 0
             ;;
         '--')
@@ -92,7 +92,7 @@ while true; do
 done
 
 if [ -z "$URL" ]; then
-    URL="https://images.maas.io/ephemeral-v3/daily/streams/v1/index.sjson"
+    URL="https://connectivity-check.ubuntu.com"
 fi
 
 test_interface "$INTERFACE" "$URL"
