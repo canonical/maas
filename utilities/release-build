@@ -7,10 +7,6 @@ if [ ! -d $BUILDDIR ]; then
     mkdir $BUILDDIR
 fi
 
-# Set the GOPATH
-GOPATH=`go env GOPATH`
-PATH=$GOPATH/bin:$PATH
-
 usage () {
     DISTRO_ARGS=$(distro-info --supported | sed 's/^/[--/g' | sed 's/$/]/' | tr '\n' ' ')
     echo "Usage:"
@@ -73,12 +69,11 @@ TARBALLGZ="maas_$FULL_VER.orig.tar.gz"
 
 get_orig_source() {
     git archive --format=tar --prefix=${PREFIX} ${COMMIT} -o ${TARBALL}
-    # Update go dependencies before building archive and then cleanup after
-    cd $ROOTDIR/src/machine-resources && make deps
-    export GOPATH=$ROOTDIR:$GOPATH  && make vendor && cd $ROOTDIR
-    tar -rf ${TARBALL} src/machine-resources/vendor --transform 's,^,'"${PREFIX}"','
+    # Vendor the go dependencies before and cleanup after
+    make machine-resources-vendor
+    tar -rf ${TARBALL} src/machine-resources/src/machine-resources/vendor --transform 's,^,'"${PREFIX}"','
     gzip -f ${TARBALL}
-    cd $ROOTDIR/src/machine-resources && make clean && cd $ROOTDIR
+    make -C src/machine-resources clean
 }
 # Obtain the tarball from a local branch
 get_orig_source

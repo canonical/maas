@@ -3,27 +3,29 @@
 #
 
 ARCHES := amd64 386 arm arm64 ppc64le s390x
-BINARIES = $(ARCHES)
 
-.DEFAULT_GOAL := build
+export GOPATH = $(CURDIR)
 
-deps:
-	go get -u github.com/lxc/lxd/lxd/resources
-	go get -u github.com/tools/godep
-.PHONY: deps
+BINDIR := bin
+BINARIES := $(addprefix $(BINDIR)/,$(ARCHES))
+PACKAGE_DIR := src/machine-resources
+PACKAGE_VENDOR_DIR := $(PACKAGE_DIR)/vendor
 
-vendor:
-	godep save
-.PHONY: vendor
+.DEFAULT_GOAL: build
 
 build: $(BINARIES)
 .PHONY: build
 
-$(ARCHES): deps
-	GOARCH=$@ go build -ldflags '-s -w' -o $@ machine-resources.go
+$(BINARIES): $(PACKAGE_VENDOR_DIR)
+	GOARCH=$(notdir $@) go build -ldflags '-s -w' -o $@ machine-resources
 .PHONY: $(ARCHES)
 
+$(PACKAGE_VENDOR_DIR) vendor:
+	rm -rf $(PACKAGE_VENDOR_DIR)
+	cd $(PACKAGE_DIR); dep ensure
+.PHONY: vendor
+
+clean: DEP_PACKAGES_DIRS = $(filter-out $(PACKAGE_DIR),$(wildcard src/*))
 clean:
-	rm -f $(BINARIES)
-	rm -rf vendor/ Godeps/
+	rm -rf $(BINDIR) pkg $(DEP_PACKAGES_DIRS) $(PACKAGE_VENDOR_DIR)
 .PHONY: clean

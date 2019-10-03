@@ -69,6 +69,7 @@ build: \
   bin/test.region.legacy \
   bin/test.testing \
   bin/test.parallel \
+  machine-resources \
   bin/py bin/ipy \
   pycharm
 
@@ -185,6 +186,12 @@ bin/yarn: include/nodejs/bin/yarn
 	@mkdir -p bin
 	ln -sf ../include/nodejs/bin/yarn $@
 	@touch --no-create $@
+
+machine-resources-vendor:
+	$(MAKE) -C src/machine-resources vendor
+
+machine-resources: machine-resources-vendor
+	$(MAKE) -C src/machine-resources build
 
 node_modules: include/nodejs/bin/node bin/yarn
 	bin/yarn --frozen-lockfile
@@ -311,12 +318,8 @@ coverage/index.html: bin/coverage .coverage
 	@$(error Use `$(MAKE) test` to generate coverage)
 
 lint: \
-    lint-py lint-py-complexity lint-py-imports \
+    lint-py lint-py-complexity lint-py-imports lint-py-linefeeds \
     lint-js lint-rst lint-go
-        # Only Unix line ends should be accepted
-	@find src/ -type f -exec file "{}" ";" | \
-	    awk '/CRLF/ { print $0; count++ } END {exit count}' || \
-	    (echo "Lint check failed; run make format to fix DOS linefeeds."; false)
 
 pocketlint = $(call available,pocketlint,python-pocket-lint)
 
@@ -352,6 +355,12 @@ lint-py-imports:
 	  ! -path '*/migrations/*' \
 	  -print0 | xargs -r0 utilities/find-early-imports
 
+# Only Unix line ends should be accepted
+lint-py-linefeeds:
+	@find src/ -name \*.py -exec file "{}" ";" | \
+	    awk '/CRLF/ { print $0; count++ } END {exit count}' || \
+	    (echo "Lint check failed; run make format to fix DOS linefeeds."; false)
+
 # JavaScript lint is checked in parallel for speed.  The -n20 -P4 setting
 # worked well on a multicore SSD machine with the files cached, roughly
 # doubling the speed, but it may need tuning for slower systems or cold caches.
@@ -366,7 +375,7 @@ lint-js:
 
 # Go fmt
 lint-go:
-	@find src/ -name vendor -prune -o -name '*.go' -exec gofmt -l {} + | \
+	@find src/ \( -name pkg -o -name vendor \) -prune -o -name '*.go' -exec gofmt -l {} + | \
 		tee /tmp/gofmt.lint
 	@test ! -s /tmp/gofmt.lint
 
@@ -454,6 +463,7 @@ clean: stop clean-failed clean-assets
 	$(RM) -r .idea
 	$(RM) xunit.*.xml
 	$(RM) .failed
+	$(MAKE) -C src/machine-resources clean
 
 clean+db: clean
 	while fuser db --kill -TERM; do sleep 1; done
@@ -635,6 +645,8 @@ packaging-dir := maas_$(packaging-version)
 packaging-orig-tar := $(packaging-dir).orig.tar
 packaging-orig-targz := $(packaging-dir).orig.tar.gz
 
+machine_resources_vendor := src/machine-resources/src/machine-resources/vendor
+
 -packaging-clean:
 	rm -rf $(packaging-build-area)
 	mkdir -p $(packaging-build-area)
@@ -643,18 +655,16 @@ packaging-orig-targz := $(packaging-dir).orig.tar.gz
 	git archive --format=tar $(packaging-export-extra) \
             --prefix=$(packaging-dir)/ \
 	    -o $(packaging-build-area)/$(packaging-orig-tar) HEAD
-	(cd src/machine-resources && ${MAKE} deps)
-	(export GOPATH=$(CURDIR):$(GOPATH) && cd src/machine-resources && ${MAKE} vendor)
-	tar -rf $(packaging-build-area)/$(packaging-orig-tar) src/machine-resources/vendor \
+	$(MAKE) machine-resources-vendor
+	tar -rf $(packaging-build-area)/$(packaging-orig-tar) $(machine_resources_vendor) \
 		--transform 's,^,$(packaging-dir)/,'
 	gzip -f $(packaging-build-area)/$(packaging-orig-tar)
 
 -packaging-export-orig-uncommitted: $(packaging-build-area)
 	git ls-files --others --exclude-standard --cached | grep -v '^debian' | \
 	    xargs tar --transform 's,^,$(packaging-dir)/,' -cf $(packaging-build-area)/$(packaging-orig-tar)
-	(cd src/machine-resources && ${MAKE} deps)
-	(export GOPATH=$(CURDIR):$(GOPATH) && cd src/machine-resources && ${MAKE} vendor)
-	tar -rf $(packaging-build-area)/$(packaging-orig-tar) src/machine-resources/vendor \
+	$(MAKE) machine-resources-vendor
+	tar -rf $(packaging-build-area)/$(packaging-orig-tar) $(machine_resources_vendor) \
 		--transform 's,^,$(packaging-dir)/,'
 	gzip -f $(packaging-build-area)/$(packaging-orig-tar)
 

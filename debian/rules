@@ -1,6 +1,5 @@
 #!/usr/bin/make -f
 
-export GOPATH := $(CURDIR)
 BUILDHOME = $(CURDIR)/debian/build
 PYTHON3 = $(shell py3versions -d)
 COMMISSIONING_ARCHES := amd64 386 arm arm64 ppc64le s390x
@@ -43,13 +42,9 @@ override_dh_auto_install:
 
 	# Build and move lxd commissioning binaries
 	install -d -m 755  $(CURDIR)/debian/tmp/usr/share/maas/machine-resources
-	for ARCH in $(COMMISSIONING_ARCHES) ; do \
-		cd $(CURDIR)/src/machine-resources ; \
-		GOARCH=$$ARCH go build -ldflags '-s -w' -o $(CURDIR)/src/machine-resources/$$ARCH \
-			$(CURDIR)/src/machine-resources/machine-resources.go ; \
-		mv $(CURDIR)/src/machine-resources/$$ARCH \
-			$(CURDIR)/debian/tmp/usr/share/maas/machine-resources/ ; \
-	done
+	make -C $(CURDIR)/src/machine-resources build
+	mv $(CURDIR)/src/machine-resources/bin/* \
+		$(CURDIR)/debian/tmp/usr/share/maas/machine-resources/
 
 	# install the apparmor profile
 	install -d -m 755 $(CURDIR)/debian/tmp/etc/apparmor.d/dhcpd.d
