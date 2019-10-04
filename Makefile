@@ -628,7 +628,9 @@ machine_resources_vendor := src/machine-resources/src/machine-resources/vendor
 	tail -n +2 debian/changelog >> $(tmp_changelog)
 	mv $(tmp_changelog) $(packaging-build-area)/$(packaging-dir)/debian/changelog
 
-package: assets -packaging-clean -package-tree
+package-tree: assets -packaging-clean -package-tree
+
+package: package-tree
 	(cd $(packaging-build-area)/$(packaging-dir) && debuild -uc -us)
 	@echo Binary packages built, see $(packaging-build-area).
 

@@ -1,115 +1,77 @@
 #!/bin/bash -e
 
-ROOTDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")"/.. && pwd)"
-cd "$ROOTDIR"
-BUILDDIR=$ROOTDIR/build_pkg
-if [ ! -d $BUILDDIR ]; then
-    mkdir $BUILDDIR
-fi
+ROOTDIR="$(dirname "$(dirname "$(realpath "$0")")")"
+BUILDDIR="$ROOTDIR/build_pkg"
+PACKAGE_BUILD_AREA="$ROOTDIR/../build-area"
 
-usage () {
-    DISTRO_ARGS=$(distro-info --supported | sed 's/^/[--/g' | sed 's/$/]/' | tr '\n' ' ')
-    echo "Usage:"
-    echo "    $0 $DISTRO_ARGS \\"
-    echo "       [--keep-changelog] [commit (defaults to HEAD)]"
+declare -A SUPPORTED_RELEASES
+SUPPORTED_RELEASES=(
+    [eoan]=19.10
+    [disco]=19.04
+    [cosmic]=18.10
+    [bionic]=18.04
+)
+
+exit_error() {
+    echo "$@"
     exit 1
 }
 
-DEFAULT_DISTROS="$(ubuntu-distro-info --supported | grep -v trusty)"
-PACKAGE_DISTROS=""
-KEEP_CHANGELOG=0
-
-for arg in "$@"; do
-    if [ "$arg" = "-h" -o "$arg" = "--help" ]; then
-        usage
+# check that provided release codenames are valid
+check_releases() {
+    if [ "$#" == 0 ]; then
+        exit_error "No distro codename specified."
     fi
-    if echo "$arg" | grep -q "^--"; then
-        option="$(echo "$arg" | sed 's/^--//')"
-        if [ "$option" = "keep-changelog" ]; then
-            KEEP_CHANGELOG=1
+
+    local name
+    for name in "$@"; do
+        if [ -z "${SUPPORTED_RELEASES[$name]}" ]; then
+            exit_error "Unsupported distro: $name"
         fi
-        if echo $DEFAULT_DISTROS | grep -q $option; then
-            PACKAGE_DISTROS="$PACKAGE_DISTROS $option"
-        fi
-        shift
-    fi
-done
-
-if [ "$PACKAGE_DISTROS" = "" ]; then
-    PACKAGE_DISTROS="$DEFAULT_DISTROS"
-fi
-
-if [ -z "$1" ]; then
-    echo "WARNING: No commit specified, using HEAD instead"
-    COMMIT="HEAD"
-else
-    COMMIT="$1"
-fi
-
-function cleanup {
-    # Revert any unstaged temporary changes to the changelog.
-    cd "$ROOTDIR"
-    if [ $KEEP_CHANGELOG -eq 0 ]; then
-        git checkout -- debian/changelog
-    fi
+    done
 }
-trap cleanup EXIT
 
-# Ensure the maintainer e-mail address is set, so that signing works properly.
-dch -a "" --release-heuristic log --nomultimaint
-
-PKG=$(head -n1 debian/changelog | awk '{print $1}')
-MAJOR_VER=$(head -n 1 debian/changelog | sed 's/^.*(//' | sed 's/).*//' | sed 's/-.*//')
-REV_COUNT=$(git rev-list --count $COMMIT)
-REV_SHORT=$(git rev-parse --short $COMMIT)
-FULL_VER="$MAJOR_VER-$REV_COUNT-g$REV_SHORT"
-PREFIX="${PKG}-${FULL_VER}.orig/"
-TARBALL="maas_$FULL_VER.orig.tar"
-TARBALLGZ="maas_$FULL_VER.orig.tar.gz"
-
-get_orig_source() {
-    git archive --format=tar --prefix=${PREFIX} ${COMMIT} -o ${TARBALL}
-    # Vendor the go dependencies before and cleanup after
-    make machine-resources-vendor
-    tar -rf ${TARBALL} src/machine-resources/src/machine-resources/vendor --transform 's,^,'"${PREFIX}"','
-    gzip -f ${TARBALL}
-    make -C src/machine-resources clean
+build_source_package() {
+    make -C "$ROOTDIR" package-tree
 }
-# Obtain the tarball from a local branch
-get_orig_source
 
-# Copy the tarball to the local dir
-mv "${TARBALLGZ}" "$BUILDDIR"
+# ensure name and email address are correct for the signing (must have DEBEMAIL
+# and DEBFULLNAME set)
+ensure_changelog_author() {
+    dch -a "" --release-heuristic log --nomultimaint
+}
 
-# Update the changelog
-sed -i "s/${MAJOR_VER}-0ubuntu1/${FULL_VER}-0ubuntu1/i" debian/changelog
+update_changelog_version() {
+    local deb_version="$1"
+    local release="$2"
+    local new_version="${deb_version}~${SUPPORTED_RELEASES[$release]}.1"
+    sed -i "1 s/(.*;/($new_version) $release;/" debian/changelog
+}
 
-# Untar
-cd $BUILDDIR
-tar zxvf ${PKG}_${FULL_VER}.orig.tar.gz
-cd "${PKG}-${FULL_VER}.orig/"
-cp -r $ROOTDIR/debian .
 
-if echo "$PACKAGE_DISTROS" | grep -q "bionic"; then
-    cp $ROOTDIR/debian/changelog debian/changelog
-    sed -i "s/) UNRELEASED;/~18.04.1) bionic;/i" debian/changelog
-    debuild -S -sa
-fi
+# Main
 
-if echo "$PACKAGE_DISTROS" | grep -q "cosmic"; then
-    cp $ROOTDIR/debian/changelog debian/changelog
-    sed -i "s/) UNRELEASED;/~18.10.1) cosmic;/i" debian/changelog
-    debuild -S -sa
-fi
+check_releases "$@"
+releases="$*"
 
-if echo "$PACKAGE_DISTROS" | grep -q "disco"; then
-    cp $ROOTDIR/debian/changelog debian/changelog
-    sed -i "s/) UNRELEASED;/~19.04.1) disco;/i" debian/changelog
-    debuild -S -sa
-fi
+mkdir -p "$BUILDDIR"
 
-if echo "$PACKAGE_DISTROS" | grep -q "eoan"; then
-    cp $ROOTDIR/debian/changelog debian/changelog
-    sed -i "s/) UNRELEASED;/~19.10.1) eoan;/i" debian/changelog
-    debuild -S -sa
-fi
+build_source_package
+# copy source package in the build dir
+source_package_dir=$(
+    find "$PACKAGE_BUILD_AREA" -mindepth 1 -maxdepth 1 -type d | head -n1)
+source_package_dir="$(basename "$source_package_dir")"
+package_dir="$BUILDDIR/$source_package_dir"
+rm -rf "$package_dir"
+cp -a "$PACKAGE_BUILD_AREA"/* "$BUILDDIR"
+
+(
+    cd "$package_dir"
+    ensure_changelog_author
+    deb_version=$(sed '1 s/.*(\(.*\)).*/\1/; q'  debian/changelog)
+
+    for release in $releases; do
+        update_changelog_version "$deb_version" "$release"
+        debuild -S -sa
+    done
+)
