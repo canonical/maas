@@ -37,34 +37,37 @@ def set_umask():
 
 def run():
     is_snap = 'SNAP' in os.environ
+    is_devenv = os.environ.get('MAAS_DEVENV') == '1'
 
-    if is_snap:
-        os.environ.update({
-            "MAAS_PATH": os.environ["SNAP"],
-            "MAAS_ROOT": os.environ["SNAP_DATA"],
-            "MAAS_CLUSTER_CONFIG": os.path.join(
-                os.environ["SNAP_DATA"], "rackd.conf")
-        })
+    if not is_devenv:
+        if is_snap:
+            os.environ.update({
+                "MAAS_PATH": os.environ["SNAP"],
+                "MAAS_ROOT": os.environ["SNAP_DATA"],
+                "MAAS_CLUSTER_CONFIG": os.path.join(
+                    os.environ["SNAP_DATA"], "rackd.conf")
+            })
 
-    users = ["root"]
-    # Allow dhcpd user to call dhcp-notify, and maas user to call observe-arp.
-    if not is_snap and len(sys.argv) > 1:
-        if sys.argv[1] == "dhcp-notify":
-            users.append("dhcpd")
-        if sys.argv[1] == "observe-arp":
-            users.append("maas")
-        if sys.argv[1] == "observe-beacons":
-            users.append("maas")
-        if sys.argv[1] == "observe-mdns":
-            # Any user can call this. (It might be necessary for a normal
-            # user to call this for support/debugging purposes.)
-            users.append(None)
+        users = ["root"]
+        # Allow dhcpd user to call dhcp-notify, and maas user to call
+        # observe-arp.
+        if not is_snap and len(sys.argv) > 1:
+            if sys.argv[1] == "dhcp-notify":
+                users.append("dhcpd")
+            if sys.argv[1] == "observe-arp":
+                users.append("maas")
+            if sys.argv[1] == "observe-beacons":
+                users.append("maas")
+            if sys.argv[1] == "observe-mdns":
+                # Any user can call this. (It might be necessary for a normal
+                # user to call this for support/debugging purposes.)
+                users.append(None)
 
-    # Only set the group and umask when running as root.
-    if check_users(users) == "root":
-        if not is_snap:
-            set_group()
-        set_umask()
+        # Only set the group and umask when running as root.
+        if check_users(users) == "root":
+            if not is_snap:
+                set_group()
+            set_umask()
 
     # Run the script.
     # Run the main provisioning script.

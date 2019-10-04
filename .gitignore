@@ -19,7 +19,7 @@
 /.pybuild/
 /.noseids
 /.run
-/.run-e2e
+/.ve
 /.vscode
 /*.orig.tar.gz
 /bin

@@ -294,7 +294,8 @@ Tests = files(
     "src/**/testing.py")
 
 
-TestHelpers = files("src/maastesting/**/*.py")
+TestScriptEntryPoints = files("src/maastesting/scripts.py")
+TestHelpers = files("src/maastesting/**/*.py") - TestScriptEntryPoints
 
 TestHelpersRule = Rule(
     Allow("crochet|crochet.**"),
@@ -303,6 +304,18 @@ TestHelpersRule = Rule(
     Allow("twisted.**"),
     Allow(StandardLibraries),
     Allow(TestingLibraries),
+)
+
+
+TestScriptEntryPointsRule = Rule(
+    Allow("asyncio"),
+    Allow("os|sys"),
+    Allow("django|django.**"),
+    Allow("maasserver|maasserver.**"),
+    Allow("maastesting.**"),
+    Allow("provisioningserver.**"),
+    Allow("twisted.**"),
+    Allow("uvloop"),
 )
 
 
@@ -415,6 +428,10 @@ checks = [
     (
         TestHelpers,
         TestHelpersRule,
+    ),
+    (
+        TestScriptEntryPoints,
+        TestScriptEntryPointsRule,
     ),
 ]
 

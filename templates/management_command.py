@@ -15,7 +15,7 @@ from django.core.management.base import BaseCommand
 
 class Command(BaseCommand):
 
-    option_list = BaseCommand.option_list + (
+    option_list = (
         # TODO: Define actual options.
         make_option(
             '--option', dest='option', default=None,

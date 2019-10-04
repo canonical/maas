@@ -1,18 +1,12 @@
 python := python3
 snapcraft := SNAPCRAFT_BUILD_INFO=1 /snap/bin/snapcraft
 
+VENV := .ve
+
 # pkg_resources makes some incredible noise about version numbers. They
 # are not indications of bugs in MAAS so we silence them everywhere.
 export PYTHONWARNINGS = \
   ignore:You have iterated over the result:RuntimeWarning:pkg_resources:
-
-# Network activity can be suppressed by setting offline=true (or any
-# non-empty string) at the command-line.
-ifeq ($(offline),)
-buildout := bin/buildout
-else
-buildout := bin/buildout buildout:offline=true
-endif
 
 # If offline has been selected, attempt to further block HTTP/HTTPS
 # activity by setting bogus proxies in the environment.
@@ -47,15 +41,19 @@ nodejs_path := $(mkfile_dir)/include/nodejs/bin
 export GOPATH := $(shell go env GOPATH)
 export PATH := $(GOPATH)/bin:$(nodejs_path):$(PATH)
 
+# For anything we start, we want to hint as to its root directory.
+export MAAS_ROOT := $(CURDIR)/.run
 # For things that care, postgresfixture for example, we always want to
 # use the "maas" databases.
 export PGDATABASE := maas
+# Don't perform permission/group checks in maas commands
+export MAAS_DEVENV := 1
 
-# For anything we start, we want to hint as to its root directory.
-export MAAS_ROOT := $(CURDIR)/.run
+.DEFAULT_GOAL := build
 
 build: \
-  bin/buildout \
+  .run \
+  $(VENV) \
   bin/database \
   bin/maas \
   bin/maas-common \
@@ -69,8 +67,10 @@ build: \
   bin/test.region.legacy \
   bin/test.testing \
   bin/test.parallel \
+  bin/postgresfixture \
+  bin/py \
+  bin/ipy \
   machine-resources \
-  bin/py bin/ipy \
   pycharm
 
 all: build doc
@@ -91,83 +91,33 @@ install-dependencies:
 		$(foreach deps,$(FORBIDDEN_DEPS_FILES),$(call list_required,$(deps)))
 	if [ -x /usr/bin/snap ]; then sudo snap install --classic snapcraft; fi
 
-configure-buildout:
-	utilities/configure-buildout
-
 sudoers:
 	utilities/install-sudoers
 	utilities/grant-nmap-permissions
 
-bin/buildout: bootstrap-buildout.py
-	@utilities/configure-buildout --quiet
-	$(python) bootstrap-buildout.py --allow-site-packages
-	@touch --no-create $@  # Ensure it's newer than its dependencies.
+$(VENV): requirements.txt
+	python3 -m venv --system-site-packages --clear $@
+	$(VENV)/bin/pip install -r requirements.txt
 
-buildout.cfg: .run
+bin/flake8 bin/coverage \
+  bin/postgresfixture \
+  bin/maas bin/rackd bin/regiond \
+  bin/maas-region bin/maas-rack bin/maas-common \
+  bin/test.region bin/test.region.legacy \
+  bin/test.rack bin/test.cli \
+  bin/test.testing bin/test.parallel:
+	mkdir -p bin
+	ln -sf ../$(VENV)/$@ $@
 
-bin/database: bin/buildout buildout.cfg versions.cfg setup.py
-	$(buildout) install database
-	@touch --no-create $@
-
-bin/test.parallel: \
-  bin/buildout buildout.cfg versions.cfg setup.py
-	$(buildout) install parallel-test
-	@touch --no-create $@
-
-bin/maas-region bin/regiond: \
-    bin/buildout buildout.cfg versions.cfg setup.py \
-    $(asset_output)
-	$(buildout) install region
-	@touch --no-create $@
-
-bin/test.region: \
-  bin/buildout buildout.cfg versions.cfg setup.py \
-  bin/maas-region bin/maas-rack bin/maas-common
-	$(buildout) install region-test
-	@touch --no-create $@
-
-bin/test.region.legacy: \
-    bin/buildout buildout.cfg versions.cfg setup.py
-	$(buildout) install region-test-legacy
-	@touch --no-create $@
-
-bin/maas: bin/buildout buildout.cfg versions.cfg setup.py
-	$(buildout) install cli
-	@touch --no-create $@
-
-bin/test.cli: bin/buildout buildout.cfg versions.cfg setup.py bin/maas
-	$(buildout) install cli-test
-	@touch --no-create $@
+bin/py bin/ipy:
+	ln -sf ../$(VENV)/$@thon $@
 
 # bin/flake8 is needed for checking lint and bin/node-sass is needed for
 # checking css.
-bin/test.testing: \
-  bin/flake8 bin/node-sass bin/buildout \
-  buildout.cfg versions.cfg setup.py
-	$(buildout) install testing-test
-	@touch --no-create $@
+bin/test.testing: bin/flake8 bin/node-sass
 
-bin/maas-rack bin/rackd bin/maas-common: \
-  bin/buildout buildout.cfg versions.cfg setup.py
-	$(buildout) install rack
-	@touch --no-create $@
-
-bin/test.rack: \
-  bin/buildout buildout.cfg versions.cfg setup.py bin/maas-rack bin/py
-	$(buildout) install rack-test
-	@touch --no-create $@
-
-bin/flake8: bin/buildout buildout.cfg versions.cfg setup.py
-	$(buildout) install flake8
-	@touch --no-create $@
-
-bin/py bin/ipy: bin/buildout buildout.cfg versions.cfg setup.py
-	$(buildout) install repl
-	@touch --no-create bin/py bin/ipy
-
-bin/coverage: bin/buildout buildout.cfg versions.cfg setup.py
-	$(buildout) install coverage
-	@touch --no-create bin/coverage
+bin/database: bin/postgresfixture
+	ln -sf $(notdir $<) $@
 
 include/nodejs/bin/node:
 	mkdir -p include/nodejs
@@ -274,14 +224,12 @@ clean-failed:
 	$(RM) .noseids
 
 src/maasserver/testing/initial.maas_test.sql: bin/maas-region bin/database
-  # Run migrations without any triggers created.
+    # Run migrations without any triggers created.
 	$(dbrun) bin/maas-region dbupgrade --internal-no-triggers
-	# Data migration will create a notification, that will break tests. Want the
-	# database to be a clean schema.
+    # Data migration will create a notification, that will break tests. Want
+    # the database to be a clean schema.
 	$(dbrun) bin/maas-region shell -c "from maasserver.models.notification import Notification; Notification.objects.all().delete()"
-	bin/database --preserve run -- \
-	    pg_dump maas --no-owner --no-privileges \
-	        --format=plain > $@
+	$(dbrun) pg_dump maas --no-owner --no-privileges --format=plain > $@
 
 test-initial-data: src/maasserver/testing/initial.maas_test.sql
 
@@ -465,6 +413,7 @@ clean: stop clean-failed clean-assets
 	$(RM) xunit.*.xml
 	$(RM) .failed
 	$(MAKE) -C src/machine-resources clean
+	$(RM) -r $(VENV)
 
 clean+db: clean
 	while fuser db --kill -TERM; do sleep 1; done
@@ -475,8 +424,7 @@ distclean: clean
 	$(warning 'distclean' is deprecated; use 'clean')
 
 harness: bin/maas-region bin/database
-	$(dbrun) bin/maas-region shell \
-	  --settings=maasserver.djangosettings.demo
+	$(dbrun) bin/maas-region shell --settings=maasserver.djangosettings.demo
 
 dbharness: bin/database
 	bin/database --preserve shell
@@ -491,7 +439,6 @@ define phony_targets
   clean+db
   clean-failed
   clean-assets
-  configure-buildout
   coverage-report
   dbharness
   distclean
@@ -801,28 +748,6 @@ endef
 phony := $(sort $(strip $(phony)))
 
 .PHONY: $(phony) FORCE
-
-#
-# Secondary stuff.
-#
-# These are intermediate files that we want to keep around in the event
-# that they get built. By declaring them here we're also telling Make
-# that their absense is okay if a rule target is newer than the rule's
-# other prerequisites; i.e. don't build them.
-#
-# For example, converting foo.scss to foo.css might require bin/node-sass. If
-# foo.css is newer than foo.scss we know that we don't need to perform that
-# conversion, and hence don't need bin/node-sass. We declare bin/node-sass as
-# secondary so that Make knows this too.
-#
-
-define secondary_binaries
-  bin/py bin/buildout
-endef
-
-secondary = $(sort $(strip $(secondary_binaries)))
-
-.SECONDARY: $(secondary)
 
 #
 # Functions.

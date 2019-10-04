@@ -62,14 +62,12 @@ you can disable the daemon by inserting ``exit 1`` at the top of
 ``/etc/default/bind9``. The package still needs to be installed for
 tests though.
 
-Python development dependencies are pulled automatically from
-`PyPI`_ when ``buildout`` runs. (``buildout`` will be automatically
-configured to create a cache, in order to improve build times.
-See ``utilities/configure-buildout``.)
+Python development dependencies are pulled automatically from `PyPI`_ in a
+virtualenv located under ``.ve``.
 
-Javascript development dependencies are pulled automatically from
-`npm`_ when ``make`` runs. (``npm`` will be automatically
-configured to use a cache, in order to improve build times.)
+Javascript development dependencies are pulled automatically from `npm`_ when
+``make`` runs. (``npm`` will be automatically configured to use a cache, in
+order to improve build times.)
 
 .. _PyPI:
   http://pypi.python.org/
@@ -547,23 +545,6 @@ up, but with regiond in the foreground::
   $ make run+regiond
 
 Apparently Django needs a lot of debugging ;)
-
-
-Adding new dependencies
-=======================
-
-Since MAAS is distributed mainly as an Ubuntu package, all runtime
-dependencies should be packaged, and we should develop with the
-packaged version if possible. All dependencies, from a package or not,
-need to be added to ``setup.py`` and ``buildout.cfg``, and the version
-specified in ``versions.cfg`` (``allowed-picked-version`` is disabled,
-hence ``buildout`` must be given precise version information).
-
-If it is a development-only dependency (i.e. only needed for the test suite, or
-for developers' convenience), simply running ``buildout`` like this will make
-the necessary updates to ``versions.cfg``::
-
-    $ ./bin/buildout -v buildout:allow-picked-versions=true
 
 
 Adding new source files

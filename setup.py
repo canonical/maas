@@ -52,6 +52,13 @@ setup(
             'maas-region = maasserver.region_script:run',
             'rackd = provisioningserver.server:run',
             'regiond = maasserver.server:run',
+            # Test scrips
+            'test.region = maastesting.scripts:run_region',
+            'test.region.legacy = maastesting.scripts:run_region_legacy',
+            'test.rack = maastesting.scripts:run_rack',
+            'test.cli = maastesting.scripts:run_cli',
+            'test.testing = maastesting.scripts:run_testing',
+            'test.parallel = maastesting.scripts:run_parallel',
         ],
     },
 

@@ -26,7 +26,7 @@ def set_umask():
     os.umask(0o007)
 
 
-def run_django(is_snap):
+def run_django(is_snap, is_devenv):
     # Force the production MAAS Django configuration.
     if is_snap:
         snap_data = os.environ["SNAP_DATA"]
@@ -44,6 +44,9 @@ def run_django(is_snap):
             "MAAS_THIRD_PARTY_DRIVER_SETTINGS": os.path.join(
                 os.environ["SNAP"], "etc/maas/drivers.yaml")
         })
+    elif is_devenv:
+        os.environ["DJANGO_SETTINGS_MODULE"] = (
+            "maasserver.djangosettings.development")
     else:
         os.environ["DJANGO_SETTINGS_MODULE"] = (
             "maasserver.djangosettings.settings")
@@ -55,8 +58,10 @@ def run_django(is_snap):
 
 def run():
     is_snap = 'SNAP' in os.environ
-    check_user()
-    if not is_snap:
-        set_group()
-    set_umask()
-    run_django(is_snap)
+    is_devenv = os.environ.get('MAAS_DEVENV') == '1'
+    if not is_devenv:
+        check_user()
+        if not is_snap:
+            set_group()
+        set_umask()
+    run_django(is_snap, is_devenv)
