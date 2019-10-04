@@ -49,6 +49,14 @@ export PGDATABASE := maas
 # Don't perform permission/group checks in maas commands
 export MAAS_DEVENV := 1
 
+# Check if a command is found on PATH. Raise an error if not, citing
+# the package to install. Return the command otherwise.
+# Usage: $(call available,<command>,<package>)
+define available
+  $(if $(shell which $(1)),$(1),$(error $(1) not found; \
+    install it with 'sudo apt install $(2)'))
+endef
+
 .DEFAULT_GOAL := build
 
 build: \
@@ -72,8 +80,10 @@ build: \
   bin/ipy \
   machine-resources \
   pycharm
+.PHONY: build
 
 all: build doc
+.PHONY: all
 
 REQUIRED_DEPS_FILES = base build dev doc
 FORBIDDEN_DEPS_FILES = forbidden
@@ -90,10 +100,12 @@ install-dependencies:
 	sudo DEBIAN_FRONTEND=noninteractive apt purge -y \
 		$(foreach deps,$(FORBIDDEN_DEPS_FILES),$(call list_required,$(deps)))
 	if [ -x /usr/bin/snap ]; then sudo snap install --classic snapcraft; fi
+.PHONY: install-dependencies
 
 sudoers:
 	utilities/install-sudoers
 	utilities/grant-nmap-permissions
+.PHONY: sudoers
 
 $(VENV): requirements.txt
 	python3 -m venv --system-site-packages --clear $@
@@ -139,9 +151,11 @@ bin/yarn: include/nodejs/bin/yarn
 
 machine-resources-vendor:
 	$(MAKE) -C src/machine-resources vendor
+.PHONY: machine-resources-vendor
 
 machine-resources: machine-resources-vendor
 	$(MAKE) -C src/machine-resources build
+.PHONY: machine-resources
 
 node_modules: include/nodejs/bin/node bin/yarn
 	bin/yarn --frozen-lockfile
@@ -182,6 +196,7 @@ endef
 force-yarn-update: bin/yarn
 	$(RM) package.json yarn.lock
 	bin/yarn add -D $(strip $(node_packages))
+.PHONY: force-yarn-update
 
 define test-scripts
   bin/test.cli
@@ -194,34 +209,42 @@ endef
 lxd:
 	utilities/configure-lxd-profile
 	utilities/create-lxd-bionic-image
+.PHONY: lxd
 
 test: test-js test-py
+.PHONY: test
 
 test-py: bin/test.parallel bin/coverage
 	@$(RM) .coverage .coverage.*
 	@bin/test.parallel --with-coverage --subprocess-per-core
 	@bin/coverage combine
+.PHONY: test-py
 
 test-js: assets
 	bin/yarn test
+.PHONY: test-js
 
 test-js-watch: assets
 	bin/yarn test --watch
+.PHONY: test-js-watch
 
 test-serial: $(strip $(test-scripts))
 	@bin/maas-region makemigrations --dry-run --exit && exit 1 ||:
 	@$(RM) .coverage .coverage.* .failed
 	$(foreach test,$^,$(test-template);)
 	@test ! -f .failed
+.PHONY: test-serial
 
 test-failed: $(strip $(test-scripts))
 	@bin/maas-region makemigrations --dry-run --exit && exit 1 ||:
 	@$(RM) .coverage .coverage.* .failed
 	$(foreach test,$^,$(test-template-failed);)
 	@test ! -f .failed
+.PHONY: test-failed
 
 clean-failed:
 	$(RM) .noseids
+.PHONY: clean-failed
 
 src/maasserver/testing/initial.maas_test.sql: bin/maas-region bin/database
     # Run migrations without any triggers created.
@@ -232,6 +255,7 @@ src/maasserver/testing/initial.maas_test.sql: bin/maas-region bin/database
 	$(dbrun) pg_dump maas --no-owner --no-privileges --format=plain > $@
 
 test-initial-data: src/maasserver/testing/initial.maas_test.sql
+.PHONY: test-initial-data
 
 define test-template
 $(test) --with-xunit --xunit-file=xunit.$(notdir $(test)).xml || touch .failed
@@ -246,12 +270,15 @@ endef
 smoke: lint bin/maas-region bin/test.rack
 	@bin/maas-region makemigrations --dry-run --exit && exit 1 ||:
 	@bin/test.rack --stop
+.PHONY: smoke
 
 test-serial+coverage: export NOSE_WITH_COVERAGE = 1
 test-serial+coverage: test-serial
+.PHONY: test-serial-coverage
 
 coverage-report: coverage/index.html
 	sensible-browser $< > /dev/null 2>&1 &
+.PHONY: coverage-report
 
 coverage.xml: bin/coverage .coverage
 	bin/coverage xml -o $@
@@ -268,7 +295,8 @@ coverage/index.html: bin/coverage .coverage
 
 lint: \
     lint-py lint-py-complexity lint-py-imports lint-py-linefeeds \
-    lint-js lint-rst lint-go
+    lint-js lint-go
+.PHONY: lint
 
 pocketlint = $(call available,pocketlint,python-pocket-lint)
 
@@ -277,6 +305,7 @@ lint-css: sources = src/maasserver/static/css
 lint-css:
 	@find $(sources) -type f \
 	    -print0 | xargs -r0 $(pocketlint) --max-length=120
+.PHONY: lint-css
 
 # Python lint checks are time-intensive, but flake8 now knows how to run
 # parallel jobs, and does so by default.
@@ -284,6 +313,7 @@ lint-py: sources = setup.py src
 lint-py: bin/flake8
 	@find $(sources) -name '*.py' \
 	  ! -path '*/migrations/*' -print0 | xargs -r0 bin/flake8 --config=.flake8
+.PHONY: lint-py
 
 # Ignore tests when checking complexity. The maximum complexity ought to
 # be close to 10 but MAAS has many functions that are over that so we
@@ -295,6 +325,7 @@ lint-py-complexity: bin/flake8
 	  ! -path '*/migrations/*' \
 	  ! -path '*/tests/*' ! -path '*/testing/*' ! -name 'testing.py' \
 	  -print0 | xargs -r0 bin/flake8 --config=.flake8 --max-complexity=$(maximum)
+.PHONY: lint-py-complexity
 
 # Statically check imports against policy.
 lint-py-imports: sources = setup.py src
@@ -303,12 +334,14 @@ lint-py-imports:
 	@find $(sources) -name '*.py' \
 	  ! -path '*/migrations/*' \
 	  -print0 | xargs -r0 utilities/find-early-imports
+.PHONY: lint-py-imports
 
 # Only Unix line ends should be accepted
 lint-py-linefeeds:
 	@find src/ -name \*.py -exec file "{}" ";" | \
 	    awk '/CRLF/ { print $0; count++ } END {exit count}' || \
 	    (echo "Lint check failed; run make format to fix DOS linefeeds."; false)
+.PHONY: lint-py-linefeeds
 
 # JavaScript lint is checked in parallel for speed.  The -n20 -P4 setting
 # worked well on a multicore SSD machine with the files cached, roughly
@@ -321,43 +354,53 @@ lint-js:
 		| xargs -r0 -n20 -P4 $(pocketlint)
 		bin/yarn lint
 		bin/yarn prettier-check
+.PHONY: lint-js
 
 # Go fmt
 lint-go:
 	@find src/ \( -name pkg -o -name vendor \) -prune -o -name '*.go' -exec gofmt -l {} + | \
 		tee /tmp/gofmt.lint
 	@test ! -s /tmp/gofmt.lint
+.PHONY: lint-go
 
 format.parallel:
 	@$(MAKE) -s -j format
+.PHONY: format.parallel
 
 # Apply automated formatting to all Python, Sass and Javascript files.
 format: format-imports format-lineendings format-js format-go
+.PHONY: format
 
 format-imports: sources = $(wildcard *.py contrib/*.py) src utilities etc
 format-imports:
 	@find $(sources) -name '*.py' -print0 | xargs -r0 utilities/format-imports
+.PHONY: format-imports
 
 # TODO: This should be done in .gitattributes
 format-lineendings:
 	@find src/ -type f -exec file "{}" ";" | grep CRLF | cut -d ':' -f1 | xargs dos2unix
-
+.PHONY: format-lineendings
 
 format-js: bin/yarn
 	@bin/yarn -s prettier --loglevel warn
+.PHONY: format-js
 
 format-go:
 	@find src/ -name '*.go' -execdir go fmt {} +
+.PHONY: format-go
 
 check: clean test
+.PHONY: check
 
 api-docs.rst: bin/maas-region src/maasserver/api/doc_handler.py syncdb
 	bin/maas-region generate_api_doc > $@
 
 sampledata: bin/maas-region bin/database syncdb
 	$(dbrun) bin/maas-region generate_sample_data
+.PHONY: sampledata
 
 doc: api-docs.rst
+.PHONY: doc
 
 .run: run-skel
 	@cp --archive --verbose $^ $@
@@ -366,16 +409,21 @@ doc: api-docs.rst
 	@cp --archive --verbose $^ $@
 
 pycharm: .idea
+.PHONY: pycharm
 
 assets: node_modules $(asset_output)
+.PHONY: assets
 
 force-assets: clean-assets node_modules $(asset_output)
+.PHONY: force-assets
 
 lander-javascript: force-assets
 	git update-index -q --no-assume-unchanged $(strip $(asset_output)) 2> /dev/null || true
 	git add -f $(strip $(asset_output)) 2> /dev/null || true
+.PHONY: lander-javascript
 
 lander-styles: lander-javascript
+.PHONY: lander-styles
 
 # The $(subst ...) uses a pattern rule to ensure Webpack runs just once,
 # even if all four output files are out-of-date.
@@ -387,9 +435,11 @@ $(subst .,%,$(asset_output)): node_modules $(asset_deps)
 clean-assets:
 	$(RM) -r src/maasserver/static/js/bundle
 	$(RM)  -r src/maasserver/static/css
+.PHONY: clean-assets
 
 watch-assets:
 	bin/yarn watch
+.PHONY: watch-assets
 
 clean: stop clean-failed clean-assets
 	find . -type f -name '*.py[co]' -print0 | xargs -r0 $(RM)
@@ -414,72 +464,25 @@ clean: stop clean-failed clean-assets
 	$(RM) .failed
 	$(MAKE) -C src/machine-resources clean
 	$(RM) -r $(VENV)
+.PHONY: clean
 
 clean+db: clean
 	while fuser db --kill -TERM; do sleep 1; done
 	$(RM) -r db
 	$(RM) .db.lock
-
-distclean: clean
-	$(warning 'distclean' is deprecated; use 'clean')
+.PHONY: clean+db
 
 harness: bin/maas-region bin/database
 	$(dbrun) bin/maas-region shell --settings=maasserver.djangosettings.demo
+.PHONY: harness
 
 dbharness: bin/database
 	bin/database --preserve shell
+.PHONY: dbharness
 
 syncdb: bin/maas-region bin/database
 	$(dbrun) bin/maas-region dbupgrade
-
-define phony_targets
-  build
-  check
-  clean
-  clean+db
-  clean-failed
-  clean-assets
-  coverage-report
-  dbharness
-  distclean
-  doc
-  force-assets
-  force-yarn-update
-  format
-  format.parallel
-  format-go
-  format-imports
-  format-lineendings
-  format-js
-  harness
-  install-dependencies
-  assets
-  lander-javascript
-  lander-styles
-  lint
-  lint-css
-  lint-go
-  lint-js
-  lint-py
-  lint-py-complexity
-  lint-py-imports
-  lint-rst
-  lxd
-  print-%
-  sampledata
-  smoke
-  sudoers
-  syncdb
-  sync-dev-snap
-  test
-  test-py
-  test-js
-  test+lxd
-  test-failed
-  test-initial-data
-  test-serial
-  test-serial+coverage
-endef
+.PHONY: syncdb
 
 #
 # Development services.
@@ -500,7 +503,6 @@ define service_template
 $(1)-region: $(patsubst %,services/%/@$(1),$(service_names_region))
 $(1)-rack: $(patsubst %,services/%/@$(1),$(service_names_rack))
 $(1): $(1)-region $(1)-rack
-phony_services_targets += $(1)-region $(1)-rack $(1)
 endef
 
 # Expand out aggregate service targets using `service_template`.
@@ -514,14 +516,13 @@ $(eval $(call service_template,supervise))
 # The `run` targets do not fit into the mould of the others.
 run-region:
 	@services/run $(service_names_region)
+.PHONY: run-region
 run-rack:
 	@services/run $(service_names_rack)
+.PHONY: run-rack
 run:
 	@services/run $(service_names_all)
-
-phony_services_targets += run-region run-rack run
-
-phony_services_targets += run+regiond
+.PHONY: run
 
 # Convenient variables and functions for service control.
 
@@ -600,6 +601,7 @@ machine_resources_vendor := src/machine-resources/src/machine-resources/vendor
 -packaging-clean:
 	rm -rf $(packaging-build-area)
 	mkdir -p $(packaging-build-area)
+.PHONY: -packaging-clean
 
 -packaging-export-orig: $(packaging-build-area)
 	git archive --format=tar $(packaging-export-extra) \
@@ -609,6 +611,7 @@ machine_resources_vendor := src/machine-resources/src/machine-resources/vendor
 	tar -rf $(packaging-build-area)/$(packaging-orig-tar) $(machine_resources_vendor) \
 		--transform 's,^,$(packaging-dir)/,'
 	gzip -f $(packaging-build-area)/$(packaging-orig-tar)
+.PHONY: -packaging-export-orig
 
 -packaging-export-orig-uncommitted: $(packaging-build-area)
 	git ls-files --others --exclude-standard --cached | grep -v '^debian' | \
@@ -617,8 +620,10 @@ machine_resources_vendor := src/machine-resources/src/machine-resources/vendor
 	tar -rf $(packaging-build-area)/$(packaging-orig-tar) $(machine_resources_vendor) \
 		--transform 's,^,$(packaging-dir)/,'
 	gzip -f $(packaging-build-area)/$(packaging-orig-tar)
+.PHONY: -packaging-export-orig-uncommitted
 
 -packaging-export: -packaging-export-orig$(if $(export-uncommitted),-uncommitted,)
+.PHONY: -packaging-export
 
 -package-tree: -packaging-export
 	(cd $(packaging-build-area) && tar xfz $(packaging-orig-targz))
@@ -627,45 +632,55 @@ machine_resources_vendor := src/machine-resources/src/machine-resources/vendor
 	    > $(tmp_changelog)
 	tail -n +2 debian/changelog >> $(tmp_changelog)
 	mv $(tmp_changelog) $(packaging-build-area)/$(packaging-dir)/debian/changelog
+.PHONY: -package-tree
 
 package-tree: assets -packaging-clean -package-tree
 
 package: package-tree
 	(cd $(packaging-build-area)/$(packaging-dir) && debuild -uc -us)
 	@echo Binary packages built, see $(packaging-build-area).
+.PHONY: package
 
 # To build binary packages from uncommitted changes call "make package-dev".
 package-dev:
 	make export-uncommitted=yes package
+.PHONY: package-dev
 
 source-package: -package-tree
 	(cd $(packaging-build-area)/$(packaging-dir) && debuild -S -uc -us)
 	@echo Source package built, see $(packaging-build-area).
+.PHONY: source-package
 
 # To build source packages from uncommitted changes call "make package-dev".
 source-package-dev:
 	make export-uncommitted=yes source-package
+.PHONY: source-package-dev
 
 # To rebuild packages (i.e. from a clean slate):
 package-rebuild: package-clean package
+.PHONY: package-rebuild
 
 package-dev-rebuild: package-clean package-dev
+.PHONY: package--dev-rebuild
 
 source-package-rebuild: source-package-clean source-package
+.PHONY: source-package-rebuild
 
 source-package-dev-rebuild: source-package-clean source-package-dev
+.PHONY: source-package-dev-rebuild
 
 # To clean built packages away:
 package-clean: patterns := *.deb *.udeb *.dsc *.build *.changes
 package-clean: patterns += *.debian.tar.xz *.orig.tar.gz
 package-clean:
 	@$(RM) -v $(addprefix $(packaging-build-area)/,$(patterns))
+.PHONY: package-clean
 
 source-package-clean: patterns := *.dsc *.build *.changes
 source-package-clean: patterns += *.debian.tar.xz *.orig.tar.gz
 source-package-clean:
 	@$(RM) -v $(addprefix $(packaging-build-area)/,$(patterns))
-
+.PHONY: source-package-clean
 
 # Debugging target. Allows printing of any variable.
 # As an example, try:
@@ -673,46 +688,21 @@ source-package-clean:
 print-%:
 	@echo $* = $($*)
 
-define phony_package_targets
-  -packaging-export-orig
-  -packaging-export-orig-uncommitted
-  -packaging-export
-  -packaging-fetch
-  -packaging-pull
-  -packaging-refresh
-  -package-tree
-  package
-  package-clean
-  package-dev
-  package-dev-rebuild
-  package-rebuild
-  source-package
-  source-package-clean
-  source-package-dev
-  source-package-dev-rebuild
-  source-package-rebuild
-endef
-
 #
 # Snap building
 #
 
 snap-clean:
 	$(snapcraft) clean
+.PHONY: snap-clean
 
 snap:
 	$(snapcraft)
-
-define phony_snap_targets
-	snap
-	snap-clean
-endef
-
+.PHONY: snap
 
 #
 # Helpers for using the snap for development testing.
 #
-
 
 build/dev-snap: ## Check out a clean version of the working tree.
 	git checkout-index -a --prefix build/dev-snap/
@@ -735,30 +725,4 @@ sync-dev-snap: build/dev-snap/prime
 		snap/local/conf/ build/dev-snap/prime/usr/share/maas/
 	$(RSYNC) \
 		snap/local/nginx/ build/dev-snap/prime/usr/share/maas/nginx/
-
-#
-# Phony stuff.
-#
-
-define phony
-  $(phony_package_targets)
-  $(phony_services_targets)
-  $(phony_snap_targets)
-  $(phony_targets)
-endef
-
-phony := $(sort $(strip $(phony)))
-
-.PHONY: $(phony) FORCE
-
-#
-# Functions.
-#
-
-# Check if a command is found on PATH. Raise an error if not, citing
-# the package to install. Return the command otherwise.
-# Usage: $(call available,<command>,<package>)
-define available
-  $(if $(shell which $(1)),$(1),$(error $(1) not found; \
-    install it with 'sudo apt install $(2)'))
-endef
+.PHONY: sync-dev-snap
