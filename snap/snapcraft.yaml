@@ -204,10 +204,8 @@ parts:
 
   snapcraft-preload:
     plugin: cmake
-    # XXX temporarily use a branch to only redirect /dev/shm paths
-    source: https://github.com/albertodonato/snapcraft-preload.git
+    source: https://github.com/sergiusens/snapcraft-preload
     source-type: git
-    source-branch: optional-only-rewrite-shm
     build-packages:
       - on amd64:
           - gcc-multilib
