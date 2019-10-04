@@ -1,9 +1,20 @@
 #!/bin/bash
 
+SCRIPT_PATH="$(realpath "$(dirname "$0")")"
+
+maas_version() {
+    local repo_path
+    repo_path="$SCRIPT_PATH"/..
+    # need the full path, otherwise the python from the stage area is used when
+    # run inside a snap.  Also, replace the first - with a ~ for debian version
+    # compatibility.
+    /usr/bin/python3 "${repo_path}/setup.py" --version | sed 's/-/~/'
+}
+
 # need the full path, otherwise the python from the stage area is used when run
 # inside a snap.  Also, replace the first - with a ~ for debian version
 # compatibility.
-VERSION=$(/usr/bin/python3 setup.py --version | sed 's/-/~/')
+VERSION=$(maas_version)
 GIT_REF=HEAD
 GIT_HASH=$(git rev-parse --short "$GIT_REF")
 GIT_REV_COUNT=$(git rev-list --count "$GIT_REF")

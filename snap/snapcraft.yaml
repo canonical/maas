@@ -183,7 +183,7 @@ parts:
       ln -s -f ../../../../../../var/lib/ieee-data/iab.txt $SNAPCRAFT_PART_INSTALL/usr/lib/python3/dist-packages/netaddr/eui/iab.txt
     override-prime: |
       set -e
-      snapcraftctl set-version $(cd $SNAPCRAFT_PART_SRC; utilities/package-version)
+      snapcraftctl set-version $($SNAPCRAFT_PART_SRC/utilities/package-version)
       snapcraftctl prime
 
   region-static:
