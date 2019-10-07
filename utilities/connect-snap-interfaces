@@ -1,0 +1,28 @@
+#!/bin/sh
+
+interfaces="
+    avahi-observe
+    hardware-observe
+    kernel-module-observe
+    mount-observe
+    network-control
+    network-observe
+    system-observe
+    time-control
+ "
+
+if [ -z "$(snap list | awk '$1 == "maas"')" ]; then
+    echo "The maas snap is not installed"
+    exit 1
+fi
+
+for interface in $interfaces; do
+    sudo snap connect "maas:$interface"
+done
+# connect content interface too
+sudo snap connect maas:maas-cli maas-cli
+
+# need to restart services since some checks are done at startup
+sudo snap restart maas
+# print out the list of connections
+sudo snap connections maas
