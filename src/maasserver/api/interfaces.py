@@ -81,6 +81,7 @@ DISPLAYED_INTERFACE_FIELDS = (
     'interface_speed',
     'link_speed',
     'numa_node',
+    'sriov_max_vf',
 )
 
 INTERFACES_PREFETCH = [

@@ -1344,7 +1344,8 @@ class Factory(maastesting.factory.Factory):
             vlan=None, parents=None, name=None, cluster_interface=None,
             ip=None, subnet=None, enabled=True, fabric=None, tags=None,
             link_connected=True, interface_speed=None, link_speed=None,
-            vendor=None, product=None, params="", numa_node=None):
+            vendor=None, product=None, firmware_version=None, sriov_max_vf=0,
+            params="", numa_node=None):
         if subnet is None and cluster_interface is not None:
             subnet = cluster_interface.subnet
         if subnet is not None and vlan is None:
@@ -1427,6 +1428,7 @@ class Factory(maastesting.factory.Factory):
             name=name, vlan=vlan, enabled=enabled, tags=tags,
             link_connected=link_connected, interface_speed=interface_speed,
             link_speed=link_speed, vendor=vendor, product=product,
+            firmware_version=firmware_version, sriov_max_vf=sriov_max_vf,
             params=params, numa_node=numa_node)
         interface.save()
         if subnet is None and ip is not None:

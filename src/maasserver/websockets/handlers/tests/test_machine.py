@@ -1288,6 +1288,10 @@ class TestMachineHandler(MAASServerTestCase):
             "interface_speed": interface.interface_speed,
             "link_connected": interface.link_connected,
             "link_speed": interface.link_speed,
+            "vendor": interface.vendor,
+            "product": interface.product,
+            "firmware_version": interface.firmware_version,
+            "sriov_max_vf": interface.sriov_max_vf,
             }, handler.dehydrate_interface(interface, node))
         expected_links = interface2.get_links()
         self.assertEqual({
@@ -1313,6 +1317,10 @@ class TestMachineHandler(MAASServerTestCase):
             "interface_speed": interface2.interface_speed,
             "link_connected": interface2.link_connected,
             "link_speed": interface2.link_speed,
+            "vendor": interface2.vendor,
+            "product": interface2.product,
+            "firmware_version": interface2.firmware_version,
+            "sriov_max_vf": interface.sriov_max_vf,
             }, handler.dehydrate_interface(interface2, node))
 
     def test_dehydrate_interface_for_ready_node(self):
@@ -1349,6 +1357,10 @@ class TestMachineHandler(MAASServerTestCase):
             "interface_speed": interface.interface_speed,
             "link_connected": interface.link_connected,
             "link_speed": interface.link_speed,
+            "vendor": interface.vendor,
+            "product": interface.product,
+            "firmware_version": interface.firmware_version,
+            "sriov_max_vf": interface.sriov_max_vf,
             }, handler.dehydrate_interface(interface, node))
 
     def test_dehydrate_interface_for_commissioning_node(self):
@@ -1394,6 +1406,10 @@ class TestMachineHandler(MAASServerTestCase):
             "interface_speed": interface.interface_speed,
             "link_connected": interface.link_connected,
             "link_speed": interface.link_speed,
+            "vendor": interface.vendor,
+            "product": interface.product,
+            "firmware_version": interface.firmware_version,
+            "sriov_max_vf": interface.sriov_max_vf,
         }, handler.dehydrate_interface(interface, node))
 
     def test_dehydrate_interface_includes_params(self):
@@ -1474,6 +1490,10 @@ class TestMachineHandler(MAASServerTestCase):
             "interface_speed": interface.interface_speed,
             "link_connected": interface.link_connected,
             "link_speed": interface.link_speed,
+            "vendor": interface.vendor,
+            "product": interface.product,
+            "firmware_version": interface.firmware_version,
+            "sriov_max_vf": interface.sriov_max_vf,
         }, handler.dehydrate_interface(interface, node))
 
     def test_dehydrate_interface_for_testing_node(self):
@@ -1519,6 +1539,10 @@ class TestMachineHandler(MAASServerTestCase):
             "interface_speed": interface.interface_speed,
             "link_connected": interface.link_connected,
             "link_speed": interface.link_speed,
+            "vendor": interface.vendor,
+            "product": interface.product,
+            "firmware_version": interface.firmware_version,
+            "sriov_max_vf": interface.sriov_max_vf,
         }, handler.dehydrate_interface(interface, node))
 
     def test_dehydrate_interface_for_failed_testing_node(self):
@@ -1566,6 +1590,10 @@ class TestMachineHandler(MAASServerTestCase):
             "interface_speed": interface.interface_speed,
             "link_connected": interface.link_connected,
             "link_speed": interface.link_speed,
+            "vendor": interface.vendor,
+            "product": interface.product,
+            "firmware_version": interface.firmware_version,
+            "sriov_max_vf": interface.sriov_max_vf,
         }, handler.dehydrate_interface(interface, node))
 
     def test_dehydrate_interface_discovered_bond_not_primary(self):
@@ -1626,6 +1654,31 @@ class TestMachineHandler(MAASServerTestCase):
         self.assertEqual(
             [{"subnet_id": bond_subnet.id, "ip_address": bond_ip}],
             dehydrated_interface["discovered"])
+
+    def test_dehydrate_interface_include_model_firmware_version(self):
+        owner = factory.make_User()
+        node = factory.make_Node(owner=owner)
+        handler = MachineHandler(owner, {}, None)
+        product = factory.make_name('product')
+        firmware_version = factory.make_name('version')
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, product=product,
+            firmware_version=firmware_version, node=node)
+        dehydrated_interface = handler.dehydrate_interface(interface, node)
+        self.assertEqual(dehydrated_interface['vendor'], interface.vendor)
+        self.assertEqual(dehydrated_interface['product'], interface.product)
+        self.assertEqual(
+            dehydrated_interface['firmware_version'],
+            interface.firmware_version)
+
+    def test_dehydrate_interface_include_sriov_max_vf(self):
+        owner = factory.make_User()
+        node = factory.make_Node(owner=owner)
+        handler = MachineHandler(owner, {}, None)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, sriov_max_vf=10)
+        dehydrated_interface = handler.dehydrate_interface(interface, node)
+        self.assertEqual(dehydrated_interface['sriov_max_vf'], 10)
 
     def test_get_summary_xml_returns_empty_string(self):
         owner = factory.make_User()

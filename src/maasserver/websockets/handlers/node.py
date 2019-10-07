@@ -641,6 +641,10 @@ class NodeHandler(TimestampedModelHandler):
             "link_connected": interface.link_connected,
             "link_speed": interface.link_speed,
             "numa_node": numa_node_index,
+            "vendor": interface.vendor,
+            "product": interface.product,
+            "firmware_version": interface.firmware_version,
+            "sriov_max_vf": interface.sriov_max_vf,
         }
 
         # When the node is an ephemeral state display the discovered IP address

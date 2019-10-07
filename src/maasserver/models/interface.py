@@ -590,6 +590,10 @@ class Interface(CleanSave, TimestampedModel):
     numa_node = ForeignKey(
         'NUMANode', null=True, related_name='interfaces', on_delete=CASCADE)
 
+    # max number of SRIOV VFs supported by the device. 0 means SRIOV is not
+    # supported.
+    sriov_max_vf = PositiveIntegerField(default=0)
+
     def __init__(self, *args, **kwargs):
         type = kwargs.get('type', self.get_type())
         kwargs['type'] = type

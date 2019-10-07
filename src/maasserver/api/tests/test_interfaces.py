@@ -124,6 +124,18 @@ class TestInterfacesAPI(APITestCase.ForUser):
         [interface] = json_load_bytes(response.content)
         self.assertEqual(interface['numa_node'], numa_node.index)
 
+    def test_read_includes_sriov_max_vf(self):
+        node = factory.make_Node()
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, sriov_max_vf=16)
+        uri = get_interfaces_uri(node)
+        response = self.client.get(uri)
+
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        [interface] = json_load_bytes(response.content)
+        self.assertEqual(interface['sriov_max_vf'], 16)
+
     def test_read_on_device(self):
         parent = factory.make_Node()
         device = factory.make_Device(

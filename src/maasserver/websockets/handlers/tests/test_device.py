@@ -125,6 +125,10 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
             "link_connected": interface.link_connected,
             "link_speed": interface.link_speed,
             "numa_node": None,
+            "vendor": interface.vendor,
+            "product": interface.product,
+            "firmware_version": interface.firmware_version,
+            "sriov_max_vf": 0,
         }
         return data
 
