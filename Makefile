@@ -717,12 +717,5 @@ sync-dev-snap: build/dev-snap/prime
 		src/ build/dev-snap/prime/lib/python3.6/site-packages/
 	$(RSYNC) \
 		src/maasserver/static/ build/dev-snap/prime/usr/share/maas/web/static/
-	$(RSYNC) \
-		snap/local/bin/ build/dev-snap/prime/bin/
-	$(RSYNC) \
-		snap/local/bind/ build/dev-snap/prime/usr/share/maas/bind
-	$(RSYNC) \
-		snap/local/conf/ build/dev-snap/prime/usr/share/maas/
-	$(RSYNC) \
-		snap/local/nginx/ build/dev-snap/prime/usr/share/maas/nginx/
+	$(RSYNC) snap/local/tree/ build/dev-snap/prime
 .PHONY: sync-dev-snap
