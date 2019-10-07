@@ -2390,10 +2390,20 @@ describe("NodeDetailsController", function() {
   });
 
   describe("getCPUSubtext", () => {
+    function pluraliseCoresText(count) {
+      if (count === 1) {
+        return "core";
+      } else {
+        return "cores";
+      }
+    }
+
     it("returns only cores when unknown speed", () => {
       makeController();
       $scope.node = node;
-      expect($scope.getCPUSubtext()).toEqual(node.cpu_count + " cores");
+      expect($scope.getCPUSubtext()).toEqual(
+        node.cpu_count + " " + pluraliseCoresText(node.cpu_count)
+      );
     });
 
     it("returns speed in mhz", () => {
@@ -2401,7 +2411,12 @@ describe("NodeDetailsController", function() {
       node.cpu_speed = makeInteger(100, 999);
       $scope.node = node;
       expect($scope.getCPUSubtext()).toEqual(
-        node.cpu_count + " cores, " + node.cpu_speed + " MHz"
+        node.cpu_count +
+          " " +
+          pluraliseCoresText(node.cpu_count) +
+          ", " +
+          node.cpu_speed +
+          " MHz"
       );
     });
 
@@ -2410,7 +2425,12 @@ describe("NodeDetailsController", function() {
       node.cpu_speed = makeInteger(1000, 10000);
       $scope.node = node;
       expect($scope.getCPUSubtext()).toEqual(
-        node.cpu_count + " cores, " + node.cpu_speed / 1000 + " GHz"
+        node.cpu_count +
+          " " +
+          pluraliseCoresText(node.cpu_count) +
+          ", " +
+          node.cpu_speed / 1000 +
+          " GHz"
       );
     });
   });
