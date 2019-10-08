@@ -178,11 +178,11 @@
             <div class="row u-no-margin--top ng-hide" data-ng-hide="isActionError() || isDeployError() || isSSHKeyError() || hasActionPowerError(action.option.name) || (action.option.name !== 'commission' && action.option.name !== 'test')">
                 <hr />
                 <div class="page-header__section">
-                    <form class="p-form">
+                    <form class="p-form row">
                         <div class="col-8">
                             <div class="p-form__group hide-create-tag-label">
-                                <label for="testing-scripts">Hardware tests</label>
-                                <span id="testing-scripts" data-maas-script-select="script" data-script-type="2" data-ng-model="testSelection" class="tags--inline"></span>
+                                <label for="testing-scripts">Tests</label>
+                                <span id="testing-scripts" data-maas-script-select="script" data-script-type="2" data-ng-model="testSelection" class="tags--inline" check-test-parameter-values="checkTestParameterValues" set-default-values="setDefaultValues"></span>
                             </div>
                         </div>
                     </form>
@@ -194,7 +194,7 @@
                     <form class="p-form">
                         <div class="u-align--right">
                             <button class="p-button--base" data-ng-click="actionCancel()">Cancel</button>
-                            <button class="u-no-margin--top" data-ng-class="action.option.name === 'delete' ? 'p-button--negative' : 'p-button--positive'" data-ng-click="actionGo('nodes')" data-ng-hide="hasActionsFailed('nodes')">
+                            <button class="u-no-margin--top" data-ng-class="action.option.name === 'delete' ? 'p-button--negative' : 'p-button--positive'" data-ng-click="actionGo('nodes')" data-ng-hide="hasActionsFailed('nodes')" data-ng-disabled="disableTestButton">
                                 <span data-ng-if="action.option.name === 'commission'">Commission {$ type_name $}</span>
                                 <span data-ng-if="action.option.name === 'test'">Test {$ type_name $}</span>
                             </button>

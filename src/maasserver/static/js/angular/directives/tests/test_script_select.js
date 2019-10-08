@@ -7,16 +7,20 @@
 import { makeInteger, makeName } from "testing/utils";
 import MockWebSocket from "testing/websocket";
 
+import template from "../../../../partials/add-scripts.html";
+
 describe("maasScriptSelect", function() {
   // Load the MAAS module.
   beforeEach(angular.mock.module("MAAS"));
 
   // Create a new scope before each test.
-  var $rootScope, $scope, $q;
+  var $rootScope, $scope, $q, $templateCache;
   beforeEach(inject(function($injector) {
     $rootScope = $injector.get("$rootScope");
     $scope = $rootScope.$new();
     $q = $injector.get("$q");
+    $templateCache = $injector.get("$templateCache");
+    $templateCache.put("static/partials/add-scripts.html", template);
   }));
 
   var ScriptsManager, ManagerHelperService;
@@ -80,6 +84,7 @@ describe("maasScriptSelect", function() {
     var spy = spyOn(ManagerHelperService, "loadManager");
     spy.and.returnValue(defer.promise);
     var directive = compileDirective(0, "scripts");
+    script.parameters = {};
     defer.resolve();
     $scope.$digest();
 
@@ -111,6 +116,7 @@ describe("maasScriptSelect", function() {
     var spy = spyOn(ManagerHelperService, "loadManager");
     spy.and.returnValue(defer.promise);
     var directive = compileDirective(2, "selected_scripts");
+    selected_script.parameters = {};
     defer.resolve();
     $scope.$digest();
 

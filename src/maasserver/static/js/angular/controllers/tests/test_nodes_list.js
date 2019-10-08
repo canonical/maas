@@ -1209,6 +1209,7 @@ describe("NodesListController", function() {
         it("doesnt clear search if not in:Selected", function() {
           makeController();
           $scope.tabs[tab].search = "other";
+          $scope.tabs[tab].testSelection = [];
           $scope.actionCancel(tab);
           expect($scope.tabs[tab].search).toBe("other");
         });
@@ -1216,6 +1217,7 @@ describe("NodesListController", function() {
         it("sets actionOption to null", function() {
           makeController();
           $scope.tabs[tab].actionOption = {};
+          $scope.tabs[tab].testSelection = [];
           $scope.actionCancel(tab);
           expect($scope.tabs[tab].actionOption).toBeNull();
         });
@@ -1247,6 +1249,7 @@ describe("NodesListController", function() {
             makeName("detail")
           ];
           $scope.tabs[tab].actionProgress.affected_nodes = makeInteger(0, 10);
+          $scope.tabs[tab].testSelection = [];
           $scope.actionCancel(tab);
           expect($scope.tabs[tab].actionProgress.total).toBe(0);
           expect($scope.tabs[tab].actionProgress.completed).toBe(0);
@@ -1342,6 +1345,7 @@ describe("NodesListController", function() {
           spyOn($scope, "hasActionsFailed").and.returnValue(true);
           $scope.tabs[tab].actionOption = { name: "start" };
           $scope.tabs[tab].selectedItems = [object];
+          $scope.tabs[tab].testSelection = [];
           $scope.actionGo(tab);
           defer.resolve();
           $scope.$digest();
@@ -1397,6 +1401,7 @@ describe("NodesListController", function() {
           );
           $scope.tabs[tab].actionOption = { name: "start" };
           $scope.tabs[tab].selectedItems = [object];
+          $scope.tabs[tab].testSelection = [];
           $scope.actionGo(tab);
           defer.reject(makeName("error"));
           $scope.$digest();
@@ -1412,6 +1417,7 @@ describe("NodesListController", function() {
           );
           $scope.tabs[tab].actionOption = { name: "start" };
           $scope.tabs[tab].selectedItems = [object];
+          $scope.tabs[tab].testSelection = [];
           $scope.actionGo(tab);
           var error = makeName("error");
           defer.reject(error);
@@ -1719,7 +1725,8 @@ describe("NodesListController", function() {
         $scope.$digest();
         expect(spy).toHaveBeenCalledWith(object, "test", {
           enable_ssh: true,
-          testing_scripts: testing_script_ids
+          testing_scripts: testing_script_ids,
+          script_input: {}
         });
       });
 
@@ -2152,6 +2159,64 @@ describe("NodesListController", function() {
       };
 
       expect($scope.getFailedTestCount("machines")).toEqual(4);
+    });
+  });
+
+  describe("checkTestParameterValues", () => {
+    it("disables test button if a parameter has no value", () => {
+      makeController();
+      $scope.disableTestButton = false;
+      $scope.tabs.machines.testSelection = [
+        {
+          name: "foo",
+          parameters: {
+            url: { type: "url", value: "" },
+            bar: { type: "url", value: "https://example.com" }
+          }
+        }
+      ];
+      $scope.checkTestParameterValues();
+      expect($scope.disableTestButton).toBe(true);
+    });
+
+    it("enables test button if all parameters have values", () => {
+      makeController();
+      $scope.disableTestButton = true;
+      $scope.tabs.machines.testSelection = [
+        {
+          name: "foo",
+          parameters: {
+            url: { type: "url", value: "https://one.example.com" },
+            bar: { type: "url", value: "https://example.com" }
+          }
+        }
+      ];
+      $scope.checkTestParameterValues();
+      expect($scope.disableTestButton).toBe(false);
+    });
+  });
+
+  describe("setDefaultValues", () => {
+    it("sets value to default if no value", () => {
+      makeController();
+      const parameters = {
+        foo: { default: "https://example.com" }
+      };
+      const updatedParameters = $scope.setDefaultValues(parameters);
+      expect(updatedParameters).toEqual({
+        foo: { default: "https://example.com", value: "https://example.com" }
+      });
+    });
+
+    it("sets value to default even if it has a value", () => {
+      makeController();
+      const parameters = {
+        foo: { default: "https://example.com", value: "https://website.com" }
+      };
+      const updatedParameters = $scope.setDefaultValues(parameters);
+      expect(updatedParameters).toEqual({
+        foo: { default: "https://example.com", value: "https://example.com" }
+      });
     });
   });
 });

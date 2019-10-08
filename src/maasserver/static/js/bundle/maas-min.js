@@ -38987,21 +38987,21 @@ function maasScriptRunTime() {
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.cacheScriptSelect = cacheScriptSelect;
 exports.maasScriptSelect = maasScriptSelect;
 maasScriptSelect.$inject = ["ScriptsManager", "ManagerHelperService"];
-cacheScriptSelect.$inject = ["$templateCache"];
 
 /* Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * Script select directive.
  */
-
-/* @ngInject */
-function cacheScriptSelect($templateCache) {
-  // Inject the script-select.html into the template cache.
-  $templateCache.put("directive/templates/script-select.html", ['<tags-input data-ng-model="ngModel" placeholder="Select scripts" ', 'key-property="id" display-property="name" min-length=1', 'on-tag-adding="onTagAdding($tag)" spellcheck="false"', 'add-from-autocomplete-only="true" on-tag-removed="refocus()"', 'on-tag-adding="onTagAdding($tag)" on-tag-added="refocus()">', '<auto-complete source="getScripts($query)" min-length="0" ', 'load-on-down-arrow="true" load-on-focus="true" ', 'load-on-empty="true" template="script-template" ', 'max-results-to-show="1000">', "</auto-complete>", "</tags-input>", '<script type="text/ng-template" id="script-template">', "<div>", "<p>", "{{data.name}} {{data.tags_string}}", "</p>", '<p class="p-form-help-text">', "{{data.description}}", "</p>", "</div>", "</script>"].join(""));
+function filterScriptsByParam(scripts, param) {
+  return scripts.filter(function (script) {
+    var hasParam = Object.values(script.parameters).filter(function (value) {
+      return value.type === param;
+    });
+    return hasParam.length > 0;
+  });
 }
 /* @ngInject */
 
@@ -39012,12 +39012,17 @@ function maasScriptSelect(ScriptsManager, ManagerHelperService) {
     require: "ngModel",
     scope: {
       ngModel: "=",
-      scriptType: "="
+      scriptType: "=",
+      setDefaultValues: "=",
+      checkTestParameterValues: "="
     },
-    templateUrl: "directive/templates/script-select.html",
+    templateUrl: "static/partials/add-scripts.html",
     link: function link($scope, element) {
       $scope.allScripts = ScriptsManager.getItems();
       $scope.scripts = [];
+      $scope.scriptsWithUrlParam = [];
+      $scope.currentScript = {};
+      $scope.onParameterChange = $scope.checkTestParameterValues;
 
       $scope.getScripts = function (query) {
         $scope.scripts.length = 0;
@@ -39045,14 +39050,31 @@ function maasScriptSelect(ScriptsManager, ManagerHelperService) {
       };
 
       $scope.onTagAdding = function (tag) {
+        tag.parameters = $scope.setDefaultValues(tag.parameters);
         return tag.id !== undefined;
+      };
+
+      $scope.onTagAdded = function () {
+        $scope.scriptsWithUrlParam = filterScriptsByParam($scope.ngModel, "url");
+        $scope.onParameterChange();
+        $scope.refocus();
+      };
+
+      $scope.onTagRemoved = function () {
+        $scope.scriptsWithUrlParam = filterScriptsByParam($scope.ngModel, "url");
+        $scope.onParameterChange();
+        $scope.refocus();
       };
 
       $scope.refocus = function () {
         var tagsInput = element.find("tags-input");
         var tagsInputScope = tagsInput.isolateScope();
-        tagsInputScope.eventHandlers.input.change("");
-        tagsInputScope.eventHandlers.input.focus();
+
+        if (tagsInputScope) {
+          tagsInputScope.eventHandlers.input.change("");
+          tagsInputScope.eventHandlers.input.focus();
+        }
+
         tagsInput.find("input").focus();
       };
 
@@ -39075,6 +39097,10 @@ function maasScriptSelect(ScriptsManager, ManagerHelperService) {
               $scope.ngModel.push(script);
             }
           }
+        });
+        $scope.scriptsWithUrlParam = filterScriptsByParam($scope.ngModel, "url");
+        $scope.scriptsWithUrlParam.forEach(function (script) {
+          script.parameters = $scope.setDefaultValues(script.parameters);
         });
       });
     }
@@ -54302,7 +54328,8 @@ function NodeDetailsController($scope, $rootScope, $routeParams, $location, Devi
   $scope.scripts = ScriptsManager.getItems();
   $scope.vlans = VLANsManager.getItems();
   $scope.hideHighAvailabilityNotification = false;
-  $scope.failedUpdateError = ""; // Node header section.
+  $scope.failedUpdateError = "";
+  $scope.disableTestButton = false; // Node header section.
 
   $scope.header = {
     editing: false,
@@ -54383,6 +54410,20 @@ function NodeDetailsController($scope, $rootScope, $routeParams, $location, Devi
   $scope.openSection = function (sectionName) {
     $scope.section.area = sectionName;
     $location.search("area", sectionName);
+  };
+
+  $scope.checkTestParameterValues = function () {
+    var disableButton = false;
+    $scope.testSelection.forEach(function (test) {
+      var params = test.parameters;
+
+      for (var key in params) {
+        if (params[key].type === "url" && !disableButton && !params[key].value) {
+          disableButton = true;
+        }
+      }
+    });
+    $scope.disableTestButton = disableButton;
   }; // Updates the page title.
 
 
@@ -54803,6 +54844,16 @@ function NodeDetailsController($scope, $rootScope, $routeParams, $location, Devi
     }
 
     return false;
+  };
+
+  $scope.setDefaultValues = function (parameters) {
+    var keys = Object.keys(parameters);
+    keys.forEach(function (key) {
+      if (parameters[key].default) {
+        parameters[key].value = parameters[key].default;
+      }
+    });
+    return parameters;
   }; // Called when the actionOption has changed.
 
 
@@ -54821,11 +54872,15 @@ function NodeDetailsController($scope, $rootScope, $routeParams, $location, Devi
     $scope.action.showing_confirmation = false;
     $scope.action.confirmation_message = "";
     $scope.action.confirmation_details = [];
+    $scope.testSelection.forEach(function (script) {
+      script.parameters = $scope.setDefaultValues(script.parameters);
+    });
   }; // Perform the action.
 
 
   $scope.actionGo = function () {
-    var extra = {}; // Set deploy parameters if a deploy.
+    var extra = {};
+    var scriptInput = {}; // Set deploy parameters if a deploy.
 
     if ($scope.action.option.name === "deploy" && angular.isString($scope.osSelection.osystem) && angular.isString($scope.osSelection.release)) {
       // Set extra. UI side the release is structured os/release, but
@@ -54903,6 +54958,33 @@ function NodeDetailsController($scope, $rootScope, $routeParams, $location, Devi
         // Tell the region not to run any tests.
         extra.testing_scripts.push("none");
       }
+
+      var testingScriptsWithUrlParam = $scope.testSelection.filter(function (test) {
+        var paramsWithUrl = [];
+
+        for (var key in test.parameters) {
+          if (test.parameters[key].type === "url") {
+            paramsWithUrl.push(test.parameters[key]);
+          }
+        }
+
+        return paramsWithUrl.length;
+      });
+      testingScriptsWithUrlParam.forEach(function (test) {
+        var urlValue;
+
+        for (var key in test.parameters) {
+          if (test.parameters[key].type === "url") {
+            urlValue = test.parameters[key].value || test.parameters[key].default;
+            break;
+          }
+        }
+
+        scriptInput[test.name] = {
+          url: urlValue
+        };
+      });
+      extra.script_input = scriptInput;
     } else if ($scope.action.option.name === "release") {
       // Set the release options.
       extra.erase = $scope.releaseOptions.erase;
@@ -54949,6 +55031,9 @@ function NodeDetailsController($scope, $rootScope, $routeParams, $location, Devi
       $scope.testSelection = [];
     }, function (error) {
       $scope.action.error = error;
+      $scope.testSelection.forEach(function (script) {
+        script.parameters = $scope.setDefaultValues(script.parameters);
+      });
     });
   }; // Return true if the authenticated user is super user.
 
@@ -56317,7 +56402,8 @@ function NodesListController($q, $scope, $interval, $rootScope, $routeParams, $r
   $scope.tabs.switches.deployOptions = {
     installKVM: false
   };
-  $scope.tabs.switches.releaseOptions = {}; // Options for add hardware dropdown.
+  $scope.tabs.switches.releaseOptions = {};
+  $scope.disableTestButton = false; // Options for add hardware dropdown.
 
   $scope.addHardwareOption = null;
   $scope.addHardwareOptions = [{
@@ -56499,7 +56585,31 @@ function NodesListController($q, $scope, $interval, $rootScope, $routeParams, $r
         $scope.tabs[tab].manager.unselectItem(node.system_id);
       }
     });
-  } // Toggles between the current tab.
+  }
+
+  $scope.setDefaultValues = function (parameters) {
+    var keys = Object.keys(parameters);
+    keys.forEach(function (key) {
+      if (parameters[key].default) {
+        parameters[key].value = parameters[key].default;
+      }
+    });
+    return parameters;
+  };
+
+  $scope.checkTestParameterValues = function () {
+    var disableButton = false;
+    $scope.tabs.machines.testSelection.forEach(function (test) {
+      var params = test.parameters;
+
+      for (var key in params) {
+        if (params[key].type === "url" && !disableButton && !params[key].value) {
+          disableButton = true;
+        }
+      }
+    });
+    $scope.disableTestButton = disableButton;
+  }; // Toggles between the current tab.
 
 
   $scope.toggleTab = function (tab) {
@@ -56781,12 +56891,16 @@ function NodesListController($q, $scope, $interval, $rootScope, $routeParams, $r
     leaveViewSelected(tab);
     $scope.tabs[tab].actionOption = null;
     $scope.tabs[tab].suppressFailedTestsChecked = false;
+    $scope.tabs[tab].testSelection.forEach(function (script) {
+      script.parameters = $scope.setDefaultValues(script.parameters);
+    });
   }; // Perform the action on all nodes.
 
 
   $scope.actionGo = function (tabName) {
     var tab = $scope.tabs[tabName];
     var extra = {};
+    var scriptInput = {};
     var deferred = $q.defer(); // Actions can use preAction is to execute before the action
     // is exectued on all the nodes. We initialize it with a
     // promise so that later we can always treat it as a
@@ -56899,6 +57013,33 @@ function NodesListController($q, $scope, $interval, $rootScope, $routeParams, $r
         // Tell the region not to run any tests.
         extra.testing_scripts.push("none");
       }
+
+      var testingScriptsWithUrlParam = tab.testSelection.filter(function (test) {
+        var paramsWithUrl = [];
+
+        for (var key in test.parameters) {
+          if (test.parameters[key].type === "url") {
+            paramsWithUrl.push(test.parameters[key]);
+          }
+        }
+
+        return paramsWithUrl.length;
+      });
+      testingScriptsWithUrlParam.forEach(function (test) {
+        var urlValue;
+
+        for (var key in test.parameters) {
+          if (test.parameters[key].type === "url") {
+            urlValue = test.parameters[key].value || test.parameters[key].default;
+            break;
+          }
+        }
+
+        scriptInput[test.name] = {
+          url: urlValue
+        };
+      });
+      extra.script_input = scriptInput;
     } else if (tab.actionOption.name === "release") {
       // Set the release options.
       extra.erase = tab.releaseOptions.erase;
@@ -56961,6 +57102,9 @@ function NodesListController($q, $scope, $interval, $rootScope, $routeParams, $r
         }, function (error) {
           addErrorToActionProgress(tabName, error, node);
           node.action_failed = true;
+          tab.testSelection.forEach(function (script) {
+            script.parameters = $scope.setDefaultValues(script.parameters);
+          });
         }).finally(function () {
           updateSelectedItems(tabName);
         });

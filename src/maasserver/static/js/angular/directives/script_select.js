@@ -4,35 +4,13 @@
  * Script select directive.
  */
 
-/* @ngInject */
-export function cacheScriptSelect($templateCache) {
-  // Inject the script-select.html into the template cache.
-  $templateCache.put(
-    "directive/templates/script-select.html",
-    [
-      '<tags-input data-ng-model="ngModel" placeholder="Select scripts" ',
-      'key-property="id" display-property="name" min-length=1',
-      'on-tag-adding="onTagAdding($tag)" spellcheck="false"',
-      'add-from-autocomplete-only="true" on-tag-removed="refocus()"',
-      'on-tag-adding="onTagAdding($tag)" on-tag-added="refocus()">',
-      '<auto-complete source="getScripts($query)" min-length="0" ',
-      'load-on-down-arrow="true" load-on-focus="true" ',
-      'load-on-empty="true" template="script-template" ',
-      'max-results-to-show="1000">',
-      "</auto-complete>",
-      "</tags-input>",
-      '<script type="text/ng-template" id="script-template">',
-      "<div>",
-      "<p>",
-      "{{data.name}} {{data.tags_string}}",
-      "</p>",
-      '<p class="p-form-help-text">',
-      "{{data.description}}",
-      "</p>",
-      "</div>",
-      "</script>"
-    ].join("")
-  );
+function filterScriptsByParam(scripts, param) {
+  return scripts.filter(script => {
+    const hasParam = Object.values(script.parameters).filter(value => {
+      return value.type === param;
+    });
+    return hasParam.length > 0;
+  });
 }
 
 /* @ngInject */
@@ -42,30 +20,40 @@ export function maasScriptSelect(ScriptsManager, ManagerHelperService) {
     require: "ngModel",
     scope: {
       ngModel: "=",
-      scriptType: "="
+      scriptType: "=",
+      setDefaultValues: "=",
+      checkTestParameterValues: "="
     },
-    templateUrl: "directive/templates/script-select.html",
-    link: function($scope, element) {
+    templateUrl: "static/partials/add-scripts.html",
+    link: ($scope, element) => {
       $scope.allScripts = ScriptsManager.getItems();
       $scope.scripts = [];
-      $scope.getScripts = function(query) {
+      $scope.scriptsWithUrlParam = [];
+      $scope.currentScript = {};
+      $scope.onParameterChange = $scope.checkTestParameterValues;
+
+      $scope.getScripts = query => {
         $scope.scripts.length = 0;
-        angular.forEach($scope.allScripts, function(script) {
+
+        angular.forEach($scope.allScripts, script => {
           if (
             script.script_type === $scope.scriptType &&
             script.name.indexOf(query) >= 0
           ) {
             script.tags_string = "";
-            angular.forEach(script.tags, function(tag) {
+
+            angular.forEach(script.tags, tag => {
               if (script.tags_string === "") {
                 script.tags_string = "(" + tag;
               } else {
                 script.tags_string += ", " + tag;
               }
             });
+
             if (script.tags_string !== "") {
               script.tags_string += ")";
             }
+
             $scope.scripts.push(script);
           }
         });
@@ -73,24 +61,48 @@ export function maasScriptSelect(ScriptsManager, ManagerHelperService) {
           data: $scope.scripts
         };
       };
-      $scope.onTagAdding = function(tag) {
+
+      $scope.onTagAdding = tag => {
+        tag.parameters = $scope.setDefaultValues(tag.parameters);
         return tag.id !== undefined;
       };
 
-      $scope.refocus = function() {
+      $scope.onTagAdded = () => {
+        $scope.scriptsWithUrlParam = filterScriptsByParam(
+          $scope.ngModel,
+          "url"
+        );
+        $scope.onParameterChange();
+        $scope.refocus();
+      };
+
+      $scope.onTagRemoved = () => {
+        $scope.scriptsWithUrlParam = filterScriptsByParam(
+          $scope.ngModel,
+          "url"
+        );
+        $scope.onParameterChange();
+        $scope.refocus();
+      };
+
+      $scope.refocus = () => {
         var tagsInput = element.find("tags-input");
         var tagsInputScope = tagsInput.isolateScope();
-        tagsInputScope.eventHandlers.input.change("");
-        tagsInputScope.eventHandlers.input.focus();
+        if (tagsInputScope) {
+          tagsInputScope.eventHandlers.input.change("");
+          tagsInputScope.eventHandlers.input.focus();
+        }
         tagsInput.find("input").focus();
       };
 
       if (!angular.isArray($scope.ngModel)) {
         $scope.ngModel = [];
       }
-      ManagerHelperService.loadManager($scope, ScriptsManager).then(function() {
+
+      ManagerHelperService.loadManager($scope, ScriptsManager).then(() => {
         $scope.ngModel.length = 0;
-        angular.forEach($scope.allScripts, function(script) {
+
+        angular.forEach($scope.allScripts, script => {
           if (
             script.script_type === $scope.scriptType &&
             script.for_hardware.length === 0
@@ -109,6 +121,15 @@ export function maasScriptSelect(ScriptsManager, ManagerHelperService) {
               $scope.ngModel.push(script);
             }
           }
+        });
+
+        $scope.scriptsWithUrlParam = filterScriptsByParam(
+          $scope.ngModel,
+          "url"
+        );
+
+        $scope.scriptsWithUrlParam.forEach(script => {
+          script.parameters = $scope.setDefaultValues(script.parameters);
         });
       });
     }

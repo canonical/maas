@@ -323,6 +323,7 @@ function NodesListController(
     installKVM: false
   };
   $scope.tabs.switches.releaseOptions = {};
+  $scope.disableTestButton = false;
 
   // Options for add hardware dropdown.
   $scope.addHardwareOption = null;
@@ -507,6 +508,36 @@ function NodesListController(
       }
     });
   }
+
+  $scope.setDefaultValues = parameters => {
+    const keys = Object.keys(parameters);
+
+    keys.forEach(key => {
+      if (parameters[key].default) {
+        parameters[key].value = parameters[key].default;
+      }
+    });
+
+    return parameters;
+  };
+
+  $scope.checkTestParameterValues = () => {
+    let disableButton = false;
+    $scope.tabs.machines.testSelection.forEach(test => {
+      const params = test.parameters;
+      for (let key in params) {
+        if (
+          params[key].type === "url" &&
+          !disableButton &&
+          !params[key].value
+        ) {
+          disableButton = true;
+        }
+      }
+    });
+
+    $scope.disableTestButton = disableButton;
+  };
 
   // Toggles between the current tab.
   $scope.toggleTab = function(tab) {
@@ -815,12 +846,16 @@ function NodesListController(
     leaveViewSelected(tab);
     $scope.tabs[tab].actionOption = null;
     $scope.tabs[tab].suppressFailedTestsChecked = false;
+    $scope.tabs[tab].testSelection.forEach(script => {
+      script.parameters = $scope.setDefaultValues(script.parameters);
+    });
   };
 
   // Perform the action on all nodes.
   $scope.actionGo = function(tabName) {
     var tab = $scope.tabs[tabName];
     var extra = {};
+    let scriptInput = {};
     var deferred = $q.defer();
     // Actions can use preAction is to execute before the action
     // is exectued on all the nodes. We initialize it with a
@@ -940,6 +975,31 @@ function NodesListController(
         // Tell the region not to run any tests.
         extra.testing_scripts.push("none");
       }
+      const testingScriptsWithUrlParam = tab.testSelection.filter(test => {
+        const paramsWithUrl = [];
+        for (let key in test.parameters) {
+          if (test.parameters[key].type === "url") {
+            paramsWithUrl.push(test.parameters[key]);
+          }
+        }
+        return paramsWithUrl.length;
+      });
+
+      testingScriptsWithUrlParam.forEach(test => {
+        let urlValue;
+        for (let key in test.parameters) {
+          if (test.parameters[key].type === "url") {
+            urlValue =
+              test.parameters[key].value || test.parameters[key].default;
+            break;
+          }
+        }
+        scriptInput[test.name] = {
+          url: urlValue
+        };
+      });
+
+      extra.script_input = scriptInput;
     } else if (tab.actionOption.name === "release") {
       // Set the release options.
       extra.erase = tab.releaseOptions.erase;
@@ -1020,6 +1080,11 @@ function NodesListController(
               function(error) {
                 addErrorToActionProgress(tabName, error, node);
                 node.action_failed = true;
+                tab.testSelection.forEach(script => {
+                  script.parameters = $scope.setDefaultValues(
+                    script.parameters
+                  );
+                });
               }
             )
             .finally(function() {

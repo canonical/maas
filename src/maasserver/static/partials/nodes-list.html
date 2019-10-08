@@ -381,8 +381,8 @@
                 <form class="p-form row">
                     <div class="col-6">
                         <div class="p-form__group hide-create-tag-label">
-                            <label for="{$ tab $}-testing-scripts">Hardware tests</label>
-                            <span id="{$ tab $}-testing-scripts" data-maas-script-select="script" data-script-type="2" data-ng-model="tabs[tab].testSelection" class="tags--inline"></span>
+                            <label for="{$ tab $}-testing-scripts">Tests</label>
+                            <span id="{$ tab $}-testing-scripts" data-maas-script-select="script" data-script-type="2" data-ng-model="tabs[tab].testSelection" class="tags--inline" check-test-parameter-values="checkTestParameterValues" set-default-values="setDefaultValues"></span>
                         </div>
                     </div>
                 </form>
@@ -391,7 +391,7 @@
                 <hr />
                 <div class="page-header__controls u-align--right">
                     <button class="p-button--base" type="button" data-ng-click="actionCancel(tab)">Cancel</button>
-                    <button data-ng-class="tabs[tab].actionOption.name === 'delete' ? 'p-button--negative' : 'p-button--positive'" data-ng-click="actionGo(tab)" data-ng-hide="hasActionsFailed(tab)">
+                    <button data-ng-class="tabs[tab].actionOption.name === 'delete' ? 'p-button--negative' : 'p-button--positive'" data-ng-click="actionGo(tab)" data-ng-hide="hasActionsFailed(tab)" data-ng-disabled="disableTestButton">
                         <span data-ng-if="tabs[tab].actionOption.name === 'commission'">Commission {$ tabs[tab].selectedItems.length $}
                             <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
                         </span>
@@ -667,7 +667,7 @@
                 <form class="p-form">
                     <div class="col-8">
                         <div class="p-form__group hide-create-tag-label">
-                            <label for="testing-scripts">Hardware Tests</label>
+                            <label for="testing-scripts">Tests</label>
                             <span id="testing-scripts" data-maas-script-select="script" data-script-type="2" data-ng-model="tabs.machines.testSelection" class="tags--inline"></span>
                         </div>
                     </div>

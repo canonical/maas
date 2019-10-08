@@ -83,6 +83,7 @@ function NodeDetailsController(
   $scope.vlans = VLANsManager.getItems();
   $scope.hideHighAvailabilityNotification = false;
   $scope.failedUpdateError = "";
+  $scope.disableTestButton = false;
 
   // Node header section.
   $scope.header = {
@@ -182,6 +183,24 @@ function NodeDetailsController(
   $scope.openSection = function(sectionName) {
     $scope.section.area = sectionName;
     $location.search("area", sectionName);
+  };
+
+  $scope.checkTestParameterValues = () => {
+    let disableButton = false;
+    $scope.testSelection.forEach(test => {
+      const params = test.parameters;
+      for (let key in params) {
+        if (
+          params[key].type === "url" &&
+          !disableButton &&
+          !params[key].value
+        ) {
+          disableButton = true;
+        }
+      }
+    });
+
+    $scope.disableTestButton = disableButton;
   };
 
   // Updates the page title.
@@ -643,6 +662,18 @@ function NodeDetailsController(
     return false;
   };
 
+  $scope.setDefaultValues = parameters => {
+    const keys = Object.keys(parameters);
+
+    keys.forEach(key => {
+      if (parameters[key].default) {
+        parameters[key].value = parameters[key].default;
+      }
+    });
+
+    return parameters;
+  };
+
   // Called when the actionOption has changed.
   $scope.action.optionChanged = function() {
     // Clear the action error.
@@ -659,11 +690,15 @@ function NodeDetailsController(
     $scope.action.showing_confirmation = false;
     $scope.action.confirmation_message = "";
     $scope.action.confirmation_details = [];
+    $scope.testSelection.forEach(script => {
+      script.parameters = $scope.setDefaultValues(script.parameters);
+    });
   };
 
   // Perform the action.
   $scope.actionGo = function() {
     let extra = {};
+    let scriptInput = {};
     // Set deploy parameters if a deploy.
     if (
       $scope.action.option.name === "deploy" &&
@@ -741,6 +776,32 @@ function NodeDetailsController(
         // Tell the region not to run any tests.
         extra.testing_scripts.push("none");
       }
+
+      const testingScriptsWithUrlParam = $scope.testSelection.filter(test => {
+        const paramsWithUrl = [];
+        for (let key in test.parameters) {
+          if (test.parameters[key].type === "url") {
+            paramsWithUrl.push(test.parameters[key]);
+          }
+        }
+        return paramsWithUrl.length;
+      });
+
+      testingScriptsWithUrlParam.forEach(test => {
+        let urlValue;
+        for (let key in test.parameters) {
+          if (test.parameters[key].type === "url") {
+            urlValue =
+              test.parameters[key].value || test.parameters[key].default;
+            break;
+          }
+        }
+        scriptInput[test.name] = {
+          url: urlValue
+        };
+      });
+
+      extra.script_input = scriptInput;
     } else if ($scope.action.option.name === "release") {
       // Set the release options.
       extra.erase = $scope.releaseOptions.erase;
@@ -800,6 +861,9 @@ function NodeDetailsController(
         },
         function(error) {
           $scope.action.error = error;
+          $scope.testSelection.forEach(script => {
+            script.parameters = $scope.setDefaultValues(script.parameters);
+          });
         }
       );
   };

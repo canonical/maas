@@ -1248,6 +1248,7 @@ describe("NodeDetailsController", function() {
       $scope.actionGo();
       expect(MachinesManager.performAction).toHaveBeenCalledWith(node, "test", {
         enable_ssh: true,
+        script_input: {},
         testing_scripts: testing_script_ids
       });
     });
@@ -2581,6 +2582,64 @@ describe("NodeDetailsController", function() {
           mac_address: ""
         })
       ).toBe(true);
+    });
+  });
+
+  describe("checkTestParameterValues", () => {
+    it("disables test button if a parameter has no value", () => {
+      makeController();
+      $scope.disableTestButton = false;
+      $scope.testSelection = [
+        {
+          name: "foo",
+          parameters: {
+            url: { type: "url", value: "" },
+            bar: { type: "url", value: "https://example.com" }
+          }
+        }
+      ];
+      $scope.checkTestParameterValues();
+      expect($scope.disableTestButton).toBe(true);
+    });
+
+    it("enables test button if all parameters have values", () => {
+      makeController();
+      $scope.disableTestButton = true;
+      $scope.testSelection = [
+        {
+          name: "foo",
+          parameters: {
+            url: { type: "url", value: "https://one.example.com" },
+            bar: { type: "url", value: "https://example.com" }
+          }
+        }
+      ];
+      $scope.checkTestParameterValues();
+      expect($scope.disableTestButton).toBe(false);
+    });
+  });
+
+  describe("setDefaultValues", () => {
+    it("sets value to default if no value", () => {
+      makeController();
+      const parameters = {
+        foo: { default: "https://example.com" }
+      };
+      const updatedParameters = $scope.setDefaultValues(parameters);
+      expect(updatedParameters).toEqual({
+        foo: { default: "https://example.com", value: "https://example.com" }
+      });
+    });
+
+    it("sets value to default even if it has a value", () => {
+      makeController();
+      const parameters = {
+        foo: { default: "https://example.com", value: "https://website.com" }
+      };
+      const updatedParameters = $scope.setDefaultValues(parameters);
+      expect(updatedParameters).toEqual({
+        foo: { default: "https://example.com", value: "https://example.com" }
+      });
     });
   });
 });

@@ -29,6 +29,7 @@ function NodesManager(RegionConnection, Manager, KVMDeployOSBlacklist, $log) {
     if (!angular.isObject(extra)) {
       extra = {};
     }
+
     return RegionConnection.callMethod(this._handler + ".action", {
       system_id: node.system_id,
       action: action,
