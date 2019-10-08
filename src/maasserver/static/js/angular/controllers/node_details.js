@@ -1319,7 +1319,7 @@ function NodeDetailsController(
       case 22: // eslint-disable-line no-fallthrough
         return false;
     }
-    switch ($scope.node.testing_status) {
+    switch ($scope.node.testing_status.status) {
       // Tests haven't been run
       case -1:
       // Tests have passed

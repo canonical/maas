@@ -346,7 +346,7 @@ describe("maasMachinesTable", function() {
       angular.forEach(testing_statuses, function(testing_status) {
         var machine = {
           status_code: 4, // READY
-          testing_status: testing_status
+          testing_status: { status: testing_status }
         };
         expect(scope.showFailedTestWarning(machine)).toBe(false);
       });
@@ -365,7 +365,7 @@ describe("maasMachinesTable", function() {
             if (testing_statuses.indexOf(j) === -1) {
               var machine = {
                 status_code: i,
-                testing_status: j
+                testing_status: { status: j }
               };
               expect(scope.showFailedTestWarning(machine)).toBe(true);
             }
@@ -382,7 +382,7 @@ describe("maasMachinesTable", function() {
       spyOn(scope, "showSpinner").and.returnValue(true);
       spyOn(scope, "showFailedTestWarning").and.returnValue(false);
       var machine = {
-        other_status_status: 3
+        other_test_status: { status: 3 }
       };
       expect(scope.showNodeStatus(machine)).toBe(false);
     });
@@ -393,7 +393,7 @@ describe("maasMachinesTable", function() {
       spyOn(scope, "showSpinner").and.returnValue(false);
       spyOn(scope, "showFailedTestWarning").and.returnValue(true);
       var machine = {
-        other_test_status: 3
+        other_test_status: { status: 3 }
       };
       expect(scope.showNodeStatus(machine)).toBe(false);
     });
@@ -404,7 +404,7 @@ describe("maasMachinesTable", function() {
       spyOn(scope, "showSpinner").and.returnValue(false);
       spyOn(scope, "showFailedTestWarning").and.returnValue(false);
       var machine = {
-        other_test_status: 2
+        other_test_status: { status: 2 }
       };
       expect(scope.showNodeStatus(machine)).toBe(false);
     });
@@ -415,7 +415,7 @@ describe("maasMachinesTable", function() {
       spyOn(scope, "showSpinner").and.returnValue(false);
       spyOn(scope, "showFailedTestWarning").and.returnValue(false);
       var machine = {
-        other_status_status: 3
+        other_test_status: { status: 3 }
       };
       expect(scope.showNodeStatus(machine)).toBe(true);
     });

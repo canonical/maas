@@ -110,6 +110,8 @@ describe("NodeDetailsController", function() {
       interfaces: [],
       extra_macs: [],
       cpu_count: makeInteger(0, 64),
+      commissioning_status: {},
+      testing_status: {},
       numa_nodes: [
         {
           index: 0,
@@ -2384,7 +2386,7 @@ describe("NodeDetailsController", function() {
       node.status_code = 4;
       $scope.node = node;
       angular.forEach([-1, 2], function(status) {
-        node.testing_status = status;
+        node.testing_status.status = status;
         expect($scope.showFailedTestWarning()).toBe(false);
       });
     });
@@ -2397,7 +2399,7 @@ describe("NodeDetailsController", function() {
       for (i = 3; i <= 20; i++) {
         for (j = 3; j <= 8; j++) {
           node.status_code = i;
-          node.testing_status = j;
+          node.testing_status.status = j;
           expect($scope.showFailedTestWarning()).toBe(true);
         }
       }

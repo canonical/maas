@@ -290,7 +290,7 @@ function maasMachinesTable(
         case NodeStatus.FAILED_TESTING:
           return false;
       }
-      switch (machine.testing_status) {
+      switch (machine.testing_status.status) {
         // Tests haven't been run
         case -1:
         // Tests have passed
@@ -307,8 +307,8 @@ function maasMachinesTable(
       if (
         !$scope.showSpinner(machine) &&
         !$scope.showFailedTestWarning(machine) &&
-        machine.other_test_status !== -1 &&
-        machine.other_test_status !== 2
+        machine.other_test_status.status !== -1 &&
+        machine.other_test_status.status !== 2
       ) {
         return true;
       } else {

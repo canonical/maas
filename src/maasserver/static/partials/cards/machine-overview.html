@@ -32,8 +32,22 @@
         <p class="p-text--muted">{$ node.metadata.cpu_model || "Unknown model" $}</p>
       </div>
     </div>
-    <span node.cpu_test_status="script-status" data-script-status="node.cpu_test_status"></span>
-    {$ node.cpu_test_status_tooltip $}
+    <div>
+      <ul class="p-inline-list u-no-margin--bottom">
+        <li class="p-inline-list__item">
+          <span><i class="p-icon--success"></i>{$ node.cpu_test_status.passed $}</span>
+        </li>
+        <li class="p-inline-list__item">
+          <span><i class="p-icon--pending"></i>{$ node.cpu_test_status.pending + node.cpu_test_status.running $}</span>
+        </li>
+        <li class="p-inline-list__item">
+          <span><i class="p-icon--error"></i>{$ node.cpu_test_status.failed $}</span>
+        </li>
+        <li class="p-inline-list__item">
+          <a ng-click="section.area = 'testing'">View&nbsp;results&nbsp;&rsaquo;</a>
+        </li>
+      </ul>
+    </div>
   </div>
 
   <div class="memory">
@@ -42,8 +56,20 @@
   </div>
 
   <div class="memory-tests u-flex-bottom">
-    <span node.memory_test_status="script-status" data-script-status="node.memory_test_status"></span>
-    {$ node.memory_test_status_tooltip $}
+    <ul class="p-inline-list u-no-margin--bottom">
+      <li class="p-inline-list__item">
+        <span><i class="p-icon--success"></i>{$ node.memory_test_status.passed $}</span>
+      </li>
+      <li class="p-inline-list__item">
+        <span><i class="p-icon--pending"></i>{$ node.memory_test_status.pending + node.memory_test_status.running $}</span>
+      </li>
+      <li class="p-inline-list__item">
+        <span><i class="p-icon--error"></i>{$ node.memory_test_status.failed $}</span>
+      </li>
+      <li class="p-inline-list__item">
+        <a ng-click="section.area = 'testing'">View&nbsp;results&nbsp;&rsaquo;</a>
+      </li>
+    </ul>
   </div>
 
   <div class="storage">
@@ -61,8 +87,20 @@
   </div>
 
   <div class="storage-tests u-flex-bottom">
-    <span node.storage_test_status="script-status" data-script-status="node.storage_test_status"></span>
-    {$ node.storage_test_status_tooltip $}
+    <ul class="p-inline-list u-no-margin--bottom">
+      <li class="p-inline-list__item">
+        <span><i class="p-icon--success"></i>{$ node.storage_test_status.passed $}</span>
+      </li>
+      <li class="p-inline-list__item">
+        <span><i class="p-icon--pending"></i>{$ node.storage_test_status.pending + node.storage_test_status.running $}</span>
+      </li>
+      <li class="p-inline-list__item">
+        <span><i class="p-icon--error"></i>{$ node.storage_test_status.failed $}</span>
+      </li>
+      <li class="p-inline-list__item">
+        <a ng-click="section.area = 'testing'">View&nbsp;results&nbsp;&rsaquo;</a>
+      </li>
+    </ul>
   </div>
 
   <div class="details u-space-between--grid">

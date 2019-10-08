@@ -96,7 +96,6 @@ from metadataserver.enum import (
     HARDWARE_TYPE,
     RESULT_TYPE,
 )
-from metadataserver.models.scriptset import get_status_from_qs
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.rpc.exceptions import UnknownPowerType
 from provisioningserver.utils.twisted import asynchronous
@@ -301,64 +300,40 @@ class MachineHandler(NodeHandler):
             self._script_results.get(obj.id, {}).get(HARDWARE_TYPE.CPU, [])
             if script_result.script_set.result_type == RESULT_TYPE.TESTING
         ]
-        data["cpu_test_status"] = get_status_from_qs(cpu_script_results)
-        cpu_tooltip = self.dehydrate_hardware_status_tooltip(
+        data["cpu_test_status"] = self.dehydrate_test_statuses(
             cpu_script_results)
-        data["cpu_test_status_tooltip"] = cpu_tooltip
 
         memory_script_results = [
             script_result for script_result in
             self._script_results.get(obj.id, {}).get(HARDWARE_TYPE.MEMORY, [])
             if script_result.script_set.result_type == RESULT_TYPE.TESTING
         ]
-        data["memory_test_status"] = get_status_from_qs(
+        data["memory_test_status"] = self.dehydrate_test_statuses(
             memory_script_results)
-        memory_tooltip = self.dehydrate_hardware_status_tooltip(
-            memory_script_results)
-        data["memory_test_status_tooltip"] = memory_tooltip
 
         storage_script_results = [
             script_result for script_result in
             self._script_results.get(obj.id, {}).get(HARDWARE_TYPE.STORAGE, [])
             if script_result.script_set.result_type == RESULT_TYPE.TESTING
         ]
-        data["storage_test_status"] = get_status_from_qs(
+        data["storage_test_status"] = self.dehydrate_test_statuses(
             storage_script_results)
-        storage_tooltip = self.dehydrate_hardware_status_tooltip(
-            storage_script_results)
-        data["storage_test_status_tooltip"] = storage_tooltip
-
-        node_script_results = [
-            script_result for script_result in
-            self._script_results.get(obj.id, {}).get(HARDWARE_TYPE.NODE, [])
-            if script_result.script_set.result_type == RESULT_TYPE.TESTING
-        ]
-        data["other_test_status"] = get_status_from_qs(node_script_results)
-        other_tooltip = self.dehydrate_hardware_status_tooltip(
-            node_script_results)
-        data["other_test_status_tooltip"] = other_tooltip
 
         interface_script_results = [
             script_result for script_result in
             self._script_results.get(obj.id, {}).get(HARDWARE_TYPE.NETWORK, [])
             if script_result.script_set.result_type == RESULT_TYPE.TESTING
         ]
-        data["interface_test_status"] = get_status_from_qs(
+        data["interface_test_status"] = self.dehydrate_test_statuses(
             interface_script_results)
-        interface_tooltip = self.dehydrate_hardware_status_tooltip(
-            interface_script_results)
-        data["interface_test_status_tooltip"] = interface_tooltip
 
-        if obj.status in {NODE_STATUS.TESTING, NODE_STATUS.FAILED_TESTING}:
-            # Create a list of all results from all types.
-            script_results = []
-            for hardware_script_results in self._script_results.get(
-                    obj.id, {}).values():
-                script_results += hardware_script_results
-            data["status_tooltip"] = (
-                self.dehydrate_hardware_status_tooltip(script_results))
-        else:
-            data["status_tooltip"] = ""
+        node_script_results = [
+            script_result for script_result in
+            self._script_results.get(obj.id, {}).get(HARDWARE_TYPE.NODE, [])
+            if script_result.script_set.result_type == RESULT_TYPE.TESTING
+        ]
+        data["other_test_status"] = self.dehydrate_test_statuses(
+            node_script_results)
 
         if not for_list:
             # Add info specific to a machine.

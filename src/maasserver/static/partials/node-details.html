@@ -315,14 +315,14 @@
                             data-ng-click="openSection('storage')">Storage</a>
                     </li>
                     <li class="p-tabs__item" role="presentation">
-                        <a role="tab" class="p-tabs__link" data-ng-if="node.commissioning_script_count > 0"
+                        <a role="tab" class="p-tabs__link" data-ng-if="node.commissioning_status.pending > 0 || node.commissioning_status.running > 0 || node.commissioning_status.passed > 0 || node.commissioning_status.failed > 0"
                             data-ng-class="{ 'is-active': section.area === 'commissioning'}"
-                            data-ng-click="openSection('commissioning')"><span data-maas-script-status="script-status" data-script-status="node.commissioning_status"></span> Commissioning</a>
+                            data-ng-click="openSection('commissioning')"><span data-maas-script-status="script-status" data-script-status="node.commissioning_status.status"></span> Commissioning</a>
                     </li>
                     <li class="p-tabs__item" role="presentation">
-                        <a role="tab" class="p-tabs__link" data-ng-if="node.testing_script_count > 0"
+                        <a role="tab" class="p-tabs__link" data-ng-if="node.testing_status.pending > 0 || node.testing_status.running > 0 || node.testing_status.passed > 0 || node.testing_status.failed > 0"
                             data-ng-class="{ 'is-active': section.area === 'testing'}"
-                            data-ng-click="openSection('testing')"><span data-maas-script-status="script-status" data-script-status="node.testing_status"></span> Tests</a>
+                            data-ng-click="openSection('testing')"><span data-maas-script-status="script-status" data-script-status="node.testing_status.status"></span> Tests</a>
                     </li>
                     <li class="p-tabs__item" role="presentation">
                         <a role="tab" class="p-tabs__link" data-ng-if="node.has_logs"

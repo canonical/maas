@@ -55498,7 +55498,7 @@ function NodeDetailsController($scope, $rootScope, $routeParams, $location, Devi
         return false;
     }
 
-    switch ($scope.node.testing_status) {
+    switch ($scope.node.testing_status.status) {
       // Tests haven't been run
       case -1: // Tests have passed
 
@@ -59412,7 +59412,7 @@ function maasMachinesTable(MachinesManager, NotificationsManager, UsersManager, 
           return false;
       }
 
-      switch (machine.testing_status) {
+      switch (machine.testing_status.status) {
         // Tests haven't been run
         case -1: // Tests have passed
         // fall through
@@ -59427,7 +59427,7 @@ function maasMachinesTable(MachinesManager, NotificationsManager, UsersManager, 
 
     $scope.showNodeStatus = function (machine) {
       // -1 means tests haven't been run, 2 means tests have passed.
-      if (!$scope.showSpinner(machine) && !$scope.showFailedTestWarning(machine) && machine.other_test_status !== -1 && machine.other_test_status !== 2) {
+      if (!$scope.showSpinner(machine) && !$scope.showFailedTestWarning(machine) && machine.other_test_status.status !== -1 && machine.other_test_status.status !== 2) {
         return true;
       } else {
         return false;

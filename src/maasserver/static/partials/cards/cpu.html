@@ -18,9 +18,9 @@
 </div>
 <footer>
   <p data-ng-if="!isDevice && !(isController && node.status === 'New') && node.cpu_count > 0">
-    <span node.cpu_test_status="script-status" data-script-status="node.cpu_test_status"></span>
-    {$ node.cpu_test_status_tooltip $}
+    <span node.cpu_test_status.status="script-status" data-script-status="node.cpu_test_status.status"></span>
+    {$ node.cpu_test_status.status_tooltip $}
   </p>
-  <p><a href="" data-ng-if="!isDevice && !(isController && node.status === 'New') && node.cpu_count > 0 && node.cpu_test_status !== -1" data-ng-click="section.area = 'testing'">See results &rsaquo;</a></p>
+  <p><a href="" data-ng-if="!isDevice && !(isController && node.status === 'New') && node.cpu_count > 0 && node.cpu_test_status.status !== -1" data-ng-click="section.area = 'testing'">See results &rsaquo;</a></p>
   <p data-ng-if="!isDevice && !(isController && node.status === 'New') && node.cpu_count == 0"><i class="p-icon--information">Information:</i> No data recieved</p>
 </footer>

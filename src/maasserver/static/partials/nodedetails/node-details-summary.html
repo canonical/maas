@@ -72,13 +72,13 @@
             </div>
         </div>
         <div class="row u-equal-height">
-            <div class="col-4 p-card--highlighted" ng-class="{ 'is-error': node.cpu_test_status === 3 }">
+            <div class="col-4 p-card--highlighted" ng-class="{ 'is-error': node.cpu_test_status.status === 3 }">
                 <div maas-card-loader="cpu"></div>
             </div>
-            <div class="col-4 p-card--highlighted" ng-class="{ 'is-error': node.memory_test_status === 3 }">
+            <div class="col-4 p-card--highlighted" ng-class="{ 'is-error': node.memory_test_status.status === 3 }">
                 <div maas-card-loader="memory"></div>
             </div>
-            <div class="col-4 p-card--highlighted" ng-class="{ 'is-error': node.storage_test_status === 3 }">
+            <div class="col-4 p-card--highlighted" ng-class="{ 'is-error': node.storage_test_status.status === 3 }">
                 <div maas-card-loader="storage"></div>
             </div>
         </div>
@@ -115,13 +115,13 @@
             </div>
         </div>
         <div class="row u-equal-height">
-            <div class="col-4 p-card--highlighted" ng-class="{ 'is-error': node.cpu_test_status === 3 }">
+            <div class="col-4 p-card--highlighted" ng-class="{ 'is-error': node.cpu_test_status.status === 3 }">
                 <div maas-card-loader="cpu"></div>
             </div>
-            <div class="col-4 p-card--highlighted" ng-class="{ 'is-error': node.memory_test_status === 3 }">
+            <div class="col-4 p-card--highlighted" ng-class="{ 'is-error': node.memory_test_status.status === 3 }">
                 <div maas-card-loader="memory"></div>
             </div>
-            <div class="col-4 p-card--highlighted" ng-class="{ 'is-error': node.storage_test_status === 3 }">
+            <div class="col-4 p-card--highlighted" ng-class="{ 'is-error': node.storage_test_status.status === 3 }">
                 <div maas-card-loader="storage"></div>
             </div>
         </div>

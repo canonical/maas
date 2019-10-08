@@ -56,9 +56,7 @@ from metadataserver.enum import (
     HARDWARE_TYPE,
     RESULT_TYPE,
     SCRIPT_STATUS,
-    SCRIPT_STATUS_CHOICES,
     SCRIPT_STATUS_FAILED,
-    SCRIPT_STATUS_RUNNING_OR_PENDING,
 )
 from metadataserver.models.scriptresult import ScriptResult
 from metadataserver.models.scriptset import get_status_from_qs
@@ -160,39 +158,32 @@ class NodeHandler(TimestampedModelHandler):
         """Return power_parameters None if empty."""
         return None if power_parameters == '' else power_parameters
 
-    def dehydrate_hardware_status_tooltip(self, script_results):
-        script_statuses = {}
+    def dehydrate_test_statuses(self, script_results):
+        pending = 0
+        running = 0
+        passed = 0
+        failed = 0
         for script_result in script_results:
-            if script_result.status in script_statuses:
-                script_statuses[script_result.status].add(script_result.name)
+            if script_result.status == SCRIPT_STATUS.PENDING:
+                pending += 1
+            elif script_result.status == SCRIPT_STATUS.RUNNING:
+                running += 1
+            elif script_result.status in (
+                    SCRIPT_STATUS.PASSED, SCRIPT_STATUS.SKIPPED):
+                passed += 1
+            elif script_result.status in (
+                    SCRIPT_STATUS.ABORTED, SCRIPT_STATUS.DEGRADED):
+                # UI doesn't show aborted or degraded status in listing.
+                continue
             else:
-                script_statuses[script_result.status] = {script_result.name}
-
-        tooltip = ''
-        for status, scripts in script_statuses.items():
-            len_scripts = len(scripts)
-            if status in SCRIPT_STATUS_RUNNING_OR_PENDING:
-                verb = 'is' if len_scripts == 1 else 'are'
-            elif status in SCRIPT_STATUS_FAILED.union({SCRIPT_STATUS.PASSED}):
-                verb = 'has' if len_scripts == 1 else 'have'
-            else:
-                # Covers SCRIPT_STATUS.ABORTED, an else is used incase new
-                # statuses are ever added.
-                verb = 'was' if len_scripts == 1 else 'were'
-
-            if tooltip != '':
-                tooltip += ' '
-            if len_scripts == 1:
-                tooltip += '1 test '
-            else:
-                tooltip += '%s tests ' % len_scripts
-            tooltip += '%s %s.' % (
-                verb, SCRIPT_STATUS_CHOICES[status][1].lower())
-
-        if tooltip == '':
-            tooltip = 'No tests have been run.'
-
-        return tooltip
+                failed += 1
+        return {
+            'status': get_status_from_qs(script_results),
+            'pending': pending,
+            'running': running,
+            'passed': passed,
+            'failed': failed,
+        }
 
     def dehydrate(self, obj, data, for_list=False):
         """Add extra fields to `data`."""
@@ -242,20 +233,10 @@ class NodeHandler(TimestampedModelHandler):
                     elif (script_result.script_set.result_type ==
                             RESULT_TYPE.TESTING):
                         testing_script_results.append(script_result)
-            data["commissioning_script_count"] = len(
+            data["commissioning_status"] = self.dehydrate_test_statuses(
                 commissioning_script_results)
-            data["commissioning_status"] = get_status_from_qs(
-                commissioning_script_results)
-            data["commissioning_status_tooltip"] = (
-                self.dehydrate_hardware_status_tooltip(
-                    commissioning_script_results).replace(
-                        'test', 'commissioning script'))
-            data["testing_script_count"] = len(testing_script_results)
-            data["testing_status"] = get_status_from_qs(
+            data["testing_status"] = self.dehydrate_test_statuses(
                 testing_script_results)
-            data["testing_status_tooltip"] = (
-                self.dehydrate_hardware_status_tooltip(
-                    testing_script_results))
             data["has_logs"] = (
                 log_results.difference(script_output_nsmap.keys()) ==
                 set())

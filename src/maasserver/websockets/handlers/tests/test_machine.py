@@ -215,21 +215,13 @@ class TestMachineHandler(MAASServerTestCase):
             "bmc": node.bmc_id,
             "boot_disk": node.boot_disk.id if node.boot_disk else None,
             "bios_boot_method": node.bios_boot_method,
-            "commissioning_script_count": commissioning_scripts.count(),
-            "commissioning_status": get_status_from_qs(
+            "commissioning_status": handler.dehydrate_test_statuses(
                 commissioning_scripts),
-            "commissioning_status_tooltip": (
-                handler.dehydrate_hardware_status_tooltip(
-                    commissioning_scripts).replace(
-                        'test', 'commissioning script')),
             "current_commissioning_script_set": (
                 node.current_commissioning_script_set_id),
             "current_testing_script_set": node.current_testing_script_set_id,
-            "testing_script_count": testing_scripts.count(),
-            "testing_status": get_status_from_qs(testing_scripts),
-            "testing_status_tooltip": (
-                handler.dehydrate_hardware_status_tooltip(
-                    testing_scripts)),
+            "testing_status": handler.dehydrate_test_statuses(
+                testing_scripts),
             "current_installation_script_set": (
                 node.current_installation_script_set_id),
             "installation_status": (
@@ -344,7 +336,6 @@ class TestMachineHandler(MAASServerTestCase):
                 "architecture",
                 "commissioning_script_count",
                 "commissioning_status",
-                "commissioning_status_tooltip",
                 "dhcp_on",
                 "distro_series",
                 "extra_macs",
@@ -371,7 +362,6 @@ class TestMachineHandler(MAASServerTestCase):
                 "tags",
                 "testing_script_count",
                 "testing_status",
-                "testing_status_tooltip",
                 "vlan",
             ]
             for key in list(data):
@@ -392,10 +382,8 @@ class TestMachineHandler(MAASServerTestCase):
             handler._script_results.get(node.id, {}).get(HARDWARE_TYPE.CPU, [])
             if script_result.script_set.result_type == RESULT_TYPE.TESTING
         ]
-        data["cpu_test_status"] = get_status_from_qs(cpu_script_results)
-        cpu_tooltip = handler.dehydrate_hardware_status_tooltip(
+        data["cpu_test_status"] = handler.dehydrate_test_statuses(
             cpu_script_results)
-        data["cpu_test_status_tooltip"] = cpu_tooltip
 
         memory_script_results = [
             script_result for script_result in
@@ -403,11 +391,8 @@ class TestMachineHandler(MAASServerTestCase):
                 HARDWARE_TYPE.MEMORY, [])
             if script_result.script_set.result_type == RESULT_TYPE.TESTING
         ]
-        data["memory_test_status"] = get_status_from_qs(
+        data["memory_test_status"] = handler.dehydrate_test_statuses(
             memory_script_results)
-        memory_tooltip = handler.dehydrate_hardware_status_tooltip(
-            memory_script_results)
-        data["memory_test_status_tooltip"] = memory_tooltip
 
         storage_script_results = [
             script_result for script_result in
@@ -415,23 +400,8 @@ class TestMachineHandler(MAASServerTestCase):
                 HARDWARE_TYPE.STORAGE, [])
             if script_result.script_set.result_type == RESULT_TYPE.TESTING
         ]
-        data["storage_test_status"] = get_status_from_qs(
+        data["storage_test_status"] = handler.dehydrate_test_statuses(
             storage_script_results)
-        storage_tooltip = handler.dehydrate_hardware_status_tooltip(
-            storage_script_results)
-        data["storage_test_status_tooltip"] = storage_tooltip
-
-        node_script_results = [
-            script_result for script_result in
-            handler._script_results.get(node.id, {}).get(
-                HARDWARE_TYPE.NODE, [])
-            if script_result.script_set.result_type == RESULT_TYPE.TESTING
-        ]
-        data["other_test_status"] = get_status_from_qs(
-            node_script_results)
-        node_tooltip = handler.dehydrate_hardware_status_tooltip(
-            node_script_results)
-        data["other_test_status_tooltip"] = node_tooltip
 
         interface_script_results = [
             script_result for script_result in
@@ -439,26 +409,20 @@ class TestMachineHandler(MAASServerTestCase):
                 HARDWARE_TYPE.NETWORK, [])
             if script_result.script_set.result_type == RESULT_TYPE.TESTING
         ]
-        data["interface_test_status"] = get_status_from_qs(
+        data["interface_test_status"] = handler.dehydrate_test_statuses(
             interface_script_results)
-        interface_tooltip = handler.dehydrate_hardware_status_tooltip(
-            interface_script_results)
-        data["interface_test_status_tooltip"] = interface_tooltip
+
+        node_script_results = [
+            script_result for script_result in
+            handler._script_results.get(node.id, {}).get(
+                HARDWARE_TYPE.NODE, [])
+            if script_result.script_set.result_type == RESULT_TYPE.TESTING
+        ]
+        data["other_test_status"] = handler.dehydrate_test_statuses(
+            node_script_results)
 
         # Clear cache
         handler._script_results = {}
-
-        if node.status in {NODE_STATUS.TESTING, NODE_STATUS.FAILED_TESTING}:
-            # Create a list of all results from all types.
-            script_results = []
-            for hardware_script_results in handler._script_results.get(
-                    node.id, {}).values():
-                script_results += hardware_script_results
-            data["status_tooltip"] = (
-                handler.dehydrate_hardware_status_tooltip_tooltip(
-                    script_results))
-        else:
-            data["status_tooltip"] = ""
 
         return data
 
@@ -665,8 +629,8 @@ class TestMachineHandler(MAASServerTestCase):
         handler.cache = {'active_pk': node.system_id}
         _, _, ret = handler.on_listen_for_active_pk(
             'update', node.system_id, node)
-        self.assertEquals(ret['commissioning_script_count'], 10)
-        self.assertEquals(ret['testing_script_count'], 10)
+        self.assertEquals(ret['commissioning_status']['passed'], 10)
+        self.assertEquals(ret['testing_status']['passed'], 10)
 
     def test_cache_clears_on_reload(self):
         owner = factory.make_User()
@@ -785,216 +749,6 @@ class TestMachineHandler(MAASServerTestCase):
             for _ in range(3)
         }
         self.assertEqual(params, handler.dehydrate_power_parameters(params))
-
-    def test_dehydrate_hardware_status_tooltip_pending(self):
-        owner = factory.make_User()
-        node = factory.make_Node(owner=owner)
-        handler = MachineHandler(owner, {}, None)
-        hardware_type = factory.pick_choice(
-            HARDWARE_TYPE_CHOICES, but_not=[HARDWARE_TYPE.NODE])
-        script_result_list = []
-        for _ in range(random.randint(3, 9)):
-            script_set = factory.make_ScriptSet(node=node)
-            script = factory.make_Script(hardware_type=hardware_type)
-            script_result = factory.make_ScriptResult(
-                script_set=script_set, script=script,
-                status=SCRIPT_STATUS.PENDING)
-            script_result = factory.make_ScriptResult(
-                script_set=script_set, script=script,
-                status=SCRIPT_STATUS.PENDING)
-            script_result_list.append(script_result)
-
-        self.assertEquals(
-            "1 test is pending.",
-            handler.dehydrate_hardware_status_tooltip([script_result_list[0]]))
-        self.assertEquals(
-            "%s tests are pending." % len(script_result_list),
-            handler.dehydrate_hardware_status_tooltip(script_result_list))
-
-    def test_dehydrate_hardware_status_tooltip_running(self):
-        owner = factory.make_User()
-        node = factory.make_Node(owner=owner)
-        handler = MachineHandler(owner, {}, None)
-        hardware_type = factory.pick_choice(
-            HARDWARE_TYPE_CHOICES, but_not=[HARDWARE_TYPE.NODE])
-        script_result_list = []
-        for _ in range(random.randint(3, 9)):
-            script_set = factory.make_ScriptSet(node=node)
-            script = factory.make_Script(hardware_type=hardware_type)
-            script_result = factory.make_ScriptResult(
-                script_set=script_set, script=script,
-                status=SCRIPT_STATUS.RUNNING)
-            script_result = factory.make_ScriptResult(
-                script_set=script_set, script=script,
-                status=SCRIPT_STATUS.RUNNING)
-            script_result_list.append(script_result)
-
-        self.assertEquals(
-            "1 test is running.",
-            handler.dehydrate_hardware_status_tooltip([script_result_list[0]]))
-        self.assertEquals(
-            "%s tests are running." % len(script_result_list),
-            handler.dehydrate_hardware_status_tooltip(script_result_list))
-
-    def test_dehydrate_hardware_status_tooltip_installing(self):
-        owner = factory.make_User()
-        node = factory.make_Node(owner=owner)
-        handler = MachineHandler(owner, {}, None)
-        hardware_type = factory.pick_choice(
-            HARDWARE_TYPE_CHOICES, but_not=[HARDWARE_TYPE.NODE])
-        script_result_list = []
-        for _ in range(random.randint(3, 9)):
-            script_set = factory.make_ScriptSet(node=node)
-            script = factory.make_Script(hardware_type=hardware_type)
-            script_result = factory.make_ScriptResult(
-                script_set=script_set, script=script,
-                status=SCRIPT_STATUS.INSTALLING)
-            script_result = factory.make_ScriptResult(
-                script_set=script_set, script=script,
-                status=SCRIPT_STATUS.INSTALLING)
-            script_result_list.append(script_result)
-
-        self.assertEquals(
-            "1 test is installing dependencies.",
-            handler.dehydrate_hardware_status_tooltip([script_result_list[0]]))
-        self.assertEquals(
-            "%s tests are installing dependencies." % len(script_result_list),
-            handler.dehydrate_hardware_status_tooltip(script_result_list))
-
-    def test_dehydrate_hardware_status_tooltip_passed(self):
-        owner = factory.make_User()
-        node = factory.make_Node(owner=owner)
-        handler = MachineHandler(owner, {}, None)
-        hardware_type = factory.pick_choice(
-            HARDWARE_TYPE_CHOICES, but_not=[HARDWARE_TYPE.NODE])
-        script_result_list = []
-        for _ in range(random.randint(3, 9)):
-            script_set = factory.make_ScriptSet(node=node)
-            script = factory.make_Script(hardware_type=hardware_type)
-            script_result = factory.make_ScriptResult(
-                script_set=script_set, script=script,
-                status=SCRIPT_STATUS.PASSED)
-            script_result = factory.make_ScriptResult(
-                script_set=script_set, script=script,
-                status=SCRIPT_STATUS.PASSED)
-            script_result_list.append(script_result)
-
-        self.assertEquals(
-            "1 test has passed.",
-            handler.dehydrate_hardware_status_tooltip([script_result_list[0]]))
-        self.assertEquals(
-            "%s tests have passed." % len(script_result_list),
-            handler.dehydrate_hardware_status_tooltip(script_result_list))
-
-    def test_dehydrate_hardware_status_tooltip_failed(self):
-        owner = factory.make_User()
-        node = factory.make_Node(owner=owner)
-        handler = MachineHandler(owner, {}, None)
-        hardware_type = factory.pick_choice(
-            HARDWARE_TYPE_CHOICES, but_not=[HARDWARE_TYPE.NODE])
-        script_result_list = []
-        for _ in range(random.randint(3, 9)):
-            script_set = factory.make_ScriptSet(node=node)
-            script = factory.make_Script(hardware_type=hardware_type)
-            script_result = factory.make_ScriptResult(
-                script_set=script_set, script=script,
-                status=SCRIPT_STATUS.FAILED)
-            script_result = factory.make_ScriptResult(
-                script_set=script_set, script=script,
-                status=SCRIPT_STATUS.FAILED)
-            script_result_list.append(script_result)
-
-        self.assertEquals(
-            "1 test has failed.",
-            handler.dehydrate_hardware_status_tooltip([script_result_list[0]]))
-        self.assertEquals(
-            "%s tests have failed." % len(script_result_list),
-            handler.dehydrate_hardware_status_tooltip(script_result_list))
-
-    def test_dehydrate_hardware_status_tooltip_timedout(self):
-        owner = factory.make_User()
-        node = factory.make_Node(owner=owner)
-        handler = MachineHandler(owner, {}, None)
-        hardware_type = factory.pick_choice(
-            HARDWARE_TYPE_CHOICES, but_not=[HARDWARE_TYPE.NODE])
-        script_result_list = []
-        for _ in range(random.randint(3, 9)):
-            script_set = factory.make_ScriptSet(node=node)
-            script = factory.make_Script(hardware_type=hardware_type)
-            script_result = factory.make_ScriptResult(
-                script_set=script_set, script=script,
-                status=SCRIPT_STATUS.TIMEDOUT)
-            script_result = factory.make_ScriptResult(
-                script_set=script_set, script=script,
-                status=SCRIPT_STATUS.TIMEDOUT)
-            script_result_list.append(script_result)
-
-        self.assertEquals(
-            "1 test has timed out.",
-            handler.dehydrate_hardware_status_tooltip([script_result_list[0]]))
-        self.assertEquals(
-            "%s tests have timed out." % len(script_result_list),
-            handler.dehydrate_hardware_status_tooltip(script_result_list))
-
-    def test_dehydrate_hardware_status_tooltip_failed_installing(self):
-        owner = factory.make_User()
-        node = factory.make_Node(owner=owner)
-        handler = MachineHandler(owner, {}, None)
-        hardware_type = factory.pick_choice(
-            HARDWARE_TYPE_CHOICES, but_not=[HARDWARE_TYPE.NODE])
-        script_result_list = []
-        for _ in range(random.randint(3, 9)):
-            script_set = factory.make_ScriptSet(node=node)
-            script = factory.make_Script(hardware_type=hardware_type)
-            script_result = factory.make_ScriptResult(
-                script_set=script_set, script=script,
-                status=SCRIPT_STATUS.FAILED_INSTALLING)
-            script_result = factory.make_ScriptResult(
-                script_set=script_set, script=script,
-                status=SCRIPT_STATUS.FAILED_INSTALLING)
-            script_result_list.append(script_result)
-
-        self.assertEquals(
-            "1 test has failed installing dependencies.",
-            handler.dehydrate_hardware_status_tooltip([script_result_list[0]]))
-        self.assertEquals(
-            "%s tests have failed installing dependencies." % len(
-                script_result_list),
-            handler.dehydrate_hardware_status_tooltip(script_result_list))
-
-    def test_dehydrate_hardware_status_tooltip_aborted(self):
-        owner = factory.make_User()
-        node = factory.make_Node(owner=owner)
-        handler = MachineHandler(owner, {}, None)
-        hardware_type = factory.pick_choice(
-            HARDWARE_TYPE_CHOICES, but_not=[HARDWARE_TYPE.NODE])
-        script_result_list = []
-        for _ in range(random.randint(3, 9)):
-            script_set = factory.make_ScriptSet(node=node)
-            script = factory.make_Script(hardware_type=hardware_type)
-            script_result = factory.make_ScriptResult(
-                script_set=script_set, script=script,
-                status=SCRIPT_STATUS.ABORTED)
-            script_result = factory.make_ScriptResult(
-                script_set=script_set, script=script,
-                status=SCRIPT_STATUS.ABORTED)
-            script_result_list.append(script_result)
-
-        self.assertEquals(
-            "1 test was aborted.",
-            handler.dehydrate_hardware_status_tooltip([script_result_list[0]]))
-        self.assertEquals(
-            "%s tests were aborted." % len(script_result_list),
-            handler.dehydrate_hardware_status_tooltip(script_result_list))
-
-    def test_dehydrate_hardware_status_none_run(self):
-        owner = factory.make_User()
-        node = factory.make_Node(owner=owner)
-        script_set = factory.make_ScriptSet(node=node)
-        handler = MachineHandler(owner, {}, None)
-        self.assertEquals(
-            "No tests have been run.",
-            handler.dehydrate_hardware_status_tooltip(script_set))
 
     def test_dehydrate_show_os_info_returns_true(self):
         owner = factory.make_User()
