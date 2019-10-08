@@ -1,0 +1,34 @@
+// Classes relating specifically to the NUMA card in the node summary page.
+@mixin maas-numa-card {
+  .p-numa {
+    position: relative;
+  }
+
+  .p-numa__button {
+    @include vf-icon-plus($color-mid-dark);
+    @extend %p-button--base;
+    background-position: right center;
+    background-repeat: no-repeat;
+    background-size: map-get($icon-sizes, default);
+    margin: 0;
+    padding: 0 $sph-inner--x-large 0 0;
+    text-align: left;
+    width: 100%;
+
+    &.is-open {
+      @include vf-icon-minus($color-mid-dark);
+    }
+  }
+
+  .p-numa__collapsed-details {
+    color: $color-mid-dark;
+    font-size: 0.75rem;
+    font-weight: 400;
+    left: $sp-unit * 13;
+    line-height: 1;
+    max-width: $sp-unit * 15;
+    position: absolute;
+    pointer-events: none;
+    top: $spv-inner--x-small;
+  }
+}

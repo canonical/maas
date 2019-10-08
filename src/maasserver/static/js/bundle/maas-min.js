@@ -45361,7 +45361,7 @@ function formatBytes() {
     var bytesInTerabyte = bytesInKilobyte * kilobytesInMegabyte * megabytesInGigabyte * gigabytesInTerabyte;
 
     if (bytes >= bytesInTerabyte) {
-      return Math.round(bytes / bytesInKilobyte / kilobytesInMegabyte / megabytesInGigabyte / gigabytesInTerabyte) + " TB";
+      return Number(bytes / bytesInKilobyte / kilobytesInMegabyte / megabytesInGigabyte / gigabytesInTerabyte).toPrecision(3) + " TB";
     } else if (bytes >= bytesInGigabyte) {
       return Math.round(bytes / bytesInKilobyte / kilobytesInMegabyte / megabytesInGigabyte) + " GB";
     } else if (bytes >= bytesInMegabyte) {
@@ -54276,6 +54276,14 @@ var _enum = __webpack_require__(68);
 
 NodeDetailsController.$inject = ["$scope", "$rootScope", "$routeParams", "$location", "DevicesManager", "MachinesManager", "ControllersManager", "ZonesManager", "GeneralManager", "UsersManager", "TagsManager", "DomainsManager", "ManagerHelperService", "ServicesManager", "ErrorService", "ValidationService", "ScriptsManager", "ResourcePoolsManager", "VLANsManager", "$log", "$window"];
 
+function _toConsumableArray(arr) { return _arrayWithoutHoles(arr) || _iterableToArray(arr) || _nonIterableSpread(); }
+
+function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance"); }
+
+function _iterableToArray(iter) { if (Symbol.iterator in Object(iter) || Object.prototype.toString.call(iter) === "[object Arguments]") return Array.from(iter); }
+
+function _arrayWithoutHoles(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = new Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } }
+
 /* @ngInject */
 function NodeDetailsController($scope, $rootScope, $routeParams, $location, DevicesManager, MachinesManager, ControllersManager, ZonesManager, GeneralManager, UsersManager, TagsManager, DomainsManager, ManagerHelperService, ServicesManager, ErrorService, ValidationService, ScriptsManager, ResourcePoolsManager, VLANsManager, $log, $window) {
   // Mapping of device.ip_assignment to viewable text.
@@ -54329,7 +54337,9 @@ function NodeDetailsController($scope, $rootScope, $routeParams, $location, Devi
   $scope.vlans = VLANsManager.getItems();
   $scope.hideHighAvailabilityNotification = false;
   $scope.failedUpdateError = "";
-  $scope.disableTestButton = false; // Node header section.
+  $scope.disableTestButton = false;
+  $scope.numaDetails = [];
+  $scope.expandedNumas = []; // Node header section.
 
   $scope.header = {
     editing: false,
@@ -54527,32 +54537,57 @@ function NodeDetailsController($scope, $rootScope, $routeParams, $location, Devi
   } // Updates the currently selected items in the summary section.
 
 
-  function updateSummary() {
-    // Do not update the selected items, when editing this would
+  var updateSummary = function updateSummary() {
+    var node = $scope.node,
+        summary = $scope.summary; // Do not update the selected items, when editing this would
     // cause the users selection to change.
-    if ($scope.summary.editing) {
+
+    if (summary.editing) {
       return;
     }
 
-    if (angular.isObject($scope.node.zone)) {
-      $scope.summary.zone.selected = ZonesManager.getItemFromList($scope.node.zone.id);
+    if (angular.isObject(node.zone)) {
+      summary.zone.selected = ZonesManager.getItemFromList(node.zone.id);
     }
 
-    if (angular.isObject($scope.node.pool)) {
-      $scope.summary.pool.selected = ResourcePoolsManager.getItemFromList($scope.node.pool.id);
+    if (angular.isObject(node.pool)) {
+      summary.pool.selected = ResourcePoolsManager.getItemFromList(node.pool.id);
     }
 
-    $scope.summary.architecture.selected = $scope.node.architecture;
-    $scope.summary.description = $scope.node.description;
-    $scope.summary.min_hwe_kernel.selected = $scope.node.min_hwe_kernel;
-    $scope.summary.tags = angular.copy($scope.node.tags); // Force editing mode on, if the architecture is invalid. This is
+    summary.architecture.selected = node.architecture;
+    summary.description = node.description;
+    summary.min_hwe_kernel.selected = node.min_hwe_kernel;
+    summary.tags = angular.copy(node.tags); // Force editing mode on, if the architecture is invalid. This is
     // placed at the bottom because we wanted the selected items to
     // be filled in at least once.
 
     if ($scope.canEdit() && $scope.hasUsableArchitectures() && $scope.hasInvalidArchitecture()) {
-      $scope.summary.editing = true;
+      summary.editing = true;
     }
-  } // Updates the service monitor section.
+
+    if (node.numa_nodes) {
+      var numaDetails = node.numa_nodes.map(function (numa) {
+        var numaDisks = node.disks ? node.disks.filter(function (disk) {
+          return disk.numa_node === numa.index;
+        }) : [];
+        var numaInterfaces = node.interfaces ? node.interfaces.filter(function (iface) {
+          return iface.numa_node === numa.index;
+        }) : [];
+        var storage = numaDisks.reduce(function (acc, disk) {
+          return acc + disk.size;
+        }, 0);
+        return {
+          index: numa.index,
+          cores: numa.cores,
+          memory: numa.memory,
+          storage: storage,
+          disks: numaDisks.length,
+          network: numaInterfaces.length
+        };
+      });
+      $scope.numaDetails = numaDetails;
+    }
+  }; // Updates the service monitor section.
 
 
   function updateServices() {
@@ -54665,6 +54700,11 @@ function NodeDetailsController($scope, $rootScope, $routeParams, $location, Devi
 
     if (angular.isObject($scope.node.vlan)) {
       $scope.vlan = VLANsManager.getItemFromList($scope.node.vlan.id);
+    } // If node has less than 4 NUMA nodes, have them expanded them by default.
+
+
+    if (node.numa_nodes && node.numa_nodes.length < 4) {
+      $scope.expandedNumas = _toConsumableArray(Array(node.numa_nodes.length).keys());
     }
   } // Update the node with new data on the region.
 
@@ -55527,6 +55567,16 @@ function NodeDetailsController($scope, $rootScope, $routeParams, $location, Devi
     }
 
     return true;
+  };
+
+  $scope.toggleNumaExpanded = function (numaIndex) {
+    if ($scope.expandedNumas.includes(numaIndex)) {
+      $scope.expandedNumas = $scope.expandedNumas.filter(function (i) {
+        return i !== numaIndex;
+      });
+    } else {
+      $scope.expandedNumas = [].concat(_toConsumableArray($scope.expandedNumas), [numaIndex]);
+    }
   }; // Reload osinfo when the page reloads
 
 

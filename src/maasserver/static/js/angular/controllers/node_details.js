@@ -84,6 +84,8 @@ function NodeDetailsController(
   $scope.hideHighAvailabilityNotification = false;
   $scope.failedUpdateError = "";
   $scope.disableTestButton = false;
+  $scope.numaDetails = [];
+  $scope.expandedNumas = [];
 
   // Node header section.
   $scope.header = {
@@ -314,27 +316,26 @@ function NodeDetailsController(
   }
 
   // Updates the currently selected items in the summary section.
-  function updateSummary() {
+  const updateSummary = () => {
+    const { node, summary } = $scope;
     // Do not update the selected items, when editing this would
     // cause the users selection to change.
-    if ($scope.summary.editing) {
+    if (summary.editing) {
       return;
     }
 
-    if (angular.isObject($scope.node.zone)) {
-      $scope.summary.zone.selected = ZonesManager.getItemFromList(
-        $scope.node.zone.id
+    if (angular.isObject(node.zone)) {
+      summary.zone.selected = ZonesManager.getItemFromList(node.zone.id);
+    }
+    if (angular.isObject(node.pool)) {
+      summary.pool.selected = ResourcePoolsManager.getItemFromList(
+        node.pool.id
       );
     }
-    if (angular.isObject($scope.node.pool)) {
-      $scope.summary.pool.selected = ResourcePoolsManager.getItemFromList(
-        $scope.node.pool.id
-      );
-    }
-    $scope.summary.architecture.selected = $scope.node.architecture;
-    $scope.summary.description = $scope.node.description;
-    $scope.summary.min_hwe_kernel.selected = $scope.node.min_hwe_kernel;
-    $scope.summary.tags = angular.copy($scope.node.tags);
+    summary.architecture.selected = node.architecture;
+    summary.description = node.description;
+    summary.min_hwe_kernel.selected = node.min_hwe_kernel;
+    summary.tags = angular.copy(node.tags);
 
     // Force editing mode on, if the architecture is invalid. This is
     // placed at the bottom because we wanted the selected items to
@@ -344,9 +345,30 @@ function NodeDetailsController(
       $scope.hasUsableArchitectures() &&
       $scope.hasInvalidArchitecture()
     ) {
-      $scope.summary.editing = true;
+      summary.editing = true;
     }
-  }
+
+    if (node.numa_nodes) {
+      const numaDetails = node.numa_nodes.map(numa => {
+        const numaDisks = node.disks
+          ? node.disks.filter(disk => disk.numa_node === numa.index)
+          : [];
+        const numaInterfaces = node.interfaces
+          ? node.interfaces.filter(iface => iface.numa_node === numa.index)
+          : [];
+        const storage = numaDisks.reduce((acc, disk) => acc + disk.size, 0);
+        return {
+          index: numa.index,
+          cores: numa.cores,
+          memory: numa.memory,
+          storage,
+          disks: numaDisks.length,
+          network: numaInterfaces.length
+        };
+      });
+      $scope.numaDetails = numaDetails;
+    }
+  };
 
   // Updates the service monitor section.
   function updateServices() {
@@ -479,6 +501,11 @@ function NodeDetailsController(
 
     if (angular.isObject($scope.node.vlan)) {
       $scope.vlan = VLANsManager.getItemFromList($scope.node.vlan.id);
+    }
+
+    // If node has less than 4 NUMA nodes, have them expanded them by default.
+    if (node.numa_nodes && node.numa_nodes.length < 4) {
+      $scope.expandedNumas = [...Array(node.numa_nodes.length).keys()];
     }
   }
 
@@ -1365,6 +1392,14 @@ function NodeDetailsController(
     }
 
     return true;
+  };
+
+  $scope.toggleNumaExpanded = numaIndex => {
+    if ($scope.expandedNumas.includes(numaIndex)) {
+      $scope.expandedNumas = $scope.expandedNumas.filter(i => i !== numaIndex);
+    } else {
+      $scope.expandedNumas = [...$scope.expandedNumas, numaIndex];
+    }
   };
 
   // Reload osinfo when the page reloads

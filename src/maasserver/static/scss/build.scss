@@ -21,6 +21,7 @@
 @import 'patterns_code';
 @import 'patterns_icons';
 @import 'patterns_navigation';
+@import 'patterns_numa';
 @import 'patterns_page-header';
 @import 'patterns_tabs';
 @import 'patterns_switch';
@@ -51,6 +52,7 @@
 @include maas-action-button;
 @include maas-icons;
 @include maas-navigation;
+@include maas-numa-card;
 @include maas-page-header;
 @include maas-tabs;
 @include maas-switch;

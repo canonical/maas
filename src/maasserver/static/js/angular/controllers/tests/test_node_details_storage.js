@@ -5550,7 +5550,7 @@ describe("NodeStorageController", function() {
           size: 2000000000000
         }
       ];
-      expect($scope.getFormattedTotalDiskSize(disks)).toBe("3 TB");
+      expect($scope.getFormattedTotalDiskSize(disks)).toBe("3.00 TB");
     });
   });
 });

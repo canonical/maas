@@ -109,7 +109,19 @@ describe("NodeDetailsController", function() {
       events: [],
       interfaces: [],
       extra_macs: [],
-      cpu_count: makeInteger(0, 64)
+      cpu_count: makeInteger(0, 64),
+      numa_nodes: [
+        {
+          index: 0,
+          cores: [0, 1],
+          memory: 1024
+        },
+        {
+          index: 1,
+          cores: [2, 3],
+          memory: 1024
+        }
+      ]
     };
     MachinesManager._items.push(node);
     return node;
@@ -237,6 +249,8 @@ describe("NodeDetailsController", function() {
     expect($scope.checkingPower).toBe(false);
     expect($scope.devices).toEqual([]);
     expect($scope.services).toEqual({});
+    expect($scope.numaDetails).toEqual([]);
+    expect($scope.expandedNumas).toEqual([]);
   });
 
   it("sets initial values for summary section", function() {
@@ -2409,8 +2423,8 @@ describe("NodeDetailsController", function() {
 
     it("returns speed in mhz", () => {
       makeController();
-      node.cpu_speed = makeInteger(100, 999);
       $scope.node = node;
+      $scope.node.cpu_speed = makeInteger(100, 999);
       expect($scope.getCPUSubtext()).toEqual(
         node.cpu_count +
           " " +
@@ -2423,8 +2437,8 @@ describe("NodeDetailsController", function() {
 
     it("returns speed in ghz", () => {
       makeController();
-      node.cpu_speed = makeInteger(1000, 10000);
       $scope.node = node;
+      $scope.node.cpu_speed = makeInteger(1000, 10000);
       expect($scope.getCPUSubtext()).toEqual(
         node.cpu_count +
           " " +

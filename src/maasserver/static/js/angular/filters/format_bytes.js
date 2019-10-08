@@ -22,13 +22,13 @@ export function formatBytes() {
 
     if (bytes >= bytesInTerabyte) {
       return (
-        Math.round(
+        Number(
           bytes /
             bytesInKilobyte /
             kilobytesInMegabyte /
             megabytesInGigabyte /
             gigabytesInTerabyte
-        ) + " TB"
+        ).toPrecision(3) + " TB"
       );
     } else if (bytes >= bytesInGigabyte) {
       return (
