@@ -4,6 +4,8 @@
 import grp
 import os
 
+from provisioningserver.config import is_dev_environment
+
 
 def check_user():
     # At present, only root should execute this.
@@ -58,7 +60,7 @@ def run_django(is_snap, is_devenv):
 
 def run():
     is_snap = 'SNAP' in os.environ
-    is_devenv = os.environ.get('MAAS_DEVENV') == '1'
+    is_devenv = is_dev_environment()
     if not is_devenv:
         check_user()
         if not is_snap:

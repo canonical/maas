@@ -27,6 +27,7 @@ fi
 export MAAS_DNS_CONFIG_DIR="$(readlink -f run/named)"
 export MAAS_DNS_RNDC_PORT=5246
 export MAAS_DNS_DEFAULT_CONTROLS=0
+export DJANGO_SETTINGS_MODULE="maasserver.djangosettings.development"
 
 # Exec the MAAS API and Web UI Server.
 script="$(readlink -f bin/regiond)"

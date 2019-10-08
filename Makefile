@@ -46,8 +46,6 @@ export MAAS_ROOT := $(CURDIR)/.run
 # For things that care, postgresfixture for example, we always want to
 # use the "maas" databases.
 export PGDATABASE := maas
-# Don't perform permission/group checks in maas commands
-export MAAS_DEVENV := 1
 
 # Check if a command is found on PATH. Raise an error if not, citing
 # the package to install. Return the command otherwise.
@@ -77,7 +75,6 @@ build: \
   bin/test.parallel \
   bin/postgresfixture \
   bin/py \
-  bin/ipy \
   machine-resources \
   pycharm
 .PHONY: build
@@ -121,8 +118,8 @@ bin/flake8 bin/coverage \
 	mkdir -p bin
 	ln -sf ../$(VENV)/$@ $@
 
-bin/py bin/ipy:
-	ln -sf ../$(VENV)/$@thon $@
+bin/py:
+	ln -sf ../$(VENV)/bin/ipython $@
 
 # bin/flake8 is needed for checking lint and bin/node-sass is needed for
 # checking css.

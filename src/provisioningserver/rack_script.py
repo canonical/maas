@@ -6,6 +6,8 @@ import os
 import pwd
 import sys
 
+from provisioningserver.config import is_dev_environment
+
 
 def check_users(users):
     """Check that the runnig user is in users."""
@@ -37,7 +39,7 @@ def set_umask():
 
 def run():
     is_snap = 'SNAP' in os.environ
-    is_devenv = os.environ.get('MAAS_DEVENV') == '1'
+    is_devenv = is_dev_environment()
 
     if not is_devenv:
         if is_snap:
