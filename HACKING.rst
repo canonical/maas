@@ -311,15 +311,18 @@ build/dev-snap and creates the snap directory in build/dev-snap/prime.
 
 You can now install the snap:
 
-    $ sudo snap try --devmode build/dev-snap/prime
+    $ sudo snap try build/dev-snap/prime
 
 Note that 'snap try' is used instead of 'snap install'. The maas snap
 should now be installed:
 
     $ snap list
-    Name  Version                          Rev   Developer  Notes
-    core  16-2.27.5                        2774  canonical  core
-    maas  2.3.0~alpha3-6225-gaa05ba6-snap  x1               devmode,try
+    Name          Version                 Rev   Tracking  Publisher   Notes
+    core          16-2.41                 7713  stable    canonical✓  core
+    core18        20191001                1192  stable    canonical✓  base
+    maas          2.7.0-8077-g.7e249fbe4  x1    -         -           try
+    maas-cli      0.6.5                   13    stable    canonical✓  -
+    snapd         2.41                    4605  stable    canonical✓  snapd
 
 Next you need to initialize the snap, just like you would normally do:
 
