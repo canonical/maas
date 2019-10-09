@@ -39,7 +39,6 @@ from provisioningserver.refresh.node_info_scripts import (
     LSHW_OUTPUT_NAME,
     LXD_OUTPUT_NAME,
     NODE_INFO_SCRIPTS,
-    SRIOV_OUTPUT_NAME,
     VIRTUALITY_OUTPUT_NAME,
 )
 from provisioningserver.utils.ipaddr import parse_ip_addr
@@ -173,21 +172,23 @@ def _parse_interfaces(node, data):
     interfaces = []
     network_cards = data.get('network', {}).get('cards', {})
     for card in network_cards:
-        interface = {}
-        ports = card.get('ports', {})
-        for port in ports:
-            interface['name'] = port.get('id')
-            interface['mac'] = port.get('address')
-            interface['link_connected'] = port.get('link_detected')
-            interface['interface_speed'] = _parse_interface_speed(port)
-            interface['link_speed'] = port.get('link_speed')
+        for port in card.get('ports', {}):
+            interface = {
+                'name': port.get('id'),
+                'mac': port.get('address'),
+                'link_connected': port.get('link_detected'),
+                'interface_speed': _parse_interface_speed(port),
+                'link_speed': port.get('link_speed'),
+                'numa_node': card.get('numa_node', 0),
+                'vendor': card.get('vendor'),
+                'product': card.get('product'),
+                'firmware_version': card.get('firmware_version'),
+                'sriov_max_vf': card.get('sriov', {}).get('maximum_vfs', 0),
+            }
             # Assign the IP addresses to this interface
             link = ip_addr_info[interface['name']]
             interface['ips'] = link.get('inet', []) + link.get('inet6', [])
-
-        # Add numa_node.
-        interface['numa_node'] = card.get('numa_node')
-        interfaces.append(interface)
+            interfaces.append(interface)
 
     return interfaces
 
@@ -202,65 +203,72 @@ def update_node_network_information(node, data, numa_nodes):
 
     interfaces = _parse_interfaces(node, data)
     current_interfaces = set()
-    extended_nic_info = parse_lshw_nic_info(node)
 
     for iface in interfaces:
         mac = iface.get('mac')
-        # Ignore loopback interfaces.
-        if mac is None:
+        if mac in (None, SWITCH_OPENBMC_MAC):
+            # Ignore loopback (with no MAC) and OpenBMC interfaces on switches
+            # which all share the same, hard-coded OpenBMC MAC address.
             continue
-        elif mac == SWITCH_OPENBMC_MAC:
-            # Ignore OpenBMC interfaces on switches which all share the same,
-            # hard-coded OpenBMC MAC address.
-            continue
-        else:
-            ifname = iface.get('name')
-            link_connected = iface.get('link_connected')
-            interface_speed = iface.get('interface_speed')
-            link_speed = iface.get('link_speed')
-            numa_index = iface.get('numa_node')
-            extra_info = extended_nic_info.get(mac, {})
-            try:
-                interface = PhysicalInterface.objects.get(
-                    mac_address=mac)
-                update_fields = []
-                if interface.node is not None and interface.node != node:
-                    logger.warning(
-                        "Interface with MAC %s moved from node %s to %s. "
-                        "(The existing interface will be deleted.)" %
-                        (interface.mac_address, interface.node.fqdn,
-                         node.fqdn))
-                    interface.delete()
-                    interface = _create_default_physical_interface(
-                        node, ifname, mac, link_connected, interface_speed,
-                        link_speed, numa_nodes[numa_index], **extra_info)
-                else:
-                    # Interface already exists on this Node, so just update
-                    # the name and NIC info.
-                    update_fields = []
-                    if interface.name != ifname:
-                        interface.name = ifname
-                        update_fields.append('name')
-                    for k, v in extra_info.items():
-                        if getattr(interface, k, v) != v:
-                            setattr(interface, k, v)
-                            update_fields.append(k)
-                    if update_fields:
-                        interface.save(
-                            update_fields=['updated', *update_fields])
-            except PhysicalInterface.DoesNotExist:
+        ifname = iface.get('name')
+        link_connected = iface.get('link_connected')
+        interface_speed = iface.get('interface_speed')
+        link_speed = iface.get('link_speed')
+        numa_index = iface.get('numa_node')
+        vendor = iface.get('vendor')
+        product = iface.get('product')
+        firmware_version = iface.get('firmware_version')
+        sriov_max_vf = iface.get('sriov_max_vf')
+        try:
+            interface = PhysicalInterface.objects.get(mac_address=mac)
+            ifname = iface['name']
+            if interface.node is not None and interface.node != node:
+                logger.warning(
+                    "Interface with MAC %s moved from node %s to %s. "
+                    "(The existing interface will be deleted.)" %
+                    (interface.mac_address, interface.node.fqdn,
+                     node.fqdn))
+                interface.delete()
                 interface = _create_default_physical_interface(
                     node, ifname, mac, link_connected, interface_speed,
-                    link_speed, numa_nodes[numa_index], **extra_info)
+                    link_speed, numa_nodes[numa_index], vendor=vendor,
+                    product=product, firmware_version=firmware_version,
+                    sriov_max_vf=sriov_max_vf)
+            else:
+                # Interface already exists on this Node, so just update
+                # the name and NIC info.
+                update_fields = []
+                fields = (
+                    'name', 'vendor', 'product', 'firmware_version')
+                for field in fields:
+                    value = iface.get(field, '')
+                    if getattr(interface, field) != value:
+                        setattr(interface, field, value)
+                    update_fields.append(field)
+                if interface.sriov_max_vf != sriov_max_vf:
+                    interface.sriov_max_vf = sriov_max_vf
+                    update_fields.append('sriov_max_vf')
+                if update_fields:
+                    interface.save(
+                        update_fields=['updated', *update_fields])
+        except PhysicalInterface.DoesNotExist:
+            interface = _create_default_physical_interface(
+                node, ifname, mac, link_connected, interface_speed,
+                link_speed, numa_nodes[numa_index], vendor=vendor,
+                product=product, firmware_version=firmware_version,
+                sriov_max_vf=sriov_max_vf)
 
-            current_interfaces.add(interface)
-            interface.update_ip_addresses(iface.get('ips'))
+        current_interfaces.add(interface)
+        interface.update_ip_addresses(iface.get('ips'))
+        if sriov_max_vf > 0:
+            interface.add_tag('sriov')
+            interface.save(update_fields=['tags'])
 
-            if not link_connected:
-                # This interface is now disconnected.
-                if interface.vlan is not None:
-                    interface.vlan = None
-                    interface.save(update_fields=['vlan', 'updated'])
+        if not link_connected:
+            # This interface is now disconnected.
+            if interface.vlan is not None:
+                interface.vlan = None
+                interface.save(update_fields=['vlan', 'updated'])
 
     # If a machine boots by UUID before commissioning(s390x) no boot_interface
     # will be set as interfaces existed during boot. Set it using the
@@ -290,32 +298,6 @@ def update_node_network_information(node, data, numa_nodes):
 
     Interface.objects.filter(node=node).exclude(
         id__in=[iface.id for iface in current_interfaces]).delete()
-
-
-def update_node_network_interface_tags(node, output, exit_status):
-    """Updates the network interfaces tags from the results of `SRIOV_SCRIPT`.
-
-    Creates and deletes a tag on an Interface according to what we currently
-    know about this node's hardware.
-
-    If `exit_status` is non-zero, this function returns without doing
-    anything.
-
-    """
-    if exit_status != 0:
-        logger.error("%s: SR-IOV detection script failed with status: %s." % (
-            node.hostname, exit_status))
-        return
-    assert isinstance(output, bytes)
-
-    decoded_output = output.decode("ascii")
-    for iface in PhysicalInterface.objects.filter(node=node):
-        if str(iface.mac_address) in decoded_output:
-            if 'sriov' not in str(iface.tags):
-                tags = iface.tags.copy()
-                tags.append("sriov")
-                iface.tags = tags
-                iface.save()
 
 
 def get_xml_field_value(evaluator, expression):
@@ -1022,5 +1004,3 @@ NODE_INFO_SCRIPTS[GET_FRUID_DATA_OUTPUT_NAME]['hook'] = (
 NODE_INFO_SCRIPTS[LIST_MODALIASES_OUTPUT_NAME]['hook'] = (
     create_metadata_by_modalias)
 NODE_INFO_SCRIPTS[LXD_OUTPUT_NAME]['hook'] = process_lxd_results
-NODE_INFO_SCRIPTS[SRIOV_OUTPUT_NAME]['hook'] = (
-    update_node_network_interface_tags)

@@ -49,7 +49,6 @@ from metadataserver.builtin_scripts.hooks import (
     update_hardware_details,
     update_node_fruid_metadata,
     update_node_network_information,
-    update_node_network_interface_tags,
     update_node_physical_block_devices,
 )
 import metadataserver.builtin_scripts.hooks as hooks_module
@@ -61,7 +60,6 @@ from metadataserver.models import ScriptSet
 from netaddr import IPNetwork
 from provisioningserver.refresh.node_info_scripts import (
     IPADDR_OUTPUT_NAME,
-    LSHW_OUTPUT_NAME,
     LXD_OUTPUT_NAME,
 )
 from testtools.matchers import (
@@ -285,7 +283,13 @@ SAMPLE_LXD_JSON = {
                 "vendor": "Intel Corporation",
                 "vendor_id": "8086",
                 "product": "Ethernet Connection I217-LM",
-                "product_id": "153a"
+                "product_id": "153a",
+                "firmware_version": "1.2.3.4",
+                "sriov": {
+                    "current_vfs": 0,
+                    "maximum_vfs": 8,
+                    "vfs": [],
+                },
             },
             {
                 "driver": "e1000e",
@@ -1724,43 +1728,6 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             Config.objects.get_config('default_storage_layout'), layout)
 
 
-class TestUpdateNodeNetworkInterfaceTags(MAASServerTestCase):
-    """Test the update_node_network_interface_tags function using data from
-    """
-
-    SRIOV_OUTPUT = dedent("""\
-        eth0 00:00:00:00:00:01
-        eth1 00:00:00:00:00:02
-        """).encode("utf-8")
-
-    def test_set_sriov_interface_tag(self):
-        """Test the update_node_network_interface_tags creates 'sriov' tag
-        for network interfaces in the commissioning output. (SRIOV_OUTPUT)
-        """
-        node = factory.make_Node()
-
-        # Create network interfaces to add the tags to.
-        factory.make_Interface(INTERFACE_TYPE.PHYSICAL, name="eth0",
-                               mac_address="00:00:00:00:00:01", node=node)
-        factory.make_Interface(INTERFACE_TYPE.PHYSICAL, name="eth1",
-                               mac_address="00:00:00:00:00:02", node=node)
-        factory.make_Interface(INTERFACE_TYPE.PHYSICAL, name="eth2",
-                               mac_address="00:00:00:00:00:03", node=node)
-
-        update_node_network_interface_tags(node, self.SRIOV_OUTPUT, 0)
-
-        # Test that interfaces in SRIOV_OUTPUT have tag
-        self.assertThat(Interface.objects.filter(node=node,
-                        mac_address="00:00:00:00:00:01").first().tags,
-                        Contains('sriov'))
-        self.assertThat(Interface.objects.filter(node=node,
-                        mac_address="00:00:00:00:00:02").first().tags,
-                        Contains('sriov'))
-        # Test that interfaces not in SRIOV_OUTPUT do not have the tag
-        self.assertNotIn('sriov', Interface.objects.filter(node=node,
-                         mac_address="00:00:00:00:00:03").first().tags)
-
-
 class TestUpdateNodeNetworkInformation(MAASServerTestCase):
     """Tests the update_node_network_information function using data from LXD.
 
@@ -1830,6 +1797,31 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         # Makes sure all the test dataset MAC addresses were added to the node.
         self.assert_expected_interfaces_and_macs_exist_for_node(node)
 
+    def test__interfaces_for_all_ports(self):
+        """Interfaces are created for all ports in a network card.
+        """
+        node = factory.make_Node()
+        create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
+
+        # all ports belong to a single card
+        lxd_output = deepcopy(SAMPLE_LXD_JSON)
+        card0 = lxd_output['network']['cards'][0]
+        port1 = lxd_output['network']['cards'][1]['ports'][0]
+        port2 = lxd_output['network']['cards'][2]['ports'][0]
+        port1['port'] = 1
+        port2['port'] = 2
+        card0['ports'].extend([port1, port2])
+        # remove other cards
+        del(lxd_output['network']['cards'][1:])
+
+        # Delete all Interfaces created by factory attached to this node.
+        Interface.objects.filter(node_id=node.id).delete()
+        update_node_network_information(
+            node, lxd_output, create_numa_nodes(node))
+
+        # Makes sure all the test dataset MAC addresses were added to the node.
+        self.assert_expected_interfaces_and_macs_exist_for_node(node)
+
     def test__add_all_interfaces_xenial(self):
         """Test a node that has no previously known interfaces on which we
         need to add a series of interfaces.
@@ -1848,7 +1840,55 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         self.assert_expected_interfaces_and_macs_exist_for_node(
             node, expected_interfaces=self.EXPECTED_INTERFACES_XENIAL)
 
-    def test__adds_lshw_info(self):
+    def test_adds_vendor_info(self):
+        """Vendor, product and firmware version details are added."""
+        node = factory.make_Node()
+        create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
+
+        # Delete all Interfaces created by factory attached to this node.
+        Interface.objects.filter(node_id=node.id).delete()
+
+        update_node_network_information(
+            node, SAMPLE_LXD_JSON, create_numa_nodes(node))
+
+        nic = Interface.objects.get(mac_address='00:00:00:00:00:01')
+        self.assertEqual(nic.vendor, 'Intel Corporation')
+        self.assertEqual(nic.product, 'Ethernet Connection I217-LM')
+        self.assertEqual(nic.firmware_version, '1.2.3.4')
+
+    def test_adds_sriov_info(self):
+        node = factory.make_Node()
+        create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
+
+        # Delete all Interfaces created by factory attached to this node.
+        Interface.objects.filter(node_id=node.id).delete()
+
+        update_node_network_information(
+            node, SAMPLE_LXD_JSON, create_numa_nodes(node))
+
+        nic = Interface.objects.get(mac_address='00:00:00:00:00:01')
+        self.assertEqual(nic.sriov_max_vf, 8)
+
+    def test_adds_sriov_tag_if_sriov(self):
+        node = factory.make_Node()
+
+        node = factory.make_Node()
+        create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
+
+        # Delete all Interfaces created by factory attached to this node.
+        Interface.objects.filter(node_id=node.id).delete()
+
+        update_node_network_information(
+            node, SAMPLE_LXD_JSON, create_numa_nodes(node))
+
+        nic1 = Interface.objects.get(mac_address='00:00:00:00:00:01')
+        nic2 = Interface.objects.get(mac_address='00:00:00:00:00:02')
+        nic3 = Interface.objects.get(mac_address='00:00:00:00:00:03')
+        self.assertEqual(nic1.tags, ['sriov'])
+        self.assertEqual(nic2.tags, [])
+        self.assertEqual(nic3.tags, [])
+
+    def test_ignores_missing_vendor_data(self):
         """Test a node that has no previously known interfaces gets info from
         lshw added.
         """
@@ -1858,78 +1898,13 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         # Delete all Interfaces created by factory attached to this node.
         Interface.objects.filter(node_id=node.id).delete()
 
-        vendor = factory.make_name('vendor')
-        product = factory.make_name('product')
-        firmware_version = factory.make_name('firmware_version')
-        lshw = node.current_commissioning_script_set.find_script_result(
-            script_name=LSHW_OUTPUT_NAME)
-        lshw_xml = dedent("""\
-        <node class="network">
-            <serial>00:00:00:00:00:01</serial>
-            <vendor>%s</vendor>
-            <product>%s</product>
-            <configuration>
-                <setting id="firmware" value="%s" />
-            </configuration>
-        </node>
-        """ % (vendor, product, firmware_version)).encode()
-        lshw.store_result(0, stdout=lshw_xml)
-
+        lxd_output = deepcopy(SAMPLE_LXD_JSON)
+        card_info = lxd_output['network']['cards'][0]
+        del(card_info['vendor'])
+        del(card_info['product'])
+        del(card_info['firmware_version'])
         update_node_network_information(
-            node, SAMPLE_LXD_JSON, create_numa_nodes(node))
-
-        nic = Interface.objects.get(mac_address='00:00:00:00:00:01')
-        self.assertEqual(vendor, nic.vendor)
-        self.assertEqual(product, nic.product)
-        self.assertEqual(firmware_version, nic.firmware_version)
-
-    def test__ignores_bad_lshw(self):
-        """Test a node that has no previous known interfaces ignores bad lshw
-        data.
-        """
-        node = factory.make_Node()
-        create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
-
-        # Delete all Interfaces created by factory attached to this node.
-        Interface.objects.filter(node_id=node.id).delete()
-
-        lshw = node.current_commissioning_script_set.find_script_result(
-            script_name=LSHW_OUTPUT_NAME)
-        lshw.store_result(0, stdout=factory.make_string().encode())
-
-        update_node_network_information(
-            node, SAMPLE_LXD_JSON, create_numa_nodes(node))
-
-        nic = Interface.objects.get(mac_address='00:00:00:00:00:01')
-        self.assertIsNone(nic.vendor)
-        self.assertIsNone(nic.product)
-        self.assertIsNone(nic.firmware_version)
-
-    def test__ignores_empty_or_missing_lshw_data(self):
-        """Test a node that has no previously known interfaces gets info from
-        lshw added.
-        """
-        node = factory.make_Node()
-        create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
-
-        # Delete all Interfaces created by factory attached to this node.
-        Interface.objects.filter(node_id=node.id).delete()
-
-        lshw = node.current_commissioning_script_set.find_script_result(
-            script_name=LSHW_OUTPUT_NAME)
-        lshw_xml = dedent("""\
-        <node class="network">
-            <serial>00:00:00:00:00:01</serial>
-            <vendor></vendor>
-            <configuration>
-                <setting id="firmware" />
-            </configuration>
-        </node>
-        """).encode()
-        lshw.store_result(0, stdout=lshw_xml)
-
-        update_node_network_information(
-            node, SAMPLE_LXD_JSON, create_numa_nodes(node))
+            node, lxd_output, create_numa_nodes(node))
 
         nic = Interface.objects.get(mac_address='00:00:00:00:00:01')
         self.assertIsNone(nic.vendor)

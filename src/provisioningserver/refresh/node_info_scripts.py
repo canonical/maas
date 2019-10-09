@@ -14,7 +14,6 @@ __all__ = [
     'LXD_OUTPUT_NAME',
     'NODE_INFO_SCRIPTS',
     'SERIAL_PORTS_OUTPUT_NAME',
-    'SRIOV_OUTPUT_NAME',
     'SUPPORT_INFO_OUTPUT_NAME',
     'VIRTUALITY_OUTPUT_NAME',
     ]
@@ -39,7 +38,6 @@ DHCP_EXPLORE_OUTPUT_NAME = '00-maas-05-dhcp-unconfigured-ifaces'
 GET_FRUID_DATA_OUTPUT_NAME = '00-maas-06-get-fruid-api-data'
 SERIAL_PORTS_OUTPUT_NAME = '00-maas-08-serial-ports'
 IPADDR_OUTPUT_NAME = '40-maas-01-network-interfaces'
-SRIOV_OUTPUT_NAME = '40-maas-02-network-interfaces-with-sriov'
 LXD_OUTPUT_NAME = '50-maas-01-commissioning'
 LLDP_OUTPUT_NAME = '99-maas-01-capture-lldp'
 
@@ -157,17 +155,6 @@ SERIAL_PORTS_SCRIPT = dedent("""\
         | sort -u
     # Do not fail commissioning if this fails.
     exit 0
-    """)
-
-SRIOV_SCRIPT = dedent("""\
-    #!/bin/bash
-    for file in $(find /sys/devices/ -name sriov_numvfs); do
-        dir=$(dirname "$file")
-        for eth in $(ls "$dir/net/"); do
-            mac=`cat "$(dirname $file)/net/$eth/address"`
-            echo "$eth $mac"
-        done
-    done
     """)
 
 SUPPORT_SCRIPT = dedent(r"""#!/bin/bash
@@ -551,12 +538,6 @@ NODE_INFO_SCRIPTS = OrderedDict([
     }),
     (IPADDR_OUTPUT_NAME, {
         'content': IPADDR_SCRIPT.encode('ascii'),
-        'hook': null_hook,
-        'timeout': timedelta(seconds=10),
-        'run_on_controller': False,
-    }),
-    (SRIOV_OUTPUT_NAME, {
-        'content': SRIOV_SCRIPT.encode('ascii'),
         'hook': null_hook,
         'timeout': timedelta(seconds=10),
         'run_on_controller': False,
