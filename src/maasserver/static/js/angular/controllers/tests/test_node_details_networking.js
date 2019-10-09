@@ -5187,4 +5187,14 @@ describe("NodeNetworkingController", function() {
       expect($scope.canMarkAsDisconnected(nic)).toBe(true);
     });
   });
+
+  describe("validateNetworkConfiguration", () => {
+    it("calls $parent.validateNetworkConfiguration", () => {
+      makeController();
+      $scope.$parent.validateNetworkConfiguration = () => true;
+      spyOn($scope.$parent, "validateNetworkConfiguration");
+      $scope.validateNetworkConfiguration();
+      expect($scope.$parent.validateNetworkConfiguration).toHaveBeenCalled();
+    });
+  });
 });

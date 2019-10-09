@@ -769,6 +769,28 @@
                     </div>
                 </div>
 
+                <div data-ng-if="!isShowingCreateBridge() && !isShowingEdit() && !isShowingCreateBond()">
+                    <div class="row" data-ng-if="!isController && !isDevice"
+                        data-ng-hide="isAllNetworkingDisabled() || isShowingCreateBond() || isShowingCreatePhysical()">
+                        <div class="col-8">
+                            <button class="p-button--neutral" data-ng-disabled="selectedMode !== null"
+                                data-ng-click="showCreatePhysical()">Add interface</button>
+                            <button class="p-button--neutral" data-ng-disabled="!canCreateBond()" data-ng-click="showCreateBond()">Create
+                                bond</button>
+                            <button class="p-button--neutral" data-ng-disabled="!canCreateBridge()"
+                                data-ng-click="showCreateBridge()">Create bridge</button>
+                        </div>
+                        <div class="col-4 u-align--right">
+                            <button class="p-button--neutral" data-ng-click="validateNetworkConfiguration()">Validate network configuration</button>
+                        </div>
+                    </div>
+                    <div data-ng-if="isDevice"
+                        data-ng-hide="isAllNetworkingDisabled() || isShowingCreateBond() || isShowingCreatePhysical()">
+                        <button class="p-button--neutral" data-ng-disabled="selectedMode !== null"
+                            data-ng-click="showCreatePhysical()">Add interface</button>
+                    </div>
+                </div>
+
 
                 <div class="row" data-ng-if="isShowingCreateBridge()">
                     <div class="p-card--highlighted">
@@ -2851,24 +2873,6 @@
                             </tr>
                         </tbody>
                     </table>
-                </div>
-                <div class="row" data-ng-if="!isShowingCreateBridge() && !isShowingEdit() && !isShowingCreateBond()  ">
-                    <div data-ng-if="!isController && !isDevice" data-ng-hide="isAllNetworkingDisabled() || isShowingCreateBond() || isShowingCreatePhysical()">
-                        <button class="p-button--neutral"
-                            data-ng-disabled="selectedMode !== null"
-                            data-ng-click="showCreatePhysical()">Add interface</button>
-                        <button class="p-button--neutral"
-                            data-ng-disabled="!canCreateBond()"
-                            data-ng-click="showCreateBond()">Create bond</button>
-                        <button class="p-button--neutral"
-                            data-ng-disabled="!canCreateBridge()"
-                            data-ng-click="showCreateBridge()">Create bridge</button>
-                    </div>
-                    <div data-ng-if="isDevice" data-ng-hide="isAllNetworkingDisabled() || isShowingCreateBond() || isShowingCreatePhysical()">
-                        <button class="p-button--neutral"
-                            data-ng-disabled="selectedMode !== null"
-                            data-ng-click="showCreatePhysical()">Add interface</button>
-                    </div>
                 </div>
             </form>
         </div>

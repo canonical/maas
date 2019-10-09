@@ -97,6 +97,11 @@ export function maasCta() {
       }
     };
 
+    // Opens the test dialog
+    scope.$on("validate", (e, action) => {
+      scope.selectItem(action);
+    });
+
     // Called to get the title for each option. (Sometimes the title
     // of an option is different when it is selected.)
     scope.getOptionTitle = function(option) {

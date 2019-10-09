@@ -210,6 +210,7 @@ export function filterLinkModes() {
 /* @ngInject */
 export function NodeNetworkingController(
   $scope,
+  $rootScope,
   $filter,
   FabricsManager,
   VLANsManager,
@@ -2203,6 +2204,11 @@ export function NodeNetworkingController(
         };
       }
     }
+  };
+
+  // Has to call parent so event can be broadcast
+  $scope.validateNetworkConfiguration = () => {
+    $scope.$parent.validateNetworkConfiguration();
   };
 
   // Return true if cannot add the interface.

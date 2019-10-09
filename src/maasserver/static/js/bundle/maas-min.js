@@ -37642,9 +37642,13 @@ function maasCta() {
         scope.secondary = false;
         return defaultTitle;
       }
-    }; // Called to get the title for each option. (Sometimes the title
-    // of an option is different when it is selected.)
+    }; // Opens the test dialog
 
+
+    scope.$on("validate", function (e, action) {
+      scope.selectItem(action);
+    }); // Called to get the title for each option. (Sometimes the title
+    // of an option is different when it is selected.)
 
     scope.getOptionTitle = function (option) {
       if (!scope.secondary) {
@@ -39238,7 +39242,7 @@ exports.NodeNetworkingController = NodeNetworkingController;
 
 var _enum = __webpack_require__(68);
 
-NodeNetworkingController.$inject = ["$scope", "$filter", "FabricsManager", "VLANsManager", "SubnetsManager", "ControllersManager", "GeneralManager", "UsersManager", "NodeResultsManagerFactory", "ManagerHelperService", "ValidationService", "JSONService", "DHCPSnippetsManager", "$log", "$routeParams"];
+NodeNetworkingController.$inject = ["$scope", "$rootScope", "$filter", "FabricsManager", "VLANsManager", "SubnetsManager", "ControllersManager", "GeneralManager", "UsersManager", "NodeResultsManagerFactory", "ManagerHelperService", "ValidationService", "JSONService", "DHCPSnippetsManager", "$log", "$routeParams"];
 
 /* Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
@@ -39445,7 +39449,7 @@ function filterLinkModes() {
 /* @ngInject */
 
 
-function NodeNetworkingController($scope, $filter, FabricsManager, VLANsManager, SubnetsManager, ControllersManager, GeneralManager, UsersManager, NodeResultsManagerFactory, ManagerHelperService, ValidationService, JSONService, DHCPSnippetsManager, $log, $routeParams) {
+function NodeNetworkingController($scope, $rootScope, $filter, FabricsManager, VLANsManager, SubnetsManager, ControllersManager, GeneralManager, UsersManager, NodeResultsManagerFactory, ManagerHelperService, ValidationService, JSONService, DHCPSnippetsManager, $log, $routeParams) {
   // Different interface types.
   var INTERFACE_TYPE = {
     PHYSICAL: "physical",
@@ -41353,6 +41357,11 @@ function NodeNetworkingController($scope, $filter, FabricsManager, VLANsManager,
         };
       }
     }
+  }; // Has to call parent so event can be broadcast
+
+
+  $scope.validateNetworkConfiguration = function () {
+    $scope.$parent.validateNetworkConfiguration();
   }; // Return true if cannot add the interface.
 
 
@@ -55582,7 +55591,15 @@ function NodeDetailsController($scope, $rootScope, $routeParams, $location, Devi
 
   $scope.$on("$routeUpdate", function () {
     GeneralManager.loadItems(["osinfo", "architectures", "min_hwe_kernels"]);
-  });
+  }); // Event has to be broadcast from here so cta directive can listen for it
+
+  $scope.validateNetworkConfiguration = function () {
+    var testAction = $scope.action.availableOptions.find(function (action) {
+      return action.name === "test";
+    });
+    $scope.$broadcast("validate", testAction);
+  };
+
   var page_managers;
 
   if ($location.path().indexOf("/controller") !== -1) {

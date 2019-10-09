@@ -1407,6 +1407,14 @@ function NodeDetailsController(
     GeneralManager.loadItems(["osinfo", "architectures", "min_hwe_kernels"]);
   });
 
+  // Event has to be broadcast from here so cta directive can listen for it
+  $scope.validateNetworkConfiguration = () => {
+    const testAction = $scope.action.availableOptions.find(action => {
+      return action.name === "test";
+    });
+    $scope.$broadcast("validate", testAction);
+  };
+
   var page_managers;
   if ($location.path().indexOf("/controller") !== -1) {
     $scope.nodesManager = ControllersManager;

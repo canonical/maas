@@ -2658,4 +2658,16 @@ describe("NodeDetailsController", function() {
       });
     });
   });
+
+  describe("validateNetworkConfiguration", () => {
+    it("broadcasts validate event with test action", () => {
+      makeController();
+      spyOn($rootScope, "$broadcast");
+      $scope.action.availableOptions = [{ name: "test" }];
+      $scope.validateNetworkConfiguration();
+      expect($rootScope.$broadcast).toHaveBeenCalledWith("validate", {
+        name: "test"
+      });
+    });
+  });
 });
