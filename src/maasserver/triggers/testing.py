@@ -648,6 +648,10 @@ class TransactionalHelpersMixin:
         return factory.make_SSLKey(**params)
 
     @transactional
+    def update_sslkey(self, id, params, **kwargs):
+        return apply_update_to_model(SSLKey, id, params, **kwargs)
+
+    @transactional
     def delete_sslkey(self, id):
         key = SSLKey.objects.get(id=id)
         key.delete()

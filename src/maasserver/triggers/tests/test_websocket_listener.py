@@ -27,6 +27,7 @@ from maasserver.models.config import Config
 from maasserver.models.node import Node
 from maasserver.models.partition import MIN_PARTITION_SIZE
 from maasserver.models.switch import Switch
+from maasserver.testing import get_data
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.triggers.testing import TransactionalHelpersMixin
@@ -3622,6 +3623,75 @@ class TestUserSSLKeyListener(
             yield deferToDatabase(self.delete_sslkey, sslkey.id)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % user.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+
+class TestSSLKeyListener(
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listeners code and the maasserver_sslkey
+    table."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_create(self):
+        yield deferToDatabase(register_websocket_triggers)
+        user = yield deferToDatabase(self.create_user)
+
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("sslkey", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            obj = yield deferToDatabase(self.create_sslkey, {"user": user})
+            yield dv.get(timeout=2)
+            self.assertEqual(('create', str(obj.id)), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_update(self):
+        yield deferToDatabase(register_websocket_triggers)
+        user = yield deferToDatabase(self.create_user)
+        sslkey = yield deferToDatabase(self.create_sslkey, {"user": user})
+        other_sslkey = yield deferToDatabase(
+            self.create_sslkey, {
+                "user": user,
+                "key_string": get_data('data/test_x509_1.pem'),
+            })
+        contents = other_sslkey.key
+        yield deferToDatabase(self.delete_sslkey, other_sslkey.id)
+
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("sslkey", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            # Force the update because the key contents could be the same.
+            yield deferToDatabase(
+                self.update_sslkey, sslkey.id, {'key': contents},
+                force_update=True)
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', str(sslkey.id)), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_delete(self):
+        yield deferToDatabase(register_websocket_triggers)
+        user = yield deferToDatabase(self.create_user)
+        sslkey = yield deferToDatabase(self.create_sslkey, {"user": user})
+
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("sslkey", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.delete_sslkey, sslkey.id)
+            yield dv.get(timeout=2)
+            self.assertEqual(('delete', str(sslkey.id)), dv.value)
         finally:
             yield listener.stopService()
 
