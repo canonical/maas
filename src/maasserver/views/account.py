@@ -159,10 +159,10 @@ def csrf(request):
     """Get the CSRF token for the authenticated user."""
     if request.method != "POST":
         return HttpResponseNotAllowed(["POST"])
-    if (request.user is None or
-            not request.user.is_authenticated or
-            not request.user.is_active):
-        return HttpResponseForbidden()
+    token = get_token(request)
+    # Don't mark the CSRF as used. If not done, Django will cycle the
+    # CSRF and the returned CSRF will be un-usable.
+    request.META.pop("CSRF_COOKIE_USED", None)
     return JsonResponse({
-        "csrf": get_token(request),
+        "csrf": token,
     })

@@ -380,16 +380,14 @@ class TestCSRF(MAASServerTestCase):
         response = self.client.delete(reverse('csrf'))
         self.assertThat(response, HasStatusCode(HTTPStatus.METHOD_NOT_ALLOWED))
 
-    def test__forbidden_when_not_authenticated(self):
-        response = self.client.post(reverse('csrf'))
-        self.assertThat(response, HasStatusCode(HTTPStatus.FORBIDDEN))
-
     def test__returns_csrf(self):
         # Force the client to test for CSRF because the view should be CSRF
         # exempt. If not exempt then the `client.post` would fail.
         self.client.handler.enforce_csrf_checks = True
-        self.client.login(user=factory.make_User())
         response = self.client.post(reverse('csrf'))
         self.assertThat(response, HasStatusCode(HTTPStatus.OK))
         body = json_load_bytes(response.content)
         self.assertTrue("csrf" in body)
+        # Should not have an updated CSRF cookie, because it was marked as
+        # not used.
+        self.assertIsNone(response.cookies.get(settings.CSRF_COOKIE_NAME))
