@@ -62,6 +62,7 @@ class TestLogin(MAASServerTestCase):
     def test_login_redirects_when_authenticated(self):
         password = factory.make_string()
         user = factory.make_User(password=password)
+        self.client.handler.enforce_csrf_checks = True
         self.client.login(username=user.username, password=password)
         response = self.client.get(reverse("login"))
         self.assertEqual(reverse("index"), extract_redirect(response))
@@ -69,6 +70,7 @@ class TestLogin(MAASServerTestCase):
     def test_login_doesnt_redirect_to_logout_GET(self):
         password = factory.make_string()
         user = factory.make_User(password=password)
+        self.client.handler.enforce_csrf_checks = True
         response = self.client.post(
             reverse("login") + '?%s=%s' % (
                 REDIRECT_FIELD_NAME, reverse('logout')),
@@ -78,6 +80,7 @@ class TestLogin(MAASServerTestCase):
     def test_login_redirects_GET(self):
         password = factory.make_string()
         user = factory.make_User(password=password)
+        self.client.handler.enforce_csrf_checks = True
         response = self.client.post(
             reverse("login") + '?%s=%s' % (
                 REDIRECT_FIELD_NAME, reverse('prefs')),
@@ -87,6 +90,7 @@ class TestLogin(MAASServerTestCase):
     def test_login_doesnt_redirect_to_logout_POST(self):
         password = factory.make_string()
         user = factory.make_User(password=password)
+        self.client.handler.enforce_csrf_checks = True
         response = self.client.post(
             reverse("login"), {
                 'username': user.username,
@@ -98,6 +102,7 @@ class TestLogin(MAASServerTestCase):
     def test_login_redirects_POST(self):
         password = factory.make_string()
         user = factory.make_User(password=password)
+        self.client.handler.enforce_csrf_checks = True
         response = self.client.post(
             reverse("login"), {
                 'username': user.username,
@@ -171,14 +176,18 @@ class TestLogout(MAASServerTestCase):
         # the loggout page.
         password = factory.make_string()
         user = factory.make_User(password=password)
+        self.client.handler.enforce_csrf_checks = True
         self.client.login(username=user.username, password=password)
+        self.client.handler.enforce_csrf_checks = False
         self.client.post(reverse('logout'))
         self.assertNotIn(SESSION_KEY, self.client.session)
 
     def test_logout_creates_audit_event(self):
         password = factory.make_string()
         user = factory.make_User(password=password)
+        self.client.handler.enforce_csrf_checks = True
         self.client.login(username=user.username, password=password)
+        self.client.handler.enforce_csrf_checks = False
         self.client.post(reverse('logout'))
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
@@ -380,10 +389,15 @@ class TestCSRF(MAASServerTestCase):
         response = self.client.delete(reverse('csrf'))
         self.assertThat(response, HasStatusCode(HTTPStatus.METHOD_NOT_ALLOWED))
 
+    def test__forbidden_when_not_authenticated(self):
+        response = self.client.post(reverse('csrf'))
+        self.assertThat(response, HasStatusCode(HTTPStatus.FORBIDDEN))
+
     def test__returns_csrf(self):
         # Force the client to test for CSRF because the view should be CSRF
         # exempt. If not exempt then the `client.post` would fail.
         self.client.handler.enforce_csrf_checks = True
+        self.client.login(user=factory.make_User())
         response = self.client.post(reverse('csrf'))
         self.assertThat(response, HasStatusCode(HTTPStatus.OK))
         body = json_load_bytes(response.content)

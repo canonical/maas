@@ -33,7 +33,6 @@
                 {% else %}
                 {% comment %} We turn off autocompletion of the login form in production environments. Autocompletion, in combination with cross-site scripting attacks, can potentially allow remote attackers to steal credentials. {% endcomment %}
                 <form method="post" {% if not debug %}autocomplete="off" {% endif %} action="{% url 'login' %}" class="u-no-margin--top">
-                    {% csrf_token %}
                     <input type="hidden" name="next" value="{{ next }}" />
                     <ul class="p-list">
                         {% for field in form %}
