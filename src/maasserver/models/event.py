@@ -122,7 +122,7 @@ class Event(CleanSave, TimestampedModel):
 
     user_id = IntegerField(blank=True, null=True, editable=False)
 
-    username = CharField(max_length=32, blank=True, default='')
+    username = CharField(max_length=150, blank=True, default='')
 
     # IP address of the request that caused this event.
     ip_address = MAASIPAddressField(
