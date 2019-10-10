@@ -211,7 +211,6 @@ from provisioningserver.events import (
 )
 from provisioningserver.refresh.node_info_scripts import (
     IPADDR_OUTPUT_NAME,
-    LSHW_OUTPUT_NAME,
     LXD_OUTPUT_NAME,
     NODE_INFO_SCRIPTS,
 )
@@ -9047,7 +9046,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
                 ip=None,
             ))
 
-    def test__new_physical_with_multiple_dhcp_link_with_lshw(self):
+    def test__new_physical_with_multiple_dhcp_link_with_resource_info(self):
         controller = self.create_empty_controller(with_empty_script_sets=True)
         mac_address = factory.make_mac_address()
         interfaces = {
@@ -9069,20 +9068,31 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         vendor = factory.make_name('vendor')
         product = factory.make_name('product')
         firmware_version = factory.make_name('firmware_version')
-        lshw = controller.current_commissioning_script_set.find_script_result(
-            script_name=LSHW_OUTPUT_NAME)
-        lshw_xml = dedent("""\
-        <node class="network">
-            <serial>%s</serial>
-            <vendor>%s</vendor>
-            <product>%s</product>
-            <configuration>
-                <setting id="firmware" value="%s" />
-            </configuration>
-        </node>
-        """ % (mac_address, vendor, product, firmware_version)).encode()
-        lshw.store_result(0, stdout=lshw_xml)
 
+        test_hooks.create_IPADDR_OUTPUT_NAME_script(
+            controller, test_hooks.IP_ADDR_OUTPUT)
+        lxd_script = (
+            controller.current_commissioning_script_set.find_script_result(
+                script_name=LXD_OUTPUT_NAME))
+        lxd_script_output = {
+            "network": {
+                "cards": [
+                    {
+                        "ports": [
+                            {"id": "eth0",
+                             "address": mac_address,
+                             "port": 0,
+                             }
+                        ],
+                        "vendor": vendor,
+                        "product": product,
+                        "firmware_version": firmware_version
+                    }
+                ]
+            }
+        }
+        lxd_script.store_result(
+            0, stdout=json.dumps(lxd_script_output).encode("utf-8"))
         self.update_interfaces(controller, interfaces)
         eth0 = Interface.objects.get(name="eth0", node=controller)
         self.assertEqual(vendor, eth0.vendor)

@@ -554,8 +554,10 @@ with open(IP_ADDR_WEDGE_OUTPUT_FILE, "rb") as fd:
 def create_IPADDR_OUTPUT_NAME_script(node, output):
     commissioning_script_set = (
         ScriptSet.objects.create_commissioning_script_set(node))
-    commissioning_script_set.find_script_result(
-        script_name=IPADDR_OUTPUT_NAME).delete()
+    script_result = commissioning_script_set.find_script_result(
+        script_name=IPADDR_OUTPUT_NAME)
+    if script_result is not None:
+        script_result.delete()
     node.current_commissioning_script_set = commissioning_script_set
     factory.make_ScriptResult(
         script_set=commissioning_script_set,

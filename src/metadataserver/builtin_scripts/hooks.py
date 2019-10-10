@@ -5,7 +5,6 @@
 
 __all__ = [
     'NODE_INFO_SCRIPTS',
-    'parse_lshw_nic_info',
     'update_node_network_information',
     ]
 
@@ -101,51 +100,6 @@ def _create_default_physical_interface(
     return interface
 
 
-def parse_lshw_nic_info(node):
-    """Parse lshw output for additional NIC information."""
-    nics = {}
-    script_set = node.current_commissioning_script_set
-    # Should never happen but just incase...
-    if not script_set:
-        return nics
-    script_result = script_set.find_script_result(script_name=LSHW_OUTPUT_NAME)
-    if not script_result or script_result.status != SCRIPT_STATUS.PASSED:
-        logger.error(
-            '%s: Unable to discover extended NIC information due to missing '
-            'passed output from %s' % (node.hostname, LSHW_OUTPUT_NAME))
-        return nics
-
-    try:
-        doc = etree.XML(script_result.stdout)
-    except etree.XMLSyntaxError:
-        logger.exception(
-            '%s: Unable to discover extended NIC information due to %s output '
-            'containing invalid XML' % (node.hostname, LSHW_OUTPUT_NAME))
-        return nics
-
-    evaluator = etree.XPathEvaluator(doc)
-
-    for e in evaluator('//node[@class="network"]'):
-        mac = e.find('serial')
-        if mac is None:
-            continue
-        else:
-            mac = mac.text
-        # Bridged devices may appear multiple times but only one element
-        # may contain firmware information.
-        if mac not in nics:
-            nics[mac] = {}
-        for field in ['vendor', 'product']:
-            value = get_xml_field_value(e.xpath, '//%s/text()' % field)
-            if value:
-                nics[mac][field] = value
-        firmware_version = get_xml_field_value(
-            e.xpath, "//configuration/setting[@id='firmware']/@value")
-        if firmware_version:
-            nics[mac]['firmware_version'] = firmware_version
-    return nics
-
-
 def _parse_interface_speed(port):
     supported_modes = port.get('supported_modes')
     if supported_modes is not None:
@@ -158,6 +112,9 @@ def _parse_interface_speed(port):
 
 
 def _parse_interfaces(node, data):
+    """Return a dict of interfaces keyed by MAC address."""
+    interfaces = {}
+
     # Retrieve informaton from IPADDR_SCRIPT
     script_set = node.current_commissioning_script_set
     script_result = script_set.find_script_result(
@@ -169,13 +126,18 @@ def _parse_interfaces(node, data):
     assert isinstance(script_result.output, bytes)
 
     ip_addr_info = parse_ip_addr(script_result.output)
-    interfaces = []
     network_cards = data.get('network', {}).get('cards', {})
     for card in network_cards:
         for port in card.get('ports', {}):
+            mac = port.get('address')
+            if mac in (None, SWITCH_OPENBMC_MAC):
+                # Ignore loopback (with no MAC) and OpenBMC interfaces on
+                # switches which all share the same, hard-coded OpenBMC MAC
+                # address.
+                continue
+
             interface = {
                 'name': port.get('id'),
-                'mac': port.get('address'),
                 'link_connected': port.get('link_detected'),
                 'interface_speed': _parse_interface_speed(port),
                 'link_speed': port.get('link_speed'),
@@ -188,9 +150,54 @@ def _parse_interfaces(node, data):
             # Assign the IP addresses to this interface
             link = ip_addr_info[interface['name']]
             interface['ips'] = link.get('inet', []) + link.get('inet6', [])
-            interfaces.append(interface)
+
+            interfaces[mac] = interface
 
     return interfaces
+
+
+def parse_interfaces_details(node):
+    """Get details for node interfaces from commissioning script results."""
+    interfaces = {}
+
+    script_set = node.current_commissioning_script_set
+    if not script_set:
+        return interfaces
+    script_result = script_set.find_script_result(script_name=LXD_OUTPUT_NAME)
+    if not script_result or script_result.status != SCRIPT_STATUS.PASSED:
+        logger.error(
+            f'{node.hostname}: Unable to discover NIC information due to '
+            f'missing output from {LXD_OUTPUT_NAME}')
+        return interfaces
+
+    details = json.loads(script_result.stdout)
+    return _parse_interfaces(node, details)
+
+
+def update_interface_details(interface, details):
+    """Update details for an existing interface from commissioning data.
+
+    This should be passed details from the _parse_interfaces call.
+
+    """
+    iface_details = details.get(interface.mac_address)
+    if not iface_details:
+        return
+
+    update_fields = []
+    for field in ('name', 'vendor', 'product', 'firmware_version'):
+        value = iface_details.get(field, '')
+        if getattr(interface, field) != value:
+            setattr(interface, field, value)
+        update_fields.append(field)
+
+    sriov_max_vf = iface_details.get('sriov_max_vf')
+    if interface.sriov_max_vf != sriov_max_vf:
+        interface.sriov_max_vf = sriov_max_vf
+        update_fields.append('sriov_max_vf')
+    if update_fields:
+        interface.save(
+            update_fields=['updated', *update_fields])
 
 
 def update_node_network_information(node, data, numa_nodes):
@@ -201,15 +208,10 @@ def update_node_network_information(node, data, numa_nodes):
         node.save(update_fields=['skip_networking'])
         return
 
-    interfaces = _parse_interfaces(node, data)
+    interfaces_info = _parse_interfaces(node, data)
     current_interfaces = set()
 
-    for iface in interfaces:
-        mac = iface.get('mac')
-        if mac in (None, SWITCH_OPENBMC_MAC):
-            # Ignore loopback (with no MAC) and OpenBMC interfaces on switches
-            # which all share the same, hard-coded OpenBMC MAC address.
-            continue
+    for mac, iface in interfaces_info.items():
         ifname = iface.get('name')
         link_connected = iface.get('link_connected')
         interface_speed = iface.get('interface_speed')
@@ -236,21 +238,8 @@ def update_node_network_information(node, data, numa_nodes):
                     sriov_max_vf=sriov_max_vf)
             else:
                 # Interface already exists on this Node, so just update
-                # the name and NIC info.
-                update_fields = []
-                fields = (
-                    'name', 'vendor', 'product', 'firmware_version')
-                for field in fields:
-                    value = iface.get(field, '')
-                    if getattr(interface, field) != value:
-                        setattr(interface, field, value)
-                    update_fields.append(field)
-                if interface.sriov_max_vf != sriov_max_vf:
-                    interface.sriov_max_vf = sriov_max_vf
-                    update_fields.append('sriov_max_vf')
-                if update_fields:
-                    interface.save(
-                        update_fields=['updated', *update_fields])
+                # the NIC info.
+                update_interface_details(interface, interfaces_info)
         except PhysicalInterface.DoesNotExist:
             interface = _create_default_physical_interface(
                 node, ifname, mac, link_connected, interface_speed,

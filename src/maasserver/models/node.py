@@ -5958,7 +5958,10 @@ class Controller(Node):
             links or VLANs.
         """
         # Avoid circular imports
-        from metadataserver.builtin_scripts.hooks import parse_lshw_nic_info
+        from metadataserver.builtin_scripts.hooks import (
+            parse_interfaces_details,
+            update_interface_details,
+        )
 
         # Get all of the current interfaces on this controller.
         current_interfaces = {
@@ -5985,7 +5988,7 @@ class Controller(Node):
         # Cache the neighbour discovery settings, since they will be used for
         # every interface on this Controller.
         discovery_mode = Config.objects.get_network_discovery_config()
-        extended_nic_info = parse_lshw_nic_info(self)
+        interfaces_details = parse_interfaces_details(self)
         for name in flatten(process_order):
             settings = interfaces[name]
             # Note: the interface that comes back from this call may be None,
@@ -5996,14 +5999,9 @@ class Controller(Node):
                 hints=topology_hints)
             if interface is not None:
                 interface.update_discovery_state(discovery_mode, settings)
-            if interface is not None and interface.id in current_interfaces:
-                del current_interfaces[interface.id]
-            extra_info = extended_nic_info.get(settings.get('mac_address'), {})
-            if interface is not None:
-                for k, v in extra_info.items():
-                    if getattr(interface, k, v) != v:
-                        setattr(interface, k, v)
-                interface.save()
+                update_interface_details(interface, interfaces_details)
+                if interface.id in current_interfaces:
+                    del current_interfaces[interface.id]
 
         if not create_fabrics:
             # This could be an existing rack controller re-registering,
