@@ -27,6 +27,7 @@ function NodeDetailsController(
   ScriptsManager,
   ResourcePoolsManager,
   VLANsManager,
+  FabricsManager,
   $log,
   $window
 ) {
@@ -79,6 +80,7 @@ function NodeDetailsController(
   $scope.releaseOptions = {};
   $scope.checkingPower = false;
   $scope.devices = [];
+  $scope.fabrics = FabricsManager.getItems();
   $scope.scripts = ScriptsManager.getItems();
   $scope.vlans = VLANsManager.getItems();
   $scope.hideHighAvailabilityNotification = false;
@@ -86,6 +88,7 @@ function NodeDetailsController(
   $scope.disableTestButton = false;
   $scope.numaDetails = [];
   $scope.expandedNumas = [];
+  $scope.groupedInterfaces = [];
 
   // Node header section.
   $scope.header = {
@@ -203,6 +206,78 @@ function NodeDetailsController(
     });
 
     $scope.disableTestButton = disableButton;
+  };
+
+  $scope.shallowCompare = (obj1, obj2) =>
+    Object.keys(obj1).length === Object.keys(obj2).length &&
+    Object.keys(obj1).every(key => obj1[key] === obj2[key]);
+
+  $scope.groupInterfaces = interfaces => {
+    const physicalInterfaces = interfaces.filter(
+      iface => iface.type === "physical"
+    );
+    const sortedGroups = physicalInterfaces
+      .reduce((acc, iface) => {
+        const { vendor, product, firmware_version } = iface;
+        const group = {
+          vendor: vendor || "Unknown network card",
+          product,
+          firmware_version
+        };
+        if (!acc.some(item => $scope.shallowCompare(item, group))) {
+          acc.push(group);
+        }
+        return acc;
+      }, [])
+      .sort((a, b) => {
+        const vendorA = a.vendor.toUpperCase();
+        const vendorB = b.vendor.toUpperCase();
+        const productA = a.product && a.product.toUpperCase();
+        const productB = b.product && b.product.toUpperCase();
+        const versionA = a.firmware_version;
+        const versionB = b.firmware_version;
+
+        if (vendorA === "UNKNOWN NETWORK CARD") {
+          return 1;
+        }
+        if (vendorB === "UNKNOWN NETWORK CARD") {
+          return -1;
+        }
+        if (vendorA === vendorB) {
+          if (productA === productB) {
+            if (versionA === versionB) {
+              return 0;
+            }
+            return versionA > versionB ? 1 : -1;
+          }
+          return productA > productB ? 1 : -1;
+        }
+        return vendorA > vendorB ? 1 : -1;
+      });
+
+    return sortedGroups.map(group => {
+      const { vendor, product, firmware_version } = group;
+      let groupIfaces = [];
+
+      if (vendor === "Unknown network card") {
+        groupIfaces = physicalInterfaces.filter(iface => !iface.vendor);
+      } else {
+        groupIfaces = physicalInterfaces.filter(iface => {
+          return (
+            iface.vendor === group.vendor &&
+            iface.product === group.product &&
+            iface.firmware_version === group.firmware_version
+          );
+        });
+      }
+
+      return {
+        vendor,
+        product,
+        firmware_version,
+        interfaces: groupIfaces
+      };
+    });
   };
 
   // Updates the page title.
@@ -367,6 +442,10 @@ function NodeDetailsController(
         };
       });
       $scope.numaDetails = numaDetails;
+    }
+
+    if (node.interfaces) {
+      $scope.groupedInterfaces = $scope.groupInterfaces(node.interfaces);
     }
   };
 
@@ -1348,6 +1427,40 @@ function NodeDetailsController(
     return text;
   };
 
+  $scope.getDHCPStatus = iface => {
+    const { vlans } = $scope;
+    const vlan = vlans.find(vlan => vlan.id === iface.vlan_id);
+    if (vlan) {
+      if (vlan.external_dhcp) {
+        return `External (${vlan.external_dhcp})`;
+      }
+
+      if (vlan.dhcp_on) {
+        return "MAAS-provided";
+      }
+    }
+    return "No DHCP";
+  };
+
+  $scope.getFabricName = iface => {
+    const { fabrics, vlans } = $scope;
+    const vlan = vlans.find(vlan => vlan.id === iface.vlan_id);
+    if (vlan) {
+      const fabric = fabrics.find(fabric => fabric.id === vlan.fabric);
+      if (fabric) {
+        return fabric.name;
+      }
+    }
+    return "Unknown";
+  };
+
+  $scope.hasTestsRun = (node, scriptType) => {
+    const testObj = node[`${scriptType}_test_status`];
+    return (
+      testObj.passed + testObj.pending + testObj.running + testObj.failed > 0
+    );
+  };
+
   $scope.getHardwareTestErrorText = function(error) {
     if (error === "Unable to run destructive test while deployed!") {
       return (
@@ -1452,7 +1565,9 @@ function NodeDetailsController(
       TagsManager,
       DomainsManager,
       ServicesManager,
-      ResourcePoolsManager
+      ResourcePoolsManager,
+      FabricsManager,
+      VLANsManager
     ].concat(page_managers)
   ).then(function() {
     // Possibly redirected from another controller that already had

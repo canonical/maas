@@ -20,4 +20,9 @@
   .p-inline-list__item div {
     display: inline-block;
   }
+
+  .p-inline-list__item--compact {
+    @include vf-inline-list-item;
+    margin-right: $sph-inner--small;
+  }
 }

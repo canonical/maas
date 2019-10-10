@@ -38,7 +38,7 @@ describe("NodeDetailsController", function() {
 
   // Load the required dependencies for the NodeDetails controller and
   // mock the websocket connection.
-  var MachinesManager, ControllersManager, ServicesManager;
+  var MachinesManager, ControllersManager, ServicesManager, FabricsManager;
   var DevicesManager, GeneralManager, UsersManager, DomainsManager;
   var TagsManager, RegionConnection, ManagerHelperService, ErrorService;
   var ScriptsManager, ResourcePoolsManager, VLANsManager, ZonesManager;
@@ -59,6 +59,7 @@ describe("NodeDetailsController", function() {
     ErrorService = $injector.get("ErrorService");
     ScriptsManager = $injector.get("ScriptsManager");
     VLANsManager = $injector.get("VLANsManager");
+    FabricsManager = $injector.get("FabricsManager");
 
     // Mock buildSocket so an actual connection is not made.
     webSocket = new MockWebSocket();
@@ -322,6 +323,8 @@ describe("NodeDetailsController", function() {
       DomainsManager,
       ServicesManager,
       ResourcePoolsManager,
+      FabricsManager,
+      VLANsManager,
       MachinesManager,
       ScriptsManager
     ]);
@@ -338,6 +341,8 @@ describe("NodeDetailsController", function() {
       DomainsManager,
       ServicesManager,
       ResourcePoolsManager,
+      FabricsManager,
+      VLANsManager,
       DevicesManager
     ]);
   });
@@ -353,6 +358,8 @@ describe("NodeDetailsController", function() {
       DomainsManager,
       ServicesManager,
       ResourcePoolsManager,
+      FabricsManager,
+      VLANsManager,
       ControllersManager,
       ScriptsManager,
       VLANsManager
@@ -2668,6 +2675,120 @@ describe("NodeDetailsController", function() {
       expect($rootScope.$broadcast).toHaveBeenCalledWith("validate", {
         name: "test"
       });
+    });
+  });
+
+  describe("getDHCPStatus", () => {
+    it("returns correct text if dhcp is provided by MAAS", () => {
+      makeController();
+      const vlan = { external_dhcp: null, dhcp_on: true, id: 0 };
+      const iface = { vlan_id: vlan.id };
+      $scope.vlans = [vlan];
+      expect($scope.getDHCPStatus(iface)).toEqual("MAAS-provided");
+    });
+
+    it("returns correct text if dhcp is provided externally", () => {
+      makeController();
+      const vlan = { external_dhcp: "127.0.0.1", dhcp_on: true, id: 0 };
+      const iface = { vlan_id: vlan.id };
+      $scope.vlans = [vlan];
+      expect($scope.getDHCPStatus(iface)).toEqual("External (127.0.0.1)");
+    });
+
+    it("returns correct text if dhcp is disabled", () => {
+      makeController();
+      const vlan = { external_dhcp: null, dhcp_on: false, id: 0 };
+      const iface = { vlan_id: vlan.id };
+      $scope.vlans = [vlan];
+      expect($scope.getDHCPStatus(iface)).toEqual("No DHCP");
+    });
+
+    it("returns correct text if vlan is null", () => {
+      makeController();
+      const iface = { vlan_id: null };
+      $scope.vlans = [];
+      expect($scope.getDHCPStatus(iface)).toEqual("No DHCP");
+    });
+  });
+
+  describe("getFabricName", () => {
+    it("returns the fabric name of the VLAN of an interface", () => {
+      makeController();
+      const fabric = { id: 1, name: "foo" };
+      const otherFabric = { id: 2, name: "bar" };
+      const vlan = { fabric: 1 };
+      const otherVlan = { fabric: 2 };
+      const iface = { vlan_id: vlan.id };
+      $scope.fabrics = [fabric, otherFabric];
+      $scope.vlans = [vlan, otherVlan];
+      expect($scope.getFabricName(iface)).toEqual("foo");
+    });
+  });
+
+  describe("groupInterfaces", () => {
+    it(`returns physical interfaces grouped by
+      vendor/product/firmware_version`, () => {
+      makeController();
+      const nic1 = {
+        vendor: "vendor1",
+        product: "product1",
+        firmware_version: "1.0.0",
+        type: "physical"
+      };
+      const nic2 = {
+        vendor: "vendor2",
+        product: "product2",
+        firmware_version: "2.0.0",
+        type: "physical"
+      };
+      const nic3 = {
+        vendor: "vendor3",
+        product: "product3",
+        firmware_version: "3.0.0",
+        type: "bridge"
+      };
+      const interfaces = [nic1, nic2, nic2, nic3, nic3, nic3];
+      const grouped = $scope.groupInterfaces(interfaces);
+      expect(grouped.length).toEqual(2);
+      expect(grouped[0].interfaces.length).toEqual(1);
+      expect(grouped[0].vendor).toEqual("vendor1");
+      expect(grouped[1].interfaces.length).toEqual(2);
+      expect(grouped[1].vendor).toEqual("vendor2");
+    });
+
+    it("sorts groups by vendor > product > firmware_version", () => {
+      makeController();
+      const nic1 = {
+        vendor: "vendorA",
+        product: "productA",
+        firmware_version: "1",
+        type: "physical"
+      };
+      const nic2 = {
+        vendor: "vendorA",
+        product: "productA",
+        firmware_version: "2",
+        type: "physical"
+      };
+      const nic3 = {
+        vendor: "vendorA",
+        product: "productB",
+        firmware_version: "1",
+        type: "physical"
+      };
+      const nic4 = {
+        vendor: "vendorB",
+        product: "productA",
+        firmware_version: "1",
+        type: "physical"
+      };
+      const interfaces = [nic3, nic2, nic4, nic1];
+      const grouped = $scope.groupInterfaces(interfaces);
+      expect(grouped.length).toEqual(4);
+      expect(grouped[0].vendor).toEqual("vendorA");
+      expect(grouped[1].firmware_version).toEqual("2");
+      expect(grouped[2].product).toEqual("productB");
+      expect(grouped[3].vendor).toEqual("vendorB");
     });
   });
 });

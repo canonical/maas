@@ -2,7 +2,10 @@
 
   <div class="overview">
     <strong class="p-muted-heading u-sv1">Overview</strong>
-    <h4 class="u-no-margin--bottom">{$ node.status $}</h4>
+    <h4 class="u-no-margin--bottom">
+      <i class="p-icon--locked" ng-if="node.locked">Locked: </i>
+      {$ node.status $}
+    </h4>
     <p ng-if="node.show_os_info" class="p-text--muted">
       <span data-maas-release-name="node.osystem + '/' + node.distro_series"></span>
     </p>
@@ -34,17 +37,20 @@
     </div>
     <div>
       <ul class="p-inline-list u-no-margin--bottom">
-        <li class="p-inline-list__item">
-          <span><i class="p-icon--success"></i>{$ node.cpu_test_status.passed $}</span>
+        <li class="p-inline-list__item--compact" ng-if="node.cpu_test_status.passed > 0">
+          <a ng-click="openSection('testing')"><i class="p-icon--success"></i>{$ node.cpu_test_status.passed $}</a>
         </li>
-        <li class="p-inline-list__item">
-          <span><i class="p-icon--pending"></i>{$ node.cpu_test_status.pending + node.cpu_test_status.running $}</span>
+        <li class="p-inline-list__item--compact" ng-if="node.cpu_test_status.pending + node.cpu_test_status.running > 0">
+          <a ng-click="openSection('testing')"><i class="p-icon--pending"></i>{$ node.cpu_test_status.pending + node.cpu_test_status.running $}</a>
         </li>
-        <li class="p-inline-list__item">
-          <span><i class="p-icon--error"></i>{$ node.cpu_test_status.failed $}</span>
+        <li class="p-inline-list__item--compact" ng-if="node.cpu_test_status.failed > 0">
+          <a ng-click="openSection('testing')"><i class="p-icon--error"></i>{$ node.cpu_test_status.failed $}</a>
         </li>
-        <li class="p-inline-list__item">
-          <a ng-click="section.area = 'testing'">View&nbsp;results&nbsp;&rsaquo;</a>
+        <li class="p-inline-list__item--compact" ng-if="hasTestsRun(node, 'cpu')">
+          <a ng-click="openSection('testing')">View&nbsp;results&nbsp;&rsaquo;</a>
+        </li>
+        <li class="p-inline-list__item--compact" ng-if="!hasTestsRun(node, 'cpu')">
+          <a ng-click="validateNetworkConfiguration()">Test CPU...</a>
         </li>
       </ul>
     </div>
@@ -57,24 +63,27 @@
 
   <div class="memory-tests u-flex-bottom">
     <ul class="p-inline-list u-no-margin--bottom">
-      <li class="p-inline-list__item">
-        <span><i class="p-icon--success"></i>{$ node.memory_test_status.passed $}</span>
+      <li class="p-inline-list__item--compact" ng-if="node.memory_test_status.passed > 0">
+        <a ng-click="openSection('testing')"><i class="p-icon--success"></i>{$ node.memory_test_status.passed $}</a>
       </li>
-      <li class="p-inline-list__item">
-        <span><i class="p-icon--pending"></i>{$ node.memory_test_status.pending + node.memory_test_status.running $}</span>
+      <li class="p-inline-list__item--compact" ng-if="node.memory_test_status.pending + node.memory_test_status.running > 0">
+        <a ng-click="openSection('testing')"><i class="p-icon--pending"></i>{$ node.memory_test_status.pending + node.memory_test_status.running $}</a>
       </li>
-      <li class="p-inline-list__item">
-        <span><i class="p-icon--error"></i>{$ node.memory_test_status.failed $}</span>
+      <li class="p-inline-list__item--compact" ng-if="node.memory_test_status.failed > 0">
+        <a ng-click="openSection('testing')"><i class="p-icon--error"></i>{$ node.memory_test_status.failed $}</a>
       </li>
-      <li class="p-inline-list__item">
-        <a ng-click="section.area = 'testing'">View&nbsp;results&nbsp;&rsaquo;</a>
+      <li class="p-inline-list__item--compact" ng-if="hasTestsRun(node, 'memory')">
+        <a ng-click="openSection('testing')">View&nbsp;results&nbsp;&rsaquo;</a>
+      </li>
+      <li class="p-inline-list__item--compact" ng-if="!hasTestsRun(node, 'memory')">
+        <a ng-click="validateNetworkConfiguration()">Test memory...</a>
       </li>
     </ul>
   </div>
 
   <div class="storage">
     <strong class="p-muted-heading u-sv1">
-      <a ng-click="section.area = 'storage'">Storage&nbsp;&rsaquo;</a>
+      <a ng-click="openSection('storage')">Storage&nbsp;&rsaquo;</a>
     </strong>
     <h4>
       <span>{$ node.storage ? node.storage + " GB" : "Unknown" $}</span>
@@ -88,17 +97,20 @@
 
   <div class="storage-tests u-flex-bottom">
     <ul class="p-inline-list u-no-margin--bottom">
-      <li class="p-inline-list__item">
-        <span><i class="p-icon--success"></i>{$ node.storage_test_status.passed $}</span>
+      <li class="p-inline-list__item--compact" ng-if="node.storage_test_status.passed > 0">
+        <a ng-click="openSection('testing')"><i class="p-icon--success"></i>{$ node.storage_test_status.passed $}</a>
       </li>
-      <li class="p-inline-list__item">
-        <span><i class="p-icon--pending"></i>{$ node.storage_test_status.pending + node.storage_test_status.running $}</span>
+      <li class="p-inline-list__item--compact" ng-if="node.storage_test_status.pending + node.storage_test_status.running > 0">
+        <a ng-click="openSection('testing')"><i class="p-icon--pending"></i>{$ node.storage_test_status.pending + node.storage_test_status.running $}</a>
       </li>
-      <li class="p-inline-list__item">
-        <span><i class="p-icon--error"></i>{$ node.storage_test_status.failed $}</span>
+      <li class="p-inline-list__item--compact" ng-if="node.storage_test_status.failed > 0">
+        <a ng-click="openSection('testing')"><i class="p-icon--error"></i>{$ node.storage_test_status.failed $}</a>
       </li>
-      <li class="p-inline-list__item">
-        <a ng-click="section.area = 'testing'">View&nbsp;results&nbsp;&rsaquo;</a>
+      <li class="p-inline-list__item--compact" ng-if="hasTestsRun(node, 'storage')">
+        <a ng-click="openSection('testing')">View&nbsp;results&nbsp;&rsaquo;</a>
+      </li>
+      <li class="p-inline-list__item--compact" ng-if="!hasTestsRun(node, 'storage')">
+        <a ng-click="validateNetworkConfiguration()">Test storage...</a>
       </li>
     </ul>
   </div>
@@ -114,25 +126,25 @@
     </div>
     <div>
       <div>
-        <a ng-click="section.area = 'configuration'">Zone&nbsp;&rsaquo;</a>
+        <a ng-click="openSection('configuration')">Zone&nbsp;&rsaquo;</a>
       </div>
       <span title="{$ summary.zone.selected.name $}">{$ summary.zone.selected.name $}</span>
     </div>
     <div>
       <div>
-        <a ng-click="section.area = 'configuration'">Resource pool&nbsp;&rsaquo;</a>
+        <a ng-click="openSection('configuration')">Resource pool&nbsp;&rsaquo;</a>
       </div>
       <span title="{$ node.pool.name $}">{$ node.pool.name $}</span>
     </div>
     <div>
       <div>
-        <a ng-click="section.area = 'configuration'">Power type&nbsp;&rsaquo;</a>
+        <a ng-click="openSection('configuration')">Power type&nbsp;&rsaquo;</a>
       </div>
       <span title="{$ node.power_type $}">{$ node.power_type $}</span>
     </div>
     <div class="u-text-overflow">
       <div>
-        <a ng-click="section.area = 'configuration'">Tags&nbsp;&rsaquo;</a>
+        <a ng-click="openSection('configuration')">Tags&nbsp;&rsaquo;</a>
       </div>
       <em ng-if="!node.tags.length">No tags</em>
       <span ng-if="node.tags.length" title="{$ node.tags.join(', ') $}">{$ node.tags.join(', ') $}</span>

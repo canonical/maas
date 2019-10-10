@@ -9,6 +9,7 @@
 @import "tables/patterns_table-images";
 @import "tables/patterns_table-machines";
 @import "tables/patterns_table-network-discovery";
+@import "tables/patterns_table-network-summary";
 @import "tables/patterns_table-pods";
 @import "tables/patterns_table-pools";
 @import "tables/patterns_table-ssh-keys";
@@ -29,6 +30,7 @@
 @include maas-table-images;
 @include maas-table-machines;
 @include maas-table-network-discovery;
+@include maas-table-network-summary;
 @include maas-table-pods;
 @include maas-table-pools;
 @include maas-table-sortable;

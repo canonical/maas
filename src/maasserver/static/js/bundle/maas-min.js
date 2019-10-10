@@ -54304,7 +54304,7 @@ exports.default = void 0;
 
 var _enum = __webpack_require__(68);
 
-NodeDetailsController.$inject = ["$scope", "$rootScope", "$routeParams", "$location", "DevicesManager", "MachinesManager", "ControllersManager", "ZonesManager", "GeneralManager", "UsersManager", "TagsManager", "DomainsManager", "ManagerHelperService", "ServicesManager", "ErrorService", "ValidationService", "ScriptsManager", "ResourcePoolsManager", "VLANsManager", "$log", "$window"];
+NodeDetailsController.$inject = ["$scope", "$rootScope", "$routeParams", "$location", "DevicesManager", "MachinesManager", "ControllersManager", "ZonesManager", "GeneralManager", "UsersManager", "TagsManager", "DomainsManager", "ManagerHelperService", "ServicesManager", "ErrorService", "ValidationService", "ScriptsManager", "ResourcePoolsManager", "VLANsManager", "FabricsManager", "$log", "$window"];
 
 function _toConsumableArray(arr) { return _arrayWithoutHoles(arr) || _iterableToArray(arr) || _nonIterableSpread(); }
 
@@ -54315,7 +54315,7 @@ function _iterableToArray(iter) { if (Symbol.iterator in Object(iter) || Object.
 function _arrayWithoutHoles(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = new Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } }
 
 /* @ngInject */
-function NodeDetailsController($scope, $rootScope, $routeParams, $location, DevicesManager, MachinesManager, ControllersManager, ZonesManager, GeneralManager, UsersManager, TagsManager, DomainsManager, ManagerHelperService, ServicesManager, ErrorService, ValidationService, ScriptsManager, ResourcePoolsManager, VLANsManager, $log, $window) {
+function NodeDetailsController($scope, $rootScope, $routeParams, $location, DevicesManager, MachinesManager, ControllersManager, ZonesManager, GeneralManager, UsersManager, TagsManager, DomainsManager, ManagerHelperService, ServicesManager, ErrorService, ValidationService, ScriptsManager, ResourcePoolsManager, VLANsManager, FabricsManager, $log, $window) {
   // Mapping of device.ip_assignment to viewable text.
   var DEVICE_IP_ASSIGNMENT = {
     external: "External",
@@ -54363,13 +54363,15 @@ function NodeDetailsController($scope, $rootScope, $routeParams, $location, Devi
   $scope.releaseOptions = {};
   $scope.checkingPower = false;
   $scope.devices = [];
+  $scope.fabrics = FabricsManager.getItems();
   $scope.scripts = ScriptsManager.getItems();
   $scope.vlans = VLANsManager.getItems();
   $scope.hideHighAvailabilityNotification = false;
   $scope.failedUpdateError = "";
   $scope.disableTestButton = false;
   $scope.numaDetails = [];
-  $scope.expandedNumas = []; // Node header section.
+  $scope.expandedNumas = [];
+  $scope.groupedInterfaces = []; // Node header section.
 
   $scope.header = {
     editing: false,
@@ -54464,6 +54466,88 @@ function NodeDetailsController($scope, $rootScope, $routeParams, $location, Devi
       }
     });
     $scope.disableTestButton = disableButton;
+  };
+
+  $scope.shallowCompare = function (obj1, obj2) {
+    return Object.keys(obj1).length === Object.keys(obj2).length && Object.keys(obj1).every(function (key) {
+      return obj1[key] === obj2[key];
+    });
+  };
+
+  $scope.groupInterfaces = function (interfaces) {
+    var physicalInterfaces = interfaces.filter(function (iface) {
+      return iface.type === "physical";
+    });
+    var sortedGroups = physicalInterfaces.reduce(function (acc, iface) {
+      var vendor = iface.vendor,
+          product = iface.product,
+          firmware_version = iface.firmware_version;
+      var group = {
+        vendor: vendor || "Unknown network card",
+        product: product,
+        firmware_version: firmware_version
+      };
+
+      if (!acc.some(function (item) {
+        return $scope.shallowCompare(item, group);
+      })) {
+        acc.push(group);
+      }
+
+      return acc;
+    }, []).sort(function (a, b) {
+      var vendorA = a.vendor.toUpperCase();
+      var vendorB = b.vendor.toUpperCase();
+      var productA = a.product && a.product.toUpperCase();
+      var productB = b.product && b.product.toUpperCase();
+      var versionA = a.firmware_version;
+      var versionB = b.firmware_version;
+
+      if (vendorA === "UNKNOWN NETWORK CARD") {
+        return 1;
+      }
+
+      if (vendorB === "UNKNOWN NETWORK CARD") {
+        return -1;
+      }
+
+      if (vendorA === vendorB) {
+        if (productA === productB) {
+          if (versionA === versionB) {
+            return 0;
+          }
+
+          return versionA > versionB ? 1 : -1;
+        }
+
+        return productA > productB ? 1 : -1;
+      }
+
+      return vendorA > vendorB ? 1 : -1;
+    });
+    return sortedGroups.map(function (group) {
+      var vendor = group.vendor,
+          product = group.product,
+          firmware_version = group.firmware_version;
+      var groupIfaces = [];
+
+      if (vendor === "Unknown network card") {
+        groupIfaces = physicalInterfaces.filter(function (iface) {
+          return !iface.vendor;
+        });
+      } else {
+        groupIfaces = physicalInterfaces.filter(function (iface) {
+          return iface.vendor === group.vendor && iface.product === group.product && iface.firmware_version === group.firmware_version;
+        });
+      }
+
+      return {
+        vendor: vendor,
+        product: product,
+        firmware_version: firmware_version,
+        interfaces: groupIfaces
+      };
+    });
   }; // Updates the page title.
 
 
@@ -54616,6 +54700,10 @@ function NodeDetailsController($scope, $rootScope, $routeParams, $location, Devi
         };
       });
       $scope.numaDetails = numaDetails;
+    }
+
+    if (node.interfaces) {
+      $scope.groupedInterfaces = $scope.groupInterfaces(node.interfaces);
     }
   }; // Updates the service monitor section.
 
@@ -55558,6 +55646,50 @@ function NodeDetailsController($scope, $rootScope, $routeParams, $location, Devi
     return text;
   };
 
+  $scope.getDHCPStatus = function (iface) {
+    var vlans = $scope.vlans;
+    var vlan = vlans.find(function (vlan) {
+      return vlan.id === iface.vlan_id;
+    });
+
+    if (vlan) {
+      if (vlan.external_dhcp) {
+        return "External (".concat(vlan.external_dhcp, ")");
+      }
+
+      if (vlan.dhcp_on) {
+        return "MAAS-provided";
+      }
+    }
+
+    return "No DHCP";
+  };
+
+  $scope.getFabricName = function (iface) {
+    var fabrics = $scope.fabrics,
+        vlans = $scope.vlans;
+    var vlan = vlans.find(function (vlan) {
+      return vlan.id === iface.vlan_id;
+    });
+
+    if (vlan) {
+      var fabric = fabrics.find(function (fabric) {
+        return fabric.id === vlan.fabric;
+      });
+
+      if (fabric) {
+        return fabric.name;
+      }
+    }
+
+    return "Unknown";
+  };
+
+  $scope.hasTestsRun = function (node, scriptType) {
+    var testObj = node["".concat(scriptType, "_test_status")];
+    return testObj.passed + testObj.pending + testObj.running + testObj.failed > 0;
+  };
+
   $scope.getHardwareTestErrorText = function (error) {
     if (error === "Unable to run destructive test while deployed!") {
       return "The selected hardware tests contain one or more destructive" + " tests. Destructive tests cannot run on deployed machines.";
@@ -55650,7 +55782,7 @@ function NodeDetailsController($scope, $rootScope, $routeParams, $location, Devi
   } // Load all the required managers.
 
 
-  ManagerHelperService.loadManagers($scope, [ZonesManager, GeneralManager, UsersManager, TagsManager, DomainsManager, ServicesManager, ResourcePoolsManager].concat(page_managers)).then(function () {
+  ManagerHelperService.loadManagers($scope, [ZonesManager, GeneralManager, UsersManager, TagsManager, DomainsManager, ServicesManager, ResourcePoolsManager, FabricsManager, VLANsManager].concat(page_managers)).then(function () {
     // Possibly redirected from another controller that already had
     // this node set to active. Only call setActiveItem if not already
     // the activeItem.

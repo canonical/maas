@@ -5,10 +5,18 @@
   <hr />
   <ul ng-if="numaDetails.length" class="p-list u-no-margin--bottom">
     <li ng-repeat="numa in numaDetails" class="p-list__item p-numa">
-      <button class="p-numa__button" ng-class="{'is-open': expandedNumas.includes(numa.index)}" ng-click="toggleNumaExpanded(numa.index)">Node {$ numa.index $}</button>
+      <button
+        class="p-numa__button"
+        ng-class="{'is-open': expandedNumas.includes(numa.index)}"
+        ng-click="toggleNumaExpanded(numa.index)"
+        ng-if="numaDetails.length > 2"
+      >
+        Node {$ numa.index $}
+      </button>
+      <span ng-if="numaDetails.length <= 2">Node {$ numa.index $}</span>
       <span class="p-numa__collapsed-details" ng-if="!expandedNumas.includes(numa.index)">
-        {$ numa.cores.length $}&nbsp;cores,
-        {$ numa.memory $}&nbsp;GiB,<br>
+        {$ numa.cores.length $}&nbsp;core{$ numa.cores.length > 1 ? "s" : "" $},
+        {$ numa.memory >= 1024 ? numa.memory / 1024 + " GiB" : numa.memory + " MiB" $},<br>
         {$ numa.storage | formatBytes $},
         {$ numa.network $}&nbsp;interface{$ numa.network > 1 ? "s" : "" $}
       </span>

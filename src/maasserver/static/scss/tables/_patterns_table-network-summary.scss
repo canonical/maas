@@ -1,0 +1,74 @@
+@mixin maas-table-network-summary {
+  .p-table--network-summary {
+    margin-bottom: $sp-unit * 3;
+
+    .p-table__cell--name {
+      padding-left: 0;
+      width: 20%;
+    }
+
+    .p-table__cell--mac {
+      width: 25%;
+    }
+
+    .p-table__cell--link-speed {
+      width: 15%;
+    }
+
+    .p-table__cell--fabric {
+      width: 15%;
+    }
+
+    .p-table__cell--dhcp {
+      width: 22%;
+    }
+
+    .p-table__cell--sriov {
+      width: 8%;
+    }
+
+    @media only screen and (max-width: $breakpoint-small) {
+      .p-table__cell--name {
+        width: 25%;
+      }
+
+      .p-table__cell--mac {
+        width: 35%;
+      }
+
+      .p-table__cell--link-speed {
+        width: 20%;
+      }
+
+      .p-table__cell--fabric {
+        width: 20%;
+      }
+
+      .p-table__cell--dhcp {
+        display: none !important;
+      }
+
+      .p-table__cell--sriov {
+        display: none !important;
+      }
+    }
+
+    @media only screen and (max-width: $breakpoint-x-small) {
+      .p-table__cell--name {
+        width: 40%;
+      }
+
+      .p-table__cell--mac {
+        width: 60%;
+      }
+
+      .p-table__cell--link-speed {
+        display: none !important;
+      }
+
+      .p-table__cell--fabric {
+        display: none !important;
+      }
+    }
+  }
+}
