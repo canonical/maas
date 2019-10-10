@@ -5197,4 +5197,31 @@ describe("NodeNetworkingController", function() {
       expect($scope.$parent.validateNetworkConfiguration).toHaveBeenCalled();
     });
   });
+
+  describe("formatSpeedUnits", () => {
+    it("returns a hyphen if no argument", () => {
+      makeController();
+      expect($scope.formatSpeedUnits()).toEqual("-");
+    });
+
+    it("returns a hyphen if argument is 0", () => {
+      makeController();
+      expect($scope.formatSpeedUnits(0)).toEqual("-");
+    });
+
+    it("returns argument with Mbps if less than GB", () => {
+      makeController();
+      expect($scope.formatSpeedUnits(999)).toEqual("999 Mbps");
+    });
+
+    it("returns argument with Gbps if more than GB and less than TB", () => {
+      makeController();
+      expect($scope.formatSpeedUnits(1024)).toEqual("1 Gbps");
+    });
+
+    it("returns argument with Tbps if more than TB", () => {
+      makeController();
+      expect($scope.formatSpeedUnits(2000000)).toEqual("2 Tbps");
+    });
+  });
 });

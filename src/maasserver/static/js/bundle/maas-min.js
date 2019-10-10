@@ -41504,6 +41504,27 @@ function NodeNetworkingController($scope, $rootScope, $filter, FabricsManager, V
 
   $scope.canMarkAsDisconnected = function (nic) {
     return !$scope.cannotEditInterface(nic) && nic.link_connected && $scope.isInterface(nic);
+  };
+
+  $scope.formatSpeedUnits = function (speedInMbytes) {
+    var megabytesInGigabyte = 1000;
+    var gigabytesInTerabyte = 1000;
+
+    if (!speedInMbytes || speedInMbytes < 1) {
+      return "-";
+    }
+
+    if (speedInMbytes < megabytesInGigabyte) {
+      return "".concat(speedInMbytes, " Mbps");
+    }
+
+    if (speedInMbytes >= megabytesInGigabyte && speedInMbytes < megabytesInGigabyte * gigabytesInTerabyte) {
+      return "".concat(Math.round(speedInMbytes / megabytesInGigabyte), " Gbps");
+    }
+
+    if (speedInMbytes >= megabytesInGigabyte * gigabytesInTerabyte) {
+      return "".concat(Math.round(speedInMbytes / megabytesInGigabyte / gigabytesInTerabyte), " Tbps");
+    }
   }; // Load all the required managers. NodesManager and GeneralManager
   // are loaded by the parent controller "NodeDetailsController".
 

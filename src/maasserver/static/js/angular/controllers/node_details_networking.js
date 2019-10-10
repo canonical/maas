@@ -2364,6 +2364,32 @@ export function NodeNetworkingController(
     );
   };
 
+  $scope.formatSpeedUnits = speedInMbytes => {
+    const megabytesInGigabyte = 1000;
+    const gigabytesInTerabyte = 1000;
+
+    if (!speedInMbytes || speedInMbytes < 1) {
+      return "-";
+    }
+
+    if (speedInMbytes < megabytesInGigabyte) {
+      return `${speedInMbytes} Mbps`;
+    }
+
+    if (
+      speedInMbytes >= megabytesInGigabyte &&
+      speedInMbytes < megabytesInGigabyte * gigabytesInTerabyte
+    ) {
+      return `${Math.round(speedInMbytes / megabytesInGigabyte)} Gbps`;
+    }
+
+    if (speedInMbytes >= megabytesInGigabyte * gigabytesInTerabyte) {
+      return `${Math.round(
+        speedInMbytes / megabytesInGigabyte / gigabytesInTerabyte
+      )} Tbps`;
+    }
+  };
+
   // Load all the required managers. NodesManager and GeneralManager
   // are loaded by the parent controller "NodeDetailsController".
   ManagerHelperService.loadManagers($scope, [
