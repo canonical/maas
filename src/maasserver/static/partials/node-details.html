@@ -896,10 +896,12 @@
                                     <div class="p-form__group row u-vertically-center">
                                         <label for="bridge_type" class="p-form__label col-2">Bridge type</label>
                                         <div class="p-form__control col-4">
-                                            <select data-ng-model="newBridgeInterface.bridge_type">
+                                            <p>Standard</p>
+                                            <!-- Hidden until OVS becomes available -->
+                                            <!-- <select data-ng-model="newBridgeInterface.bridge_type">
                                                 <option value="standard">Standard</option>
                                                 <option value="ovs">Open vSwitch (ovs)</option>
-                                            </select>
+                                            </select> -->
                                         </div>
                                     </div>
                                     <div class="p-form__group row u-vertically-center" data-ng-class="{ 'is-error': isMACAddressInvalid(newBridgeInterface.mac_address) }">
@@ -1444,10 +1446,12 @@
                                                     <div class="p-form__group row u-vertically-center">
                                                         <label for="bridge_type" class="p-form__label col-2">Bridge type</label>
                                                         <div class="p-form__control col-4">
-                                                            <select data-ng-model="editInterface.bridge_type">
+                                                            <p>Standard</p>
+                                                            <!-- Hidden until OVS becomes available -->
+                                                            <!-- <select data-ng-model="editInterface.bridge_type">
                                                                 <option value="standard">Standard</option>
                                                                 <option value="ovs">Open vSwitch (ovs)</option>
-                                                            </select>
+                                                            </select> -->
                                                         </div>
                                                     </div>
                                                     <div class="p-form__group row">
