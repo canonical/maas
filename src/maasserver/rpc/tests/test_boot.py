@@ -833,6 +833,41 @@ class TestGetConfig(MAASServerTestCase):
             hardware_uuid=node.hardware_uuid)
         self.assertEqual(nic, reload_object(node).boot_interface)
 
+    def test__sets_boot_interface_hardware_uuid_different_vlan(self):
+        node = self.make_node()
+        vlan2 = factory.make_VLAN(
+            dhcp_on=True, primary_rack=factory.make_RackController())
+        nic2 = factory.make_Interface(node=node, vlan=vlan2)
+        subnet = factory.make_Subnet(vlan=nic2.vlan)
+        rack_controller = nic2.vlan.primary_rack
+
+        local_ip = factory.pick_ip_in_Subnet(subnet)
+        self.patch_autospec(boot_module, 'event_log_pxe_request')
+        get_config(
+            rack_controller.system_id, local_ip, factory.make_ip_address(),
+            hardware_uuid=node.hardware_uuid)
+        self.assertEqual(nic2, reload_object(node).boot_interface)
+
+    def test__no_sets_boot_interface_hardware_uuid_same_vlan(self):
+        node = self.make_node()
+        nic1 = node.boot_interface
+        nic2 = factory.make_Interface(node=node, vlan=node.boot_interface.vlan)
+        rack_controller = nic1.vlan.primary_rack
+
+        subnet = nic1.vlan.subnet_set.first()
+        local_ip = factory.pick_ip_in_Subnet(subnet)
+        self.patch_autospec(boot_module, 'event_log_pxe_request')
+        get_config(
+            rack_controller.system_id, local_ip, factory.make_ip_address(),
+            hardware_uuid=node.hardware_uuid)
+        self.assertEqual(nic1, reload_object(node).boot_interface)
+        node.boot_interface = nic2
+        node.save()
+        get_config(
+            rack_controller.system_id, local_ip, factory.make_ip_address(),
+            hardware_uuid=node.hardware_uuid)
+        self.assertEqual(nic2, reload_object(node).boot_interface)
+
     def test__sets_boot_cluster_ip_when_empty(self):
         rack_controller = factory.make_RackController()
         local_ip = factory.make_ip_address()

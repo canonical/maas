@@ -7,6 +7,7 @@ __all__ = [
     'DHCP_EXPLORE_OUTPUT_NAME',
     'GET_FRUID_DATA_OUTPUT_NAME',
     'IPADDR_OUTPUT_NAME',
+    'KERNEL_CMDLINE_OUTPUT_NAME',
     'LIST_MODALIASES_OUTPUT_NAME',
     'LLDP_INSTALL_OUTPUT_NAME',
     'LLDP_OUTPUT_NAME',
@@ -40,6 +41,7 @@ SERIAL_PORTS_OUTPUT_NAME = '00-maas-08-serial-ports'
 IPADDR_OUTPUT_NAME = '40-maas-01-network-interfaces'
 LXD_OUTPUT_NAME = '50-maas-01-commissioning'
 LLDP_OUTPUT_NAME = '99-maas-01-capture-lldp'
+KERNEL_CMDLINE_OUTPUT_NAME = '99-maas-05-kernel-cmdline'
 
 
 def make_function_call_script(function, *args, **kwargs):
@@ -155,6 +157,11 @@ SERIAL_PORTS_SCRIPT = dedent("""\
         | sort -u
     # Do not fail commissioning if this fails.
     exit 0
+    """)
+
+KERNEL_CMDLINE_SCRIPT = dedent("""\
+    #!/bin/bash
+    cat /proc/cmdline
     """)
 
 SUPPORT_SCRIPT = dedent(r"""#!/bin/bash
@@ -521,6 +528,12 @@ NODE_INFO_SCRIPTS = OrderedDict([
         'content': GET_FRUID_DATA_SCRIPT.encode('ascii'),
         'hook': null_hook,
         'timeout': timedelta(minutes=1),
+        'run_on_controller': False,
+    }),
+    (KERNEL_CMDLINE_OUTPUT_NAME, {
+        'content': KERNEL_CMDLINE_SCRIPT.encode('ascii'),
+        'hook': null_hook,
+        'timeout': timedelta(seconds=10),
         'run_on_controller': False,
     }),
     (SERIAL_PORTS_OUTPUT_NAME, {

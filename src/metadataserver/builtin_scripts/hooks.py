@@ -34,6 +34,7 @@ from metadataserver.enum import SCRIPT_STATUS
 from provisioningserver.refresh.node_info_scripts import (
     GET_FRUID_DATA_OUTPUT_NAME,
     IPADDR_OUTPUT_NAME,
+    KERNEL_CMDLINE_OUTPUT_NAME,
     LIST_MODALIASES_OUTPUT_NAME,
     LSHW_OUTPUT_NAME,
     LXD_OUTPUT_NAME,
@@ -198,6 +199,47 @@ def update_interface_details(interface, details):
     if update_fields:
         interface.save(
             update_fields=['updated', *update_fields])
+
+
+BOOTIF_RE = re.compile(r'BOOTIF=\d\d-([0-9a-f]{2}(?:-[0-9a-f]{2}){5})')
+
+
+def parse_bootif_cmdline(cmdline):
+    match = BOOTIF_RE.search(cmdline)
+    if match:
+        return match.group(1).replace('-', ':').lower()
+    return None
+
+
+def update_boot_interface(node, output, exit_status):
+    """Update the boot interface from the kernel command line.
+
+    If a BOOTIF parameter is present, that's the interface the machine
+    booted off.
+    """
+    if exit_status != 0:
+        logger.error(
+            "%s: kernel-cmdline failed with status: "
+            "%s." % (node.hostname, exit_status))
+        return
+
+    cmdline = output.decode('utf-8')
+    boot_mac = parse_bootif_cmdline(cmdline)
+    if boot_mac is None:
+        # This is ok. For example, if a rack controller runs the
+        # commissioning scripts, it won't have the BOOTIF parameter
+        # there.
+        return None
+
+    try:
+        node.boot_interface = node.interface_set.get(
+            mac_address=boot_mac)
+    except Interface.DoesNotExist:
+        logger.error(
+            f"'BOOTIF interface {boot_mac} doesn't exist for "
+            f"{node.fqdn}")
+    else:
+        node.save(update_fields=['boot_interface'])
 
 
 def update_node_network_information(node, data, numa_nodes):
@@ -993,3 +1035,4 @@ NODE_INFO_SCRIPTS[GET_FRUID_DATA_OUTPUT_NAME]['hook'] = (
 NODE_INFO_SCRIPTS[LIST_MODALIASES_OUTPUT_NAME]['hook'] = (
     create_metadata_by_modalias)
 NODE_INFO_SCRIPTS[LXD_OUTPUT_NAME]['hook'] = process_lxd_results
+NODE_INFO_SCRIPTS[KERNEL_CMDLINE_OUTPUT_NAME]['hook'] = update_boot_interface

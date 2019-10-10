@@ -361,7 +361,11 @@ def get_config(
             # MAC is unknown or wasn't sent. Determine the boot_interface using
             # the boot_cluster_ip.
             subnet = Subnet.objects.get_best_subnet_for_ip(local_ip)
-            if subnet:
+            boot_vlan = getattr(machine.boot_interface, 'vlan', None)
+            if subnet and subnet.vlan != boot_vlan:
+                # This might choose the wrong interface, but we don't
+                # have enough information to decide which interface is
+                # the boot one.
                 machine.boot_interface = machine.interface_set.filter(
                     vlan=subnet.vlan).first()
         else:

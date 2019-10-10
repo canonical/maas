@@ -42,6 +42,8 @@ from metadataserver.builtin_scripts.hooks import (
     extract_router_mac_addresses,
     filter_modaliases,
     get_dmi_data,
+    NODE_INFO_SCRIPTS,
+    parse_bootif_cmdline,
     process_lxd_results,
     retag_node_for_hardware_by_modalias,
     set_virtual_tag,
@@ -60,6 +62,7 @@ from metadataserver.models import ScriptSet
 from netaddr import IPNetwork
 from provisioningserver.refresh.node_info_scripts import (
     IPADDR_OUTPUT_NAME,
+    KERNEL_CMDLINE_OUTPUT_NAME,
     LXD_OUTPUT_NAME,
 )
 from testtools.matchers import (
@@ -549,6 +552,18 @@ with open(IP_ADDR_OUTPUT_FILE, "rb") as fd:
         os.path.dirname(__file__), 'ip_addr_results_wedge100.txt')
 with open(IP_ADDR_WEDGE_OUTPUT_FILE, "rb") as fd:
     IP_ADDR_WEDGE_OUTPUT = fd.read()
+
+KERNEL_CMDLINE_OUTPUT = (
+    "BOOT_IMAGE=http://10.245.136.6:5248/images/ubuntu/amd64/generic/bionic/"
+    "daily/boot-kernel nomodeset ro root=squash:http://10.245.136.6:5248/"
+    "images/ubuntu/amd64/generic/bionic/daily/squashfs "
+    "ip=::::flying-marmot:BOOTIF ip6=off overlayroot=tmpfs "
+    "overlayroot_cfgdisk=disabled cc:{{'datasource_list': ['MAAS']}}"
+    "end_cc cloud-config-url=http://10-245-136-0--21.maas-internal:5248/MAAS/"
+    "metadata/latest/by-id/m3e8ks/?op=get_preseed apparmor=0 "
+    "log_host=10.245.136.6 log_port=5247 initrd=http://10.245.136.6:5248/"
+    "images/ubuntu/amd64/generic/bionic/daily/boot-initrd "
+    "BOOTIF=01-{mac_address}\n")
 
 
 def create_IPADDR_OUTPUT_NAME_script(node, output):
@@ -2281,3 +2296,90 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         # 2 devices configured, one for IPv4 one for IPv6.
         self.assertEquals(2, node.interface_set.filter(
             ip_addresses__alloc_type=IPADDRESS_TYPE.AUTO).count())
+
+
+class TestUpdateBootInterface(MAASServerTestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.hook = NODE_INFO_SCRIPTS[KERNEL_CMDLINE_OUTPUT_NAME]['hook']
+
+    def test__sets_boot_interface_bootif(self):
+        node = factory.make_Node()
+        Interface.objects.filter(node_id=node.id).delete()
+        nic1 = factory.make_Interface(node=node)
+        nic2 = factory.make_Interface(node=node)
+        kernel_cmdline1 = KERNEL_CMDLINE_OUTPUT.format(
+            mac_address=str(nic1.mac_address).replace(':', '-'))
+        kernel_cmdline2 = KERNEL_CMDLINE_OUTPUT.format(
+            mac_address=str(nic2.mac_address).replace(':', '-'))
+
+        self.hook(node, kernel_cmdline1.encode('utf-8'), 0)
+        node = reload_object(node)
+        self.assertEqual(nic1, node.boot_interface)
+
+        self.hook(node, kernel_cmdline2.encode('utf-8'), 0)
+        node = reload_object(node)
+        self.assertEqual(nic2, node.boot_interface)
+
+    def test__boot_interface_bootif_no_such_mac(self):
+        node = factory.make_Node()
+        Interface.objects.filter(node_id=node.id).delete()
+        kernel_cmdline = KERNEL_CMDLINE_OUTPUT.format(
+            mac_address='11-22-33-44-55-66')
+        logger = self.useFixture(FakeLogger())
+
+        self.hook(node, kernel_cmdline.encode('utf-8'), 0)
+        node = reload_object(node)
+
+        self.assertIn(
+            "BOOTIF interface 11:22:33:44:55:66 doesn't exist",
+            logger.output)
+
+    def test__no_bootif(self):
+        node = factory.make_Node()
+        Interface.objects.filter(node_id=node.id).delete()
+        nic = factory.make_Interface(node=node)
+        node.boot_interface = nic
+        node.save()
+
+        self.hook(node, b'no bootif mac', 0)
+        node = reload_object(node)
+
+        self.assertEqual(nic, node.boot_interface)
+
+    def test__non_zero_exit_status(self):
+        node = factory.make_Node()
+        Interface.objects.filter(node_id=node.id).delete()
+        nic = factory.make_Interface(node=node)
+        node.boot_interface = None
+        node.save()
+        kernel_cmdline = KERNEL_CMDLINE_OUTPUT.format(
+            mac_address=str(nic.mac_address).replace(':', '-'))
+
+        logger = self.useFixture(FakeLogger())
+        self.hook(node, kernel_cmdline.encode('utf-8'), 1)
+        node = reload_object(node)
+        self.assertIsNone(node.boot_interface)
+
+        self.assertIn("kernel-cmdline failed with status: 1", logger.output)
+
+
+class TestParseBootifCmdline(MAASTestCase):
+
+    def test_normal(self):
+        mac_address = '01:02:03:04:05:06'
+        self.assertEqual(
+            mac_address,
+            parse_bootif_cmdline(KERNEL_CMDLINE_OUTPUT.format(
+                mac_address=mac_address.replace(':', '-'))))
+
+    def test_garbage(self):
+        self.assertIsNone(parse_bootif_cmdline('garbage'))
+
+    def test_garbage_bootif(self):
+        self.assertIsNone(parse_bootif_cmdline('BOOTIF=garbage'))
+
+    def test_bootif_too_few(self):
+        self.assertIsNone(
+            parse_bootif_cmdline('BOOTIF=01-02-03-04-05-06'))
