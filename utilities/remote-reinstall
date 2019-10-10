@@ -69,7 +69,7 @@ while [ "$*" != "" ]; do
 done
 
 if [ $DO_PYTHON -gt 0 ]; then
-    src_directories="maascli maasserver provisioningserver metadataserver"
+    src_directories="maascli maasserver provisioningserver metadataserver maas.egg-info"
 else
     src_directories="maasserver/static"
 fi
