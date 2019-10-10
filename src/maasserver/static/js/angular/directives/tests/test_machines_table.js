@@ -1083,4 +1083,34 @@ barbaz`); // Has to be formatted this way for tooltip
       expect(scope.getArchitectureText("i386/generic")).toBe("i386");
     });
   });
+
+  describe("display limits", () => {
+    it("returns the default display limit for the group", () => {
+      const directive = compileDirective();
+      const scope = directive.isolateScope();
+
+      scope.groupByLabel = "status";
+      const group = {
+        label: "Allocated",
+        machines: []
+      };
+      scope.$digest();
+
+      expect(scope.getLimit(group)).toEqual(scope.DISPLAY_LIMIT);
+    });
+
+    it("sets the groups display limit to undefined", () => {
+      const directive = compileDirective();
+      const scope = directive.isolateScope();
+
+      scope.groupByLabel = "status";
+      const group = {
+        label: "New",
+        machines: []
+      };
+      scope.loadAll(group);
+
+      expect(scope.getLimit(group)).toEqual(undefined);
+    });
+  });
 });

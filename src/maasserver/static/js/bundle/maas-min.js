@@ -59204,16 +59204,7 @@ function maasMachinesTable(MachinesManager, NotificationsManager, UsersManager, 
 
   function MachinesTableController($scope) {
     // Statuses that should show spinner.
-    var SPINNER_STATUSES = [_enum.NodeStatus.COMMISSIONING, _enum.NodeStatus.DEPLOYING, _enum.NodeStatus.RELEASING, _enum.NodeStatus.DISK_ERASING, _enum.NodeStatus.ENTERING_RESCUE_MODE, _enum.NodeStatus.EXITING_RESCUE_MODE, _enum.NodeStatus.TESTING]; // This is an performance optimisation to unblock initial rendering,
-    // otherwise when there are many machines, due to numerous nested
-    // ng-repeats the initial digest cycle is slow and the UI is
-    // blocked on first navigation.
-
-    if (angular.isDefined($scope.loading)) {
-      MachinesManager.clear();
-      $scope.metadata = MachinesManager.getMetadata();
-    }
-
+    var SPINNER_STATUSES = [_enum.NodeStatus.COMMISSIONING, _enum.NodeStatus.DEPLOYING, _enum.NodeStatus.RELEASING, _enum.NodeStatus.DISK_ERASING, _enum.NodeStatus.ENTERING_RESCUE_MODE, _enum.NodeStatus.EXITING_RESCUE_MODE, _enum.NodeStatus.TESTING];
     var machines = MachinesManager.getItems(); // Scope variables.
 
     $scope.table = {
@@ -59226,6 +59217,18 @@ function maasMachinesTable(MachinesManager, NotificationsManager, UsersManager, 
       osinfo: GeneralManager.getData("osinfo"),
       machineActions: GeneralManager.getData("machine_actions")
     };
+    $scope.DISPLAY_LIMIT = 5;
+    $scope.displayLimits = {};
+    var groupLabels = ["Failed", "New", "Commissioning", "Testing", "Ready", "Allocated", "Deploying", "Deployed", "Rescue mode", "Releasing", "Broken", "Other"];
+
+    $scope.getLimit = function (group) {
+      return $scope.displayLimits[group.label];
+    };
+
+    $scope.loadAll = function (selectedGroup) {
+      $scope.displayLimits[selectedGroup.label] = undefined;
+    };
+
     $scope.statusMenuActions = ["commission", "acquire", "deploy", "release", "abort", "test", "rescue-mode", "exit-rescue-mode", "mark-broken", "mark-fixed", "override-failed-testing", "lock", "unlock"];
     $scope.openMenu = "";
     $scope.closedGroups = [];
@@ -59591,6 +59594,9 @@ function maasMachinesTable(MachinesManager, NotificationsManager, UsersManager, 
           label: "Other",
           machines: [].concat(_toConsumableArray(_machines.get(_enum.NodeStatus.RETIRED) || []), _toConsumableArray(_machines.get(_enum.NodeStatus.MISSING) || []), _toConsumableArray(_machines.get(_enum.NodeStatus.RESERVED) || []))
         }];
+        groupLabels.forEach(function (label) {
+          $scope.displayLimits[label] = $scope.DISPLAY_LIMIT;
+        });
         return;
       }
 
@@ -59613,6 +59619,9 @@ function maasMachinesTable(MachinesManager, NotificationsManager, UsersManager, 
           };
         });
         $scope.groupedMachines = groupedByOwner;
+        groupedByOwner.forEach(function (owner) {
+          $scope.displayLimits[owner.label] = $scope.DISPLAY_LIMIT;
+        });
         return;
       }
 
@@ -59620,11 +59629,13 @@ function maasMachinesTable(MachinesManager, NotificationsManager, UsersManager, 
         label: "none",
         machines: $scope.table.filteredMachines
       }];
+      $scope.displayLimits["none"] = $scope.DISPLAY_LIMIT;
       return;
     };
 
     $scope.updateFilteredMachines = function () {
       $scope.table.filteredMachines = $filter("nodesFilter")($scope.table.machines, $scope.search);
+      $scope.displayLimits["none"] = $scope.DISPLAY_LIMIT;
     }; // When the list of filtered machines change update the all checkbox.
 
 

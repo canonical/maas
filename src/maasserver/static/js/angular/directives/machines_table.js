@@ -74,15 +74,6 @@ function maasMachinesTable(
       NodeStatus.EXITING_RESCUE_MODE,
       NodeStatus.TESTING
     ];
-
-    // This is an performance optimisation to unblock initial rendering,
-    // otherwise when there are many machines, due to numerous nested
-    // ng-repeats the initial digest cycle is slow and the UI is
-    // blocked on first navigation.
-    if (angular.isDefined($scope.loading)) {
-      MachinesManager.clear();
-      $scope.metadata = MachinesManager.getMetadata();
-    }
     const machines = MachinesManager.getItems();
 
     // Scope variables.
@@ -95,6 +86,29 @@ function maasMachinesTable(
       filteredMachines: machines,
       osinfo: GeneralManager.getData("osinfo"),
       machineActions: GeneralManager.getData("machine_actions")
+    };
+
+    $scope.DISPLAY_LIMIT = 5;
+    $scope.displayLimits = {};
+    const groupLabels = [
+      "Failed",
+      "New",
+      "Commissioning",
+      "Testing",
+      "Ready",
+      "Allocated",
+      "Deploying",
+      "Deployed",
+      "Rescue mode",
+      "Releasing",
+      "Broken",
+      "Other"
+    ];
+
+    $scope.getLimit = group => $scope.displayLimits[group.label];
+
+    $scope.loadAll = selectedGroup => {
+      $scope.displayLimits[selectedGroup.label] = undefined;
     };
 
     $scope.statusMenuActions = [
@@ -480,6 +494,9 @@ function maasMachinesTable(
             ]
           }
         ];
+        groupLabels.forEach(label => {
+          $scope.displayLimits[label] = $scope.DISPLAY_LIMIT;
+        });
         return;
       }
 
@@ -500,6 +517,9 @@ function maasMachinesTable(
         });
 
         $scope.groupedMachines = groupedByOwner;
+        groupedByOwner.forEach(owner => {
+          $scope.displayLimits[owner.label] = $scope.DISPLAY_LIMIT;
+        });
         return;
       }
 
@@ -509,6 +529,7 @@ function maasMachinesTable(
           machines: $scope.table.filteredMachines
         }
       ];
+      $scope.displayLimits["none"] = $scope.DISPLAY_LIMIT;
       return;
     };
 
@@ -517,6 +538,7 @@ function maasMachinesTable(
         $scope.table.machines,
         $scope.search
       );
+      $scope.displayLimits["none"] = $scope.DISPLAY_LIMIT;
     };
 
     // When the list of filtered machines change update the all checkbox.

@@ -99,12 +99,13 @@
             <th class="p-table__col--storage u-align--right" role="columnheader"></th>
         </tr>
     </thead>
-    <tbody vs-repeat data-ng-if="!closedGroups.includes(group.label)">
-        <tr class="p-table__row" data-ng-repeat="node in group.machines | nodesFilter:search | orderBy:table.predicate:table.reverse track by node.system_id"
-            data-ng-class="{ 'table--error': machineHasError({ $machine: node }),
-                             'is-active': node.$selected,
-                             'is-grouped': group.label !== 'none'
-                            }"
+    <tbody data-ng-if="!closedGroups.includes(group.label)">
+        <tr class="p-table__row"
+            ng-class="{
+                'table--error': machineHasError({ $machine: node }),
+                'is-active': node.$selected,
+                'is-grouped': group.label !== 'none'}"
+            ng-repeat="node in group.machines | limitTo:getLimit(group) | nodesFilter:search | orderBy:table.predicate:table.reverse track by node.system_id"
             tabindex="0"
         >
             <td class="p-table__col--name p-double-row" aria-label="FQDN" data-ng-if="table.column === 'fqdn' || table.column === 'ip_address'">
@@ -447,6 +448,19 @@
                     <span>{$ formatStorageUnit(node.storage).value $}</span>
                     <span class="p-muted-text">{$ formatStorageUnit(node.storage).unit $}</span>
                 </span>
+            </td>
+        </tr>
+        <tr data-ng-if="group.machines && group.machines.length > getLimit(group)">
+            <td colspan="12">
+                <div class="p-table__group-label" style="padding: .25rem 0 .3rem">
+                    <a class="p-muted-text" data-ng-click="loadAll(group)">
+                        <span>Show all</span>
+                        <span data-ng-if="group.label === 'none'">machines&hellip;</span>
+                        <span data-ng-if="group.label === 'No owner'">unowned&hellip;</span>
+                        <span data-ng-if="groupByLabel === 'owner' && group.label !== 'No owner'">owned by {$ group.label $}&hellip;</span>
+                        <span data-ng-if="groupByLabel === 'status'">{$ group.label | lowercase $}&hellip;</span>
+                    </a>
+                </div>
             </td>
         </tr>
     </tbody>
