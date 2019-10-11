@@ -2331,7 +2331,7 @@ export function NodeNetworkingController(
     const resultKey = `${nic.name} (${nic.mac_address})`;
     let failedTests = [];
 
-    if (results[resultKey]) {
+    if (results && results[resultKey]) {
       failedTests = results[resultKey].filter(
         res => res.status_name === "Failed"
       );

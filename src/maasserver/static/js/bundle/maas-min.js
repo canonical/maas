@@ -41481,7 +41481,7 @@ function NodeNetworkingController($scope, $rootScope, $filter, FabricsManager, V
     var resultKey = "".concat(nic.name, " (").concat(nic.mac_address, ")");
     var failedTests = [];
 
-    if (results[resultKey]) {
+    if (results && results[resultKey]) {
       failedTests = results[resultKey].filter(function (res) {
         return res.status_name === "Failed";
       });
